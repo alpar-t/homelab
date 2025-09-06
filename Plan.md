@@ -1,31 +1,21 @@
 A self hosted k8s system for homelab
 ====================================
 
-initial config
---------------
+Initial Conifiguration
+-----------------------
 
-Revisit test VM setup, can we use non Virtualbox  ?
+Install Ubuntu over network boot with ssh enable, configure the switch ant 2 Nics, one ofr longhorn data plan and one for k3d / control plane. 
+Set up partitioning and the initial k8s cluster.
 
-Revisit cloud-init is not right, revisit the partitioning. Also is the cloud-init config hooked correctly ?
+Ansible
+-------
 
-Fold the setup-genesis.sh into docker-compose container.
-
-odroid has http support what does that mean ? 
-
-Local disk fallback
---------------------
-
-We'll want to configure a local boot partition as part of the initial network boot on the local SSD disk and copy / update the latest images on it. This will be configured as a fallback in case network boot is not available.  
+Some/most of the OS configuration should be done trough ansible so we can keep it up to date. Set up basic scaolding to be able to run it.
 
 Tuning
 ------
 
 Mesure power usage, tune the OS for the odroid, make sure hdds are spinend down etc.
-
-Test setup
------------
-
-I'd like a local setup with 3 VMs to simulate, each should ideally simulate an ssd and a hdd and be bridget to my local network to have access to my local server and dhcp server. This needs to work on mac only. 
 
 Gitops Setup
 ------------
