@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+  # TFTP server for network boot
+  tftp:
+    image: pghalliday/tftp
+    container_name: tftp
+    ports:
+      - "69:69/udp"
+    volumes:
+      - ./ipxe/tftpboot:/var/tftpboot
+    restart: unless-stopped

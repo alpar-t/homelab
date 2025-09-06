@@ -1,0 +1,9 @@
+# Downloaded boot files (should be downloaded, not checked in)
+infrastructure/genesis/ipxe/tftpboot/undionly.kpxe
+
+# Temp files
+.DS_Store
+*.tmp
+*.swp
+*~
+
