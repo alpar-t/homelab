@@ -1,49 +1,131 @@
-A self hosted k8s system for homelab
-====================================
+# HomePBP Implementation Plan
 
-Initial Conifiguration
------------------------
+Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 
-Install Ubuntu over network boot with ssh enable, configure the switch ant 2 Nics, one ofr longhorn data plan and one for k3d / control plane. 
-Set up partitioning and the initial k8s cluster.
+## Phase 0: Initial Installation ✓ Complete
 
-Ansible
--------
+**Goal:** Install Talos Linux on 3 Odroid nodes
 
-Some/most of the OS configuration should be done trough ansible so we can keep it up to date. Set up basic scaolding to be able to run it.
+**Implementation:**
+- USB installer script for Talos ARM64
+- Installation guide tailored to Odroid hardware
+- 3-node HA control plane setup
+- Longhorn storage configuration
 
-Tuning
-------
+**Architecture:**
+- 3x Odroid: Each with SSD (OS) + 2x HDD (storage)
+- Talos installed to SSD
+- All nodes run control plane + workloads
+- Longhorn uses HDDs for persistent volumes
 
-Mesure power usage, tune the OS for the odroid, make sure hdds are spinend down etc.
+**Key Decisions:**
+- ✅ Install to disk (not PXE/stateless)
+- ✅ USB installation media (simpler than network boot)
+- ✅ 3-node HA control plane (can lose 1 node)
+- ✅ Same config for all nodes (symmetric cluster)
+- ✅ Longhorn for storage (uses local HDDs)
 
-Gitops Setup
-------------
+## Phase 1: Cluster Deployment (Next)
 
-I want to have either a branch or a separate repo where I will store config, and the K8s resources. I want to have a process where I can use helm or kustomize to render the manifests and use ArgoCD to sync it to the cluster. ArgoCD will ahve to be part of genesis of the clsuter.  
+**Goal:** Working 3-node Kubernetes cluster
 
-Recovery mode
---------------
+**Tasks:**
+- [ ] Create USB installer
+- [ ] Install Talos on all 3 Odroids
+- [ ] Generate and apply cluster configuration
+- [ ] Bootstrap Kubernetes cluster
+- [ ] Verify HA (test node failure)
+- [ ] Install Longhorn for persistent storage
+- [ ] Test basic deployments
 
-I want to have a way to pre-configure  a node by mac to boot in recovery mode, this will skip some of the regular config and instead start an ssh server and report back to the genesis server when ssh is ready to connect and the IP address of it. 
+**Success Criteria:**
+- All 3 nodes in `Ready` state
+- Can lose 1 node without cluster disruption
+- Longhorn providing persistent volumes
+- Can deploy and scale applications
 
-Ingest
--------
+## Phase 2: Core Services
 
-I want to have https with my domain configured so I can expose some of my k8s services. 
-Will also have to configure my microtic firewall to work with this. 
+**Goal:** Production-ready infrastructure services
 
-Storage
---------
+**Tasks:**
+- [ ] Ingress controller (Traefik or Nginx)
+- [ ] Cert-manager for TLS certificates
+- [ ] External DNS integration
+- [ ] Monitoring (Prometheus + Grafana)
+- [ ] Logging (Loki)
+- [ ] Backup strategy for etcd
 
-Each node will have 2 NICs, one of them for the control plane and ingress and the other exclusive for storage. Volumes will be managed by longhorn and part of the config. The HDDs and remaining SSD space needs to be used up by longhorn, tagged differently so apps can choose if they want to be on HDD or SSD and have their own replication stragey. Longhor can be deployed using ARGO. 
+## Phase 3: Application Deployment
 
-First service
--------------
+**Goal:** Self-hosted services
 
-I want to have some first service running, maybe just a hello world static website.
+**Candidates:**
+- github for git hosting (will not self host this part)
+- CD with Argo CD
+- Container registry
+- Documentation (Wiki.js or similar)
+- Personal services (as needed)
 
-Updates
--------
+## Phase 4: Automation & GitOps
 
-Use digests to fix all docker images and other packages used. Set up some way, e.g. local renovate runs to update all packages. 
+**Goal:** Infrastructure as code
+
+**Tasks:**
+- [ ] Terraform for infrastructure
+- [ ] Ansible for configuration (if needed)
+- [ ] GitOps with Argo CD or Flux
+- [ ] Automated Talos updates
+- [ ] Automated application deployments
+
+## Hardware
+
+**Current Setup:**
+- 3x Odroid nodes (N2+, HC4, or M1)
+- Each with: 2-4GB RAM, 1 SSD, 2 HDDs
+- Total storage: ~12TB (6x 2TB HDDs)
+
+**Per Node:**
+```
+SSD (256GB): Talos OS + system
+HDD1 (2TB): Longhorn storage
+HDD2 (2TB): Longhorn storage
+```
+
+## Design Principles
+
+1. **Resilience First**: Can tolerate 1 node failure
+2. **Simple Operation**: No TFTP dependency, boots from disk
+3. **Minimal Maintenance**: Immutable OS, easy upgrades
+4. **Low Power**: ~5W per Odroid, ~15W total cluster
+5. **Enterprise Practices**: HA, monitoring, backups, GitOps
+
+## Why These Choices?
+
+**Talos vs Traditional Linux:**
+- No SSH = smaller attack surface
+- Immutable = consistent, predictable
+- API-driven = automatable
+- Built for Kubernetes = optimized
+
+**Install to Disk vs Network Boot:**
+- Simpler daily operation
+- No TFTP server dependency
+- Faster boot
+- Still easy upgrades via `talosctl`
+- Can reinstall from USB if needed
+
+**3 Control Planes vs 1+2:**
+- True HA (etcd quorum)
+- Can lose 1 node
+- No single point of failure
+- Minimal resource overhead
+
+## Current Status
+
+**Phase 0:** ✓ Complete
+- USB installer script ready
+- Installation documentation complete
+- Configuration templates ready
+
+**Ready for:** Phase 1 - Install on actual hardware
