@@ -1,0 +1,193 @@
+variant: fcos
+version: 1.5.0
+# Fedora CoreOS Ignition Config (Butane format)
+# This template is processed by generate-ignition.sh
+
+storage:
+  files:
+    # Network configuration for eth0 (Management/General traffic VLAN)
+    # This interface carries: SSH, k3s API, general cluster traffic
+    - path: /etc/NetworkManager/system-connections/eth0.nmconnection
+      mode: 0600
+      contents:
+        inline: |
+          [connection]
+          id=eth0-management
+          type=ethernet
+          interface-name=eth0
+          autoconnect=true
+          autoconnect-priority=100
+          
+          [ipv4]
+          method=auto
+          
+          [ipv6]
+          method=auto
+          addr-gen-mode=stable-privacy
+
+    # Network configuration for eth1 (Storage/Longhorn traffic VLAN)
+    # This interface carries: Longhorn replication, storage I/O
+    - path: /etc/NetworkManager/system-connections/eth1.nmconnection
+      mode: 0600
+      contents:
+        inline: |
+          [connection]
+          id=eth1-storage
+          type=ethernet
+          interface-name=eth1
+          autoconnect=true
+          autoconnect-priority=90
+          
+          [ipv4]
+          method=auto
+          may-fail=false
+          
+          [ipv6]
+          method=auto
+          addr-gen-mode=stable-privacy
+
+    # Hostname
+    - path: /etc/hostname
+      mode: 0644
+      contents:
+        inline: |
+          {{NODE_HOSTNAME}}
+
+    # Avahi configuration for .local mDNS resolution
+    - path: /etc/avahi/avahi-daemon.conf
+      mode: 0644
+      contents:
+        inline: |
+          [server]
+          host-name={{NODE_HOSTNAME}}
+          domain-name=local
+          use-ipv4=yes
+          use-ipv6=yes
+          allow-interfaces=eth0
+          deny-interfaces=eth1
+          ratelimit-interval-usec=1000000
+          ratelimit-burst=1000
+          
+          [wide-area]
+          enable-wide-area=yes
+          
+          [publish]
+          publish-addresses=yes
+          publish-hinfo=yes
+          publish-workstation=no
+          publish-domain=yes
+          
+          [reflector]
+          enable-reflector=no
+          
+          [rlimits]
+          rlimit-core=0
+          rlimit-data=4194304
+          rlimit-fsize=0
+          rlimit-nofile=768
+          rlimit-stack=4194304
+          rlimit-nproc=3
+
+    # k3s installation script
+    - path: /usr/local/bin/install-k3s.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # Install k3s
+          curl -sfL https://get.k3s.io | \
+            INSTALL_K3S_VERSION="v1.31.3+k3s1" \
+            INSTALL_K3S_EXEC="server \
+              --disable=traefik \
+              --disable=servicelb \
+              --write-kubeconfig-mode=644 \
+              --cluster-init" \
+            sh -
+
+    # Longhorn prerequisites
+    - path: /etc/sysctl.d/99-longhorn.conf
+      mode: 0644
+      contents:
+        inline: |
+          # Longhorn requirements
+          vm.max_map_count = 262144
+          fs.inotify.max_user_instances = 8192
+          fs.inotify.max_user_watches = 524288
+
+    # Load iscsi_tcp module for Longhorn
+    - path: /etc/modules-load.d/longhorn.conf
+      mode: 0644
+      contents:
+        inline: |
+          iscsi_tcp
+
+    # Helper script to get storage network IP (eth1)
+    - path: /usr/local/bin/get-storage-ip
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # Get the IPv4 address of eth1 (storage network)
+          ip -4 addr show eth1 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -n1
+
+systemd:
+  units:
+    # Avahi mDNS service for .local address resolution
+    - name: avahi-daemon.service
+      enabled: true
+
+    # k3s service
+    - name: k3s.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Lightweight Kubernetes
+        Documentation=https://k3s.io
+        Wants=network-online.target
+        After=network-online.target
+
+        [Service]
+        Type=notify
+        EnvironmentFile=-/etc/default/%N
+        EnvironmentFile=-/etc/sysconfig/%N
+        KillMode=process
+        Delegate=yes
+        # Having non-zero Limit*s causes performance problems due to accounting overhead
+        # in the kernel. We recommend using cgroups to do container-local accounting.
+        LimitNOFILE=1048576
+        LimitNPROC=infinity
+        LimitCORE=infinity
+        TasksMax=infinity
+        TimeoutStartSec=0
+        Restart=always
+        RestartSec=5s
+        ExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service 2>/dev/null'
+        ExecStartPre=-/sbin/modprobe br_netfilter
+        ExecStartPre=-/sbin/modprobe overlay
+        ExecStartPre=/usr/local/bin/install-k3s.sh
+        ExecStart=/usr/local/bin/k3s server
+        
+        [Install]
+        WantedBy=multi-user.target
+
+    # Load kernel modules for k3s
+    - name: systemd-modules-load.service
+      enabled: true
+
+    # Apply sysctl settings
+    - name: systemd-sysctl.service
+      enabled: true
+
+    # Auto-update configuration (Zincati)
+    - name: zincati.service
+      enabled: true
+
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+        - {{SSH_KEY}}
+      groups:
+        - wheel
+        - sudo
+
