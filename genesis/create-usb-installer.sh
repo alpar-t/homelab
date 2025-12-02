@@ -1,95 +1,103 @@
 #!/bin/bash
 set -euo pipefail
 
-# Create bootable USB installer for Fedora CoreOS on macOS
-# This script writes the CoreOS live ISO/image to a USB drive
+# Create a bootable Fedora CoreOS USB installer
+# This writes the standard CoreOS live ISO to USB
 
-echo "========================================"
-echo "Fedora CoreOS USB Installer Creator"
-echo "========================================"
-echo ""
-echo "WARNING: This will ERASE the selected USB drive!"
+echo "=== Fedora CoreOS USB Installer Creator ==="
 echo ""
 
-# Find CoreOS image
-COREOS_IMAGE=$(ls -t fedora-coreos-*-metal.x86_64.raw.xz 2>/dev/null | head -1)
+# Find ISO file
+ISO_FILES=(fedora-coreos-*-live.x86_64.iso)
 
-if [ -z "${COREOS_IMAGE}" ]; then
-    echo "Error: No CoreOS image found."
-    echo "Please run: ./download-coreos.sh first"
+if [ ! -e "${ISO_FILES[0]}" ]; then
+    echo "Error: No CoreOS ISO found."
+    echo ""
+    echo "Please run ./download-coreos.sh first to download the ISO."
     exit 1
 fi
 
-echo "Found CoreOS image: ${COREOS_IMAGE}"
+# Select ISO if multiple exist
+ISO_FILE=""
+if [ ${#ISO_FILES[@]} -eq 1 ]; then
+    ISO_FILE="${ISO_FILES[0]}"
+else
+    echo "Multiple ISOs found:"
+    for i in "${!ISO_FILES[@]}"; do
+        echo "  $((i+1)). ${ISO_FILES[$i]}"
+    done
+    echo ""
+    read -p "Select ISO (1-${#ISO_FILES[@]}): " selection
+    ISO_FILE="${ISO_FILES[$((selection-1))]}"
+fi
+
+echo "Selected ISO: ${ISO_FILE}"
 echo ""
 
 # List available disks
 echo "Available disks:"
-diskutil list external physical
-
-echo ""
-echo "Enter the disk identifier (e.g., disk2 or disk4):"
-read -r DISK_ID
-
-# Validate disk ID
-if [ -z "${DISK_ID}" ]; then
-    echo "Error: No disk ID provided"
-    exit 1
-fi
-
-# Add /dev/ prefix if not present
-if [[ ! "${DISK_ID}" =~ ^/dev/ ]]; then
-    DISK_PATH="/dev/${DISK_ID}"
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    diskutil list
+    echo ""
+    read -p "Enter disk identifier (e.g., disk2): " DISK
+    DEVICE="/dev/${DISK}"
+    
+    # Unmount if mounted
+    diskutil unmountDisk "${DEVICE}" 2>/dev/null || true
+    
+    echo ""
+    echo "⚠️  WARNING: This will ERASE ALL DATA on ${DEVICE}"
+    read -p "Type 'YES' to confirm: " confirm
+    
+    if [ "${confirm}" != "YES" ]; then
+        echo "Cancelled."
+        exit 1
+    fi
+    
+    echo ""
+    echo "Writing ISO to ${DEVICE}..."
+    sudo dd if="${ISO_FILE}" of="${DEVICE}" bs=1m status=progress
+    
+    echo ""
+    echo "Syncing..."
+    sudo sync
+    
+    echo ""
+    echo "Ejecting ${DEVICE}..."
+    diskutil eject "${DEVICE}"
+    
 else
-    DISK_PATH="${DISK_ID}"
-    DISK_ID=$(basename "${DISK_PATH}")
+    lsblk -d -o NAME,SIZE,TYPE,MOUNTPOINT
+    echo ""
+    read -p "Enter device (e.g., /dev/sdb): " DEVICE
+    
+    echo ""
+    echo "⚠️  WARNING: This will ERASE ALL DATA on ${DEVICE}"
+    read -p "Type 'YES' to confirm: " confirm
+    
+    if [ "${confirm}" != "YES" ]; then
+        echo "Cancelled."
+        exit 1
+    fi
+    
+    # Unmount if mounted
+    sudo umount "${DEVICE}"* 2>/dev/null || true
+    
+    echo ""
+    echo "Writing ISO to ${DEVICE}..."
+    sudo dd if="${ISO_FILE}" of="${DEVICE}" bs=4M status=progress conv=fsync
+    
+    echo ""
+    echo "Syncing..."
+    sudo sync
 fi
-
-# Check if disk exists
-if [ ! -e "${DISK_PATH}" ]; then
-    echo "Error: Disk ${DISK_PATH} does not exist"
-    exit 1
-fi
-
-# Show disk info
-echo ""
-echo "Selected disk:"
-diskutil info "${DISK_ID}" | grep -E "Device Node|Media Name|Total Size"
-
-echo ""
-echo "WARNING: All data on ${DISK_PATH} will be ERASED!"
-echo "Type 'yes' to continue:"
-read -r CONFIRM
-
-if [ "${CONFIRM}" != "yes" ]; then
-    echo "Cancelled."
-    exit 0
-fi
-
-echo ""
-echo "Unmounting disk..."
-diskutil unmountDisk "${DISK_PATH}" || true
-
-echo ""
-echo "Writing CoreOS image to ${DISK_PATH}..."
-echo "This will take 5-15 minutes depending on USB speed..."
-echo ""
-
-# Decompress and write in one step
-xz -dc "${COREOS_IMAGE}" | sudo dd of="${DISK_PATH}" bs=4M status=progress
-
-echo ""
-echo "Syncing..."
-sync
-
-echo ""
-echo "Ejecting disk..."
-diskutil eject "${DISK_PATH}"
 
 echo ""
 echo "✓ USB installer created successfully!"
 echo ""
+echo "This USB can be reused for all nodes."
+echo ""
 echo "Next steps:"
-echo "1. Insert USB into Odroid HC4"
-echo "2. Boot from USB (may need to access boot menu)"
-echo "3. Follow installation instructions in README.md"
+echo "  1. Generate ignition configs: ./generate-ignition.sh <hostname>"
+echo "  2. Start HTTP server: python3 -m http.server 8080"
+echo "  3. Boot from USB and install (see README.md)"

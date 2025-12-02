@@ -1,44 +1,51 @@
 #!/bin/bash
 set -euo pipefail
 
-# Download Fedora CoreOS x86_64 (AMD64) image
-# This script downloads the latest stable CoreOS image for x86_64/AMD64 architecture
+# Download Fedora CoreOS live ISO
+# This is used to create a bootable USB installer
 
 STREAM="stable"
-ARCH="x86_64"  # AMD64/Intel architecture
+ARCH="x86_64"
 COREOS_URL="https://builds.coreos.fedoraproject.org/streams/${STREAM}.json"
 
 echo "Fetching CoreOS ${STREAM} stream metadata..."
 
-# Get latest version info
-DOWNLOAD_URL=$(curl -s "${COREOS_URL}" | \
-  jq -r ".architectures.${ARCH}.artifacts.metal.formats.raw.disk.location")
+# Fetch metadata
+METADATA=$(curl -s "${COREOS_URL}")
 
-VERSION=$(curl -s "${COREOS_URL}" | jq -r ".architectures.${ARCH}.artifacts.metal.release")
+# Get version
+VERSION=$(echo "${METADATA}" | jq -r ".architectures.${ARCH}.artifacts.metal.release")
+
+# Get ISO URL
+ISO_URL=$(echo "${METADATA}" | jq -r ".architectures.${ARCH}.artifacts.metal.formats.iso.disk.location")
 
 echo "Latest CoreOS version: ${VERSION}"
-echo "Download URL: ${DOWNLOAD_URL}"
+echo "ISO URL: ${ISO_URL}"
 
-# Download if not already present
-FILENAME="fedora-coreos-${VERSION}-metal.${ARCH}.raw.xz"
+if [ "${ISO_URL}" = "null" ] || [ -z "${ISO_URL}" ]; then
+    echo ""
+    echo "Error: Could not find ISO URL"
+    echo "Available artifacts:"
+    echo "${METADATA}" | jq ".architectures.${ARCH}.artifacts | keys"
+    exit 1
+fi
+
+# Download ISO
+FILENAME="fedora-coreos-${VERSION}-live.${ARCH}.iso"
 
 if [ -f "${FILENAME}" ]; then
+    echo ""
     echo "File already exists: ${FILENAME}"
     echo "Skipping download."
 else
-    echo "Downloading CoreOS image..."
-    curl -L -o "${FILENAME}" "${DOWNLOAD_URL}"
+    echo ""
+    echo "Downloading CoreOS ISO (~1GB)..."
+    curl -L --progress-bar -o "${FILENAME}" "${ISO_URL}"
+    echo ""
     echo "Download complete: ${FILENAME}"
 fi
 
-# Also download the signature for verification
-SIG_URL="${DOWNLOAD_URL}.sig"
-if [ ! -f "${FILENAME}.sig" ]; then
-    echo "Downloading signature..."
-    curl -L -o "${FILENAME}.sig" "${SIG_URL}"
-fi
-
 echo ""
-echo "CoreOS image ready: ${FILENAME}"
-echo "You can now run: ./create-usb-installer.sh"
-
+echo "✓ CoreOS ISO ready: ${FILENAME}"
+echo ""
+echo "Next: Generate ignition config with ./generate-ignition.sh"

@@ -37,46 +37,59 @@ Dedicated storage network for optimal I/O performance
 - Keyboard + HDMI monitor (for initial setup)
 
 ### Software
-- Mac/Linux with internet connection
-- Network with DHCP
+- Mac with the following tools:
+  - `butane` - Generate ignition configs (brew install butane)
+  - `jq` - Parse JSON metadata (brew install jq)
+  - `python3` - HTTP server for ignition configs (brew install python3)
+  - `kubectl` - Manage cluster (brew install kubectl)
+- Run `./setup.sh` to check all prerequisites
+- SSH key at `~/.ssh/id_ed25519` (generate with `ssh-keygen -t ed25519`)
+- Network with DHCP on both VLANs
 
 ## Quick Start
 
-**Prerequisites:** Configure your switch with two VLANs (management + storage) before starting.
+**Prerequisites:** 
+- Configure your switch with two VLANs (management + storage)
+- Have an SSH key at `~/.ssh/id_ed25519` (generate with `ssh-keygen -t ed25519`)
 
 ```bash
-# 1. Download CoreOS installer
 cd genesis
+
+# 1. Download CoreOS ISO (once, reuse for all nodes)
 ./download-coreos.sh
 
-# 2. Create USB installer
+# 2. Create USB installer (once, reuse for all nodes)
 ./create-usb-installer.sh
 
-# 3. Boot first Odroid from USB
+# 3. Generate ignition configs for all nodes
+export CLUSTER_NAME=baxter
+./generate-ignition.sh odroid-1
+./generate-ignition.sh odroid-2
+./generate-ignition.sh odroid-3
 
-# 4. Generate ignition config
-export NODE_HOSTNAME=odroid-1
-./generate-ignition.sh
-# Automatically uses ~/.ssh/id_ed25519.pub or ~/.ssh/id_rsa.pub
+# 4. Start HTTP server (keep running during installation)
+python3 -m http.server 8080
+# Get your Mac's IP: ipconfig getifaddr en0
 
-# 5. Install CoreOS to NVMe
-# (on the Odroid console after USB boot)
-sudo coreos-installer install /dev/nvme0n1 \
-  --ignition-url http://YOUR_MAC_IP:8000/ignition-odroid-1.json \
-  --insecure-ignition
+# 5. For each node:
+#    - Boot from USB (keyboard + monitor needed)
+#    - Login as 'core' (no password)
+#    - Run: sudo coreos-installer install /dev/nvme0n1 \
+#           --ignition-url http://YOUR_MAC_IP:8080/ignition-odroid-1.json
+#    - Remove USB and reboot
 
-# 6. Remove USB and reboot
-# Node will be accessible via mDNS as odroid-1.local
-
-# 7. Verify node is accessible
-ssh -i ~/.ssh/id_ed25519 core@odroid-1.local
-
-# 8. Repeat for other 2 nodes (odroid-2, odroid-3)
-
-# 9. Bootstrap k3s cluster (using .local addresses)
+# 6. Bootstrap k3s cluster (after all nodes installed)
 ./bootstrap-cluster.sh
-# Uses odroid-1.local, odroid-2.local, odroid-3.local automatically
+
+# 7. Access your cluster
+export KUBECONFIG=$(pwd)/kubeconfig
+kubectl get nodes
+
+# All nodes respond to baxter.local (round-robin)
+# Individual nodes: odroid-1.local, odroid-2.local, odroid-3.local
 ```
+
+**Note:** Simple HTTP server method - no need for coreos-installer on your Mac!
 
 ## Detailed Setup
 
@@ -87,22 +100,134 @@ cd genesis
 ./download-coreos.sh
 ```
 
-This downloads the x86_64 (AMD64) CoreOS raw image.
+This downloads the x86_64 (AMD64) CoreOS live ISO (~1GB). The ISO supports ignition embedding for automated installation.
 
-### Step 2: Create USB Installation Media
+### Step 2: Create USB Installer
 
 ```bash
-chmod +x create-usb-installer.sh
 ./create-usb-installer.sh
 ```
 
-Follow prompts to:
-- Select USB drive
-- Write CoreOS installer to USB
+This writes the CoreOS live ISO to a USB drive. **You can reuse this same USB for all three nodes** - no per-node customization needed.
 
-### Step 3: Configure Your Network Switch
+### Step 3: Generate Ignition Configs
 
-**Before installing, configure your switch with VLANs:**
+```bash
+export CLUSTER_NAME=baxter  # All nodes will respond to baxter.local
+
+./generate-ignition.sh odroid-1
+./generate-ignition.sh odroid-2
+./generate-ignition.sh odroid-3
+```
+
+This creates `ignition-odroid-1.json`, `ignition-odroid-2.json`, `ignition-odroid-3.json` with your SSH key and node-specific configuration.
+
+### Step 3b: Start HTTP Server
+
+The CoreOS installer will fetch ignition configs over HTTP during installation:
+
+```bash
+# In the genesis directory, start HTTP server
+python3 -m http.server 8080
+```
+
+**Keep this terminal open** while installing nodes.
+
+**Find your Mac's IP address:**
+```bash
+# For WiFi (en0)
+ipconfig getifaddr en0
+
+# For Ethernet (en1)  
+ipconfig getifaddr en1
+```
+
+Note this IP - you'll need it during installation (e.g., `192.168.1.100`).
+
+### Step 4: Install First Node
+
+1. **Insert USB** into Odroid HC4
+2. **Connect keyboard + HDMI monitor**
+3. **Power on** and boot from USB
+4. **Login as `core`** at the prompt (no password required on live ISO)
+5. **Install to NVMe with ignition:**
+
+```bash
+# Identify disks (optional but recommended)
+lsblk
+
+# You should see:
+# NAME        SIZE TYPE
+# sda           8G disk  (USB installer)
+# nvme0n1       2T disk  (your NVMe SSD - install here!)
+# sdb         400G disk  (HDD 1 - for Longhorn)
+# sdc         4.0T disk  (HDD 2 - for Longhorn)
+
+# Install CoreOS to NVMe with ignition config
+# Replace 192.168.1.100 with YOUR Mac's IP address
+sudo coreos-installer install /dev/nvme0n1 \
+  --ignition-url http://192.168.1.100:8080/ignition-odroid-1.json
+
+# This takes ~2-5 minutes
+# - Downloads CoreOS (~800MB)
+# - Fetches your ignition config from Mac
+# - Installs to NVMe with config applied
+```
+
+6. **Remove USB and reboot:**
+
+```bash
+sudo systemctl reboot
+```
+
+7. Wait ~1-2 minutes for the node to boot from NVMe
+
+### Step 5: Verify First Node
+
+After the node reboots from NVMe:
+
+```bash
+# SSH into the node via .local address (mDNS)
+ssh core@odroid-1.local
+
+# Check both network interfaces
+ip addr show
+
+# Check k3s is running
+sudo systemctl status k3s
+
+# Check disks
+lsblk
+```
+
+The node is ready!
+
+### Step 6: Repeat for Other Nodes
+
+For each additional node (odroid-2, odroid-3):
+
+1. **Use the same USB** (no need to recreate it)
+2. **Boot Odroid from USB**
+3. **Login as `core`**
+4. **Run install command** with the correct ignition file:
+
+```bash
+# For odroid-2:
+sudo coreos-installer install /dev/nvme0n1 \
+  --ignition-url http://192.168.1.100:8080/ignition-odroid-2.json
+
+# For odroid-3:
+sudo coreos-installer install /dev/nvme0n1 \
+  --ignition-url http://192.168.1.100:8080/ignition-odroid-3.json
+```
+
+5. **Remove USB and reboot**
+
+The HTTP server continues serving all ignition configs - just use the correct URL for each node.
+
+### Step 7: Configure Your Network Switch
+
+**Before bootstrapping the cluster, configure your switch with VLANs:**
 
 1. **Create two VLANs:**
    - VLAN 1 (or your management VLAN): For eth0 - management traffic
@@ -120,223 +245,71 @@ Follow prompts to:
    - Makes node IPs predictable after reboot
    - Reserve based on MAC addresses
 
-### Step 4: Prepare Your SSH Key
-
-You'll need an SSH key to access the nodes:
-
-```bash
-# Generate if you don't have one
-ssh-keygen -t ed25519
-
-# This creates ~/.ssh/id_ed25519 (private) and ~/.ssh/id_ed25519.pub (public)
-# Your public key will be added to ignition config
-cat ~/.ssh/id_ed25519.pub
-```
-
-### Step 4: Boot First Odroid from USB
-
-1. **Insert USB** into Odroid HC4
-2. **Connect keyboard + HDMI**
-3. **Power on**
-4. **Enter boot menu** (usually by pressing a key during boot)
-5. **Select USB drive** to boot from
-
-The Odroid will boot into CoreOS live installer.
-
-### Step 5: Identify Your Disks
-
-On the Odroid console:
-
-```bash
-# List all disks
-lsblk
-
-# You should see something like:
-# NAME        SIZE TYPE
-# sda           8G disk  (USB installer)
-# nvme0n1       2T disk  (your NVMe SSD - install here!)
-# sdb         400G disk  (HDD 1 - for Longhorn)
-# sdc         4.0T disk  (HDD 2 - for Longhorn)
-```
-
-**Target disk for installation:** `/dev/nvme0n1` (your NVMe SSD)
-
-### Step 6: Generate Ignition Config
-
-On your Mac, create the ignition config for the first node:
-
-```bash
-export NODE_HOSTNAME=odroid-1
-./generate-ignition.sh
-```
-
-The script automatically uses your default SSH key (`~/.ssh/id_ed25519.pub` or `~/.ssh/id_rsa.pub`).
-
-This creates `ignition-odroid-1.json` with:
-- DHCP network configuration (IPv4 + IPv6)
-- Both NICs (eth0 and eth1) configured
-- Hostname
-- SSH authorized keys
-- k3s systemd service
-- Longhorn prerequisites
-
-### Step 7: Serve Ignition Config
-
-On your Mac, serve the ignition config over HTTP:
-
-```bash
-# Start simple HTTP server
-cd genesis
-python3 -m http.server 8000
-
-# Note your Mac's IP address
-ifconfig | grep "inet " | grep -v 127.0.0.1
-```
-
-### Step 8: Install CoreOS to NVMe
-
-On the Odroid console:
-
-```bash
-# Replace YOUR_MAC_IP with your actual IP
-# Replace ignition-odroid-1.json with your generated config filename
-sudo coreos-installer install /dev/nvme0n1 \
-  --ignition-url http://YOUR_MAC_IP:8000/ignition-odroid-1.json \
-  --insecure-ignition
-
-# Wait for installation to complete (~2-5 minutes)
-```
-
-**What this does:**
-- Wipes `/dev/nvme0n1`
-- Installs CoreOS
-- Applies your ignition config
-- Sets up DHCP networking (both NICs with IPv6), SSH, k3s service
-
-### Step 9: Boot from NVMe
-
-```bash
-# Power off
-sudo poweroff
-
-# Remove USB drive
-# Power on - it will boot from NVMe
-```
-
-Wait ~1-2 minutes for the node to boot.
-
-### Step 10: Find Node IP and Verify Access
-
-The node will get an IP via DHCP. To find it:
-
-**Option 1: Check your router's DHCP lease table**
-- Look for hostname `odroid-1`
-- Note the assigned IP address
-
-**Option 2: Check on the console (HDMI + keyboard)**
-- The IP will be displayed during boot
-- Or run: `ip addr show`
-
-**Option 3: Scan your network**
-```bash
-nmap -sn 192.168.1.0/24  # Scan your subnet
-```
-
-Once the node boots, verify access using `.local` mDNS address:
-
-```bash
-# SSH into the node via .local address (mDNS)
-ssh -i ~/.ssh/id_ed25519 core@odroid-1.local
-
-# Check both network interfaces
-ip addr show
-
-# Verify eth0 (management network)
-ip -4 addr show eth0
-# Should show IP like: 192.168.1.10
-
-# Verify eth1 (storage network)
-ip -4 addr show eth1
-# Should show IP like: 10.0.10.10
-
-# Check Avahi is advertising .local address
-avahi-browse -a -t
-# Should show odroid-1.local
-
-# Test routing
-ip route
-# Should show default route via eth0 (management)
-
-# Check k3s is running
-sudo systemctl status k3s
-
-# Check disks
-lsblk
-```
+### Step 8: Using .local Addresses
 
 **Using .local addresses:**
-- Each node is accessible as `{{hostname}}.local` (e.g., `odroid-1.local`, `odroid-2.local`, `odroid-3.local`)
+- **Individual nodes:** `odroid-1.local`, `odroid-2.local`, `odroid-3.local`
+- **Cluster-wide:** `baxter.local` (or your `CLUSTER_NAME.local`) resolves to all 3 nodes for round-robin access
 - No need to track DHCP-assigned IPs
 - Works automatically via mDNS/Avahi
 - Your Mac natively supports .local resolution
+
+**Round-robin access examples:**
+```bash
+# SSH to any node via cluster name (round-robin)
+ssh -i ~/.ssh/id_ed25519 core@baxter.local
+
+# Kubectl via cluster name
+kubectl config set-cluster default --server=https://baxter.local:6443
+
+# Access ingress via cluster name
+curl http://baxter.local
+```
 
 **Important:** Note both IPs for each node (for Longhorn storage network config):
 - Management IP (eth0): Auto-discovered via .local, used for SSH, kubectl
 - Storage IP (eth1): Used for Longhorn configuration (query via SSH)
 
-### Step 11: Repeat for Other Nodes
+### Step 9: Bootstrap k3s Cluster
 
-For node 2:
-```bash
-export NODE_HOSTNAME=odroid-2
-./generate-ignition.sh
-# Install as in steps 8-10 using ignition-odroid-2.json
-```
-
-For node 3:
-```bash
-export NODE_HOSTNAME=odroid-3
-./generate-ignition.sh
-# Install as in steps 8-10 using ignition-odroid-3.json
-```
-
-**Remember to note the DHCP-assigned IP for each node - you'll need them for the bootstrap step.**
-
-### Step 12: Bootstrap k3s Cluster
-
-After all 3 nodes are up, bootstrap the cluster:
+After all 3 nodes are installed and running:
 
 ```bash
 # Bootstrap the cluster using .local addresses
 ./bootstrap-cluster.sh
 
-# Uses odroid-1.local, odroid-2.local, odroid-3.local automatically
+# Automatically uses:
+# - odroid-1.local
+# - odroid-2.local
+# - odroid-3.local
 ```
 
 This script:
-- Initializes k3s on first node (odroid-1.local)
-- Joins other nodes to cluster
-- Configures kubectl access using .local addresses
+- Initializes k3s on first node
+- Joins other nodes to create HA cluster
+- Fetches and configures kubeconfig
+- Sets up kubectl access
 
-**Note:** The script uses mDNS `.local` addresses by default. No need to track DHCP-assigned IPs!
+### Step 10: Verify Cluster
 
-### Step 13: Get Kubeconfig
+The bootstrap script fetched the kubeconfig, so just verify:
 
 ```bash
-# Get kubeconfig from first node
-scp -i ~/.ssh/id_ed25519 core@odroid-1.local:/etc/rancher/k3s/k3s.yaml ./kubeconfig
-
-# Update server address to use .local
-sed -i '' "s/127.0.0.1/odroid-1.local/" kubeconfig
-
-# Export it
+# Use the kubeconfig from bootstrap
 export KUBECONFIG=$(pwd)/kubeconfig
 
-# Test
-kubectl get nodes
+# Check all nodes are ready
+kubectl get nodes -o wide
+
+# You should see all 3 nodes
+# All nodes accessible via .local: odroid-1.local, odroid-2.local, odroid-3.local
+# Cluster also accessible via: baxter.local (round-robin)
+
+# Check system pods
+kubectl get pods -A
 ```
 
-### Step 14: Choose Your Management Approach
+### Step 11: Choose Your Management Approach
 
 You have two options depending on whether you want GitOps from day 1:
 
@@ -382,7 +355,7 @@ kubectl get pods -n longhorn-system -w
 
 **Note:** You can still adopt this into Argo CD later (day 2 operation).
 
-### Step 15: Configure Longhorn Storage
+### Step 12: Configure Longhorn Storage
 
 ```bash
 # Access Longhorn UI
@@ -433,7 +406,7 @@ Each HC4 has two Gigabit Ethernet ports configured for different VLANs:
 - Purpose: Longhorn replication traffic, storage I/O, pod volume mounts
 - Configuration: DHCP (IPv4 + IPv6)
 - Priority: 90
-- Example subnet: 10.0.10.0/24
+- Example subnet: 192.168.42.0/24
 
 ### Why Separate Networks?
 
@@ -475,10 +448,10 @@ Management Network (eth0):
 - Odroid IPs: 192.168.1.10-12 (reserved)
 
 Storage Network (eth1):
-- Subnet: 10.0.10.0/24
+- Subnet: 192.168.42.0/24
 - No gateway needed (local traffic only)
-- DHCP range: 10.0.10.100-10.0.10.200
-- Odroid IPs: 10.0.10.10-12 (reserved)
+- DHCP range: 192.168.42.100-192.168.42.200
+- Odroid IPs: 192.168.42.10-12 (reserved)
 ```
 
 ### Configuring Longhorn for Storage Network
@@ -488,7 +461,7 @@ After installing Longhorn, you need to tell it to use eth1 (storage network) for
 **Method 1: Via Longhorn Settings (UI)**
 
 1. Access Longhorn UI:
-   ```bash
+```bash
    kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
    ```
    Open http://localhost:8080
@@ -501,10 +474,10 @@ After installing Longhorn, you need to tell it to use eth1 (storage network) for
    ```bash
    # SSH to each node via management network
    ssh -i ~/.ssh/id_ed25519 core@odroid-1.local
-   /usr/local/bin/get-storage-ip  # Shows eth1 IP, e.g., 10.0.10.10
+   /usr/local/bin/get-storage-ip  # Shows eth1 IP, e.g., 192.168.42.10
    ```
 
-5. Set **Storage Network CIDR** to your storage subnet, e.g., `10.0.10.0/24`
+5. Set **Storage Network CIDR** to your storage subnet, e.g., `192.168.42.0/24`
 
 **Method 2: Via kubectl (Recommended)**
 
@@ -512,7 +485,7 @@ After installing Longhorn, you need to tell it to use eth1 (storage network) for
 # Set storage network CIDR
 kubectl patch -n longhorn-system settings.longhorn.io/storage-network \
   --type='json' \
-  -p='[{"op": "replace", "path": "/value", "value":"10.0.10.0/24"}]'
+  -p='[{"op": "replace", "path": "/value", "value":"192.168.42.0/24"}]'
 
 # Verify
 kubectl get settings.longhorn.io -n longhorn-system storage-network -o yaml
@@ -522,7 +495,7 @@ kubectl get settings.longhorn.io -n longhorn-system storage-network -o yaml
 ```bash
 # Check Longhorn is using storage network
 kubectl get pods -n longhorn-system -o wide
-# Pod IPs should be from storage network (10.0.10.x)
+# Pod IPs should be from storage network (192.168.42.x)
 
 # Monitor storage traffic
 ssh -i ~/.ssh/id_ed25519 core@odroid-1.local
@@ -655,7 +628,7 @@ sudo wipefs -a /dev/sdc
 **Longhorn pods not communicating:**
 
 1. **Verify storage network IPs on all nodes:**
-   ```bash
+```bash
    # Check each node
    for node in odroid-1.local odroid-2.local odroid-3.local; do
      echo "Node $node:"
@@ -667,13 +640,13 @@ sudo wipefs -a /dev/sdc
    ```bash
    # From one node, ping another node's storage IP
    ssh -i ~/.ssh/id_ed25519 core@odroid-1.local
-   ping 10.0.10.11  # Should work
+   ping 192.168.42.11  # Should work
    ```
 
 3. **Verify Longhorn is using storage network:**
    ```bash
    kubectl get settings.longhorn.io -n longhorn-system storage-network -o yaml
-   # Should show your storage CIDR (10.0.10.0/24)
+   # Should show your storage CIDR (192.168.42.0/24)
    ```
 
 4. **Check storage VLAN configuration:**
@@ -682,7 +655,7 @@ sudo wipefs -a /dev/sdc
    - Ensure no firewall blocking traffic between storage IPs
 
 5. **Monitor storage network traffic:**
-   ```bash
+```bash
    # On any node
    ssh -i ~/.ssh/id_ed25519 core@odroid-1.local
    sudo iftop -i eth1
@@ -742,7 +715,7 @@ spec:
       values: |
         defaultSettings:
           # Use storage network for Longhorn traffic
-          storageNetwork: "10.0.10.0/24"
+          storageNetwork: "192.168.42.0/24"
           replicaReplenishmentWaitInterval: 0
           defaultReplicaCount: 3
           

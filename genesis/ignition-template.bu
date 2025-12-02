@@ -5,16 +5,55 @@ version: 1.5.0
 
 storage:
   files:
-    # Network configuration for eth0 (Management/General traffic VLAN)
+    # Install Avahi on first boot
+    - path: /usr/local/bin/install-avahi.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          
+          # Check if avahi is already installed
+          if rpm -q avahi > /dev/null 2>&1; then
+            echo "Avahi already installed"
+            exit 0
+          fi
+          
+          # Install avahi, avahi-tools, and nss-mdns for .local resolution
+          echo "Installing Avahi for mDNS/.local resolution..."
+          
+          # Try --apply-live first, but don't fail if it doesn't work
+          if rpm-ostree install --apply-live --allow-inactive avahi avahi-tools nss-mdns 2>&1 | tee /var/log/avahi-install.log; then
+            echo "Avahi installed with --apply-live"
+            
+            # Try to enable and start (might not work with --apply-live)
+            systemctl enable avahi-daemon.service 2>/dev/null || true
+            systemctl start avahi-daemon.service 2>/dev/null || true
+            
+            # Check if avahi-daemon is actually running
+            if systemctl is-active avahi-daemon.service >/dev/null 2>&1; then
+              echo "Avahi daemon started successfully"
+            else
+              echo "Avahi installed but daemon not started - will be available after reboot"
+            fi
+          else
+            echo "Failed to install Avahi with --apply-live, trying standard install..."
+            rpm-ostree install avahi avahi-tools nss-mdns
+            echo "Avahi installed - will be available after reboot"
+          fi
+          
+          exit 0
+
+    # Network configuration for enp2s0 (Management/General traffic VLAN)
     # This interface carries: SSH, k3s API, general cluster traffic
-    - path: /etc/NetworkManager/system-connections/eth0.nmconnection
+    # Note: Odroid uses enp1s0/enp2s0 interface names, not eth0/eth1
+    - path: /etc/NetworkManager/system-connections/enp2s0.nmconnection
       mode: 0600
       contents:
         inline: |
           [connection]
-          id=eth0-management
+          id=enp2s0-management
           type=ethernet
-          interface-name=eth0
+          interface-name=enp2s0
           autoconnect=true
           autoconnect-priority=100
           
@@ -25,16 +64,16 @@ storage:
           method=auto
           addr-gen-mode=stable-privacy
 
-    # Network configuration for eth1 (Storage/Longhorn traffic VLAN)
+    # Network configuration for enp1s0 (Storage/Longhorn traffic VLAN)
     # This interface carries: Longhorn replication, storage I/O
-    - path: /etc/NetworkManager/system-connections/eth1.nmconnection
+    - path: /etc/NetworkManager/system-connections/enp1s0.nmconnection
       mode: 0600
       contents:
         inline: |
           [connection]
-          id=eth1-storage
+          id=enp1s0-storage
           type=ethernet
-          interface-name=eth1
+          interface-name=enp1s0
           autoconnect=true
           autoconnect-priority=90
           
@@ -63,8 +102,8 @@ storage:
           domain-name=local
           use-ipv4=yes
           use-ipv6=yes
-          allow-interfaces=eth0
-          deny-interfaces=eth1
+          allow-interfaces=enp2s0
+          deny-interfaces=enp1s0
           ratelimit-interval-usec=1000000
           ratelimit-burst=1000
           
@@ -74,7 +113,7 @@ storage:
           [publish]
           publish-addresses=yes
           publish-hinfo=yes
-          publish-workstation=no
+          publish-workstation=yes
           publish-domain=yes
           
           [reflector]
@@ -87,6 +126,21 @@ storage:
           rlimit-nofile=768
           rlimit-stack=4194304
           rlimit-nproc=3
+
+    # Avahi workstation service for .local discovery
+    - path: /etc/avahi/services/workstation.service
+      mode: 0644
+      contents:
+        inline: |
+          <?xml version="1.0" standalone='no'?>
+          <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+          <service-group>
+            <name replace-wildcards="yes">%h</name>
+            <service>
+              <type>_workstation._tcp</type>
+              <port>9</port>
+            </service>
+          </service-group>
 
     # k3s installation script
     - path: /usr/local/bin/install-k3s.sh
@@ -127,14 +181,66 @@ storage:
       contents:
         inline: |
           #!/bin/bash
-          # Get the IPv4 address of eth1 (storage network)
-          ip -4 addr show eth1 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -n1
+          # Get the IPv4 address of enp1s0 (storage network)
+          ip -4 addr show enp1s0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -n1
+
+    # Script to publish cluster-wide .local alias
+    - path: /usr/local/bin/publish-cluster-alias
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # Publish cluster-wide alias so all nodes respond to cluster.local
+          # This enables round-robin DNS style access
+          CLUSTER_NAME="{{CLUSTER_NAME}}"
+          avahi-publish-alias "${CLUSTER_NAME}.local" "{{NODE_HOSTNAME}}.local"
 
 systemd:
   units:
+    # Install Avahi on first boot (before avahi-daemon starts)
+    - name: install-avahi.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Install Avahi for mDNS resolution
+        Wants=network-online.target
+        After=network-online.target
+        Before=avahi-daemon.service publish-cluster-alias.service
+        ConditionPathExists=!/var/lib/avahi-installed
+        
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/local/bin/install-avahi.sh
+        ExecStartPost=/usr/bin/touch /var/lib/avahi-installed
+        # Don't mark as failed if script returns non-zero
+        # The script handles errors internally
+        SuccessExitStatus=0 1
+        
+        [Install]
+        WantedBy=multi-user.target
+
     # Avahi mDNS service for .local address resolution
     - name: avahi-daemon.service
       enabled: true
+
+    # Publish cluster-wide .local alias
+    - name: publish-cluster-alias.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Publish cluster-wide mDNS alias
+        After=avahi-daemon.service
+        Requires=avahi-daemon.service
+        
+        [Service]
+        Type=simple
+        ExecStart=/usr/local/bin/publish-cluster-alias
+        Restart=always
+        RestartSec=10
+        
+        [Install]
+        WantedBy=multi-user.target
 
     # k3s service
     - name: k3s.service
@@ -143,8 +249,8 @@ systemd:
         [Unit]
         Description=Lightweight Kubernetes
         Documentation=https://k3s.io
-        Wants=network-online.target
-        After=network-online.target
+        Wants=network-online.target avahi-daemon.service
+        After=network-online.target avahi-daemon.service
 
         [Service]
         Type=notify

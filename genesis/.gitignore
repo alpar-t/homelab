@@ -1,6 +1,8 @@
 # CoreOS images (x86_64/AMD64 and aarch64/ARM64)
 fedora-coreos-*.raw.xz
 fedora-coreos-*.raw
+fedora-coreos-*.iso
+fedora-coreos-custom-*.iso
 *.sig
 
 # Old Talos images (can be deleted)

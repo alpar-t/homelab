@@ -44,6 +44,15 @@ else
     echo "✓ kubectl installed"
 fi
 
+# Check python3 (for HTTP server during installation)
+if ! command -v python3 &> /dev/null; then
+    echo "⚠️  python3 not found (needed for serving ignition configs)"
+    echo "   Install with: brew install python3"
+    MISSING_TOOLS+=("python3")
+else
+    echo "✓ python3 installed"
+fi
+
 echo ""
 
 if [ ${#MISSING_TOOLS[@]} -gt 0 ]; then
@@ -75,21 +84,28 @@ echo "=================================================="
 echo "Next Steps:"
 echo "=================================================="
 echo ""
-echo "1. Download Fedora CoreOS:"
+echo "1. Download CoreOS ISO (once):"
 echo "   ./download-coreos.sh"
 echo ""
-echo "2. Create USB installer:"
+echo "2. Create USB installer (once, reuse for all nodes):"
 echo "   ./create-usb-installer.sh"
 echo ""
-echo "3. Generate ignition config for first node:"
-echo "   export NODE_HOSTNAME=odroid-1"
-echo "   ./generate-ignition.sh"
-echo "   (automatically uses ~/.ssh/id_ed25519.pub)"
+echo "3. Generate ignition configs for all nodes:"
+echo "   export CLUSTER_NAME=baxter"
+echo "   ./generate-ignition.sh odroid-1"
+echo "   ./generate-ignition.sh odroid-2"
+echo "   ./generate-ignition.sh odroid-3"
 echo ""
-echo "4. Boot Odroid from USB and install CoreOS"
-echo "   (see README.md for detailed instructions)"
+echo "4. Start HTTP server (keep running):"
+echo "   python3 -m http.server 8080"
+echo "   Get your Mac IP: ipconfig getifaddr en0"
 echo ""
-echo "5. Repeat for other nodes"
+echo "5. For each node, boot from USB and install:"
+echo "   - Boot from USB (keyboard + monitor needed)"
+echo "   - Login as 'core' (no password)"
+echo "   - Run: sudo coreos-installer install /dev/nvme0n1 \\"
+echo "     --ignition-url http://YOUR_MAC_IP:8080/ignition-odroid-1.json"
+echo "   - Remove USB and reboot"
 echo ""
 echo "6. Bootstrap the k3s cluster:"
 echo "   ./bootstrap-cluster.sh"

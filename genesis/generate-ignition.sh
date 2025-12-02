@@ -4,12 +4,14 @@ set -euo pipefail
 # Generate Ignition config for a node
 # Usage: Set environment variables and run:
 #   export NODE_HOSTNAME=odroid-1
+#   export CLUSTER_NAME=baxter  # optional, defaults to "cluster"
 #   ./generate-ignition.sh
 #
 # Optional: export SSH_KEY="$(cat ~/.ssh/other_key.pub)" to use a different key
 
 # Check required environment variables
 : "${NODE_HOSTNAME:?NODE_HOSTNAME must be set (e.g., odroid-1)}"
+: "${CLUSTER_NAME:=baxter}"  # Default to "baxter" if not set
 
 # Auto-detect SSH key if not provided
 if [ -z "${SSH_KEY:-}" ]; then
@@ -29,7 +31,9 @@ fi
 
 echo "Generating ignition config for:"
 echo "  Hostname: ${NODE_HOSTNAME}"
+echo "  Cluster name: ${CLUSTER_NAME}"
 echo "  Network: DHCP with IPv4 and IPv6"
+echo "  Cluster-wide .local: ${CLUSTER_NAME}.local (all nodes will respond)"
 echo ""
 
 # Check if butane is installed
@@ -48,6 +52,7 @@ cp ignition-template.bu "${TEMP_FILE}"
 
 # Substitute variables
 sed -i '' "s|{{NODE_HOSTNAME}}|${NODE_HOSTNAME}|g" "${TEMP_FILE}"
+sed -i '' "s|{{CLUSTER_NAME}}|${CLUSTER_NAME}|g" "${TEMP_FILE}"
 sed -i '' "s|{{SSH_KEY}}|${SSH_KEY}|g" "${TEMP_FILE}"
 
 # Generate ignition JSON
