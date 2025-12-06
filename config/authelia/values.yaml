@@ -1,0 +1,60 @@
+domain: newjoy.ro
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  tls:
+    enabled: false  # Cloudflare handles TLS
+  subdomain: auth
+
+pod:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+configMap:
+  theme: dark
+  
+  authentication_backend:
+    file:
+      enabled: true
+      # Users defined in secret, see README
+  
+  session:
+    cookies:
+      - domain: newjoy.ro
+        subdomain: auth
+        default_redirection_url: https://newjoy.ro
+  
+  storage:
+    local:
+      enabled: true
+    # Using SQLite (file-based), no external DB needed
+  
+  access_control:
+    default_policy: deny
+    rules:
+      # Public - no auth required
+      - domain: newjoy.ro
+        policy: bypass
+      - domain: www.newjoy.ro
+        policy: bypass
+      
+      # Protected - require login
+      - domain: "*.newjoy.ro"
+        policy: one_factor
+
+  notifier:
+    filesystem:
+      enabled: true
+    # For password reset emails, configure SMTP later
+
+secret:
+  existingSecret: authelia-secrets
+

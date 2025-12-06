@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: authelia
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://charts.authelia.com
+      chart: authelia
+      targetRevision: 0.9.7
+      helm:
+        valueFiles:
+          - $values/config/authelia/values.yaml
+    - repoURL: https://github.com/alpar-t/homelab
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: authelia
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
