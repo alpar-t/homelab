@@ -4,6 +4,25 @@ version: 1.5.0
 # This template is processed by generate-ignition.sh
 
 storage:
+  # Format HDDs for Longhorn storage
+  # Adjust device paths based on your hardware (check with: lsblk -o NAME,SIZE,TYPE,MODEL)
+  filesystems:
+    - device: /dev/sdb
+      format: ext4
+      label: longhorn-disk1
+      wipe_filesystem: false
+    - device: /dev/sdc
+      format: ext4
+      label: longhorn-disk2
+      wipe_filesystem: false
+
+  # Create mount points
+  directories:
+    - path: /var/mnt/disk1
+      mode: 0755
+    - path: /var/mnt/disk2
+      mode: 0755
+
   files:
     # Install Avahi on first boot
     - path: /usr/local/bin/install-avahi.sh
@@ -197,6 +216,39 @@ storage:
 
 systemd:
   units:
+    # Mount Longhorn storage disks
+    - name: var-mnt-disk1.mount
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Mount Longhorn Disk 1
+        Before=local-fs.target
+
+        [Mount]
+        What=/dev/disk/by-label/longhorn-disk1
+        Where=/var/mnt/disk1
+        Type=ext4
+        Options=defaults,noatime
+
+        [Install]
+        WantedBy=local-fs.target
+
+    - name: var-mnt-disk2.mount
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Mount Longhorn Disk 2
+        Before=local-fs.target
+
+        [Mount]
+        What=/dev/disk/by-label/longhorn-disk2
+        Where=/var/mnt/disk2
+        Type=ext4
+        Options=defaults,noatime
+
+        [Install]
+        WantedBy=local-fs.target
+
     # Install Avahi on first boot (before avahi-daemon starts)
     - name: install-avahi.service
       enabled: true

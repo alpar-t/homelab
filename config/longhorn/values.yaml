@@ -1,0 +1,12 @@
+defaultSettings:
+  defaultDataPath: /var/mnt/disk1
+  backupTarget: ""
+  replicaAutoBalance: best-effort
+  storageMinimalAvailablePercentage: 10
+  # Create default disk on labeled nodes only
+  createDefaultDiskLabeledNodes: true
+
+persistence:
+  defaultClass: true
+  defaultClassReplicaCount: 3
+
