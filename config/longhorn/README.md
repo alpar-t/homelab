@@ -70,8 +70,7 @@ Helm values are in `config/longhorn/values.yaml`. Key settings:
 - `replicaAutoBalance: best-effort` - Automatically balance replicas across nodes
 
 ## Accessing the UI
-
-Port-forward the Longhorn frontend:
+### Via Port-Forward (local)
 
 ```bash
 kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80

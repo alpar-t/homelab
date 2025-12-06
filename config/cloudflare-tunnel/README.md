@@ -30,20 +30,7 @@ This guide sets up:
    - Usually something like `ada.ns.cloudflare.com` and `bob.ns.cloudflare.com`
 6. Wait for nameserver propagation (can take up to 24h, usually faster)
 
-### 1.3 Create API Token
 
-1. Go to **My Profile** → **API Tokens** (https://dash.cloudflare.com/profile/api-tokens)
-2. Click **Create Token**
-3. Use **Create Custom Token**:
-   - Token name: `homelab-tunnel`
-   - Permissions:
-     - Account → Cloudflare Tunnel → Edit
-     - Account → Access: Apps and Policies → Edit
-     - Zone → DNS → Edit
-   - Account Resources: Include → Your account
-   - Zone Resources: Include → Specific zone → `newjoy.ro`
-4. Click **Continue to summary** → **Create Token**
-5. **Save the token** - you won't see it again!
 
 ---
 
@@ -189,17 +176,38 @@ You should see "Connection established" messages.
 1. In Zero Trust dashboard, go to **Access** → **Applications**
 2. Click **Add an application** → **Self-hosted**
 3. Configure:
-   - Application name: `Internal Apps`
-   - Session duration: `24 hours` (or your preference)
-   - Application domain: `argocd.newjoy.ro`
-   - (Create separate applications for each subdomain, or use "Include" rules)
-4. Click **Next**
-5. Add policy:
-   - Policy name: `Allow Google Users`
+   - Application name: `Longhorn` (or `Internal Apps`)
+   - Session duration: `24 hours`
+   - Application domain: `longhorn.newjoy.ro`
+4. Click **Add more** to protect additional subdomains:
+   - `argocd.newjoy.ro`
+   - (add more as needed)
+5. Click **Next**
+6. Add policy:
+   - Policy name: `Allow Me`
    - Action: **Allow**
-   - Include: **Emails ending in** → `@gmail.com` (or your domain)
-   - Or: **Login Methods** → **Google**
-6. Click **Next** → **Add application**
+   - Include: **Emails** → `your-email@gmail.com`
+7. Click **Next** → **Add application**
+
+**Alternative: Basic Auth at Ingress**
+
+Instead of Cloudflare Access, you can use nginx basic auth (simpler but less convenient):
+
+```bash
+htpasswd -cb auth admin yourpassword
+kubectl create secret generic app-basic-auth --from-file=auth -n <namespace>
+rm auth
+```
+
+Then add annotations to the Ingress:
+```yaml
+annotations:
+  nginx.ingress.kubernetes.io/auth-type: basic
+  nginx.ingress.kubernetes.io/auth-secret: app-basic-auth
+  nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
+```
+
+See `config/longhorn/ingress.yaml` for an example.
 
 ### 5.3 Test Access
 
