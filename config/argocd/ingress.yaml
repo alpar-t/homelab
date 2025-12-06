@@ -10,7 +10,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: argocd.internal.newjoy.ro
+    - host: argocd.newjoy.ro
       http:
         paths:
           - path: /

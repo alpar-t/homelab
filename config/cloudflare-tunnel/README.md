@@ -103,19 +103,26 @@ kubectl create secret generic tunnel-credentials \
 
 ### 2.6 Configure DNS
 
-Route your domains through the tunnel:
+Create DNS records to route traffic through the tunnel.
 
-```bash
-# For internal apps
-cloudflared tunnel route dns homelab internal.newjoy.ro
-cloudflared tunnel route dns homelab argocd.internal.newjoy.ro
-cloudflared tunnel route dns homelab longhorn.internal.newjoy.ro
+1. Go to **Cloudflare Dashboard** → **DNS** → **Records**
 
-# For public apps (add as needed)
-cloudflared tunnel route dns homelab newjoy.ro
-```
+2. Add a **wildcard CNAME** for all subdomains:
+   - Type: `CNAME`
+   - Name: `*`
+   - Target: `<TUNNEL_ID>.cfargotunnel.com` (replace with your tunnel ID from step 2.3)
+   - Proxy status: **Proxied** (orange cloud)
+   - Click **Save**
 
-This creates CNAME records pointing to your tunnel.
+3. Add **root domain** CNAME:
+   - Type: `CNAME`
+   - Name: `@`
+   - Target: `<TUNNEL_ID>.cfargotunnel.com`
+   - Proxy status: **Proxied**
+   - Click **Save**
+
+This routes all traffic (`*.newjoy.ro` and `newjoy.ro`) through your tunnel.
+No need to add individual DNS records for new subdomains - just create an Ingress resource.
 
 ---
 
@@ -184,9 +191,8 @@ You should see "Connection established" messages.
 3. Configure:
    - Application name: `Internal Apps`
    - Session duration: `24 hours` (or your preference)
-   - Subdomain: `*.internal` 
-   - Domain: `newjoy.ro`
-   - (This protects all `*.internal.newjoy.ro` subdomains)
+   - Application domain: `argocd.newjoy.ro`
+   - (Create separate applications for each subdomain, or use "Include" rules)
 4. Click **Next**
 5. Add policy:
    - Policy name: `Allow Google Users`
@@ -197,7 +203,7 @@ You should see "Connection established" messages.
 
 ### 5.3 Test Access
 
-1. Open `https://argocd.internal.newjoy.ro` in browser
+1. Open `https://argocd.newjoy.ro` in browser
 2. You should see Cloudflare Access login page
 3. Click "Sign in with Google"
 4. After auth, you're redirected to the app
@@ -222,7 +228,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: my-app.internal.newjoy.ro  # or my-app.newjoy.ro for public
+    - host: my-app.newjoy.ro
       http:
         paths:
           - path: /
@@ -234,12 +240,9 @@ spec:
                   number: 80
 ```
 
-3. Add DNS route (one-time per hostname):
-```bash
-cloudflared tunnel route dns homelab my-app.internal.newjoy.ro
-```
+3. If internal, add to Cloudflare Access policy (create app or add to existing policy)
 
-4. If internal, add to Cloudflare Access policy (already covered by `*.internal.newjoy.ro` wildcard)
+No DNS changes needed - the wildcard CNAME covers all subdomains automatically.
 
 **No need to update cloudflared config** - just add Ingress resources!
 
@@ -253,8 +256,8 @@ User → Cloudflare Access (auth) → Cloudflare Tunnel → cloudflared pod → 
 ```
 
 **Domains:**
-- `*.internal.newjoy.ro` - Protected by Cloudflare Access (Google login)
-- `newjoy.ro`, other subdomains - Public (add Access policies as needed)
+- `argocd.newjoy.ro`, `longhorn.newjoy.ro`, etc. - Protected by Cloudflare Access
+- `newjoy.ro`, `www.newjoy.ro` - Public
 
 **No inbound ports needed** - tunnel connects outbound to Cloudflare.
 
