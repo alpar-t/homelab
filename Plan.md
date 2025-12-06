@@ -4,38 +4,31 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 
 ## Phase 0: Initial Installation ✓ Complete
 
-**Goal:** Install Talos Linux on 3 Odroid nodes
-
 **Implementation:**
-- USB installer script for Talos ARM64
-- Installation guide tailored to Odroid hardware
-- 3-node HA control plane setup
+- name resolution for the cluster ( baxter.local ) 
+- ArgoCD setup
 - Longhorn storage configuration
 
 **Architecture:**
 - 3x Odroid: Each with SSD (OS) + 2x HDD (storage)
-- Talos installed to SSD
+- Fedora CoreOS with k3s installed to SSD 
 - All nodes run control plane + workloads
-- Longhorn uses HDDs for persistent volumes
+- Longhorn uses HDDs and SSDs for persistent volumes
 
 **Key Decisions:**
 - ✅ Install to disk (not PXE/stateless)
-- ✅ USB installation media (simpler than network boot)
 - ✅ 3-node HA control plane (can lose 1 node)
 - ✅ Same config for all nodes (symmetric cluster)
-- ✅ Longhorn for storage (uses local HDDs)
+- ✅ Longhorn for storage (uses local HDDs and SSD)
 
 ## Phase 1: Cluster Deployment (Next)
 
 **Goal:** Working 3-node Kubernetes cluster
 
 **Tasks:**
-- [ ] Create USB installer
-- [ ] Install Talos on all 3 Odroids
-- [ ] Generate and apply cluster configuration
-- [ ] Bootstrap Kubernetes cluster
 - [ ] Verify HA (test node failure)
-- [ ] Install Longhorn for persistent storage
+- [ ] Install and configure ARgoCD 
+- [ ] Install Longhorn with ARgoCD for persistent storage
 - [ ] Test basic deployments
 
 **Success Criteria:**
@@ -62,32 +55,21 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 
 **Candidates:**
 - github for git hosting (will not self host this part)
-- CD with Argo CD
-- Container registry
-- Documentation (Wiki.js or similar)
-- Personal services (as needed)
+- Cloudflare for exposing some services publicly 
+- Authentication provider 
+- start moving existing apps 
 
-## Phase 4: Automation & GitOps
-
-**Goal:** Infrastructure as code
-
-**Tasks:**
-- [ ] Terraform for infrastructure
-- [ ] Ansible for configuration (if needed)
-- [ ] GitOps with Argo CD or Flux
-- [ ] Automated Talos updates
-- [ ] Automated application deployments
 
 ## Hardware
 
 **Current Setup:**
-- 3x Odroid nodes (N2+, HC4, or M1)
+- 3x Odroid nodes (H+ and H Ultra)
 - Each with: 2-4GB RAM, 1 SSD, 2 HDDs
 - Total storage: ~12TB (6x 2TB HDDs)
 
 **Per Node:**
 ```
-SSD (256GB): Talos OS + system
+SSD (256GB): CoreOS + system + default Longhorn volume
 HDD1 (2TB): Longhorn storage
 HDD2 (2TB): Longhorn storage
 ```
@@ -102,11 +84,6 @@ HDD2 (2TB): Longhorn storage
 
 ## Why These Choices?
 
-**Talos vs Traditional Linux:**
-- No SSH = smaller attack surface
-- Immutable = consistent, predictable
-- API-driven = automatable
-- Built for Kubernetes = optimized
 
 **Install to Disk vs Network Boot:**
 - Simpler daily operation
@@ -121,11 +98,3 @@ HDD2 (2TB): Longhorn storage
 - No single point of failure
 - Minimal resource overhead
 
-## Current Status
-
-**Phase 0:** ✓ Complete
-- USB installer script ready
-- Installation documentation complete
-- Configuration templates ready
-
-**Ready for:** Phase 1 - Install on actual hardware

@@ -309,13 +309,9 @@ kubectl get nodes -o wide
 kubectl get pods -A
 ```
 
-### Step 11: Choose Your Management Approach
+### Step 11: Install Argo CD
 
-You have two options depending on whether you want GitOps from day 1:
-
-#### Option A: GitOps with Argo CD (Recommended for Production)
-
-**Install Argo CD first** (it doesn't need persistent storage):
+Install Argo CD to manage the cluster via GitOps:
 
 ```bash
 # Install Argo CD
@@ -333,43 +329,7 @@ kubectl port-forward svc/argocd-server -n argocd 8080:443
 # Open https://localhost:8080 (username: admin)
 ```
 
-**Then manage everything via Argo CD:**
-1. Create a Git repo for your cluster config
-2. Define Longhorn as an Argo Application
-3. Add other applications (ingress, cert-manager, monitoring)
-4. All changes go through Git PRs
-
-See "GitOps Setup Guide" section below for details.
-
-#### Option B: Manual Installation (Quick Start)
-
-**Install Longhorn directly** (then optionally move to GitOps later):
-
-```bash
-# Install Longhorn
-kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.7.2/deploy/longhorn.yaml
-
-# Wait for pods to be ready
-kubectl get pods -n longhorn-system -w
-```
-
-**Note:** You can still adopt this into Argo CD later (day 2 operation).
-
-### Step 12: Configure Longhorn Storage
-
-```bash
-# Access Longhorn UI
-kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
-```
-
-Open http://localhost:8080 and:
-1. Go to **Node** tab
-2. For each node, click **Edit node and disks**
-3. Add SATA HDDs:
-   - Path: `/dev/sdb`
-   - Storage Reserved: 0GB
-   - Click **Add Disk**
-   - Repeat for `/dev/sdc`
+See "GitOps Setup Guide" section below for configuring your Git repository in Argo CD.
 
 ## Storage Configuration
 
@@ -662,505 +622,62 @@ sudo wipefs -a /dev/sdc
    # Should see traffic between nodes during volume operations
    ```
 
-## GitOps Setup Guide (Option A)
+## GitOps Setup Guide
 
-If you chose the GitOps approach (Argo CD first), here's how to set everything up.
+After installing Argo CD (Step 11), configure it to sync from the [homelab repository](https://github.com/alpar-t/homelab).
 
-### Prerequisites
-
-- Argo CD installed (from Step 14)
-- Git repository for your cluster configuration
-- GitHub/GitLab account with SSH keys configured
-
-### Repository Structure
-
-Create a Git repository with this structure:
-
-```
-cluster-config/
-├── apps/
-│   ├── longhorn.yaml
-│   ├── ingress-nginx.yaml
-│   ├── cert-manager.yaml
-│   └── monitoring.yaml
-├── longhorn/
-│   ├── kustomization.yaml
-│   ├── values.yaml
-│   └── storage-network-patch.yaml
-├── ingress-nginx/
-│   └── values.yaml
-└── bootstrap/
-    └── app-of-apps.yaml
-```
-
-### 1. Install Longhorn via Argo CD
-
-Create `apps/longhorn.yaml`:
-
-```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: longhorn
-  namespace: argocd
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-  source:
-    repoURL: https://charts.longhorn.io
-    chart: longhorn
-    targetRevision: 1.7.2
-    helm:
-      values: |
-        defaultSettings:
-          # Use storage network for Longhorn traffic
-          storageNetwork: "192.168.42.0/24"
-          replicaReplenishmentWaitInterval: 0
-          defaultReplicaCount: 3
-          
-        persistence:
-          defaultClass: true
-          defaultClassReplicaCount: 3
-          
-        # Resource limits for production
-        longhornManager:
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
-              
-        longhornDriver:
-          resources:
-            requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
-              cpu: 200m
-              memory: 256Mi
-  
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: longhorn-system
-  
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-    retry:
-      limit: 5
-      backoff:
-        duration: 5s
-        factor: 2
-        maxDuration: 3m
-```
-
-Apply it:
+### Access Argo CD
 
 ```bash
-kubectl apply -f apps/longhorn.yaml
+# Port-forward to access the UI
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+# Get admin password
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 ```
 
-### 2. App of Apps Pattern
+Open https://localhost:8080 and login with username `admin`.
 
-Create `bootstrap/app-of-apps.yaml` to manage all applications:
+### Connect the Repository
 
-```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: cluster-apps
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/YOUR_USERNAME/cluster-config
-    targetRevision: main
-    path: apps
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: argocd
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-```
+In the Argo CD UI:
 
-Apply the app-of-apps:
+1. Go to **Settings** → **Repositories**
+2. Click **Connect Repo**
+3. Choose **Via HTTPS** (for public repo) or **Via SSH** (for private)
+4. Enter repository URL: `https://github.com/alpar-t/homelab`
+5. Click **Connect**
+
+Or via CLI:
 
 ```bash
-kubectl apply -f bootstrap/app-of-apps.yaml
+# Login to Argo CD CLI
+argocd login localhost:8080 --insecure
+
+# Add the repository
+argocd repo add https://github.com/alpar-t/homelab
 ```
 
-Now Argo CD will automatically deploy everything defined in `apps/`.
+### Create the Root Application
 
-### 3. Add Ingress Controller
-
-Create `apps/ingress-nginx.yaml`:
-
-```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: ingress-nginx
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://kubernetes.github.io/ingress-nginx
-    chart: ingress-nginx
-    targetRevision: 4.11.3
-    helm:
-      values: |
-        controller:
-          service:
-            type: LoadBalancer
-            # Use MetalLB or similar for bare metal
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: ingress-nginx
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-```
-
-### 4. Access Argo CD via Ingress
-
-Once ingress is set up, expose Argo CD:
-
-```yaml
-# ingress/argocd-ingress.yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: argocd-server
-  namespace: argocd
-  annotations:
-    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
-spec:
-  ingressClassName: nginx
-  rules:
-  - host: argocd.yourdomain.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: argocd-server
-            port:
-              number: 443
-```
-
-### 5. Verify Argo CD is Managing Everything
+Apply the root application from the repo root. This bootstraps ArgoCD to manage all applications defined in the `apps/` directory:
 
 ```bash
-# Check all applications
+kubectl apply -f ../root-application.yaml
+```
+
+### Verify Sync
+
+```bash
+# Check application status
 kubectl get applications -n argocd
 
-# Check application status
-argocd app list
-
-# View application details
-argocd app get longhorn
-
-# Sync an application manually if needed
-argocd app sync longhorn
+# Watch sync progress
+argocd app get homelab
 ```
 
-### 6. Making Changes via GitOps
+Argo CD will now automatically deploy any Applications defined in the `apps/` directory of the homelab repo. Changes pushed to the repo sync within 3 minutes (or manually with `argocd app sync homelab`).
 
-All changes now go through Git:
-
-```bash
-# Clone your repo
-git clone git@github.com:YOUR_USERNAME/cluster-config.git
-cd cluster-config
-
-# Make changes
-vim longhorn/values.yaml
-
-# Commit and push
-git add longhorn/values.yaml
-git commit -m "Update Longhorn replica count to 2"
-git push
-
-# Argo CD automatically syncs within 3 minutes
-# Or sync immediately:
-argocd app sync longhorn
-```
-
-### 7. Disaster Recovery
-
-If your cluster is destroyed, rebuild with:
-
-```bash
-# 1. Recreate cluster (CoreOS + k3s from genesis)
-# 2. Install Argo CD
-# 3. Apply app-of-apps
-kubectl apply -f bootstrap/app-of-apps.yaml
-
-# Everything rebuilds automatically from Git!
-```
-
-### Benefits of GitOps with Argo CD
-
-✅ **Single Source of Truth**: All config in Git  
-✅ **Audit Trail**: Every change has a commit  
-✅ **Easy Rollback**: `git revert` + sync  
-✅ **Disaster Recovery**: Rebuild from Git in minutes  
-✅ **Team Collaboration**: Changes via PRs  
-✅ **Drift Detection**: Argo alerts on manual changes  
-✅ **Progressive Delivery**: Canary/blue-green deployments  
-
-### Monitoring GitOps
-
-```bash
-# Install Argo CD CLI
-brew install argocd
-
-# Login
-argocd login argocd.yourdomain.com
-
-# Watch sync status
-argocd app list -w
-
-# View sync history
-argocd app history longhorn
-
-# Check health
-argocd app get longhorn --show-operation
-```
-
-## Accessing Your Cluster
-
-With a 3-node HA setup, you can access the cluster via **any node IP** for both kubectl and ingress traffic.
-
-### kubectl Access (API Server)
-
-All 3 nodes run the k3s API server on port 6443:
-
-```bash
-# Your kubeconfig already points to one node
-export KUBECONFIG=$(pwd)/kubeconfig
-kubectl get nodes
-
-# You can switch between nodes if one is down:
-kubectl config set-cluster default --server=https://192.168.1.11:6443
-```
-
-**For high availability**, consider:
-- Using all 3 IPs with client-side failover
-- Setting up a load balancer (HAProxy, nginx) in front of the API servers
-- Using DNS round-robin with multiple A records
-
-### Ingress Traffic (HTTP/HTTPS)
-
-Your ingress controller (nginx or Traefik) runs on all nodes, so you can hit any IP:
-
-#### Option 1: Direct Node Access (Simplest)
-
-```bash
-# Access your apps via any node IP
-curl http://192.168.1.10
-curl http://192.168.1.11  # Same result
-curl http://192.168.1.12  # Same result
-```
-
-**Use case**: Development, quick testing
-
-#### Option 2: DNS Round Robin (Simple Load Distribution)
-
-Configure DNS with multiple A records:
-
-```
-# DNS configuration
-app.yourdomain.com.  A  192.168.1.10
-app.yourdomain.com.  A  192.168.1.11
-app.yourdomain.com.  A  192.168.1.12
-```
-
-**Pros**: Single hostname, basic failover  
-**Cons**: DNS caching, not true load balancing
-
-#### Option 3: MetalLB with Virtual IP (Recommended)
-
-Install MetalLB to get a **single floating IP** for ingress:
-
-```yaml
-# apps/metallb.yaml (via Argo CD)
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: metallb
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://metallb.github.io/metallb
-    chart: metallb
-    targetRevision: 0.14.9
-    helm:
-      values: |
-        # MetalLB will manage IP allocation
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: metallb-system
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
----
-# After MetalLB is installed, configure IP pool
-apiVersion: metallb.io/v1beta1
-kind: IPAddressPool
-metadata:
-  name: default
-  namespace: metallb-system
-spec:
-  addresses:
-  - 192.168.1.100-192.168.1.110  # VIP range from management network
----
-apiVersion: metallb.io/v1beta1
-kind: L2Advertisement
-metadata:
-  name: default
-  namespace: metallb-system
-spec:
-  ipAddressPools:
-  - default
-```
-
-Now your ingress gets a VIP:
-
-```bash
-kubectl get svc -n ingress-nginx
-# NAME                       TYPE           EXTERNAL-IP      PORT(S)
-# ingress-nginx-controller   LoadBalancer   192.168.1.100    80:xxx/TCP,443:xxx/TCP
-
-# Access via single IP
-curl http://192.168.1.100
-```
-
-**Pros**:
-- ✅ Single IP for all traffic
-- ✅ Automatic failover (VIP moves if node fails)
-- ✅ Works like cloud load balancers
-- ✅ Clean DNS (one A record)
-
-**When to use**: Production deployments
-
-#### Option 4: External Load Balancer
-
-Use a separate load balancer (HAProxy, nginx, hardware LB) in front of your cluster:
-
-```
-Internet → External LB (192.168.1.5) → [Node1, Node2, Node3]
-```
-
-**When to use**: Enterprise environments, need advanced features (SSL offloading, WAF)
-
-### Recommendations
-
-**Development/Testing**:
-- Use any node IP directly
-- Quick and simple
-
-**Home Lab/Small Production**:
-- Use MetalLB with VIP
-- Gives you a clean single IP
-- Easy to set up
-
-**Large Production**:
-- External load balancer + MetalLB
-- HAProxy/nginx LB for external traffic
-- MetalLB for internal services
-
-### Example: Complete Ingress Setup with MetalLB
-
-```bash
-# 1. Install MetalLB (via Argo CD or kubectl)
-kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml
-
-# 2. Configure IP pool (wait for MetalLB to be ready)
-cat <<EOF | kubectl apply -f -
-apiVersion: metallb.io/v1beta1
-kind: IPAddressPool
-metadata:
-  name: default
-  namespace: metallb-system
-spec:
-  addresses:
-  - 192.168.1.100-192.168.1.110
----
-apiVersion: metallb.io/v1beta1
-kind: L2Advertisement
-metadata:
-  name: default
-  namespace: metallb-system
-spec:
-  ipAddressPools:
-  - default
-EOF
-
-# 3. Install nginx ingress (gets VIP automatically)
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/baremetal/deploy.yaml
-
-# 4. Patch to use LoadBalancer type
-kubectl patch svc ingress-nginx-controller -n ingress-nginx \
-  -p '{"spec": {"type": "LoadBalancer"}}'
-
-# 5. Get the VIP
-kubectl get svc -n ingress-nginx ingress-nginx-controller
-# EXTERNAL-IP will show 192.168.1.100 (from MetalLB pool)
-
-# 6. Point DNS to VIP
-# *.yourdomain.com → 192.168.1.100
-
-# 7. Create ingress for your apps
-cat <<EOF | kubectl apply -f -
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: example-app
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-spec:
-  ingressClassName: nginx
-  rules:
-  - host: app.yourdomain.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: example-app
-            port:
-              number: 80
-  tls:
-  - hosts:
-    - app.yourdomain.com
-    secretName: app-tls
-EOF
-```
-
-Now access your app at `https://app.yourdomain.com` → VIP (192.168.1.100) → Any healthy node!
 
 ## Why CoreOS + k3s?
 
@@ -1182,69 +699,29 @@ Now access your app at `https://app.yourdomain.com` → VIP (192.168.1.100) → 
 
 **Critical data to backup:**
 
-### If Using GitOps (Recommended):
-1. **Git Repository**: Your `cluster-config` repo (already backed up by Git hosting)
-2. **Kubeconfig**: `kubeconfig` file (for emergency access)
-3. **Longhorn Volumes**: Configure Longhorn backup to S3/NFS
-4. **Argo CD Secrets**: Backup repository credentials if needed
+1. **Git Repository**: The homelab repo is already backed up by GitHub
+2. **Kubeconfig**: `genesis/kubeconfig` file (for emergency access)
+3. **Argo CD Secrets**: Backup repository credentials if using private repos
 
-**Disaster recovery with GitOps:**
+**Disaster recovery:**
 - Rebuild cluster from genesis scripts
-- Install Argo CD
-- Apply app-of-apps → entire cluster rebuilds automatically
-- Restore Longhorn volumes from S3/NFS backups
-
-### If Using Manual Installation:
-1. **Ignition configs**: `ignition-*.json` files
-2. **Kubeconfig**: `kubeconfig` file
-3. **k3s token**: From `/var/lib/rancher/k3s/server/token`
-4. **Kubernetes manifests**: All applied YAML files
-5. **Longhorn volumes**: Longhorn backup to S3/NFS
+- Install Argo CD (Step 11)
+- Connect to homelab repo → entire cluster rebuilds automatically
 
 ## Next Steps
 
-### GitOps Path (Recommended):
-
-1. **Set up Git repository** for cluster config
-2. **Install Argo CD** (see GitOps Setup Guide)
-3. **Define applications as code**:
-   - Longhorn with storage network config
-   - Ingress controller (nginx or traefik)
-   - Cert-manager for TLS
-   - Monitoring stack (Prometheus/Grafana via kube-prometheus-stack)
-   - Your applications
-4. **Configure Longhorn backup** to S3/NFS (via Argo app)
-5. **Set up Argo CD notifications** (Slack/Discord for sync status)
-6. **Enable Argo CD SSO** (GitHub/GitLab/OIDC)
-
-### Manual Path:
-
-1. **Deploy your applications** with `kubectl apply`
-2. **Set up ingress controller** (k3s includes Traefik, or install nginx)
-3. **Configure cert-manager** for TLS certificates
-4. **Set up monitoring** (Prometheus/Grafana)
-5. **Configure backups** (Longhorn backup + Velero)
-6. **Consider migrating to GitOps** (Argo CD can adopt existing resources)
+1. **Add applications to the homelab repo** in the `apps/` directory
+2. **Set up Argo CD notifications** (Slack/Discord for sync status)
+3. **Enable Argo CD SSO** (GitHub/GitLab/OIDC)
 
 ## Resources
 
 ### Platform Documentation
 - [Fedora CoreOS Documentation](https://docs.fedoraproject.org/en-US/fedora-coreos/)
 - [k3s Documentation](https://docs.k3s.io/)
-- [Longhorn Documentation](https://longhorn.io/docs/)
 - [Odroid HC4 Wiki](https://wiki.odroid.com/odroid-hc4/odroid-hc4)
 
-### GitOps & CI/CD
+### GitOps
 - [Argo CD Documentation](https://argo-cd.readthedocs.io/)
 - [Argo CD Best Practices](https://argo-cd.readthedocs.io/en/stable/user-guide/best_practices/)
 - [GitOps Principles](https://opengitops.dev/)
-
-### Networking
-- [Longhorn Storage Network](https://longhorn.io/docs/1.7.2/advanced-resources/deploy/storage-network/)
-- [NetworkManager Configuration](https://networkmanager.dev/docs/)
-- [MetalLB Documentation](https://metallb.universe.tf/)
-- [k3s Networking](https://docs.k3s.io/networking)
-
-### Monitoring & Observability
-- [kube-prometheus-stack](https://github.com/prometheus-operator/kube-prometheus)
-- [Grafana Dashboards for Longhorn](https://grafana.com/grafana/dashboards/?search=longhorn)
