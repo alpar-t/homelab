@@ -1,0 +1,29 @@
+controller:
+  # For Cloudflare Tunnel, we don't need external LoadBalancer
+  service:
+    type: ClusterIP
+  
+  # Get real client IPs from Cloudflare
+  config:
+    use-forwarded-headers: "true"
+    compute-full-forwarded-for: "true"
+    use-proxy-protocol: "false"
+  
+  # Resource limits for homelab
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+  # Run on all nodes for availability
+  replicaCount: 2
+
+  # Allow scheduling on control plane nodes
+  tolerations:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+

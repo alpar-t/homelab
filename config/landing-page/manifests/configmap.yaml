@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: landing-page-html
+  namespace: landing-page
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>newjoy.ro</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body {
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: 'Space Mono', monospace;
+          background: #0a0a0f;
+          color: #e0e0e0;
+          overflow: hidden;
+        }
+        
+        .container {
+          text-align: center;
+          padding: 2rem;
+          position: relative;
+          z-index: 1;
+        }
+        
+        .logo {
+          font-size: 3rem;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+          margin-bottom: 1rem;
+          background: linear-gradient(135deg, #ff6b35 0%, #f7c59f 50%, #ff6b35 100%);
+          background-size: 200% 200%;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          animation: gradient 3s ease infinite;
+        }
+        
+        @keyframes gradient {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        
+        .banner {
+          display: inline-block;
+          padding: 0.5rem 1.5rem;
+          background: linear-gradient(90deg, #1a1a2e, #16213e);
+          border: 1px solid #ff6b35;
+          border-radius: 2px;
+          font-size: 0.85rem;
+          text-transform: uppercase;
+          letter-spacing: 0.2em;
+          color: #ff6b35;
+          margin-bottom: 2rem;
+        }
+        
+        .tagline {
+          color: #666;
+          font-size: 0.9rem;
+          max-width: 400px;
+          line-height: 1.6;
+        }
+        
+        .grid {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-image: 
+            linear-gradient(rgba(255, 107, 53, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 107, 53, 0.03) 1px, transparent 1px);
+          background-size: 50px 50px;
+          pointer-events: none;
+        }
+        
+        .glow {
+          position: fixed;
+          width: 600px;
+          height: 600px;
+          background: radial-gradient(circle, rgba(255, 107, 53, 0.1) 0%, transparent 70%);
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          pointer-events: none;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="grid"></div>
+      <div class="glow"></div>
+      <div class="container">
+        <h1 class="logo">newjoy.ro</h1>
+        <div class="banner">Work in Progress</div>
+        <p class="tagline">Something is being built here. Check back soon.</p>
+      </div>
+    </body>
+    </html>
+
