@@ -26,8 +26,8 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 **Goal:** Working 3-node Kubernetes cluster
 
 **Tasks:**
-- [ ] Verify HA (test node failure)
-- [ ] Install and configure ARgoCD 
+- [X] Verify HA (test node failure)
+- [X] Install and configure ARgoCD 
 - [ ] Install Longhorn with ARgoCD for persistent storage
 - [ ] Test basic deployments
 
