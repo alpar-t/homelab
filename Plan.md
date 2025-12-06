@@ -41,6 +41,13 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 
 **Goal:** Production-ready infrastructure services
 
+
+**Follow-ups:**
+
+- [ ] how do I monitor the disks e.g. for failure and nottify on them 
+- [ ] backups for longhorn volumes 
+- [ ] How do we keep these up-to-date
+
 **Tasks:**
 - [ ] Ingress controller (Traefik or Nginx)
 - [ ] Cert-manager for TLS certificates
