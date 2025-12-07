@@ -5,7 +5,8 @@ metadata:
   namespace: authentik
 data:
   longhorn.yaml: |
-    # Blueprint for Longhorn forward auth protection
+    # Blueprint for Longhorn proxy protection
+    # Authentik proxies traffic to Longhorn (no auth annotations needed on ingress)
     version: 1
     metadata:
       name: Longhorn Protection
@@ -19,8 +20,9 @@ data:
         attrs:
           name: longhorn-proxy
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
-          mode: forward_single
+          mode: proxy
           external_host: https://longhorn.newjoy.ro
+          internal_host: http://longhorn-frontend.longhorn-system.svc.cluster.local:80
       
       # Application for Longhorn
       - model: authentik_core.application

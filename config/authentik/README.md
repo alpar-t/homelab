@@ -69,28 +69,34 @@ User → Cloudflare → nginx-ingress → Authentik
 
 3. Change your password after first login
 
-## Protecting Apps Without Auth (Proxy Provider)
+## Protecting Apps Without Auth (Proxy Mode)
 
 Apps like Longhorn are protected via **Blueprints** (GitOps managed).
+Authentik acts as a reverse proxy - handling both authentication AND proxying to the backend.
+
+```
+User → nginx-ingress → Authentik Outpost → Backend App
+```
 
 ### Adding a New Protected App
 
 1. Add a blueprint entry to `manifests/blueprints-configmap.yaml`
-2. Add ingress annotations (see example below)
+2. Create an ingress that routes to `authentik-server:9000` in the `authentik` namespace
 3. Commit and sync
 
 ### Blueprint Example (in blueprints-configmap.yaml)
 
 ```yaml
-# Proxy Provider
+# Proxy Provider - Authentik proxies traffic after auth
 - model: authentik_providers_proxy.proxyprovider
   id: myapp-provider
   state: present
   attrs:
     name: myapp-proxy
     authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
-    mode: forward_single
+    mode: proxy
     external_host: https://myapp.newjoy.ro
+    internal_host: http://myapp-service.myapp-namespace.svc.cluster.local:80
 
 # Application
 - model: authentik_core.application
@@ -102,17 +108,37 @@ Apps like Longhorn are protected via **Blueprints** (GitOps managed).
     provider: !KeyOf myapp-provider
     meta_launch_url: https://myapp.newjoy.ro
 
-# Add provider to embedded outpost (append to providers list)
+# Add provider to embedded outpost
+- model: authentik_outposts.outpost
+  id: embedded-outpost
+  state: present
+  attrs:
+    name: authentik Embedded Outpost
+    type: proxy
+    providers:
+      - !KeyOf myapp-provider
 ```
 
-### Ingress Annotations
+### Ingress (points to Authentik, not the app)
 ```yaml
-annotations:
-  nginx.ingress.kubernetes.io/auth-url: "http://authentik-server.authentik.svc.cluster.local:9000/outpost.goauthentik.io/auth/nginx"
-  nginx.ingress.kubernetes.io/auth-signin: "https://auth.newjoy.ro/outpost.goauthentik.io/start?rd=$scheme://$http_host$request_uri"
-  nginx.ingress.kubernetes.io/auth-response-headers: "Set-Cookie,X-authentik-username,X-authentik-groups,X-authentik-email,X-authentik-name,X-authentik-uid"
-  nginx.ingress.kubernetes.io/auth-snippet: |
-    proxy_set_header X-Forwarded-Host $http_host;
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myapp
+  namespace: authentik  # Must be in authentik namespace
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: myapp.newjoy.ro
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: authentik-server
+                port:
+                  number: 9000
 ```
 
 ## Apps With OIDC Support

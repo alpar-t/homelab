@@ -13,7 +13,7 @@ spec:
       include: 'ingress.yaml'
   destination:
     server: https://kubernetes.default.svc
-    namespace: longhorn-system
+    namespace: authentik
   syncPolicy:
     automated:
       prune: true
