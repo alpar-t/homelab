@@ -74,10 +74,10 @@ worker:
   resources:
     requests:
       cpu: 100m
-      memory: 256Mi
+      memory: 400Mi
     limits:
       cpu: 500m
-      memory: 512Mi
+      memory: 800Mi
 
 # Bundled PostgreSQL
 # Note: Single replica with Longhorn replication provides data redundancy.
