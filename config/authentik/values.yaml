@@ -2,13 +2,24 @@
 # Docs: https://docs.goauthentik.io/docs/install-config/install/kubernetes
 
 global:
-  # Domain for Authentik
-  domain: auth.newjoy.ro
+  # Environment variables for secret references
+  env:
+    - name: AUTHENTIK_SECRET_KEY
+      valueFrom:
+        secretKeyRef:
+          name: authentik-secrets
+          key: secret_key
+    - name: AUTHENTIK_POSTGRESQL__PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: authentik-secrets
+          key: postgres_password
+
+  # HA: Spread pods across nodes
+  affinity:
+    podAntiAffinity: soft
 
 authentik:
-  # Secret key from generated secret
-  secret_key: ""
-  
   # Log level
   log_level: info
   
@@ -21,18 +32,7 @@ authentik:
     host: "{{ .Release.Name }}-postgresql"
     name: "authentik"
     user: "authentik"
-    password: ""  # Set via env from secret
-
-# Reference the generated secret for secret_key and postgres password
-env:
-  AUTHENTIK_SECRET_KEY:
-    secretKeyRef:
-      name: authentik-secrets
-      key: secret_key
-  AUTHENTIK_POSTGRESQL__PASSWORD:
-    secretKeyRef:
-      name: authentik-secrets
-      key: postgres_password
+    # Password set via AUTHENTIK_POSTGRESQL__PASSWORD env var
 
 server:
   # HA: Run on multiple nodes
@@ -45,17 +45,6 @@ server:
     limits:
       cpu: 500m
       memory: 512Mi
-  
-  # Spread across nodes for HA
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchLabels:
-                app.kubernetes.io/component: server
-            topologyKey: kubernetes.io/hostname
   
   ingress:
     enabled: true
@@ -76,17 +65,6 @@ worker:
     limits:
       cpu: 200m
       memory: 256Mi
-  
-  # Spread across nodes for HA
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchLabels:
-                app.kubernetes.io/component: worker
-            topologyKey: kubernetes.io/hostname
 
 # Bundled PostgreSQL
 # Note: Single replica with Longhorn replication provides data redundancy.
