@@ -27,11 +27,6 @@ global:
   affinity:
     podAntiAffinity: soft
 
-# Load blueprints from ConfigMap (GitOps managed)
-blueprints:
-  configMaps:
-    - authentik-blueprints
-
 authentik:
   # Log level
   log_level: info

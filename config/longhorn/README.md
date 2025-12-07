@@ -70,11 +70,64 @@ Helm values are in `config/longhorn/values.yaml`. Key settings:
 - `replicaAutoBalance: best-effort` - Automatically balance replicas across nodes
 
 ## Accessing the UI
-### Via Port-Forward (local)
+
+### Via Authentik (production)
+
+Access at **https://longhorn.newjoy.ro** (requires Authentik setup below).
+
+### Via Port-Forward (local/debugging)
 
 ```bash
 kubectl port-forward -n longhorn-system svc/longhorn-frontend 8080:80
 ```
 
 Then open http://localhost:8080
+
+## Authentik Protection Setup
+
+Longhorn has no built-in authentication. We protect it using Authentik's proxy mode.
+
+### How it works
+
+```
+User → nginx-ingress → Authentik Outpost → Longhorn
+                            ↓
+                    (handles auth + proxying)
+```
+
+The ingress routes `longhorn.newjoy.ro` to Authentik, which authenticates users
+and proxies requests to Longhorn's internal service.
+
+### One-time setup in Authentik UI
+
+**1. Create Provider**
+1. Go to **Applications → Providers → Create**
+2. Select **Proxy Provider**
+3. Configure:
+   - Name: `longhorn-proxy`
+   - Authorization flow: `default-provider-authorization-implicit-consent`
+   - Mode: **Proxy**
+   - External host: `https://longhorn.newjoy.ro`
+   - Internal host: `http://longhorn-frontend.longhorn-system.svc.cluster.local:80`
+4. Click **Create**
+
+**2. Create Application**
+1. Go to **Applications → Applications → Create**
+2. Configure:
+   - Name: `Longhorn`
+   - Slug: `longhorn`
+   - Provider: select `longhorn-proxy`
+   - Launch URL: `https://longhorn.newjoy.ro` (optional, for dashboard)
+3. Click **Create**
+
+**3. Add to Outpost**
+1. Go to **Applications → Outposts**
+2. Click on **authentik Embedded Outpost**
+3. In the **Applications** section, add `Longhorn`
+4. Click **Update**
+
+### Verify
+
+Visit https://longhorn.newjoy.ro - you should be redirected to Authentik login,
+then proxied to the Longhorn UI after authentication
 

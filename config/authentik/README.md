@@ -71,8 +71,7 @@ User → Cloudflare → nginx-ingress → Authentik
 
 ## Protecting Apps Without Auth (Proxy Mode)
 
-Apps like Longhorn are protected via **Blueprints** (GitOps managed).
-Authentik acts as a reverse proxy - handling both authentication AND proxying to the backend.
+Authentik can protect apps that have no built-in authentication by acting as a reverse proxy.
 
 ```
 User → nginx-ingress → Authentik Outpost → Backend App
@@ -80,46 +79,10 @@ User → nginx-ingress → Authentik Outpost → Backend App
 
 ### Adding a New Protected App
 
-1. Add a blueprint entry to `manifests/blueprints-configmap.yaml`
-2. Create an ingress that routes to `authentik-server:9000` in the `authentik` namespace
-3. Commit and sync
+**1. Create the ingress (GitOps)**
 
-### Blueprint Example (in blueprints-configmap.yaml)
+Add an ingress that routes to Authentik's embedded outpost:
 
-```yaml
-# Proxy Provider - Authentik proxies traffic after auth
-- model: authentik_providers_proxy.proxyprovider
-  id: myapp-provider
-  state: present
-  attrs:
-    name: myapp-proxy
-    authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
-    mode: proxy
-    external_host: https://myapp.newjoy.ro
-    internal_host: http://myapp-service.myapp-namespace.svc.cluster.local:80
-
-# Application
-- model: authentik_core.application
-  id: myapp-app
-  state: present
-  attrs:
-    name: My App
-    slug: myapp
-    provider: !KeyOf myapp-provider
-    meta_launch_url: https://myapp.newjoy.ro
-
-# Add provider to embedded outpost
-- model: authentik_outposts.outpost
-  id: embedded-outpost
-  state: present
-  attrs:
-    name: authentik Embedded Outpost
-    type: proxy
-    providers:
-      - !KeyOf myapp-provider
-```
-
-### Ingress (points to Authentik, not the app)
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -140,6 +103,25 @@ spec:
                 port:
                   number: 9000
 ```
+
+**2. Configure in Authentik UI**
+
+1. **Create Provider**: Applications → Providers → Create → Proxy Provider
+   - Name: `myapp-proxy`
+   - Mode: **Proxy**
+   - External host: `https://myapp.newjoy.ro`
+   - Internal host: `http://myapp-service.myapp-namespace.svc.cluster.local:80`
+
+2. **Create Application**: Applications → Applications → Create
+   - Name: `My App`
+   - Slug: `myapp`
+   - Provider: select `myapp-proxy`
+
+3. **Add to Outpost**: Applications → Outposts → authentik Embedded Outpost
+   - Add `My App` to Applications
+   - Update
+
+See `config/longhorn/README.md` for a complete example
 
 ## Apps With OIDC Support
 
