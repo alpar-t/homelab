@@ -1,28 +1,22 @@
 forecastle:
-  # Watch all namespaces for ingresses
-  namespaceSelector:
-    any: true
-  
-  # Title shown in dashboard
-  title: "newjoy.ro"
-  
-  # Custom header
-  headerBackground: "#0d1117"
-  
-  # Custom instance name
-  instanceName: "homelab"
+  config:
+    namespaceSelector:
+      any: true
+    title: "newjoy.ro"
+    instanceName: "homelab"
 
-ingress:
-  enabled: true
-  className: nginx
-  hosts:
-    - host: dashboard.newjoy.ro
-      paths:
-        - path: /
-          pathType: Prefix
-  annotations:
-    # Protect with Authelia
-    nginx.ingress.kubernetes.io/auth-url: "http://authelia.authelia.svc.cluster.local/api/authz/forward-auth"
-    nginx.ingress.kubernetes.io/auth-signin: "https://auth.newjoy.ro?rm=$request_method"
-    nginx.ingress.kubernetes.io/auth-response-headers: "Remote-User,Remote-Groups,Remote-Email,Remote-Name"
+  service:
+    expose: "true"
 
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/auth-url: "http://authelia.authelia.svc.cluster.local/api/authz/forward-auth"
+      nginx.ingress.kubernetes.io/auth-signin: "https://auth.newjoy.ro?rm=$request_method"
+      nginx.ingress.kubernetes.io/auth-response-headers: "Remote-User,Remote-Groups,Remote-Email,Remote-Name"
+    hosts:
+      - host: dashboard.newjoy.ro
+        paths:
+          - path: /
+            pathType: Prefix
