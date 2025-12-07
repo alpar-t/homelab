@@ -127,6 +127,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-buffer-size: "8k"
     nginx.ingress.kubernetes.io/auth-snippet: |
       proxy_set_header Accept "";
+      proxy_set_header Cookie $http_cookie;
       proxy_set_header X-Forwarded-Proto https;
       proxy_set_header X-Forwarded-Host $http_host;
       proxy_set_header X-Forwarded-Uri $request_uri;
