@@ -108,9 +108,9 @@ Apps like Longhorn are protected via **Blueprints** (GitOps managed).
 ### Ingress Annotations
 ```yaml
 annotations:
-  nginx.ingress.kubernetes.io/auth-url: "http://authentik-outpost.authentik.svc.cluster.local:9000/outpost.goauthentik.io/auth/nginx"
-  nginx.ingress.kubernetes.io/auth-signin: "https://auth.newjoy.ro/outpost.goauthentik.io/start?rd=$scheme://$host$request_uri"
-  nginx.ingress.kubernetes.io/auth-response-headers: "Set-Cookie,X-authentik-username,X-authentik-groups,X-authentik-email"
+  nginx.ingress.kubernetes.io/auth-url: "http://authentik-server.authentik.svc.cluster.local:9000/outpost.goauthentik.io/auth/nginx"
+  nginx.ingress.kubernetes.io/auth-signin: "https://auth.newjoy.ro/outpost.goauthentik.io/start?rd=$scheme://$http_host$request_uri"
+  nginx.ingress.kubernetes.io/auth-response-headers: "Set-Cookie,X-authentik-username,X-authentik-groups,X-authentik-email,X-authentik-name,X-authentik-uid"
   nginx.ingress.kubernetes.io/auth-snippet: |
     proxy_set_header X-Forwarded-Host $http_host;
 ```
