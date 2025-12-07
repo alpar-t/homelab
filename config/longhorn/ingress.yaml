@@ -9,7 +9,7 @@ metadata:
     nginx.ingress.kubernetes.io/auth-response-headers: "Remote-User,Remote-Groups,Remote-Email,Remote-Name"
     nginx.ingress.kubernetes.io/proxy-buffer-size: "8k"
     nginx.ingress.kubernetes.io/auth-snippet: |
-      proxy_set_header X-Original-URL https://$http_host$request_uri;
+      proxy_set_header X-Original-URL $pass_access_scheme://$http_host$request_uri;
     # Forecastle dashboard
     forecastle.stakater.com/expose: "true"
     forecastle.stakater.com/appName: "Longhorn"
