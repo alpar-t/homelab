@@ -8,6 +8,8 @@ controller:
     use-forwarded-headers: "true"
     compute-full-forwarded-for: "true"
     use-proxy-protocol: "false"
+    # Enable snippets for Authelia forward auth
+    allow-snippet-annotations: "true"
   
   # Resource limits for homelab
   resources:
