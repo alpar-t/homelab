@@ -224,3 +224,4 @@ Via the web UI:
 1. Go to https://pihole.newjoy.ro
 2. Settings → Adlists → Add new
 3. Popular lists: https://firebog.net/
+ 
