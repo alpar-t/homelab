@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprints
+  namespace: authentik
+data:
+  longhorn.yaml: |
+    # Blueprint for Longhorn forward auth protection
+    version: 1
+    metadata:
+      name: Longhorn Protection
+      labels:
+        blueprints.goauthentik.io/instantiate: "true"
+    entries:
+      # Proxy Provider for Longhorn
+      - model: authentik_providers_proxy.proxyprovider
+        id: longhorn-provider
+        state: present
+        attrs:
+          name: longhorn-proxy
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          mode: forward_single
+          external_host: https://longhorn.newjoy.ro
+      
+      # Application for Longhorn
+      - model: authentik_core.application
+        id: longhorn-app
+        state: present
+        attrs:
+          name: Longhorn
+          slug: longhorn
+          provider: !KeyOf longhorn-provider
+          meta_launch_url: https://longhorn.newjoy.ro
+          meta_icon: https://longhorn.io/img/logos/longhorn-icon-white.png
+          meta_description: Distributed storage for Kubernetes
+          policy_engine_mode: any
+      
+      # Add to embedded outpost
+      - model: authentik_outposts.outpost
+        id: embedded-outpost
+        state: present
+        attrs:
+          name: authentik Embedded Outpost
+          type: proxy
+          providers:
+            - !KeyOf longhorn-provider
+

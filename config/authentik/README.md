@@ -64,16 +64,41 @@ User → Cloudflare → nginx-ingress → Authentik
 
 ## Protecting Apps Without Auth (Proxy Provider)
 
-For apps like Longhorn that have no built-in auth:
+Apps like Longhorn are protected via **Blueprints** (GitOps managed).
 
-1. In Authentik Admin → Applications → Create
-2. Create a "Proxy Provider" with:
-   - External host: `https://longhorn.newjoy.ro`
-   - Mode: Forward auth (single application)
-3. Create an Application linked to the provider
-4. Create an Outpost with the application
+### Adding a New Protected App
 
-Then update the ingress:
+1. Add a blueprint entry to `manifests/blueprints-configmap.yaml`
+2. Add ingress annotations (see example below)
+3. Commit and sync
+
+### Blueprint Example (in blueprints-configmap.yaml)
+
+```yaml
+# Proxy Provider
+- model: authentik_providers_proxy.proxyprovider
+  id: myapp-provider
+  state: present
+  attrs:
+    name: myapp-proxy
+    authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+    mode: forward_single
+    external_host: https://myapp.newjoy.ro
+
+# Application
+- model: authentik_core.application
+  id: myapp-app
+  state: present
+  attrs:
+    name: My App
+    slug: myapp
+    provider: !KeyOf myapp-provider
+    meta_launch_url: https://myapp.newjoy.ro
+
+# Add provider to embedded outpost (append to providers list)
+```
+
+### Ingress Annotations
 ```yaml
 annotations:
   nginx.ingress.kubernetes.io/auth-url: "http://authentik-outpost.authentik.svc.cluster.local:9000/outpost.goauthentik.io/auth/nginx"

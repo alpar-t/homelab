@@ -14,10 +14,23 @@ global:
         secretKeyRef:
           name: authentik-secrets
           key: postgres_password
+    # Bootstrap admin credentials
+    - name: AUTHENTIK_BOOTSTRAP_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: authentik-secrets
+          key: bootstrap_password
+    - name: AUTHENTIK_BOOTSTRAP_EMAIL
+      value: "admin@newjoy.ro"
 
   # HA: Spread pods across nodes
   affinity:
     podAntiAffinity: soft
+
+# Load blueprints from ConfigMap (GitOps managed)
+blueprints:
+  configMaps:
+    - authentik-blueprints
 
 authentik:
   # Log level
