@@ -17,6 +17,18 @@ pod:
     limits:
       cpu: 200m
       memory: 256Mi
+  extraVolumes:
+    - name: users
+      secret:
+        secretName: authelia-secrets
+        items:
+          - key: users_database.yml
+            path: users_database.yml
+  extraVolumeMounts:
+    - name: users
+      mountPath: /config/users_database.yml
+      subPath: users_database.yml
+      readOnly: true
 
 configMap:
   theme: dark
@@ -24,7 +36,9 @@ configMap:
   authentication_backend:
     file:
       enabled: true
-      # Users defined in secret, see README
+      path: /config/users_database.yml
+      password:
+        algorithm: bcrypt
   
   session:
     cookies:
