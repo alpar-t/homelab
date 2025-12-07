@@ -31,8 +31,6 @@ pod:
       readOnly: true
 
 configMap:
-  log:
-    level: debug
   theme: dark
   
   server:

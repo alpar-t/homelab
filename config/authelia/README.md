@@ -122,9 +122,18 @@ Add these annotations to any Ingress you want to protect:
 metadata:
   annotations:
     nginx.ingress.kubernetes.io/auth-url: "http://authelia.authelia.svc.cluster.local/api/authz/forward-auth"
-    nginx.ingress.kubernetes.io/auth-signin: "https://auth.newjoy.ro?rm=$request_method"
+    nginx.ingress.kubernetes.io/auth-signin: "https://auth.newjoy.ro/?rd=https://$http_host$request_uri"
     nginx.ingress.kubernetes.io/auth-response-headers: "Remote-User,Remote-Groups,Remote-Email,Remote-Name"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "8k"
+    nginx.ingress.kubernetes.io/auth-snippet: |
+      proxy_set_header Accept "";
+      proxy_set_header X-Forwarded-Proto https;
+      proxy_set_header X-Forwarded-Host $http_host;
+      proxy_set_header X-Forwarded-Uri $request_uri;
+      proxy_set_header X-Forwarded-Method $request_method;
 ```
+
+**Note:** The `Accept ""` header clears the Accept header so Authelia returns 401 (which nginx handles) instead of 302 (which nginx doesn't handle). The `X-Forwarded-Proto https` is required because Cloudflare handles TLS termination.
 
 See `config/longhorn/ingress.yaml` for an example.
 
