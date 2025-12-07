@@ -71,8 +71,6 @@ worker:
 # For true HA PostgreSQL, consider CloudNativePG operator in the future.
 postgresql:
   enabled: true
-  image:
-    tag: "16"  # Use latest PostgreSQL 16
   auth:
     username: authentik
     database: authentik
@@ -99,8 +97,6 @@ postgresql:
 # For true HA Redis, enable sentinel architecture.
 redis:
   enabled: true
-  image:
-    tag: "7"  # Use latest Redis 7
   architecture: standalone
   auth:
     enabled: false
