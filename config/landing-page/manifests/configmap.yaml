@@ -13,103 +13,164 @@ data:
       <title>newjoy.ro</title>
       <link rel="preconnect" href="https://fonts.googleapis.com">
       <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
       <style>
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
           min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-family: 'Space Mono', monospace;
-          background: #0a0a0f;
-          color: #e0e0e0;
-          overflow: hidden;
+          font-family: 'JetBrains Mono', monospace;
+          background: #0d1117;
+          color: #c9d1d9;
         }
         
         .container {
+          max-width: 900px;
+          margin: 0 auto;
+          padding: 3rem 2rem;
+        }
+        
+        header {
           text-align: center;
-          padding: 2rem;
-          position: relative;
-          z-index: 1;
+          margin-bottom: 3rem;
         }
         
         .logo {
-          font-size: 3rem;
-          font-weight: 700;
-          letter-spacing: -0.02em;
-          margin-bottom: 1rem;
-          background: linear-gradient(135deg, #ff6b35 0%, #f7c59f 50%, #ff6b35 100%);
-          background-size: 200% 200%;
+          font-size: 2.5rem;
+          font-weight: 600;
+          background: linear-gradient(135deg, #58a6ff, #1f6feb);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
-          animation: gradient 3s ease infinite;
+          margin-bottom: 0.5rem;
         }
         
-        @keyframes gradient {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
+        .subtitle {
+          color: #8b949e;
+          font-size: 0.9rem;
         }
         
-        .banner {
-          display: inline-block;
-          padding: 0.5rem 1.5rem;
-          background: linear-gradient(90deg, #1a1a2e, #16213e);
-          border: 1px solid #ff6b35;
-          border-radius: 2px;
-          font-size: 0.85rem;
-          text-transform: uppercase;
-          letter-spacing: 0.2em;
-          color: #ff6b35;
+        .section {
           margin-bottom: 2rem;
         }
         
-        .tagline {
-          color: #666;
-          font-size: 0.9rem;
-          max-width: 400px;
-          line-height: 1.6;
+        .section-title {
+          font-size: 0.75rem;
+          text-transform: uppercase;
+          letter-spacing: 0.15em;
+          color: #8b949e;
+          margin-bottom: 1rem;
+          padding-bottom: 0.5rem;
+          border-bottom: 1px solid #21262d;
         }
         
-        .grid {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background-image: 
-            linear-gradient(rgba(255, 107, 53, 0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255, 107, 53, 0.03) 1px, transparent 1px);
-          background-size: 50px 50px;
-          pointer-events: none;
+        .apps {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+          gap: 1rem;
         }
         
-        .glow {
-          position: fixed;
-          width: 600px;
-          height: 600px;
-          background: radial-gradient(circle, rgba(255, 107, 53, 0.1) 0%, transparent 70%);
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          pointer-events: none;
+        .app {
+          background: #161b22;
+          border: 1px solid #30363d;
+          border-radius: 8px;
+          padding: 1.25rem;
+          text-decoration: none;
+          color: inherit;
+          transition: all 0.2s ease;
+          display: block;
+        }
+        
+        .app:hover {
+          border-color: #58a6ff;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        .app-header {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin-bottom: 0.5rem;
+        }
+        
+        .app-icon {
+          width: 32px;
+          height: 32px;
+          background: #21262d;
+          border-radius: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1rem;
+        }
+        
+        .app-name {
+          font-weight: 600;
+          color: #c9d1d9;
+        }
+        
+        .app-desc {
+          font-size: 0.8rem;
+          color: #8b949e;
+          line-height: 1.4;
+        }
+        
+        .app.infra .app-icon { background: #238636; }
+        .app.monitor .app-icon { background: #9e6a03; }
+        .app.storage .app-icon { background: #1f6feb; }
+        
+        footer {
+          text-align: center;
+          padding-top: 2rem;
+          color: #484f58;
+          font-size: 0.75rem;
         }
       </style>
     </head>
     <body>
-      <div class="grid"></div>
-      <div class="glow"></div>
       <div class="container">
-        <h1 class="logo">newjoy.ro</h1>
-        <div class="banner">Work in Progress</div>
-        <p class="tagline">Something is being built here. Check back soon.</p>
+        <header>
+          <h1 class="logo">newjoy.ro</h1>
+          <p class="subtitle">homelab dashboard</p>
+        </header>
+        
+        <section class="section">
+          <h2 class="section-title">Infrastructure</h2>
+          <div class="apps">
+            <a href="https://argocd.newjoy.ro" class="app infra">
+              <div class="app-header">
+                <div class="app-icon">🚀</div>
+                <span class="app-name">ArgoCD</span>
+              </div>
+              <p class="app-desc">GitOps continuous delivery</p>
+            </a>
+            <a href="https://auth.newjoy.ro" class="app infra">
+              <div class="app-header">
+                <div class="app-icon">🔐</div>
+                <span class="app-name">Authelia</span>
+              </div>
+              <p class="app-desc">Authentication portal</p>
+            </a>
+          </div>
+        </section>
+        
+        <section class="section">
+          <h2 class="section-title">Storage</h2>
+          <div class="apps">
+            <a href="https://longhorn.newjoy.ro" class="app storage">
+              <div class="app-header">
+                <div class="app-icon">💾</div>
+                <span class="app-name">Longhorn</span>
+              </div>
+              <p class="app-desc">Distributed block storage</p>
+            </a>
+          </div>
+        </section>
+        
+        <footer>
+          <p>3 nodes • k3s • Fedora CoreOS</p>
+        </footer>
       </div>
     </body>
     </html>
-

@@ -7,6 +7,11 @@ metadata:
     nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
     nginx.ingress.kubernetes.io/ssl-passthrough: "false"
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # Forecastle dashboard
+    forecastle.stakater.com/expose: "true"
+    forecastle.stakater.com/appName: "ArgoCD"
+    forecastle.stakater.com/group: "Infrastructure"
+    forecastle.stakater.com/icon: "https://argo-cd.readthedocs.io/en/stable/assets/logo.png"
 spec:
   ingressClassName: nginx
   rules:
