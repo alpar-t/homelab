@@ -1,0 +1,86 @@
+# Authentik Configuration for homelab
+# Docs: https://docs.goauthentik.io/docs/install-config/install/kubernetes
+
+global:
+  # Domain for Authentik
+  domain: auth.newjoy.ro
+
+authentik:
+  # Secret key - will be generated if not set
+  # For production, set via existingSecret
+  secret_key: ""
+  
+  # Log level
+  log_level: info
+  
+  # Error reporting (disabled for privacy)
+  error_reporting:
+    enabled: false
+
+server:
+  replicas: 1
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - auth.newjoy.ro
+    # TLS handled by Cloudflare
+    tls: []
+
+worker:
+  replicas: 1
+  
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# Bundled PostgreSQL
+postgresql:
+  enabled: true
+  auth:
+    password: "authentik-postgres-password"  # Change this or use secret
+  primary:
+    persistence:
+      enabled: true
+      storageClass: longhorn-ssd
+      size: 2Gi
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+# Bundled Redis
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      storageClass: longhorn-ssd
+      size: 1Gi
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+

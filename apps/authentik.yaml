@@ -1,23 +1,23 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: authelia
+  name: authentik
   namespace: argocd
 spec:
   project: default
   sources:
-    - repoURL: https://charts.authelia.com
-      chart: authelia
-      targetRevision: 0.9.7
+    - repoURL: https://charts.goauthentik.io
+      chart: authentik
+      targetRevision: 2024.10.4
       helm:
         valueFiles:
-          - $values/config/authelia/values.yaml
+          - $values/config/authentik/values.yaml
     - repoURL: https://github.com/alpar-t/homelab
       targetRevision: main
       ref: values
   destination:
     server: https://kubernetes.default.svc
-    namespace: authelia
+    namespace: authentik
   syncPolicy:
     automated:
       prune: true
