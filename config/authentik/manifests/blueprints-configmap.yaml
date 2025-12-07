@@ -16,6 +16,8 @@ data:
       # Proxy Provider for Longhorn
       - model: authentik_providers_proxy.proxyprovider
         id: longhorn-provider
+        identifiers:
+          name: longhorn-proxy
         state: present
         attrs:
           name: longhorn-proxy
@@ -27,6 +29,8 @@ data:
       # Application for Longhorn
       - model: authentik_core.application
         id: longhorn-app
+        identifiers:
+          slug: longhorn
         state: present
         attrs:
           name: Longhorn
@@ -37,12 +41,12 @@ data:
           meta_description: Distributed storage for Kubernetes
           policy_engine_mode: any
       
-      # Add to embedded outpost
+      # Update embedded outpost to include our provider
       - model: authentik_outposts.outpost
-        id: embedded-outpost
+        identifiers:
+          name: authentik Embedded Outpost
         state: present
         attrs:
-          name: authentik Embedded Outpost
           type: proxy
           providers:
             - !KeyOf longhorn-provider
