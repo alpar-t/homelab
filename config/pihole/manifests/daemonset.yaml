@@ -14,6 +14,8 @@ spec:
       labels:
         app: pihole
     spec:
+      # Use host network so DNS binds directly to port 53 on each node
+      hostNetwork: true
       dnsPolicy: "None"
       dnsConfig:
         nameservers:
@@ -39,9 +41,11 @@ spec:
           ports:
             - name: dns-tcp
               containerPort: 53
+              hostPort: 53
               protocol: TCP
             - name: dns-udp
               containerPort: 53
+              hostPort: 53
               protocol: UDP
             - name: http
               containerPort: 8080

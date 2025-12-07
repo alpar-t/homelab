@@ -1,31 +1,6 @@
 ---
-# DNS Service - NodePort for local network access
-# Configure your router to use all node IPs as DNS servers for HA
-apiVersion: v1
-kind: Service
-metadata:
-  name: pihole-dns
-  namespace: pihole
-  labels:
-    app: pihole
-spec:
-  type: NodePort
-  selector:
-    app: pihole
-  ports:
-    - name: dns-tcp
-      port: 53
-      targetPort: 53
-      nodePort: 30053
-      protocol: TCP
-    - name: dns-udp
-      port: 53
-      targetPort: 53
-      nodePort: 30053
-      protocol: UDP
-
----
 # Web UI Service - ClusterIP (accessed via Authentik proxy)
+# DNS is accessed directly on node IPs port 53 (hostNetwork)
 apiVersion: v1
 kind: Service
 metadata:
@@ -42,4 +17,3 @@ spec:
       port: 80
       targetPort: 8080
       protocol: TCP
-
