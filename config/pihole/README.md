@@ -1,12 +1,12 @@
 # Pi-hole - Network-wide Ad Blocking
 
-Pi-hole deployed as a DaemonSet for high availability DNS across all nodes.
+Single Pi-hole instance with persistent storage for consistent configuration.
 
 ## Architecture
 
 ```
 Local Network:
-  Devices → Router DNS (node IPs:53) → Pi-hole DaemonSet
+  Devices → Router DNS (pihole-node:53) → Pi-hole
 
 Mobile (VPN):
   Phone → MikroTik L2TP/IPsec → Pi-hole DNS
@@ -17,15 +17,16 @@ Web UI:
 
 ## Components
 
-| Component | Purpose | HA Strategy |
-|-----------|---------|-------------|
-| Pi-hole DaemonSet | DNS + Ad blocking | Runs on every node (hostNetwork) |
-| Web UI Ingress | Admin interface | Via Authentik SSO |
+| Component | Purpose |
+|-----------|---------|
+| Pi-hole Deployment | DNS + Ad blocking (single instance) |
+| PVC (1Gi SSD) | Persistent settings and blocklists |
+| Web UI Ingress | Admin interface via Authentik SSO |
 
 ## Access
 
 - **Web UI:** https://pihole.newjoy.ro (protected by Authentik SSO)
-- **Local DNS:** Any node IP on port 53
+- **Local DNS:** Any node IP on port 53 (pod can schedule anywhere)
 
 ## Setup
 
@@ -55,14 +56,15 @@ Pi-hole has no internal password - Authentik handles all authentication.
 
 ### 2. Configure Local Network DNS
 
-Configure your router to use Pi-hole as DNS. For HA, add all node IPs:
+Pi-hole can schedule on any node. Configure your router with all node IPs - MikroTik will find Pi-hole on whichever node it's running:
 
 ```
 Primary DNS:   192.168.x.10  (node 1)
 Secondary DNS: 192.168.x.11  (node 2)
+Tertiary DNS:  192.168.x.12  (node 3)
 ```
 
-Replace with your actual node IPs. Pi-hole runs on standard port 53 using hostNetwork mode.
+Only one node will have Pi-hole running at a time, but MikroTik will try each IP until it gets a response.
 
 ## Mobile Access (MikroTik L2TP/IPsec VPN)
 
@@ -96,7 +98,7 @@ Use your MikroTik router's built-in VPN to access Pi-hole from iOS/Android.
 - Name: `vpn-profile`
 - Local Address: `10.0.100.1`
 - Remote Address: `vpn-pool`
-- DNS Server: `<your-node-ip>` (any node IP, e.g., `192.168.1.10`)
+- DNS Server: `<any-node-ip>` (e.g., `192.168.1.10` - MikroTik will find Pi-hole)
 - Click **OK**
 
 #### 3. Create VPN User
@@ -213,10 +215,25 @@ Access the web UI at https://pihole.newjoy.ro and check Query Log.
 
 ## Notes
 
-- Pi-hole runs on every node as a DaemonSet with hostNetwork for high availability
-- DNS is exposed on standard port 53 on each node - configure your router to use node IPs
+- Single Pi-hole instance for consistent configuration
+- DNS exposed on port 53 via hostNetwork (can schedule on any node)
 - Web UI is SSO-protected via Authentik - no separate Pi-hole password
-- Data is ephemeral (emptyDir) - custom blocklists need reconfiguration after pod restart
+- Configure all node IPs in router - MikroTik will find Pi-hole wherever it runs
+
+## Data Storage
+
+Pi-hole uses **persistent storage** (Longhorn SSD PVC, 1Gi).
+
+**Persisted:**
+- Custom adlists (blocklists)
+- Local DNS records
+- Query logs and statistics  
+- All UI settings
+
+**Configured via env vars (in deployment.yaml):**
+- Upstream DNS (1.1.1.1, 1.0.0.1)
+- DNSSEC enabled
+- Timezone, web port
 
 ## Adding Custom Blocklists
 

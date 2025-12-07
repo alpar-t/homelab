@@ -54,8 +54,20 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [ ] Monitoring (Prometheus + Grafana)
 - [ ] Logging (Loki)
 
+**APPS:**
 
-
+- [X] Pihole
+- [ ] Database (mariadb)
+- [ ] Frigate
+- [ ] Omada
+- [ ] OTMonitor
+- [ ] Bitwarden
+- [ ] VPN ( Headscale with Atuthentik )
+- [ ] Nextcloud 
+- [ ] Tandoor recepies 
+- [ ] Photoprism or Immich
+- [ ] Paperless 
+- [ ] Emby
 
 ## Hardware
 
