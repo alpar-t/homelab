@@ -12,6 +12,8 @@ controller:
     allow-snippet-annotations: "true"
     # Trust X-Forwarded-Proto from Cloudflare Tunnel
     proxy-real-ip-cidr: "0.0.0.0/0"
+    # Global auth configuration - use https scheme since Cloudflare terminates TLS
+    global-auth-url: ""
   
   # Resource limits for homelab
   resources:
