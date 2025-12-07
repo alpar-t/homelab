@@ -46,7 +46,7 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 
 - [ ] how do I monitor the disks e.g. for failure and nottify on them 
 - [ ] backups for longhorn volumes 
-- [ ] How do we keep these up-to-date
+- [ ] How do we keep everything up-to-date
 - [ ] Add persistent storage to Authelia (for 2FA registrations to survive restarts)
 - [ ] Add email services 
 
