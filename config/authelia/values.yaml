@@ -1,5 +1,16 @@
 domain: newjoy.ro
 
+# Trust headers from reverse proxy (nginx-ingress behind Cloudflare)
+configMap:
+  server:
+    endpoints:
+      authz:
+        auth-request:
+          implementation: AuthRequest
+          authn_strategies:
+            - name: HeaderProxyAuthorization
+            - name: CookieSession
+
 ingress:
   enabled: true
   className: nginx
