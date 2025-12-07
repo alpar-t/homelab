@@ -38,6 +38,8 @@ configMap:
   server:
     endpoints:
       authz:
+        auth-request:
+          implementation: AuthRequest
         forward-auth:
           implementation: ForwardAuth
           authn_strategies:
