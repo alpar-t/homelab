@@ -35,6 +35,15 @@ configMap:
     level: debug
   theme: dark
   
+  server:
+    endpoints:
+      authz:
+        forward-auth:
+          implementation: ForwardAuth
+          authn_strategies:
+            - name: CookieSession
+            - name: HeaderAuthorization
+  
   authentication_backend:
     file:
       enabled: true
