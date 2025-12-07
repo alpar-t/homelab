@@ -17,7 +17,8 @@ forecastle:
       nginx.ingress.kubernetes.io/auth-response-headers: "Remote-User,Remote-Groups,Remote-Email,Remote-Name"
       nginx.ingress.kubernetes.io/proxy-buffer-size: "8k"
       nginx.ingress.kubernetes.io/auth-snippet: |
-        proxy_set_header X-Original-URL $pass_access_scheme://$http_host$request_uri;
+        set $authelia_scheme https;
+        proxy_set_header X-Original-URL $authelia_scheme://$http_host$request_uri;
     hosts:
       - host: dashboard.newjoy.ro
         paths:

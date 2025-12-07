@@ -10,6 +10,8 @@ controller:
     use-proxy-protocol: "false"
     # Enable snippets for Authelia forward auth
     allow-snippet-annotations: "true"
+    # Trust X-Forwarded-Proto from Cloudflare Tunnel
+    proxy-real-ip-cidr: "0.0.0.0/0"
   
   # Resource limits for homelab
   resources:
