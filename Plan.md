@@ -28,8 +28,8 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 **Tasks:**
 - [X] Verify HA (test node failure)
 - [X] Install and configure ARgoCD 
-- [ ] Install Longhorn with ARgoCD for persistent storage
-- [ ] Test basic deployments
+- [x] Install Longhorn with ARgoCD for persistent storage
+- [x] Test basic deployments
 
 **Success Criteria:**
 - All 3 nodes in `Ready` state
@@ -47,26 +47,14 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [ ] how do I monitor the disks e.g. for failure and nottify on them 
 - [ ] backups for longhorn volumes (also backup k8s secrets - needed for disaster recovery) 
 - [ ] How do we keep everything up-to-date
-- [ ] Configure Authentik 2FA and app protection after initial setup
+- [X] Configure Authentik 2FA and app protection after initial setup
 - [ ] Add email services 
 
 **Tasks:**
-- [ ] Ingress controller (Traefik or Nginx)
-- [ ] Cert-manager for TLS certificates
-- [ ] External DNS integration
 - [ ] Monitoring (Prometheus + Grafana)
 - [ ] Logging (Loki)
-- [ ] Backup strategy for etcd
 
-## Phase 3: Application Deployment
 
-**Goal:** Self-hosted services
-
-**Candidates:**
-- github for git hosting (will not self host this part)
-- Cloudflare for exposing some services publicly 
-- Authentication provider 
-- start moving existing apps 
 
 
 ## Hardware

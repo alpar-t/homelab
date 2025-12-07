@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: pihole
+  namespace: pihole
+  labels:
+    app: pihole
+spec:
+  selector:
+    matchLabels:
+      app: pihole
+  template:
+    metadata:
+      labels:
+        app: pihole
+    spec:
+      dnsPolicy: "None"
+      dnsConfig:
+        nameservers:
+          - 127.0.0.1
+          - 1.1.1.1
+      containers:
+        - name: pihole
+          image: pihole/pihole:2024.07.0
+          env:
+            - name: TZ
+              value: "Europe/Bucharest"
+            # No password - Authentik handles authentication
+            - name: WEBPASSWORD
+              value: ""
+            - name: PIHOLE_DNS_
+              value: "1.1.1.1;1.0.0.1"
+            - name: DNSSEC
+              value: "true"
+            - name: DNSMASQ_LISTENING
+              value: "all"
+            - name: WEB_PORT
+              value: "8080"
+          ports:
+            - name: dns-tcp
+              containerPort: 53
+              protocol: TCP
+            - name: dns-udp
+              containerPort: 53
+              protocol: UDP
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          volumeMounts:
+            - name: pihole-data
+              mountPath: /etc/pihole
+            - name: dnsmasq-data
+              mountPath: /etc/dnsmasq.d
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /admin/
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /admin/
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 5
+      volumes:
+        - name: pihole-data
+          emptyDir: {}
+        - name: dnsmasq-data
+          emptyDir: {}
+
