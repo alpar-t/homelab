@@ -58,9 +58,16 @@ User → Cloudflare → nginx-ingress → Authentik
 
 ## First Time Setup
 
-1. Access https://auth.newjoy.ro/if/flow/initial-setup/
-2. Create your admin account
-3. Configure applications and providers
+1. Get the admin password:
+   ```bash
+   kubectl get secret authentik-secrets -n authentik -o jsonpath='{.data.bootstrap_password}' | base64 -d
+   ```
+
+2. Login at https://auth.newjoy.ro
+   - Username: `akadmin`
+   - Password: (from step 1)
+
+3. Change your password after first login
 
 ## Protecting Apps Without Auth (Proxy Provider)
 
