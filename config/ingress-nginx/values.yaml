@@ -12,6 +12,11 @@ controller:
     allow-snippet-annotations: "true"
     # Trust X-Forwarded-Proto from Cloudflare Tunnel
     proxy-real-ip-cidr: "0.0.0.0/0"
+    # Override X-Original-URL to always use https (Cloudflare handles TLS)
+    main-snippet: |
+      map $scheme $forwarded_proto {
+        default https;
+      }
   
   # Resource limits for homelab
   resources:
