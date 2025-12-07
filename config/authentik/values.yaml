@@ -6,8 +6,7 @@ global:
   domain: auth.newjoy.ro
 
 authentik:
-  # Secret key - will be generated if not set
-  # For production, set via existingSecret
+  # Secret key from generated secret
   secret_key: ""
   
   # Log level
@@ -16,9 +15,28 @@ authentik:
   # Error reporting (disabled for privacy)
   error_reporting:
     enabled: false
+  
+  # PostgreSQL connection (uses bundled PostgreSQL)
+  postgresql:
+    host: "{{ .Release.Name }}-postgresql"
+    name: "authentik"
+    user: "authentik"
+    password: ""  # Set via env from secret
+
+# Reference the generated secret for secret_key and postgres password
+env:
+  AUTHENTIK_SECRET_KEY:
+    secretKeyRef:
+      name: authentik-secrets
+      key: secret_key
+  AUTHENTIK_POSTGRESQL__PASSWORD:
+    secretKeyRef:
+      name: authentik-secrets
+      key: postgres_password
 
 server:
-  replicas: 1
+  # HA: Run on multiple nodes
+  replicas: 2
   
   resources:
     requests:
@@ -27,6 +45,17 @@ server:
     limits:
       cpu: 500m
       memory: 512Mi
+  
+  # Spread across nodes for HA
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: server
+            topologyKey: kubernetes.io/hostname
   
   ingress:
     enabled: true
@@ -37,7 +66,8 @@ server:
     tls: []
 
 worker:
-  replicas: 1
+  # HA: Run on multiple nodes
+  replicas: 2
   
   resources:
     requests:
@@ -46,12 +76,31 @@ worker:
     limits:
       cpu: 200m
       memory: 256Mi
+  
+  # Spread across nodes for HA
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/component: worker
+            topologyKey: kubernetes.io/hostname
 
 # Bundled PostgreSQL
+# Note: Single replica with Longhorn replication provides data redundancy.
+# For true HA PostgreSQL, consider CloudNativePG operator in the future.
 postgresql:
   enabled: true
   auth:
-    password: "authentik-postgres-password"  # Change this or use secret
+    username: authentik
+    database: authentik
+    # Password from generated secret
+    existingSecret: authentik-secrets
+    secretKeys:
+      adminPasswordKey: postgres_password
+      userPasswordKey: postgres_password
   primary:
     persistence:
       enabled: true
@@ -66,6 +115,8 @@ postgresql:
         memory: 256Mi
 
 # Bundled Redis
+# Note: Standalone is sufficient - Longhorn handles data redundancy.
+# For true HA Redis, enable sentinel architecture.
 redis:
   enabled: true
   architecture: standalone
@@ -83,4 +134,3 @@ redis:
       limits:
         cpu: 100m
         memory: 128Mi
-

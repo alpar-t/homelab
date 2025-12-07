@@ -4,11 +4,6 @@ metadata:
   name: longhorn-frontend
   namespace: longhorn-system
   annotations:
-    # Forecastle dashboard
-    forecastle.stakater.com/expose: "true"
-    forecastle.stakater.com/appName: "Longhorn"
-    forecastle.stakater.com/group: "Storage"
-    forecastle.stakater.com/icon: "https://longhorn.io/img/logos/longhorn-icon-white.png"
     # TODO: Add Authentik protection after setup
     # See config/authentik/README.md for instructions
 spec:
