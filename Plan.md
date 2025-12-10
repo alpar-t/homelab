@@ -48,7 +48,8 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [ ] backups for longhorn volumes (also backup k8s secrets - needed for disaster recovery) 
 - [ ] How do we keep everything up-to-date
 - [X] Configure Authentik 2FA and app protection after initial setup
-- [ ] Add email services 
+- [x] Add email relay ( Postfix → Mailgun ) - see config/mail-relay/README.md
+- [ ] Add external heartbeat / down detection 
 
 **Tasks:**
 - [ ] Monitoring (Prometheus + Grafana)

@@ -35,6 +35,15 @@ authentik:
   error_reporting:
     enabled: false
   
+  # Email configuration - uses local mail relay
+  email:
+    host: "mail-relay.mail-relay.svc.cluster.local"
+    port: 25
+    use_tls: false
+    use_ssl: false
+    timeout: 10
+    from: "service.authentik@newjoy.ro"
+  
   # PostgreSQL connection (uses bundled PostgreSQL)
   postgresql:
     host: "{{ .Release.Name }}-postgresql"
