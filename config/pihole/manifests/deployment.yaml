@@ -16,6 +16,9 @@ spec:
     metadata:
       labels:
         app: pihole
+      annotations:
+        # Auto-restart when custom DNS ConfigMap changes (requires Reloader)
+        configmap.reloader.stakater.com/reload: "pihole-custom-dns,pihole-dnsmasq"
     spec:
       # Use host network so DNS binds directly to port 53
       hostNetwork: true
@@ -71,6 +74,9 @@ spec:
           volumeMounts:
             - name: pihole-data
               mountPath: /etc/pihole
+            - name: custom-dns
+              mountPath: /etc/pihole/custom.list
+              subPath: custom.list
             - name: dnsmasq-data
               mountPath: /etc/dnsmasq.d
           resources:
@@ -96,6 +102,9 @@ spec:
         - name: pihole-data
           persistentVolumeClaim:
             claimName: pihole-data
+        - name: custom-dns
+          configMap:
+            name: pihole-custom-dns
         - name: dnsmasq-data
           emptyDir: {}
         - name: dnsmasq-config

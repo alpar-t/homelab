@@ -235,6 +235,32 @@ Pi-hole uses **persistent storage** (Longhorn SSD PVC, 1Gi).
 - DNSSEC enabled
 - Timezone, web port
 
+## Local DNS (GitOps Managed)
+
+Custom local DNS entries are managed via GitOps in `manifests/custom-dns-configmap.yaml`.
+
+### Adding a New Entry
+
+1. Edit `config/pihole/manifests/custom-dns-configmap.yaml`:
+   ```
+   192.168.1.200 ha-db.local
+   192.168.1.201 nextcloud-db.local
+   ```
+
+2. Push to Git
+
+3. ArgoCD syncs the ConfigMap
+
+4. Reloader detects the change and restarts Pi-hole automatically
+
+### Current Entries
+
+| Hostname | IP | Service |
+|----------|-----|---------|
+| ha-db.local | 192.168.1.200 | Home Assistant PostgreSQL |
+
+> **Note:** The deployment has a Reloader annotation that watches `pihole-custom-dns`. When you update the ConfigMap via Git, Pi-hole will automatically restart to pick up changes.
+
 ## Adding Custom Blocklists
 
 Via the web UI:

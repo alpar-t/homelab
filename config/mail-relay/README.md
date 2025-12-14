@@ -1,125 +1,144 @@
 # Mail Relay for HomePBP
 
-A lightweight Postfix-based SMTP relay that forwards all outbound email through Mailgun.
+A lightweight Postfix-based SMTP relay that forwards all outbound email through Migadu.
 
 ## Why a Local Relay?
 
 - **Single configuration point**: All apps use `smtp://mail-relay.mail-relay:25`
-- **Email queuing**: Emails are queued locally if Mailgun is unreachable
+- **Email queuing**: Emails are queued locally if Migadu is unreachable
 - **Automatic retry**: Failed sends are retried automatically
-- **Simplified app config**: Apps don't need Mailgun credentials
+- **Simplified app config**: Apps don't need Migadu credentials
 
 ## Architecture
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │  Authentik  │────▶│             │     │             │
-├─────────────┤     │ Mail Relay  │────▶│   Mailgun   │────▶ Recipients
+├─────────────┤     │ Mail Relay  │────▶│   Migadu    │────▶ Recipients
 │  Grafana    │────▶│  (Postfix)  │     │    SMTP     │
 ├─────────────┤     │             │     │             │
-│  Nextcloud  │────▶│             │     │             │
+│  Stalwart   │────▶│             │     │             │
 └─────────────┘     └─────────────┘     └─────────────┘
      Internal           Queue              External
 ```
 
-## Mailgun Setup Guide
+## Why Migadu?
 
-### 1. Create Mailgun Account
+| Feature | Migadu Micro | Mailgun Free |
+|---------|--------------|--------------|
+| Price | $19/year | $0 (100/day limit) |
+| Emails/day | 200 | 100 |
+| Dedicated reputation | ✅ Yes | ❌ Shared IP pool |
+| Privacy | 🇨🇭 Swiss | 🇺🇸 US (Sinch) |
+| Inbound mailboxes | ✅ Included | ❌ Separate |
 
-1. Go to [https://www.mailgun.com](https://www.mailgun.com)
-2. Sign up for an account (free tier: 5,000 emails/month for 3 months, then pay-as-you-go)
+We use Migadu because:
+1. **Better deliverability** - own IP reputation, not shared with spammers
+2. **Combined solution** - same provider handles inbound mail (see `config/stalwart-mail`)
+3. **Simple pricing** - flat yearly fee, no surprises
+4. **Privacy-focused** - Swiss company, GDPR compliant
+
+## Migadu Setup Guide
+
+### 1. Create Migadu Account
+
+1. Go to [https://www.migadu.com](https://www.migadu.com)
+2. Sign up for the **Micro** plan ($19/year)
 3. Verify your email address
 
 ### 2. Add Your Domain
 
-1. Navigate to **Sending** → **Domains** → **Add New Domain**
-2. Enter your main domain: `newjoy.ro`
-3. Select your region (EU recommended for GDPR)
+1. Navigate to **Domains** → **Add Domain**
+2. Enter your domain: `newjoy.ro`
+3. Choose your admin email address
 
-> **Note**: We use the main domain (not a subdomain) so services can send from `service.authentik@newjoy.ro`. Gmail/Google Workspace continues to handle inbound email.
+### 3. Configure DNS Records for Outbound Mail
 
-### 3. Configure DNS Records in Cloudflare
+For **outbound email only**, you need SPF, DKIM, and DMARC records. These tell receiving mail servers that Migadu is authorized to send on behalf of your domain.
 
-Mailgun will provide DNS records. Add them in Cloudflare **alongside your existing Google Workspace records**:
+> **Note**: MX records (for inbound mail) are configured separately in `config/stalwart-mail/README.md`.
 
 1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) → **newjoy.ro** → **DNS** → **Records**
 
-2. **Update your existing SPF record** (don't create a new one!):
+2. **Add/Update your SPF record**:
 
-   Find your current TXT record for `newjoy.ro` that starts with `v=spf1`. It probably looks like:
+   Find your current TXT record for `newjoy.ro` that starts with `v=spf1`, or create one:
    ```
-   v=spf1 include:_spf.google.com ~all
-   ```
-   
-   **Edit it** to add Mailgun:
-   ```
-   v=spf1 include:_spf.google.com include:mailgun.org ~all
+   v=spf1 include:spf.migadu.com -all
    ```
 
-   > ⚠️ **Important**: A domain can only have ONE SPF record. Don't create a second one - edit the existing one.
-
-3. **Add DKIM record** (new TXT record):
+   > ⚠️ **Important**: A domain can only have ONE SPF record. If you have an existing one, edit it to include Migadu.
 
 | Type | Name | Content | TTL |
 |------|------|---------|-----|
-| TXT | `smtp._domainkey` | (long string from Mailgun - starts with `k=rsa; p=...`) | Auto |
+| TXT | @ | `v=spf1 include:spf.migadu.com -all` | Auto |
 
-   > The exact name might vary - Mailgun will tell you. Common patterns: `smtp._domainkey`, `k1._domainkey`, `mg._domainkey`
+3. **Add DKIM records** (Migadu provides 3 CNAME records):
 
-4. **Do NOT change MX records** - keep them pointing to Google:
+| Type | Name | Content | TTL |
+|------|------|---------|-----|
+| CNAME | `key1._domainkey` | `key1.newjoy.ro._domainkey.migadu.com` | Auto |
+| CNAME | `key2._domainkey` | `key2.newjoy.ro._domainkey.migadu.com` | Auto |
+| CNAME | `key3._domainkey` | `key3.newjoy.ro._domainkey.migadu.com` | Auto |
 
-   Your existing MX records should remain:
-   ```
-   newjoy.ro  MX  1   aspmx.l.google.com
-   newjoy.ro  MX  5   alt1.aspmx.l.google.com
-   ...
-   ```
-   
-   This ensures inbound email continues going to Gmail.
+4. **Add DMARC record**:
 
-### 4. Verify DNS in Mailgun
+| Type | Name | Content | TTL |
+|------|------|---------|-----|
+| TXT | `_dmarc` | `v=DMARC1; p=quarantine; rua=mailto:dmarc@newjoy.ro` | Auto |
 
-1. Go back to Mailgun → **Sending** → **Domains** → `newjoy.ro`
-2. Click **Verify DNS Settings**
+5. **Add domain verification TXT record** (Migadu will provide the exact value):
+
+| Type | Name | Content | TTL |
+|------|------|---------|-----|
+| TXT | @ | `hosted-email-verify=xxxxxxxx` | Auto |
+
+### 4. Verify DNS in Migadu
+
+1. Go back to Migadu → **Domains** → `newjoy.ro`
+2. Click **Verify DNS**
 3. Cloudflare propagates quickly - usually verifies within minutes
 4. Expected results:
-   - ✅ SPF - should pass (includes mailgun.org)
-   - ✅ DKIM - should pass (your new TXT record)
-   - ⚠️ MX - will show warning (pointing to Google, not Mailgun) - **this is expected and correct!**
+   - ✅ SPF - should pass
+   - ✅ DKIM - should pass
+   - ✅ DMARC - should pass
+   - ⚠️ MX - may show warning if not yet configured (that's fine for outbound-only)
 
-> **MX Warning is OK!** We intentionally keep MX pointing to Google Workspace. Mailgun only needs SPF and DKIM to send outbound email.
+### 5. Create SMTP Credentials
 
-### 5. Get SMTP Credentials
+For the mail-relay, create a dedicated sending identity:
 
-1. Go to **Sending** → **Domain settings** → **SMTP credentials**
-2. Create new SMTP user or use the default one
-3. Note down:
-   - **SMTP Server**: `smtp.eu.mailgun.org` (EU region)
-   - **Port**: `587` (TLS)
-   - **Username**: `postmaster@newjoy.ro`
-   - **Password**: Generate/copy the SMTP password
+1. Go to **Domains** → `newjoy.ro` → **Mailboxes**
+2. Create a mailbox for SMTP authentication (e.g., `service@newjoy.ro`)
+3. Note down the SMTP credentials:
+   - **SMTP Server**: `smtp.migadu.com`
+   - **Port**: `587` (STARTTLS) or `465` (SSL)
+   - **Username**: `service@newjoy.ro`
+   - **Password**: The mailbox password
+
+> **Important**: The SMTP username is only for **authentication**. Your services can still send from any `@newjoy.ro` address (e.g., `service.authentik@newjoy.ro`, `alerts@newjoy.ro`). The "From" address is independent of the login credentials.
 
 ### 6. Create Kubernetes Secret
 
 > **⚠️ Never commit secrets to the repository!** Create secrets directly in the cluster.
 
-Create the namespace and secret with your Mailgun credentials:
+Create the namespace and secret with your Migadu credentials:
 
 ```bash
 # Create namespace first
 kubectl create namespace mail-relay
 
 # Create the secret (replace with your actual credentials)
-kubectl create secret generic mailgun-credentials \
+kubectl create secret generic migadu-credentials \
   --namespace mail-relay \
-  --from-literal=username='postmaster@newjoy.ro' \
-  --from-literal=password='YOUR_MAILGUN_SMTP_PASSWORD'
+  --from-literal=username='service@newjoy.ro' \
+  --from-literal=password='YOUR_MIGADU_MAILBOX_PASSWORD'
 ```
 
 Verify the secret was created:
 
 ```bash
-kubectl get secret -n mail-relay mailgun-credentials
+kubectl get secret -n mail-relay migadu-credentials
 ```
 
 ### 7. Deploy via ArgoCD
@@ -136,16 +155,16 @@ kubectl apply -f apps/mail-relay.yaml
 
 ### Sender Addresses
 
-The relay allows sending from any `@newjoy.ro` address. Use the `service.<app>@` convention:
+The relay allows sending from any `@newjoy.ro` address. Use these conventions:
 
-| Service | From Address |
-|---------|-------------|
-| Authentik | `service.authentik@newjoy.ro` |
-| Grafana | `service.grafana@newjoy.ro` |
-| Nextcloud | `service.nextcloud@newjoy.ro` |
-| Alerts | `service.alerts@newjoy.ro` |
+| Type | From Address | Purpose |
+|------|--------------|---------|
+| Authentik | `service.authentik@newjoy.ro` | Password resets, 2FA |
+| Grafana | `service.grafana@newjoy.ro` | Alerts |
+| Stalwart | `service.mail@newjoy.ro` | Outbound relay |
+| Generic | `noreply@newjoy.ro` | System notifications |
 
-> **Note on replies**: If someone replies to these addresses, the email goes to Google Workspace. You can optionally create aliases in Google Admin to route them to `admin@newjoy.ro`.
+> **Note on replies**: Replies to service addresses go to Migadu. Create appropriate mailboxes or aliases to handle them.
 
 ### App Configuration
 
@@ -164,10 +183,10 @@ Send a test email from inside the cluster:
 
 ```bash
 # Create a test pod
-kubectl run --rm -it mail-test --image=busybox --restart=Never -- sh
+kubectl run --rm -it mail-test --image=alpine --restart=Never -- sh
 
 # Install mailx and send test
-apk add mailx
+apk add --no-cache mailx
 echo "Test from homelab" | mail -s "Test Email" \
   -S smtp=mail-relay.mail-relay:25 \
   -S from="test@newjoy.ro" \
@@ -185,16 +204,21 @@ kubectl logs -n mail-relay -l app=mail-relay -f
 ### Emails Not Sending
 
 1. Check pod logs: `kubectl logs -n mail-relay deployment/mail-relay`
-2. Verify secret exists: `kubectl get secret -n mail-relay mailgun-credentials`
-3. Test Mailgun credentials manually
-4. Check Mailgun dashboard for rejected emails
+2. Verify secret exists: `kubectl get secret -n mail-relay migadu-credentials`
+3. Test Migadu credentials manually:
+   ```bash
+   # Test SMTP connection
+   openssl s_client -connect smtp.migadu.com:587 -starttls smtp
+   ```
+4. Check Migadu dashboard for sending statistics
 
 ### DNS Issues
 
-1. Verify domain is active in Mailgun dashboard
-2. Check SPF record includes Mailgun: `dig TXT newjoy.ro`
-3. Check DKIM record: `dig TXT smtp._domainkey.newjoy.ro`
-4. Use [MXToolbox SPF checker](https://mxtoolbox.com/spf.aspx) to validate
+1. Verify domain is active in Migadu dashboard
+2. Check SPF record: `dig TXT newjoy.ro`
+3. Check DKIM records: `dig CNAME key1._domainkey.newjoy.ro`
+4. Check DMARC record: `dig TXT _dmarc.newjoy.ro`
+5. Use [MXToolbox](https://mxtoolbox.com/) to validate all records
 
 ### Queue Issues
 
@@ -210,26 +234,17 @@ Flush the queue:
 kubectl exec -n mail-relay deployment/mail-relay -- postqueue -f
 ```
 
+### Migadu Rate Limits
+
+Migadu Micro allows 200 emails/day. If you hit limits:
+
+1. Check current usage in Migadu dashboard
+2. Review which service is sending too many emails
+3. Consider upgrading to Migadu Mini ($9/month) for 1000/day
+
 ---
 
-## Future: Inbound Email Migration
+## Related
 
-Currently, inbound email (`*@newjoy.ro`) is handled by Google Workspace. To migrate to self-hosted inbound:
-
-### Phase 1 (Current)
-- ✅ Outbound: Mailgun via mail-relay
-- ✅ Inbound: Google Workspace (MX → Google)
-
-### Phase 2 (Future)
-- Outbound: Mailgun via mail-relay (unchanged)
-- Inbound: Self-hosted (Mailu, Mailcow, or similar)
-
-### Migration Steps (when ready)
-1. Deploy Mailu/Mailcow in the cluster
-2. Configure Mailgun to receive and forward to your cluster (or use Cloudflare Email Routing)
-3. Test with a subdomain first (e.g., `test.newjoy.ro`)
-4. Update MX records to point to your mail server
-5. Gradually migrate mailboxes from Google Workspace
-
-> **Tip**: Keep Google Workspace as a backup MX during migration.
-
+- **Inbound Mail**: See `config/stalwart-mail/README.md` for the inbound mail setup with Stalwart
+- **Authentication**: Stalwart integrates with Authentik for SSO (webmail only)

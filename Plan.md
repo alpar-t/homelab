@@ -50,6 +50,8 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [X] Configure Authentik 2FA and app protection after initial setup
 - [x] Add email relay ( Postfix → Mailgun ) - see config/mail-relay/README.md
 - [ ] Add external heartbeat / down detection 
+- [ ] Monitor mail
+- [ ] Replace Authentik with Pocket ID
 
 **Tasks:**
 - [ ] Monitoring (Prometheus + Grafana)
@@ -58,24 +60,27 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 **APPS:**
 
 - [X] Pihole
-- [ ] Database (mariadb)
+- [ ] Database (PostgreSQL with CloudNativePG) - see config/postgres/README.md
 - [ ] Frigate
 - [ ] Omada
 - [ ] OTMonitor
 - [ ] Bitwarden
 - [ ] VPN ( Headscale with Atuthentik )
-- [ ] Nextcloud 
+- [ ] Nextcloud ( sync-in (if oidc) or owncloud)
 - [ ] Tandoor recepies 
 - [ ] Photoprism or Immich
 - [ ] Paperless 
 - [ ] Emby
+- [ ] Home Assistant DB (external PostgreSQL for HA Green) - see config/homeassistant/README.md
+- [ ] MetalLB (LoadBalancer IPs for external access) - see config/metallb/README.md
 
 ## Hardware
 
 **Current Setup:**
-- 3x Odroid nodes (H+ and H Ultra)
-- Each with: 2-4GB RAM, 1 SSD, 2 HDDs
-- Total storage: ~12TB (6x 2TB HDDs)
+- 2x Odroid H3+ (16GB RAM each)
+- 1x Odroid H3 Ultra (32GB RAM)
+- Each with: 1 SSD, 2 HDDs
+- Total: 64GB RAM, ~12TB storage (6x 2TB HDDs)
 
 **Per Node:**
 ```

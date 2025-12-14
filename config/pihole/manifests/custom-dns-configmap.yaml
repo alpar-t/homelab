@@ -1,0 +1,29 @@
+# Local DNS entries for Kubernetes services
+# Format: IP_ADDRESS HOSTNAME
+# These are managed via GitOps - edit here, push, ArgoCD syncs
+#
+# Pi-hole reads this from /etc/pihole/custom.list
+# Mount this ConfigMap in your Pi-hole deployment
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pihole-custom-dns
+  namespace: pihole
+data:
+  custom.list: |
+    # ===========================================
+    # Kubernetes LoadBalancer Services (MetalLB)
+    # ===========================================
+    
+    # Home Assistant PostgreSQL database
+    192.168.1.200 ha-db.local
+    
+    # Future services (uncomment as needed)
+    # 192.168.1.201 nextcloud-db.local
+    # 192.168.1.202 immich-db.local
+    
+    # ===========================================
+    # Add your entries above
+    # ===========================================
+

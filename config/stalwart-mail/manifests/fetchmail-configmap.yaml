@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fetchmail-config
+  namespace: stalwart-mail
+data:
+  fetchmailrc.template: |
+    # Fetchmail configuration template
+    # Password placeholders (FETCHMAIL_*_PASSWORD) are replaced at runtime
+    # from the migadu-fetch-credentials secret
+    
+    set daemon 60
+    set syslog
+    
+    # Add one poll block per mailbox
+    # Placeholder format: FETCHMAIL_<USERNAME>_PASSWORD
+    # The placeholder name must match a key in the migadu-fetch-credentials secret
+    
+    # Example mailbox (replace with your actual mailboxes):
+    # poll imap.migadu.com
+    #   protocol IMAP
+    #   user "user@yourdomain.tld"
+    #   password "FETCHMAIL_USER_PASSWORD"
+    #   ssl
+    #   sslcertck
+    #   mda "/usr/local/bin/stalwart-cli import --account user"
+    #   keep
+

@@ -1,0 +1,12 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: lan-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  # Choose IPs from your LAN that are:
+  # - NOT in your router's DHCP range
+  # - NOT used by other devices
+  - 192.168.1.200-192.168.1.254
+

@@ -23,18 +23,18 @@ spec:
             - containerPort: 25
               name: smtp
           env:
-            # Mailgun SMTP relay configuration
+            # Migadu SMTP relay configuration
             - name: RELAYHOST
-              value: "[smtp.eu.mailgun.org]:587"
+              value: "[smtp.migadu.com]:587"
             - name: RELAYHOST_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: mailgun-credentials
+                  name: migadu-credentials
                   key: username
             - name: RELAYHOST_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: mailgun-credentials
+                  name: migadu-credentials
                   key: password
             # Allow sending from cluster networks
             - name: ALLOWED_SENDER_DOMAINS
