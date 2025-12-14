@@ -42,6 +42,7 @@ spec:
             - --cookie-domain=longhorn.newjoy.ro
             # Email/user validation
             - --email-domain=*
+            - --insecure-oidc-allow-unverified-email=true
             # Redirect configuration
             - --redirect-url=https://longhorn.newjoy.ro/oauth2/callback
             # Skip auth for health checks

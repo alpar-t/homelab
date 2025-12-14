@@ -42,6 +42,7 @@ spec:
             - --cookie-domain=pihole.newjoy.ro
             # Email/user validation
             - --email-domain=*
+            - --insecure-oidc-allow-unverified-email=true
             # Redirect configuration
             - --redirect-url=https://pihole.newjoy.ro/oauth2/callback
             # Skip auth for health checks
@@ -53,7 +54,7 @@ spec:
                 secretKeyRef:
                   name: oauth2-proxy-pihole
                   key: client-id
-            - name: OAUTH2_PROXY_CLIENT_SECRET
+3            - name: OAUTH2_PROXY_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: oauth2-proxy-pihole
