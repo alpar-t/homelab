@@ -34,12 +34,9 @@ spec:
             # OIDC configuration
             - --provider=oidc
             - --oidc-issuer-url=https://auth.newjoy.ro
-            - --client-id=$(CLIENT_ID)
-            - --client-secret=$(CLIENT_SECRET)
             # Upstream (Pi-hole Web UI)
             - --upstream=http://pihole-web.pihole.svc.cluster.local:80
             # Cookie configuration (stateless sessions)
-            - --cookie-secret=$(COOKIE_SECRET)
             - --cookie-secure=true
             - --cookie-name=_oauth2_proxy_pihole
             - --cookie-domain=pihole.newjoy.ro
@@ -50,17 +47,18 @@ spec:
             # Skip auth for health checks
             - --skip-auth-route=^/ping$
           env:
-            - name: CLIENT_ID
+            # oauth2-proxy reads these env vars directly
+            - name: OAUTH2_PROXY_CLIENT_ID
               valueFrom:
                 secretKeyRef:
                   name: oauth2-proxy-pihole
                   key: client-id
-            - name: CLIENT_SECRET
+            - name: OAUTH2_PROXY_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: oauth2-proxy-pihole
                   key: client-secret
-            - name: COOKIE_SECRET
+            - name: OAUTH2_PROXY_COOKIE_SECRET
               valueFrom:
                 secretKeyRef:
                   name: oauth2-proxy-pihole
