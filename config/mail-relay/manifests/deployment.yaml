@@ -25,7 +25,11 @@ spec:
           env:
             # Migadu SMTP relay configuration
             - name: RELAYHOST
-              value: "[smtp.migadu.com]:587"
+              value: "[smtp.migadu.com]:465"
+            - name: RELAYHOST_TLS_LEVEL
+              value: "encrypt"
+            - name: POSTFIX_smtp_tls_wrappermode
+              value: "yes"
             - name: RELAYHOST_USERNAME
               valueFrom:
                 secretKeyRef:

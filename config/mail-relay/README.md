@@ -116,7 +116,15 @@ For the mail-relay, create a dedicated sending identity:
    - **Username**: `service@newjoy.ro`
    - **Password**: The mailbox password
 
-> **Important**: The SMTP username is only for **authentication**. Your services can still send from any `@newjoy.ro` address (e.g., `service.authentik@newjoy.ro`, `alerts@newjoy.ro`). The "From" address is independent of the login credentials.
+4. **Enable Wildcard Sending** (required for sending as any `@newjoy.ro` address):
+   - Go to **Domains** → `newjoy.ro` → **Mailboxes** → `service@newjoy.ro`
+   - Click **Wildcard Sender** in the left sidebar
+   - Check **"Permit wildcard sending"**
+   - Click **Save Changes**
+
+   > This allows the relay mailbox to send messages as *any* address on the domain (e.g., `service.authentik@newjoy.ro`, `alerts@newjoy.ro`), not just its own address.
+
+> **Important**: The SMTP username is only for **authentication**. With wildcard sending enabled, your services can send from any `@newjoy.ro` address. The "From" address is independent of the login credentials.
 
 ### 6. Create Kubernetes Secret
 
@@ -185,12 +193,17 @@ Send a test email from inside the cluster:
 # Create a test pod
 kubectl run --rm -it mail-test --image=alpine --restart=Never -- sh
 
-# Install mailx and send test
-apk add --no-cache mailx
-echo "Test from homelab" | mail -s "Test Email" \
-  -S smtp=mail-relay.mail-relay:25 \
-  -S from="test@newjoy.ro" \
-  your-email@example.com
+apk add curl
+curl --url smtp://mail-relay.mail-relay:25 \
+  --mail-from test@newjoy.ro \
+  --mail-rcpt torokalpar@gmail.com \
+  --upload-file - <<EOF
+From: test@newjoy.ro
+To: torokalpar@gmail.com
+Subject: Test from homelab
+
+This is a test email from the Kubernetes cluster.
+EOF
 ```
 
 Or check the relay logs:
