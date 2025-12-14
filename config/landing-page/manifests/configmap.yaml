@@ -1,0 +1,242 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: landing-page-html
+  namespace: landing-page
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>newjoy.ro — Under Construction</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;600&display=swap" rel="stylesheet">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+          --bg-dark: #0a0a0f;
+          --bg-card: #12121a;
+          --accent: #ff6b35;
+          --accent-glow: rgba(255, 107, 53, 0.3);
+          --text-primary: #f0f0f5;
+          --text-muted: #6b6b7a;
+          --border: #1e1e2a;
+        }
+        
+        body {
+          min-height: 100vh;
+          font-family: 'Outfit', sans-serif;
+          background: var(--bg-dark);
+          color: var(--text-primary);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          position: relative;
+        }
+        
+        /* Animated background grid */
+        .grid-bg {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-image: 
+            linear-gradient(var(--border) 1px, transparent 1px),
+            linear-gradient(90deg, var(--border) 1px, transparent 1px);
+          background-size: 60px 60px;
+          opacity: 0.4;
+          animation: gridMove 20s linear infinite;
+        }
+        
+        @keyframes gridMove {
+          0% { transform: translate(0, 0); }
+          100% { transform: translate(60px, 60px); }
+        }
+        
+        /* Glowing orb */
+        .orb {
+          position: fixed;
+          width: 400px;
+          height: 400px;
+          background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+          border-radius: 50%;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          animation: orbPulse 4s ease-in-out infinite;
+          pointer-events: none;
+        }
+        
+        @keyframes orbPulse {
+          0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+          50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.1); }
+        }
+        
+        .container {
+          position: relative;
+          z-index: 10;
+          text-align: center;
+          padding: 2rem;
+        }
+        
+        .card {
+          background: var(--bg-card);
+          border: 1px solid var(--border);
+          border-radius: 24px;
+          padding: 4rem 3rem;
+          max-width: 500px;
+          box-shadow: 
+            0 0 80px rgba(255, 107, 53, 0.05),
+            0 20px 60px rgba(0, 0, 0, 0.5);
+          animation: cardFloat 6s ease-in-out infinite;
+        }
+        
+        @keyframes cardFloat {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        
+        .icon {
+          width: 80px;
+          height: 80px;
+          margin: 0 auto 2rem;
+          background: linear-gradient(135deg, var(--accent), #ff8f5a);
+          border-radius: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 2.5rem;
+          animation: iconSpin 8s ease-in-out infinite;
+          box-shadow: 0 10px 40px var(--accent-glow);
+        }
+        
+        @keyframes iconSpin {
+          0%, 100% { transform: rotate(-5deg); }
+          50% { transform: rotate(5deg); }
+        }
+        
+        .logo {
+          font-family: 'Space Mono', monospace;
+          font-size: 2.2rem;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+          margin-bottom: 0.5rem;
+          background: linear-gradient(135deg, var(--text-primary), var(--accent));
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        
+        .tagline {
+          font-size: 1.1rem;
+          color: var(--text-muted);
+          font-weight: 300;
+          margin-bottom: 2.5rem;
+          letter-spacing: 0.05em;
+        }
+        
+        .status {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.6rem;
+          background: rgba(255, 107, 53, 0.1);
+          border: 1px solid rgba(255, 107, 53, 0.3);
+          padding: 0.75rem 1.5rem;
+          border-radius: 100px;
+          font-family: 'Space Mono', monospace;
+          font-size: 0.85rem;
+          color: var(--accent);
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+        }
+        
+        .status-dot {
+          width: 8px;
+          height: 8px;
+          background: var(--accent);
+          border-radius: 50%;
+          animation: blink 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+        
+        .footer {
+          margin-top: 3rem;
+          font-size: 0.8rem;
+          color: var(--text-muted);
+          font-family: 'Space Mono', monospace;
+        }
+        
+        /* Floating particles */
+        .particles {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          pointer-events: none;
+          overflow: hidden;
+        }
+        
+        .particle {
+          position: absolute;
+          width: 4px;
+          height: 4px;
+          background: var(--accent);
+          border-radius: 50%;
+          opacity: 0.3;
+          animation: particleFloat 15s linear infinite;
+        }
+        
+        .particle:nth-child(1) { left: 10%; animation-delay: 0s; animation-duration: 12s; }
+        .particle:nth-child(2) { left: 25%; animation-delay: 2s; animation-duration: 18s; }
+        .particle:nth-child(3) { left: 40%; animation-delay: 4s; animation-duration: 14s; }
+        .particle:nth-child(4) { left: 55%; animation-delay: 1s; animation-duration: 16s; }
+        .particle:nth-child(5) { left: 70%; animation-delay: 3s; animation-duration: 20s; }
+        .particle:nth-child(6) { left: 85%; animation-delay: 5s; animation-duration: 13s; }
+        
+        @keyframes particleFloat {
+          0% { transform: translateY(100vh) scale(0); opacity: 0; }
+          10% { opacity: 0.3; }
+          90% { opacity: 0.3; }
+          100% { transform: translateY(-100vh) scale(1); opacity: 0; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="grid-bg"></div>
+      <div class="orb"></div>
+      
+      <div class="particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+      </div>
+      
+      <div class="container">
+        <div class="card">
+          <div class="icon">⚡</div>
+          <h1 class="logo">newjoy.ro</h1>
+          <p class="tagline">Something exciting is brewing</p>
+          <div class="status">
+            <span class="status-dot"></span>
+            Under Construction
+          </div>
+          <p class="footer">Check back soon</p>
+        </div>
+      </div>
+    </body>
+    </html>
+
