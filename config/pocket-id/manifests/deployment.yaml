@@ -6,7 +6,8 @@ metadata:
   labels:
     app: pocket-id
 spec:
-  replicas: 2
+  # Temporarily set to 1 until session handling is fixed for HA
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
