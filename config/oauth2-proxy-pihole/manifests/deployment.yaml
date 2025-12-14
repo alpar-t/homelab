@@ -54,7 +54,7 @@ spec:
                 secretKeyRef:
                   name: oauth2-proxy-pihole
                   key: client-id
-3            - name: OAUTH2_PROXY_CLIENT_SECRET
+            - name: OAUTH2_PROXY_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: oauth2-proxy-pihole
