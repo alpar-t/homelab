@@ -1,19 +1,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: longhorn-ingress
+  name: oauth2-proxy-longhorn
   namespace: argocd
+  annotations:
+    # Run after pocket-id is deployed
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
   source:
     repoURL: https://github.com/alpar-t/homelab
     targetRevision: main
-    path: config/longhorn
-    directory:
-      include: 'ingress.yaml'
+    path: config/oauth2-proxy-longhorn/manifests
   destination:
     server: https://kubernetes.default.svc
-    namespace: authentik
+    namespace: longhorn-system
   syncPolicy:
     automated:
       prune: true

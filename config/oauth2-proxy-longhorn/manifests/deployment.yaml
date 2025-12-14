@@ -1,0 +1,128 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth2-proxy-longhorn
+  namespace: longhorn-system
+  labels:
+    app: oauth2-proxy-longhorn
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: oauth2-proxy-longhorn
+  template:
+    metadata:
+      labels:
+        app: oauth2-proxy-longhorn
+    spec:
+      # Spread across nodes for HA
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: oauth2-proxy-longhorn
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
+          args:
+            - --http-address=0.0.0.0:4180
+            - --reverse-proxy=true
+            # OIDC configuration
+            - --provider=oidc
+            - --oidc-issuer-url=https://auth.newjoy.ro
+            - --client-id=$(CLIENT_ID)
+            - --client-secret=$(CLIENT_SECRET)
+            # Upstream (Longhorn UI)
+            - --upstream=http://longhorn-frontend.longhorn-system.svc.cluster.local:80
+            # Cookie configuration (stateless sessions)
+            - --cookie-secret=$(COOKIE_SECRET)
+            - --cookie-secure=true
+            - --cookie-name=_oauth2_proxy_longhorn
+            - --cookie-domain=longhorn.newjoy.ro
+            # Email/user validation
+            - --email-domain=*
+            # Redirect configuration
+            - --redirect-url=https://longhorn.newjoy.ro/oauth2/callback
+            # Skip auth for health checks
+            - --skip-auth-route=^/ping$
+          env:
+            - name: CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-longhorn
+                  key: client-id
+            - name: CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-longhorn
+                  key: client-secret
+            - name: COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-longhorn
+                  key: cookie-secret
+          ports:
+            - containerPort: 4180
+              name: http
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oauth2-proxy-longhorn
+  namespace: longhorn-system
+  labels:
+    app: oauth2-proxy-longhorn
+spec:
+  type: ClusterIP
+  selector:
+    app: oauth2-proxy-longhorn
+  ports:
+    - name: http
+      port: 4180
+      targetPort: 4180
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: longhorn-frontend
+  namespace: longhorn-system
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: longhorn.newjoy.ro
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: oauth2-proxy-longhorn
+                port:
+                  number: 4180
+

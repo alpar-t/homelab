@@ -12,7 +12,9 @@ Mobile (VPN):
   Phone → MikroTik L2TP/IPsec → Pi-hole DNS
 
 Web UI:
-  Browser → pihole.newjoy.ro → Authentik SSO → Pi-hole Admin
+  Browser → pihole.newjoy.ro → oauth2-proxy → Pi-hole Admin
+                                    ↓
+                              Pocket-ID SSO
 ```
 
 ## Components
@@ -21,38 +23,24 @@ Web UI:
 |-----------|---------|
 | Pi-hole Deployment | DNS + Ad blocking (single instance) |
 | PVC (1Gi SSD) | Persistent settings and blocklists |
-| Web UI Ingress | Admin interface via Authentik SSO |
+| oauth2-proxy | Authentication via Pocket-ID |
+| Web UI Ingress | Admin interface via SSO |
 
 ## Access
 
-- **Web UI:** https://pihole.newjoy.ro (protected by Authentik SSO)
+- **Web UI:** https://pihole.newjoy.ro (protected by Pocket-ID SSO)
 - **Local DNS:** Any node IP on port 53 (pod can schedule anywhere)
 
 ## Setup
 
-### 1. Configure Authentik (Required for Web UI)
+### 1. Configure oauth2-proxy (Required for Web UI)
 
-1. **Create Provider** in Authentik Admin:
-   - Go to: Applications → Providers → Create
-   - Type: **Proxy Provider**
-   - Name: `pihole-proxy`
-   - Mode: **Proxy**
-   - External host: `https://pihole.newjoy.ro`
-   - Internal host: `http://pihole-web.pihole.svc.cluster.local:80`
+See `config/oauth2-proxy-pihole/README.md` for one-time setup:
+1. Create OIDC client in Pocket-ID
+2. Create Kubernetes secret with client credentials
+3. ArgoCD deploys oauth2-proxy automatically
 
-2. **Create Application**:
-   - Go to: Applications → Applications → Create
-   - Name: `Pi-hole`
-   - Slug: `pihole`
-   - Provider: select `pihole-proxy`
-   - Icon (optional): `https://pi-hole.net/wp-content/uploads/2016/12/Vortex-R.png`
-
-3. **Add to Outpost**:
-   - Go to: Applications → Outposts → authentik Embedded Outpost
-   - Add `Pi-hole` to Applications
-   - Click Update
-
-Pi-hole has no internal password - Authentik handles all authentication.
+Pi-hole has no internal password - Pocket-ID handles all authentication.
 
 ### 2. Configure Local Network DNS
 
@@ -217,7 +205,7 @@ Access the web UI at https://pihole.newjoy.ro and check Query Log.
 
 - Single Pi-hole instance for consistent configuration
 - DNS exposed on port 53 via hostNetwork (can schedule on any node)
-- Web UI is SSO-protected via Authentik - no separate Pi-hole password
+- Web UI is SSO-protected via Pocket-ID - no separate Pi-hole password
 - Configure all node IPs in router - MikroTik will find Pi-hole wherever it runs
 
 ## Data Storage
@@ -267,4 +255,3 @@ Via the web UI:
 1. Go to https://pihole.newjoy.ro
 2. Settings → Adlists → Add new
 3. Popular lists: https://firebog.net/
- 

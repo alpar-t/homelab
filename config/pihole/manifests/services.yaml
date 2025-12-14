@@ -1,5 +1,5 @@
 ---
-# Web UI Service - ClusterIP (accessed via Authentik proxy)
+# Web UI Service - ClusterIP (accessed via oauth2-proxy)
 # DNS is accessed directly on node IPs port 53 (hostNetwork)
 apiVersion: v1
 kind: Service

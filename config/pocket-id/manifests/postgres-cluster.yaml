@@ -1,0 +1,47 @@
+# Pocket-ID PostgreSQL Cluster
+# Managed by CloudNativePG operator
+
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pocket-id-db
+  namespace: pocket-id
+spec:
+  # HA: 2 instances with automatic failover
+  instances: 2
+  
+  imageName: ghcr.io/cloudnative-pg/postgresql:16
+  
+  bootstrap:
+    initdb:
+      database: pocketid
+      owner: pocketid
+      # No secret specified - CloudNativePG auto-generates credentials
+      # Password stored in: pocket-id-db-app secret (created by operator)
+  
+  storage:
+    size: 1Gi  # Small - just users, passkeys, and OIDC clients
+    storageClass: longhorn-ssd
+  
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "500m"
+  
+  # PostgreSQL configuration
+  postgresql:
+    parameters:
+      # Logging
+      log_statement: "ddl"
+      log_min_duration_statement: "1000"
+      
+      # Memory (tuned for small instance)
+      shared_buffers: "64MB"
+      work_mem: "4MB"
+      
+      # Connections
+      max_connections: "50"
+

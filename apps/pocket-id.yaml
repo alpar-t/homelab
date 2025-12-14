@@ -1,21 +1,24 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: pihole-ingress
+  name: pocket-id
   namespace: argocd
+  annotations:
+    # Run after secrets are created
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   project: default
   source:
     repoURL: https://github.com/alpar-t/homelab
     targetRevision: main
-    path: config/pihole
-    directory:
-      include: "ingress.yaml"
+    path: config/pocket-id/manifests
   destination:
     server: https://kubernetes.default.svc
-    namespace: authentik
+    namespace: pocket-id
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
 

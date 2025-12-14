@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pocket-id
+  namespace: pocket-id
+  labels:
+    app: pocket-id
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: pocket-id
+  template:
+    metadata:
+      labels:
+        app: pocket-id
+    spec:
+      # Spread across nodes for HA
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: pocket-id
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: pocket-id
+          image: stonith404/pocket-id:latest
+          ports:
+            - containerPort: 1411
+              name: http
+          env:
+            - name: APP_URL
+              value: "https://auth.newjoy.ro"
+            - name: TRUST_PROXY
+              value: "true"
+            # Database configuration
+            - name: DB_PROVIDER
+              value: "postgres"
+            - name: DB_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: pocket-id-db-app
+                  key: uri
+            # Encryption key for passkeys/secrets
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: pocket-id-secrets
+                  key: encryption_key
+            # Email configuration - uses local mail relay
+            - name: SMTP_HOST
+              value: "mail-relay.mail-relay.svc.cluster.local"
+            - name: SMTP_PORT
+              value: "25"
+            - name: SMTP_FROM
+              value: "auth@newjoy.ro"
+            - name: SMTP_TLS
+              value: "false"
+            # App dashboard
+            - name: APP_DASHBOARD_ENABLED
+              value: "true"
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pocket-id
+  namespace: pocket-id
+  labels:
+    app: pocket-id
+spec:
+  type: ClusterIP
+  selector:
+    app: pocket-id
+  ports:
+    - name: http
+      port: 80
+      targetPort: 1411
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pocket-id
+  namespace: pocket-id
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: auth.newjoy.ro
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pocket-id
+                port:
+                  number: 80
+
