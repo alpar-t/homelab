@@ -1,0 +1,24 @@
+# External LoadBalancer for Home Assistant PostgreSQL
+# Accessible from LAN devices (e.g., Home Assistant Green)
+#
+# DNS: ha-db.local -> 192.168.1.200 (configured in pihole)
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: homeassistant-db-external
+  namespace: homeassistant
+  annotations:
+    # Request specific IP for DNS stability
+    metallb.universe.tf/loadBalancerIPs: 192.168.1.200
+spec:
+  type: LoadBalancer
+  # Target the primary (read-write) pod
+  selector:
+    cnpg.io/cluster: homeassistant-db
+    role: primary
+  ports:
+  - name: postgresql
+    port: 5432
+    targetPort: 5432
+

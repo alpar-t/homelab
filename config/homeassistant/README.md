@@ -83,20 +83,26 @@ spec:
     targetPort: 5432
 ```
 
-### Credentials Secret
+### Credentials (Auto-Generated)
 
-```yaml
-# config/homeassistant/manifests/postgres-credentials.yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: homeassistant-db-credentials
-  namespace: homeassistant
-type: kubernetes.io/basic-auth
-stringData:
-  username: ha_recorder
-  password: <generate-strong-password>  # Use: openssl rand -base64 24
+CloudNativePG automatically generates credentials and stores them in a Secret.
+No credentials are checked into the repository.
+
+After the cluster is created, retrieve the password:
+
+```bash
+# Get the auto-generated password
+kubectl get secret homeassistant-db-app -n homeassistant \
+  -o jsonpath='{.data.password}' | base64 -d
+
+# Or get the full connection URI
+kubectl get secret homeassistant-db-app -n homeassistant \
+  -o jsonpath='{.data.uri}' | base64 -d
 ```
+
+The operator creates these secrets:
+- `homeassistant-db-app` — application user credentials (ha_recorder)
+- `homeassistant-db-superuser` — postgres superuser (for admin tasks)
 
 ## Home Assistant Configuration
 
@@ -105,6 +111,7 @@ On your Home Assistant Green, edit `configuration.yaml`:
 ```yaml
 recorder:
   # PostgreSQL connection string (using local DNS name)
+  # Get password with: kubectl get secret homeassistant-db-app -n homeassistant -o jsonpath='{.data.password}' | base64 -d
   db_url: postgresql://ha_recorder:YOUR_PASSWORD@ha-db.local:5432/homeassistant
   
   # Optional: Tune retention
@@ -122,7 +129,7 @@ recorder:
       - sun.sun
 ```
 
-Replace `YOUR_PASSWORD` with the password from the secret.
+Replace `YOUR_PASSWORD` with the password from the `homeassistant-db-app` secret.
 
 The `ha-db.local` hostname is resolved via Pi-hole local DNS (see `config/pihole/manifests/custom-dns-configmap.yaml`).
 

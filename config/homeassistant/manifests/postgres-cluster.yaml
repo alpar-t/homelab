@@ -1,0 +1,52 @@
+# Home Assistant PostgreSQL Cluster
+# Managed by CloudNativePG operator
+#
+# This provides an external database for Home Assistant Green's
+# recorder integration, exposed via MetalLB LoadBalancer.
+
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: homeassistant-db
+  namespace: homeassistant
+spec:
+  # Single instance - HA recorder doesn't need database HA
+  # If database is down, Home Assistant continues (just no history recording)
+  instances: 1
+  
+  imageName: ghcr.io/cloudnative-pg/postgresql:16
+  
+  bootstrap:
+    initdb:
+      database: homeassistant
+      owner: ha_recorder
+      # No secret specified - CloudNativePG auto-generates credentials
+      # Password stored in: homeassistant-db-app secret (created by operator)
+  
+  storage:
+    size: 20Gi  # History can grow; adjust based on retention
+    storageClass: longhorn-ssd
+  
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "1"
+  
+  # PostgreSQL configuration tuned for recorder workload
+  postgresql:
+    parameters:
+      # Logging
+      log_statement: "ddl"
+      log_min_duration_statement: "1000"  # Log queries taking > 1s
+      
+      # Memory (tuned for small instance)
+      shared_buffers: "128MB"
+      work_mem: "8MB"
+      maintenance_work_mem: "64MB"
+      
+      # Connections
+      max_connections: "50"
+

@@ -61,7 +61,7 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 **APPS:**
 
 - [X] Pihole
-- [ ] Database (PostgreSQL with CloudNativePG) - see config/postgres/README.md
+- [X] Database (PostgreSQL with CloudNativePG) - see config/postgres/README.md
 - [ ] Frigate
 - [ ] Omada
 - [ ] OTMonitor
@@ -73,7 +73,7 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [ ] Paperless 
 - [ ] Emby
 - [ ] Home Assistant DB (external PostgreSQL for HA Green) - see config/homeassistant/README.md
-- [ ] MetalLB (LoadBalancer IPs for external access) - see config/metallb/README.md
+- [X] MetalLB (LoadBalancer IPs for external access) - see config/metallb/README.md
 
 ## Hardware
 
