@@ -15,9 +15,6 @@ data:
     set daemon 60
     set syslog
     
-    # Deliver to Stalwart via SMTP (localhost since we're in the same pod)
-    set smtp localhost/25
-    
     # Service mailbox
     poll imap.migadu.com
       protocol IMAP
@@ -25,6 +22,7 @@ data:
       password "FETCHMAIL_SERVICE_PASSWORD"
       ssl
       sslcertck
+      smtphost localhost/25
       is "SERVICE_EMAIL_PLACEHOLDER" here
       nokeep
     
@@ -35,6 +33,7 @@ data:
       password "FETCHMAIL_KINGA_PASSWORD"
       ssl
       sslcertck
+      smtphost localhost/25
       is "KINGA_EMAIL_PLACEHOLDER" here
       nokeep
     
@@ -45,5 +44,6 @@ data:
       password "FETCHMAIL_ALPAR_PASSWORD"
       ssl
       sslcertck
+      smtphost localhost/25
       is "ALPAR_EMAIL_PLACEHOLDER" here
       nokeep

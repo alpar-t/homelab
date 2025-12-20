@@ -55,7 +55,7 @@ spec:
         # Main Stalwart container
         - name: stalwart
           # Pinned version - see /CLOUD.md for update instructions
-          image: stalwartlabs/mail-server:v0.13.0
+          image: stalwartlabs/stalwart:v0.13.2
           ports:
             - containerPort: 25
               name: smtp
