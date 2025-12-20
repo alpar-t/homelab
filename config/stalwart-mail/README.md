@@ -88,11 +88,11 @@ poll imap.migadu.com
   password "FETCHMAIL_USER_PASSWORD"
   ssl
   sslcertck
-  mda "/usr/local/bin/stalwart-cli import --account user"
+  is "user@yourdomain.tld" here
   nokeep
 ```
 
-> **Note**: Use a placeholder like `FETCHMAIL_USER_PASSWORD` — it will be replaced at runtime from the secret.
+> **Note**: Use a placeholder like `FETCHMAIL_USER_PASSWORD` — it will be replaced at runtime from the secret. The `is ... here` line tells fetchmail to deliver to that local address via SMTP.
 
 ### 3. Add Password to Secret
 
@@ -298,6 +298,7 @@ data:
   fetchmailrc.template: |
     set daemon 60
     set syslog
+    set smtp localhost/25
     
     # Service mailbox
     poll imap.migadu.com
@@ -306,7 +307,7 @@ data:
       password "FETCHMAIL_SERVICE_PASSWORD"
       ssl
       sslcertck
-      mda "/usr/local/bin/stalwart-cli import --account service"
+      is "SERVICE_EMAIL_PLACEHOLDER" here
       nokeep
     
     # Kinga mailbox
@@ -316,7 +317,7 @@ data:
       password "FETCHMAIL_KINGA_PASSWORD"
       ssl
       sslcertck
-      mda "/usr/local/bin/stalwart-cli import --account kinga"
+      is "KINGA_EMAIL_PLACEHOLDER" here
       nokeep
     
     # Alpar mailbox
@@ -326,7 +327,7 @@ data:
       password "FETCHMAIL_ALPAR_PASSWORD"
       ssl
       sslcertck
-      mda "/usr/local/bin/stalwart-cli import --account alpar"
+      is "ALPAR_EMAIL_PLACEHOLDER" here
       nokeep
 ```
 
@@ -375,9 +376,10 @@ initContainers:
 |--------|-------------|
 | `user` | Full email address in Migadu |
 | `password` | Placeholder replaced at runtime from secret |
-| `mda --account` | Local Stalwart account name (usually the part before @) |
+| `is ... here` | Deliver to this local email address via SMTP |
+| `set smtp localhost/25` | Deliver via SMTP to Stalwart (same pod) |
 | `nokeep` | Delete mail from Migadu after fetching; use `keep` to retain as backup |
-| `set daemon 60` | Poll every 60 seconds (IDLE not used for simplicity) |
+| `set daemon 60` | Poll every 60 seconds |
 
 ### 7. Deploy Roundcube with OIDC
 

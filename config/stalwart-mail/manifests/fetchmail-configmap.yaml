@@ -15,6 +15,9 @@ data:
     set daemon 60
     set syslog
     
+    # Deliver to Stalwart via SMTP (localhost since we're in the same pod)
+    set smtp localhost/25
+    
     # Service mailbox
     poll imap.migadu.com
       protocol IMAP
@@ -22,7 +25,7 @@ data:
       password "FETCHMAIL_SERVICE_PASSWORD"
       ssl
       sslcertck
-      mda "/usr/local/bin/stalwart-cli import --account service"
+      is "SERVICE_EMAIL_PLACEHOLDER" here
       nokeep
     
     # Kinga mailbox
@@ -32,7 +35,7 @@ data:
       password "FETCHMAIL_KINGA_PASSWORD"
       ssl
       sslcertck
-      mda "/usr/local/bin/stalwart-cli import --account kinga"
+      is "KINGA_EMAIL_PLACEHOLDER" here
       nokeep
     
     # Alpar mailbox
@@ -42,5 +45,5 @@ data:
       password "FETCHMAIL_ALPAR_PASSWORD"
       ssl
       sslcertck
-      mda "/usr/local/bin/stalwart-cli import --account alpar"
+      is "ALPAR_EMAIL_PLACEHOLDER" here
       nokeep
