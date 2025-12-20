@@ -1,22 +1,21 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: landing-page
+  name: stalwart-mail
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: https://github.com/alpar-t/homelab
     targetRevision: main
-    path: config/landing-page/manifests
+    path: config/stalwart-mail/manifests
   destination:
     server: https://kubernetes.default.svc
-    namespace: landing-page
+    namespace: stalwart-mail
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-
 

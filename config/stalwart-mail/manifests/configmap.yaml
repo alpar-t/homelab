@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stalwart-config
+  namespace: stalwart-mail
+  labels:
+    app: stalwart
+data:
+  # Stalwart configuration - TOML format
+  # See https://stalw.art/docs/configuration/overview
+  config.toml: |
+    [server]
+    hostname = "mail.newjoy.ro"
+    
+    [server.listener.smtp]
+    bind = ["[::]:25"]
+    protocol = "smtp"
+    
+    [server.listener.submissions]
+    bind = ["[::]:587"]
+    protocol = "smtp"
+    tls.implicit = false
+    
+    [server.listener.imaps]
+    bind = ["[::]:993"]
+    protocol = "imap"
+    tls.implicit = true
+    
+    [server.listener.imap]
+    bind = ["[::]:143"]
+    protocol = "imap"
+    tls.implicit = false
+    
+    [server.listener.https]
+    bind = ["[::]:8080"]
+    protocol = "http"
+    
+    [storage]
+    data = "rocksdb"
+    fts = "rocksdb"
+    blob = "rocksdb"
+    lookup = "rocksdb"
+    directory = "internal"
+    
+    [store.rocksdb]
+    type = "rocksdb"
+    path = "/opt/stalwart-mail/data"
+    compression = "lz4"
+    
+    [directory.internal]
+    type = "internal"
+    store = "rocksdb"
+    
+    [authentication]
+    fallback-admin.user = "admin"
+    fallback-admin.secret = "%{env:ADMIN_PASSWORD}%"
+    
+    [oauth]
+    oidc.enable = true
+    oidc.issuer-url = "https://auth.newjoy.ro"
+    oidc.client-id = "%{env:OIDC_CLIENT_ID}%"
+    oidc.client-secret = "%{env:OIDC_CLIENT_SECRET}%"
+    oidc.scopes = ["openid", "email", "profile"]
+    
+    [oauth.claims]
+    email = "email"
+    name = "name"
+    
+    [session.relay]
+    # Relay outbound mail through mail-relay (Postfix → Migadu)
+    host = "mail-relay.mail-relay.svc.cluster.local"
+    port = 25
+    tls.implicit = false
+    auth.enable = false
+

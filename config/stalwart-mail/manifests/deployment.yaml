@@ -1,0 +1,177 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stalwart
+  namespace: stalwart-mail
+  labels:
+    app: stalwart
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: stalwart
+  template:
+    metadata:
+      labels:
+        app: stalwart
+    spec:
+      initContainers:
+        # Init container to substitute secrets into fetchmail config
+        - name: fetchmail-config-init
+          image: alpine:3.21
+          command:
+            - sh
+            - -c
+            - |
+              cp /config-template/fetchmailrc.template /config/fetchmailrc
+              # Replace password placeholders
+              for var in $(env | grep '^FETCHMAIL_' | cut -d= -f1); do
+                value=$(eval echo \$$var)
+                sed -i "s|$var|$value|g" /config/fetchmailrc
+              done
+              # Replace email placeholders
+              sed -i "s|SERVICE_EMAIL_PLACEHOLDER|$SERVICE_EMAIL|g" /config/fetchmailrc
+              sed -i "s|KINGA_EMAIL_PLACEHOLDER|$KINGA_EMAIL|g" /config/fetchmailrc
+              sed -i "s|ALPAR_EMAIL_PLACEHOLDER|$ALPAR_EMAIL|g" /config/fetchmailrc
+              chmod 600 /config/fetchmailrc
+              chown 1000:1000 /config/fetchmailrc
+              echo "Fetchmail config generated:"
+              cat /config/fetchmailrc | grep -v password
+          envFrom:
+            - secretRef:
+                name: migadu-fetch-credentials
+            - secretRef:
+                name: stalwart-emails
+          volumeMounts:
+            - name: fetchmail-config-template
+              mountPath: /config-template
+            - name: fetchmail-config
+              mountPath: /config
+      containers:
+        # Main Stalwart container
+        - name: stalwart
+          # Pinned version - see /CLOUD.md for update instructions
+          image: stalwartlabs/mail-server:v0.10.8
+          ports:
+            - containerPort: 25
+              name: smtp
+            - containerPort: 587
+              name: submission
+            - containerPort: 993
+              name: imaps
+            - containerPort: 143
+              name: imap
+            - containerPort: 8080
+              name: http
+          env:
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stalwart-admin
+                  key: password
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: stalwart-oidc
+                  key: client_id
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: stalwart-oidc
+                  key: client_secret
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          volumeMounts:
+            - name: stalwart-data
+              mountPath: /opt/stalwart-mail
+            - name: stalwart-config
+              mountPath: /opt/stalwart-mail/etc
+        # Fetchmail sidecar - pulls mail from Migadu
+        - name: fetchmail
+          # Pinned version - see /CLOUD.md for update instructions
+          image: alpine:3.21
+          command:
+            - sh
+            - -c
+            - |
+              apk add --no-cache fetchmail
+              echo "Starting fetchmail daemon..."
+              exec fetchmail -f /config/fetchmailrc -v --nodetach
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: fetchmail-config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: stalwart-data
+          persistentVolumeClaim:
+            claimName: stalwart-data
+        - name: stalwart-config
+          configMap:
+            name: stalwart-config
+        - name: fetchmail-config-template
+          configMap:
+            name: fetchmail-config
+        - name: fetchmail-config
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stalwart
+  namespace: stalwart-mail
+  labels:
+    app: stalwart
+spec:
+  type: ClusterIP
+  selector:
+    app: stalwart
+  ports:
+    - name: smtp
+      port: 25
+      targetPort: 25
+      protocol: TCP
+    - name: submission
+      port: 587
+      targetPort: 587
+      protocol: TCP
+    - name: imaps
+      port: 993
+      targetPort: 993
+      protocol: TCP
+    - name: imap
+      port: 143
+      targetPort: 143
+      protocol: TCP
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+

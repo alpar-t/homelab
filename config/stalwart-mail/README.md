@@ -1,6 +1,6 @@
 # Stalwart Mail Server for HomePBP
 
-Local IMAP mail server with Authentik SSO, fetching inbound mail from Migadu.
+Local IMAP mail server with Pocket ID SSO, fetching inbound mail from Migadu.
 
 ## Architecture Decisions
 
@@ -9,7 +9,7 @@ Local IMAP mail server with Authentik SSO, fetching inbound mail from Migadu.
 | Requirement | Solution |
 |-------------|----------|
 | No inbound ports (port 25) | Migadu receives mail, we fetch via IMAP |
-| SSO with Authentik | Stalwart supports OIDC natively |
+| SSO with Pocket ID | Stalwart supports OIDC natively |
 | Own storage & backups | Mail stored locally on Longhorn PVC |
 | Choice of webmail | Roundcube (or any IMAP client) |
 | Good deliverability | Migadu handles outbound reputation |
@@ -51,7 +51,7 @@ Local IMAP mail server with Authentik SSO, fetching inbound mail from Migadu.
 │  │               │     │                 │     │             │ │
 │  └───────────────┘     └────────┬────────┘     └─────────────┘ │
 │                                 │                               │
-│                          Authentik OIDC                         │
+│                          Pocket ID OIDC                         │
 │                                 │                               │
 │                                 ▼                               │
 │                        ┌─────────────────┐                      │
@@ -59,7 +59,7 @@ Local IMAP mail server with Authentik SSO, fetching inbound mail from Migadu.
 │                        │    (Webmail)    │                      │
 │                        │                 │                      │
 │                        │ OIDC login via  │                      │
-│                        │ Authentik       │                      │
+│                        │ Pocket ID       │                      │
 │                        └─────────────────┘                      │
 │                                                                 │
 │  Storage: Longhorn PVC (included in backups)                    │
@@ -113,7 +113,7 @@ The placeholder name in the ConfigMap must match the key name in the secret.
 Each mailbox:
 - Receives mail via Migadu (spam-filtered)
 - Is fetched to local Stalwart storage
-- Accessible via webmail (Roundcube) with Authentik SSO
+- Accessible via webmail (Roundcube) with Pocket ID SSO
 - Accessible via mobile apps (with app-specific passwords)
 
 ## Components
@@ -131,12 +131,12 @@ Each mailbox:
 ### Webmail (Full SSO)
 
 ```
-User → Roundcube "Login with Authentik" → Authentik (OIDC) → Roundcube → Stalwart (OIDC token)
+User → Roundcube "Login with Pocket ID" → Pocket ID (OIDC) → Roundcube → Stalwart (OIDC token)
 ```
 
 - ✅ True single sign-on
 - ✅ No separate password needed
-- ✅ Authentik session = mail access
+- ✅ Pocket ID session = mail access
 
 ### Mobile/Desktop Apps (App Passwords)
 
@@ -152,7 +152,7 @@ IMAP clients (iOS Mail, Thunderbird, etc.) don't support OIDC. Users generate ap
 | Gmail app | ❌ | App password |
 | Thunderbird | ❌ | App password |
 | K-9 Mail | ❌ | App password |
-| Webmail | ✅ | Authentik SSO |
+| Webmail | ✅ | Pocket ID SSO |
 
 ## Prerequisites
 
@@ -162,62 +162,104 @@ Before deploying, ensure:
 2. **Migadu mailboxes** created for each user
 3. **DNS configured** (see `config/mail-relay/README.md` for DNS setup)
 4. **mail-relay deployed** and working
-5. **Authentik running** with OIDC provider configured
+5. **Pocket ID running** with OIDC client configured
 
 ## Setup Guide
 
-### 1. Configure Authentik OIDC Provider
+### 1. Configure Pocket ID OIDC Client
 
-Create an OAuth2/OIDC provider in Authentik for Stalwart:
+Create an OIDC client in Pocket ID for Stalwart:
 
-1. Go to Authentik Admin → **Applications** → **Providers** → **Create**
-2. Choose **OAuth2/OpenID Provider**
-3. Configure:
+1. Go to Pocket ID Admin → **OIDC Clients** → **Create**
+2. Configure:
 
 | Setting | Value |
 |---------|-------|
 | Name | `Stalwart Mail` |
-| Authorization flow | default-provider-authorization-explicit-consent |
-| Client ID | `stalwart` (auto-generated or custom) |
-| Client Secret | (copy this for later) |
 | Redirect URIs | `https://mail.newjoy.ro/oauth/callback` |
-| Scopes | `openid email profile` |
 
-4. Create an Application linking to this provider
+3. Copy the **Client ID** and **Client Secret**
 
-### 2. Create Migadu Fetch Credentials Secret
+### 2. Create Secrets
 
-Create a secret with credentials for fetching from Migadu (one entry per mailbox):
+> **⚠️ Never commit secrets to the repository!** Create secrets directly in the cluster.
+
+You need to create **three secrets** in the `stalwart-mail` namespace:
+
+#### Secret 1: Migadu Fetch Credentials
+
+Contains passwords for fetchmail to pull mail from Migadu (one entry per mailbox):
 
 ```bash
 kubectl create namespace stalwart-mail
 
-# Secret for fetchmail to pull from Migadu
 # Add one --from-literal for each mailbox
+# The key names must match placeholders in fetchmail-configmap.yaml
 kubectl create secret generic migadu-fetch-credentials \
   --namespace stalwart-mail \
-  --from-literal=user1_password='USER1_MIGADU_PASSWORD' \
-  --from-literal=user2_password='USER2_MIGADU_PASSWORD'
+  --from-literal=FETCHMAIL_SERVICE_PASSWORD='<service mailbox migadu password>' \
+  --from-literal=FETCHMAIL_KINGA_PASSWORD='<kinga mailbox migadu password>' \
+  --from-literal=FETCHMAIL_ALPAR_PASSWORD='<alpar mailbox migadu password>'
 ```
 
-### 3. Create Authentik OIDC Secret
+#### Secret 2: Stalwart OIDC Credentials
+
+Contains the Pocket ID OIDC client credentials:
 
 ```bash
 kubectl create secret generic stalwart-oidc \
   --namespace stalwart-mail \
-  --from-literal=client_id='stalwart' \
-  --from-literal=client_secret='YOUR_AUTHENTIK_CLIENT_SECRET'
+  --from-literal=client_id='<client-id-from-pocket-id>' \
+  --from-literal=client_secret='<client-secret-from-pocket-id>'
+```
+
+#### Secret 3: Email Addresses
+
+Contains email addresses to avoid checking them into git:
+
+```bash
+kubectl create secret generic stalwart-emails \
+  --namespace stalwart-mail \
+  --from-literal=SERVICE_EMAIL='<service email address>' \
+  --from-literal=KINGA_EMAIL='<kinga email address>' \
+  --from-literal=ALPAR_EMAIL='<alpar email address>'
+```
+
+#### Secret 4: Stalwart Admin Password
+
+Admin password for Stalwart's fallback authentication:
+
+```bash
+kubectl create secret generic stalwart-admin \
+  --namespace stalwart-mail \
+  --from-literal=password='<generate-a-strong-password>'
+```
+
+### 3. Verify Secrets
+
+Confirm all secrets are created:
+
+```bash
+kubectl get secrets -n stalwart-mail
+# Expected:
+# migadu-fetch-credentials
+# stalwart-oidc
+# stalwart-emails
+# stalwart-admin
 ```
 
 ### 4. Deploy Stalwart
 
+Stalwart is deployed via ArgoCD. The application is defined in `apps/stalwart-mail.yaml`:
+
 ```bash
+# ArgoCD will automatically sync, or you can trigger manually:
 kubectl apply -f apps/stalwart-mail.yaml
 ```
 
 ### 5. Configure Stalwart OIDC
 
-Stalwart configuration for Authentik OIDC (in ConfigMap):
+Stalwart configuration for Pocket ID OIDC (in ConfigMap):
 
 ```toml
 [authentication]
@@ -225,12 +267,12 @@ fallback-admin.user = "admin"
 fallback-admin.secret = "%{env:ADMIN_SECRET}%"
 
 [oauth]
-oidc.issuer-url = "https://auth.newjoy.ro/application/o/stalwart/"
+oidc.issuer-url = "https://auth.newjoy.ro"
 oidc.client-id = "%{env:OIDC_CLIENT_ID}%"
 oidc.client-secret = "%{env:OIDC_CLIENT_SECRET}%"
 oidc.scopes = ["openid", "email", "profile"]
 
-# Map Authentik email to Stalwart account
+# Map Pocket ID email to Stalwart account
 [oauth.claims]
 email = "email"
 name = "name"
@@ -258,36 +300,40 @@ data:
     set daemon 60
     set syslog
     
-    # Add one poll block per mailbox
-    # Use FETCHMAIL_<USERNAME>_PASSWORD as placeholder
-    
+    # Service mailbox
     poll imap.migadu.com
       protocol IMAP
-      user "user1@yourdomain.tld"
-      password "FETCHMAIL_USER1_PASSWORD"
+      user "SERVICE_EMAIL_PLACEHOLDER"
+      password "FETCHMAIL_SERVICE_PASSWORD"
       ssl
       sslcertck
-      mda "/usr/local/bin/stalwart-cli import --account user1"
+      mda "/usr/local/bin/stalwart-cli import --account service"
       keep
     
+    # Kinga mailbox
     poll imap.migadu.com
       protocol IMAP
-      user "user2@yourdomain.tld"
-      password "FETCHMAIL_USER2_PASSWORD"
+      user "KINGA_EMAIL_PLACEHOLDER"
+      password "FETCHMAIL_KINGA_PASSWORD"
       ssl
       sslcertck
-      mda "/usr/local/bin/stalwart-cli import --account user2"
+      mda "/usr/local/bin/stalwart-cli import --account kinga"
+      keep
+    
+    # Alpar mailbox
+    poll imap.migadu.com
+      protocol IMAP
+      user "ALPAR_EMAIL_PLACEHOLDER"
+      password "FETCHMAIL_ALPAR_PASSWORD"
+      ssl
+      sslcertck
+      mda "/usr/local/bin/stalwart-cli import --account alpar"
       keep
 ```
 
 #### Secret (created manually, NOT in git)
 
-```bash
-kubectl create secret generic migadu-fetch-credentials \
-  --namespace stalwart-mail \
-  --from-literal=FETCHMAIL_USER1_PASSWORD='actual-password-1' \
-  --from-literal=FETCHMAIL_USER2_PASSWORD='actual-password-2'
-```
+See "Create Secrets" section above.
 
 #### Init Container (substitutes passwords)
 
@@ -307,10 +353,16 @@ initContainers:
           value=$(eval echo \$$var)
           sed -i "s|$var|$value|g" /config/fetchmailrc
         done
+        # Replace email placeholders
+        sed -i "s|SERVICE_EMAIL_PLACEHOLDER|$SERVICE_EMAIL|g" /config/fetchmailrc
+        sed -i "s|KINGA_EMAIL_PLACEHOLDER|$KINGA_EMAIL|g" /config/fetchmailrc
+        sed -i "s|ALPAR_EMAIL_PLACEHOLDER|$ALPAR_EMAIL|g" /config/fetchmailrc
         chmod 600 /config/fetchmailrc
     envFrom:
       - secretRef:
           name: migadu-fetch-credentials
+      - secretRef:
+          name: stalwart-emails
     volumeMounts:
       - name: fetchmail-config-template
         mountPath: /config-template
@@ -330,12 +382,12 @@ initContainers:
 
 ### 7. Deploy Roundcube with OIDC
 
-Roundcube supports OIDC via the `oauth2` plugin, enabling true SSO with Authentik.
+Roundcube supports OIDC via the `oauth2` plugin, enabling true SSO with Pocket ID.
 
 **How it works:**
 1. User visits `webmail.newjoy.ro`
-2. Clicks "Login with Authentik"
-3. Authenticates via Authentik OIDC
+2. Clicks "Login with Pocket ID"
+3. Authenticates via Pocket ID OIDC
 4. Roundcube receives token with user's email
 5. Connects to Stalwart IMAP (Stalwart also validates the OIDC token)
 6. User sees their mailbox
@@ -383,12 +435,12 @@ Roundcube OIDC config (`oauth2.inc.php`):
 
 ```php
 $config['oauth_provider'] = 'generic';
-$config['oauth_provider_name'] = 'Authentik';
+$config['oauth_provider_name'] = 'Pocket ID';
 $config['oauth_client_id'] = 'roundcube';
 $config['oauth_client_secret'] = 'YOUR_CLIENT_SECRET';
-$config['oauth_auth_uri'] = 'https://auth.newjoy.ro/application/o/authorize/';
-$config['oauth_token_uri'] = 'https://auth.newjoy.ro/application/o/token/';
-$config['oauth_identity_uri'] = 'https://auth.newjoy.ro/application/o/userinfo/';
+$config['oauth_auth_uri'] = 'https://auth.newjoy.ro/authorize';
+$config['oauth_token_uri'] = 'https://auth.newjoy.ro/api/oidc/token';
+$config['oauth_identity_uri'] = 'https://auth.newjoy.ro/api/oidc/userinfo';
 $config['oauth_scope'] = 'openid email profile';
 $config['oauth_identity_fields'] = ['email'];
 ```
@@ -400,7 +452,7 @@ $config['oauth_identity_fields'] = ['email'];
 | Setting | Value |
 |---------|-------|
 | URL | `https://webmail.newjoy.ro` |
-| Login | Via Authentik SSO |
+| Login | Via Pocket ID SSO |
 
 ### Mobile/Desktop Apps
 
@@ -462,7 +514,7 @@ kubectl exec -n stalwart-mail deployment/stalwart -c fetchmail -- \
 
 ### OIDC Login Failing
 
-1. Check Authentik provider configuration
+1. Check Pocket ID client configuration
 2. Verify redirect URI matches exactly
 3. Check Stalwart logs:
    ```bash
@@ -509,9 +561,21 @@ Outbound mail goes through mail-relay, not directly from Stalwart:
 
 ---
 
+## Secrets Summary
+
+Before deploying, create these secrets manually:
+
+| Secret Name | Namespace | Keys | Purpose |
+|-------------|-----------|------|---------|
+| `migadu-fetch-credentials` | stalwart-mail | `FETCHMAIL_SERVICE_PASSWORD`, `FETCHMAIL_KINGA_PASSWORD`, `FETCHMAIL_ALPAR_PASSWORD` | Migadu mailbox passwords for fetchmail |
+| `stalwart-oidc` | stalwart-mail | `client_id`, `client_secret` | Pocket ID OIDC credentials |
+| `stalwart-emails` | stalwart-mail | `SERVICE_EMAIL`, `KINGA_EMAIL`, `ALPAR_EMAIL` | Email addresses (kept out of git) |
+| `stalwart-admin` | stalwart-mail | `password` | Stalwart admin fallback password |
+
+---
+
 ## Related
 
 - **Outbound Mail**: See `config/mail-relay/README.md` for SMTP relay configuration
 - **DNS Setup**: Migadu DNS records are documented in mail-relay README
-- **Authentik**: OIDC provider configuration for SSO
-
+- **Pocket ID**: OIDC provider configuration for SSO

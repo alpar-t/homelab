@@ -1,17 +1,15 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: mail-queue-pvc
-  namespace: mail-relay
+  name: stalwart-data
+  namespace: stalwart-mail
+  labels:
+    app: stalwart
 spec:
   accessModes:
     - ReadWriteOnce
   storageClassName: longhorn-ssd
   resources:
     requests:
-      # Small volume - just for queuing emails during outages
-      storage: 256Mi
-
-
-
+      storage: 10Gi
 

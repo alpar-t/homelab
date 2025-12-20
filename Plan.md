@@ -57,6 +57,7 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 **Tasks:**
 - [ ] Monitoring (Prometheus + Grafana)
 - [ ] Logging (Loki)
+- [ ] Add argoCD to pocket id 
 
 **APPS:**
 
