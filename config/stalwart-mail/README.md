@@ -88,9 +88,8 @@ poll imap.migadu.com
   password "FETCHMAIL_USER_PASSWORD"
   ssl
   sslcertck
-  idle
   mda "/usr/local/bin/stalwart-cli import --account user"
-  keep
+  nokeep
 ```
 
 > **Note**: Use a placeholder like `FETCHMAIL_USER_PASSWORD` — it will be replaced at runtime from the secret.
@@ -308,7 +307,7 @@ data:
       ssl
       sslcertck
       mda "/usr/local/bin/stalwart-cli import --account service"
-      keep
+      nokeep
     
     # Kinga mailbox
     poll imap.migadu.com
@@ -318,7 +317,7 @@ data:
       ssl
       sslcertck
       mda "/usr/local/bin/stalwart-cli import --account kinga"
-      keep
+      nokeep
     
     # Alpar mailbox
     poll imap.migadu.com
@@ -328,7 +327,7 @@ data:
       ssl
       sslcertck
       mda "/usr/local/bin/stalwart-cli import --account alpar"
-      keep
+      nokeep
 ```
 
 #### Secret (created manually, NOT in git)
@@ -377,7 +376,7 @@ initContainers:
 | `user` | Full email address in Migadu |
 | `password` | Placeholder replaced at runtime from secret |
 | `mda --account` | Local Stalwart account name (usually the part before @) |
-| `keep` | Retain mail on Migadu as backup; use `nokeep` to delete after fetch |
+| `nokeep` | Delete mail from Migadu after fetching; use `keep` to retain as backup |
 | `set daemon 60` | Poll every 60 seconds (IDLE not used for simplicity) |
 
 ### 7. Deploy Roundcube with OIDC

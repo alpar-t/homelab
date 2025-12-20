@@ -23,7 +23,7 @@ data:
       ssl
       sslcertck
       mda "/usr/local/bin/stalwart-cli import --account service"
-      keep
+      nokeep
     
     # Kinga mailbox
     poll imap.migadu.com
@@ -33,7 +33,7 @@ data:
       ssl
       sslcertck
       mda "/usr/local/bin/stalwart-cli import --account kinga"
-      keep
+      nokeep
     
     # Alpar mailbox
     poll imap.migadu.com
@@ -43,4 +43,4 @@ data:
       ssl
       sslcertck
       mda "/usr/local/bin/stalwart-cli import --account alpar"
-      keep
+      nokeep
