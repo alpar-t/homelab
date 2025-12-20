@@ -91,15 +91,13 @@ spec:
               cpu: 500m
               memory: 512Mi
           livenessProbe:
-            httpGet:
-              path: /healthz
-              port: http
+            tcpSocket:
+              port: imap
             initialDelaySeconds: 30
             periodSeconds: 30
           readinessProbe:
-            httpGet:
-              path: /healthz
-              port: http
+            tcpSocket:
+              port: imap
             initialDelaySeconds: 10
             periodSeconds: 10
           volumeMounts:
@@ -109,21 +107,17 @@ spec:
               mountPath: /opt/stalwart-mail/etc
         # Fetchmail sidecar - pulls mail from Migadu
         - name: fetchmail
-          # Pinned version - see /CLOUD.md for update instructions
           image: alpine:3.21
           command:
             - sh
             - -c
             - |
               apk add --no-cache fetchmail
-              # Create fetchmail user
-              adduser -D -u 1000 fetchmail
-              # Copy config to writable location with correct ownership
-              cp /config-readonly/fetchmailrc /home/fetchmail/.fetchmailrc
-              chown fetchmail:fetchmail /home/fetchmail/.fetchmailrc
-              chmod 600 /home/fetchmail/.fetchmailrc
-              echo "Starting fetchmail daemon as fetchmail user..."
-              exec su -s /bin/sh fetchmail -c "fetchmail -f /home/fetchmail/.fetchmailrc -v --nodetach"
+              # Copy config to writable location with correct permissions
+              cp /config/fetchmailrc /tmp/fetchmailrc
+              chmod 600 /tmp/fetchmailrc
+              echo "Starting fetchmail daemon..."
+              exec fetchmail -f /tmp/fetchmailrc -v --nodetach
           resources:
             requests:
               cpu: 10m
@@ -133,7 +127,7 @@ spec:
               memory: 64Mi
           volumeMounts:
             - name: fetchmail-config
-              mountPath: /config-readonly
+              mountPath: /config
               readOnly: true
       volumes:
         - name: stalwart-data
