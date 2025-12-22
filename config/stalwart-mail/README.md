@@ -256,7 +256,26 @@ Stalwart is deployed via ArgoCD. The application is defined in `apps/stalwart-ma
 kubectl apply -f apps/stalwart-mail.yaml
 ```
 
-### 5. Configure Stalwart OIDC
+### 5. Create Stalwart Accounts
+
+After Stalwart is running, you must create accounts for each mailbox. Stalwart won't accept mail for addresses it doesn't know about.
+
+1. Go to the Stalwart webadmin at `https://mail.newjoy.ro`
+2. Login with:
+   - Username: `admin`
+   - Password: (from your `stalwart-admin` secret)
+3. Go to **Management** → **Accounts** → **Create Account**
+4. Create an account for each mailbox:
+
+| Account Name | Email Address | Description |
+|--------------|---------------|-------------|
+| `service` | (from SERVICE_EMAIL secret) | System/service emails |
+| `kinga` | (from KINGA_EMAIL secret) | Personal mailbox |
+| `alpar` | (from ALPAR_EMAIL secret) | Personal mailbox |
+
+> **Important**: The account name must match the `is "..." here` mapping in fetchmail config. Stalwart will match incoming mail by email address to the correct account.
+
+### 6. Configure Stalwart OIDC
 
 Stalwart configuration for Pocket ID OIDC (in ConfigMap):
 
