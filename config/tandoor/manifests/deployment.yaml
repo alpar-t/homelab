@@ -37,10 +37,11 @@ spec:
               echo "PostgreSQL is ready!"
       containers:
         - name: tandoor
+          # Tandoor 2.3.0+ has built-in nginx, serves on port 80
           image: vabene1111/recipes:latest
           ports:
-            - containerPort: 8080
-              name: gunicorn
+            - containerPort: 80
+              name: http
           env:
             # Database configuration
             - name: DB_ENGINE
@@ -72,8 +73,6 @@ spec:
               value: "0"
             - name: ALLOWED_HOSTS
               value: "*"
-            - name: GUNICORN_MEDIA
-              value: "0"
             - name: TZ
               value: "Europe/Bucharest"
             # OIDC configuration
@@ -81,16 +80,11 @@ spec:
               value: "1"
             - name: SOCIALACCOUNT_PROVIDERS_FILE
               value: "/config/socialaccount_providers.json"
-            # Reverse proxy settings
-            - name: TANDOOR_PORT
-              value: "8080"
             - name: ENABLE_METRICS
               value: "0"
           volumeMounts:
             - name: media
               mountPath: /opt/recipes/mediafiles
-            - name: staticfiles
-              mountPath: /opt/recipes/staticfiles
             - name: oidc-config
               mountPath: /config
           resources:
@@ -103,98 +97,23 @@ spec:
           livenessProbe:
             httpGet:
               path: /
-              port: gunicorn
-            initialDelaySeconds: 60
+              port: http
+            initialDelaySeconds: 90
             periodSeconds: 30
           readinessProbe:
             httpGet:
               path: /
-              port: gunicorn
-            initialDelaySeconds: 30
+              port: http
+            initialDelaySeconds: 60
             periodSeconds: 10
-        # Nginx sidecar for static files
-        - name: nginx
-          image: nginx:mainline-alpine
-          ports:
-            - containerPort: 80
-              name: http
-          volumeMounts:
-            - name: staticfiles
-              mountPath: /static
-              readOnly: true
-            - name: media
-              mountPath: /media
-              readOnly: true
-            - name: nginx-config
-              mountPath: /etc/nginx/conf.d
-          resources:
-            requests:
-              cpu: 25m
-              memory: 32Mi
-            limits:
-              cpu: 100m
-              memory: 64Mi
       volumes:
         - name: media
           persistentVolumeClaim:
             claimName: tandoor-media
-        - name: staticfiles
-          persistentVolumeClaim:
-            claimName: tandoor-staticfiles
         - name: oidc-config
           secret:
             secretName: tandoor-oidc
             optional: true
-        - name: nginx-config
-          configMap:
-            name: tandoor-nginx
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: tandoor-nginx
-  namespace: tandoor
-  labels:
-    app: tandoor
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
-data:
-  default.conf: |
-    upstream tandoor {
-        server localhost:8080;
-    }
-
-    server {
-        listen 80;
-        server_name _;
-
-        client_max_body_size 128M;
-
-        # Serve static files
-        location /static/ {
-            alias /static/;
-            expires 30d;
-            add_header Cache-Control "public, immutable";
-        }
-
-        # Serve media files
-        location /media/ {
-            alias /media/;
-            expires 7d;
-            add_header Cache-Control "public";
-        }
-
-        # Proxy to Gunicorn
-        location / {
-            proxy_pass http://tandoor;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_read_timeout 300;
-            proxy_connect_timeout 300;
-        }
-    }
 ---
 apiVersion: v1
 kind: Service
@@ -214,4 +133,3 @@ spec:
       port: 80
       targetPort: 80
       protocol: TCP
-

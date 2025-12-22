@@ -7,18 +7,21 @@ A Django-based recipe management application with meal planning, shopping lists,
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Pod: tandoor                                                │
-│  ┌─────────────────┐    ┌─────────────────┐                │
-│  │ nginx (sidecar) │◄───│ tandoor (app)   │                │
-│  │ :80             │    │ :8080 gunicorn  │                │
-│  └────────┬────────┘    └────────┬────────┘                │
-│           │                      │                          │
-│           ▼                      ▼                          │
-│  ┌─────────────────┐    ┌─────────────────┐                │
-│  │ /static, /media │    │ PostgreSQL      │                │
-│  │ (PVCs)          │    │ (CloudNativePG) │                │
-│  └─────────────────┘    └─────────────────┘                │
+│  ┌─────────────────────────────────────────┐               │
+│  │ tandoor (built-in nginx + gunicorn)     │               │
+│  │ :80                                     │               │
+│  └────────────────┬────────────────────────┘               │
+│                   │                                         │
+│         ┌─────────┴─────────┐                              │
+│         ▼                   ▼                              │
+│  ┌─────────────────┐ ┌─────────────────┐                   │
+│  │ /mediafiles     │ │ PostgreSQL      │                   │
+│  │ (PVC)           │ │ (CloudNativePG) │                   │
+│  └─────────────────┘ └─────────────────┘                   │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+Since Tandoor 2.3.0+, the image includes a built-in nginx server on port 80.
 
 ## Initial Setup
 
@@ -147,7 +150,6 @@ Key environment variables configured:
 ## Storage
 
 - **Media files**: `tandoor-media` PVC (10Gi on longhorn-hdd)
-- **Static files**: `tandoor-staticfiles` PVC (1Gi on longhorn-ssd)
 - **Database**: Managed by CloudNativePG (5Gi on longhorn-ssd)
 
 ## Troubleshooting
