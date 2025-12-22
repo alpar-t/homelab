@@ -91,6 +91,17 @@ spec:
                 secretKeyRef:
                   name: stalwart-oidc
                   key: client_secret
+            # Migadu SMTP credentials for outbound relay
+            - name: MIGADU_SMTP_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: migadu-smtp-credentials
+                  key: username
+            - name: MIGADU_SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: migadu-smtp-credentials
+                  key: password
           resources:
             requests:
               cpu: 50m

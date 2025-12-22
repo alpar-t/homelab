@@ -81,10 +81,16 @@ data:
     email = "email"
     name = "name"
     
-    [session.relay]
-    # Relay outbound mail through mail-relay (Postfix → Migadu)
-    host = "mail-relay.mail-relay.svc.cluster.local"
-    port = 25
-    tls.implicit = false
-    auth.enable = false
+    # Outbound mail relay through Migadu
+    [remote."migadu"]
+    protocol = "smtp"
+    address = "smtp.migadu.com"
+    port = 465
+    tls.implicit = true
+    auth.enable = true
+    auth.username = "%{env:MIGADU_SMTP_USERNAME}%"
+    auth.secret = "%{env:MIGADU_SMTP_PASSWORD}%"
+    
+    [queue.outbound.next-hop]
+    default = "migadu"
 

@@ -56,9 +56,9 @@ spec:
                 secretKeyRef:
                   name: pocket-id-secrets
                   key: encryption_key
-            # Email configuration - uses local mail relay
+            # Email configuration - uses Stalwart as local relay
             - name: SMTP_HOST
-              value: "mail-relay.mail-relay.svc.cluster.local"
+              value: "stalwart.stalwart-mail.svc.cluster.local"
             - name: SMTP_PORT
               value: "25"
             - name: SMTP_FROM

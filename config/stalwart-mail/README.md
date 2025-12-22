@@ -26,41 +26,41 @@ Local IMAP mail server with Pocket ID SSO, fetching inbound mail from Migadu.
           ┌─────────┤  INBOUND:                 │
           │         │  • MX records point here  │
           │         │  • Spam filtering         │
-          │         │  • Your mailboxes          │
+          │         │  • Your mailboxes         │
           │         │                           │
-          │         │  OUTBOUND:                │◄──── mail-relay
+          │         │  OUTBOUND:                │◄──── Stalwart (direct)
           │         │  • SMTP relay             │
           │         │  • DKIM signing           │
           │         │  • Reputation             │
           │         └───────────────────────────┘
-          │
-     IMAP Fetch
-     (outbound connection,
-      no inbound ports needed)
-          │
-          ▼
+          │                      ▲
+     IMAP Fetch                  │ SMTP relay
+     (outbound connection,       │ (port 465 TLS)
+      no inbound ports needed)   │
+          │                      │
+          ▼                      │
 ┌─────────────────────────────────────────────────────────────────┐
 │                         HOMELAB                                 │
 │                                                                 │
-│  ┌───────────────┐     ┌─────────────────┐     ┌─────────────┐ │
-│  │   Fetchmail   │────▶│    Stalwart     │────▶│ Mail-Relay  │ │
-│  │               │     │                 │     │  (Postfix)  │ │
-│  │ Pulls from    │     │ • Local IMAP    │     │             │ │
-│  │ Migadu for    │     │ • OIDC auth     │     │ → Migadu    │ │
-│  │ each mailbox  │     │ • Mail storage  │     │   SMTP      │ │
-│  │               │     │                 │     │             │ │
-│  └───────────────┘     └────────┬────────┘     └─────────────┘ │
-│                                 │                               │
-│                          Pocket ID OIDC                         │
-│                                 │                               │
-│                                 ▼                               │
-│                        ┌─────────────────┐                      │
-│                        │    Roundcube    │                      │
-│                        │    (Webmail)    │                      │
-│                        │                 │                      │
-│                        │ OIDC login via  │                      │
-│                        │ Pocket ID       │                      │
-│                        └─────────────────┘                      │
+│  ┌───────────────┐     ┌─────────────────┐                      │
+│  │   Fetchmail   │────▶│    Stalwart     │──────────────────────┘
+│  │               │     │                 │
+│  │ Pulls from    │     │ • Local IMAP    │◄──── Pocket ID
+│  │ Migadu for    │     │ • OIDC auth     │      (other apps)
+│  │ each mailbox  │     │ • Mail storage  │
+│  │               │     │ • Outbound SMTP │
+│  └───────────────┘     └────────┬────────┘
+│                                 │
+│                          Pocket ID OIDC
+│                                 │
+│                                 ▼
+│                        ┌─────────────────┐
+│                        │    Roundcube    │
+│                        │    (Webmail)    │
+│                        │                 │
+│                        │ OIDC login via  │
+│                        │ Pocket ID       │
+│                        └─────────────────┘
 │                                                                 │
 │  Storage: Longhorn PVC (included in backups)                    │
 └─────────────────────────────────────────────────────────────────┘
@@ -159,9 +159,8 @@ Before deploying, ensure:
 
 1. **Migadu account** with Micro plan ($19/year)
 2. **Migadu mailboxes** created for each user
-3. **DNS configured** (see `config/mail-relay/README.md` for DNS setup)
-4. **mail-relay deployed** and working
-5. **Pocket ID running** with OIDC client configured
+3. **DNS configured** for SPF, DKIM, DMARC (see Migadu DNS section below)
+4. **Pocket ID running** with OIDC client configured
 
 ## Setup Guide
 
@@ -234,6 +233,19 @@ kubectl create secret generic stalwart-admin \
   --from-literal=password='<generate-a-strong-password>'
 ```
 
+#### Secret 5: Migadu SMTP Credentials
+
+Contains the Migadu SMTP credentials for outbound mail relay:
+
+```bash
+kubectl create secret generic migadu-smtp-credentials \
+  --namespace stalwart-mail \
+  --from-literal=username='service@newjoy.ro' \
+  --from-literal=password='<your-migadu-mailbox-password>'
+```
+
+> **Note**: Use the same Migadu mailbox credentials. With wildcard sending enabled in Migadu, this account can send as any `@newjoy.ro` address.
+
 ### 3. Verify Secrets
 
 Confirm all secrets are created:
@@ -245,6 +257,7 @@ kubectl get secrets -n stalwart-mail
 # stalwart-oidc
 # stalwart-emails
 # stalwart-admin
+# migadu-smtp-credentials
 ```
 
 ### 4. Deploy Stalwart
@@ -443,7 +456,7 @@ env:
   - name: ROUNDCUBEMAIL_DEFAULT_PORT
     value: "993"
   - name: ROUNDCUBEMAIL_SMTP_SERVER
-    value: "mail-relay.mail-relay.svc.cluster.local"
+    value: "stalwart.stalwart-mail.svc.cluster.local"
   - name: ROUNDCUBEMAIL_SMTP_PORT
     value: "25"
   # Enable OIDC plugin
@@ -543,11 +556,12 @@ kubectl exec -n stalwart-mail deployment/stalwart -c fetchmail -- \
 
 ### Mail Not Sending
 
-Outbound mail goes through mail-relay, not directly from Stalwart:
+Outbound mail goes directly from Stalwart to Migadu:
 
-1. Check Stalwart is configured to relay through mail-relay
-2. Check mail-relay logs: `kubectl logs -n mail-relay deployment/mail-relay`
-3. Verify Migadu SMTP credentials
+1. Check Stalwart logs: `kubectl logs -n stalwart-mail deployment/stalwart -c stalwart`
+2. Verify Migadu SMTP credentials in the `migadu-smtp-credentials` secret
+3. Ensure wildcard sending is enabled for the Migadu mailbox
+4. Check Migadu dashboard for sending statistics and errors
 
 ### App Password Not Working
 
@@ -591,11 +605,42 @@ Before deploying, create these secrets manually:
 | `stalwart-oidc` | stalwart-mail | `client_id`, `client_secret` | Pocket ID OIDC credentials |
 | `stalwart-emails` | stalwart-mail | `SERVICE_EMAIL`, `KINGA_EMAIL`, `ALPAR_EMAIL` | Email addresses (kept out of git) |
 | `stalwart-admin` | stalwart-mail | `password` | Stalwart admin fallback password |
+| `migadu-smtp-credentials` | stalwart-mail | `username`, `password` | Migadu SMTP credentials for outbound relay |
+
+## Outbound Mail & DNS Setup
+
+Stalwart relays outbound mail directly through Migadu. Configure these DNS records for proper email deliverability:
+
+### SPF Record
+```
+v=spf1 include:spf.migadu.com -all
+```
+
+### DKIM Records (CNAME)
+| Name | Target |
+|------|--------|
+| `key1._domainkey` | `key1.newjoy.ro._domainkey.migadu.com` |
+| `key2._domainkey` | `key2.newjoy.ro._domainkey.migadu.com` |
+| `key3._domainkey` | `key3.newjoy.ro._domainkey.migadu.com` |
+
+### DMARC Record
+```
+v=DMARC1; p=quarantine; rua=mailto:dmarc@newjoy.ro
+```
+
+### Internal Apps Using Stalwart as SMTP Relay
+
+Other apps in the cluster can send mail through Stalwart:
+
+| Setting | Value |
+|---------|-------|
+| SMTP Host | `stalwart.stalwart-mail.svc.cluster.local` |
+| SMTP Port | `25` |
+| TLS/SSL | None (internal traffic) |
+| Authentication | None (internal traffic) |
 
 ---
 
 ## Related
 
-- **Outbound Mail**: See `config/mail-relay/README.md` for SMTP relay configuration
-- **DNS Setup**: Migadu DNS records are documented in mail-relay README
 - **Pocket ID**: OIDC provider configuration for SSO

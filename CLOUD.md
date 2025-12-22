@@ -91,10 +91,10 @@ Verify what's actually running in the cluster:
 
 ```bash
 # Check image for a specific deployment
-kubectl get deployment -n mail-relay mail-relay -o jsonpath='{.spec.template.spec.containers[0].image}'
+kubectl get deployment -n stalwart-mail stalwart -o jsonpath='{.spec.template.spec.containers[0].image}'
 
 # Check all images in a namespace
-kubectl get pods -n mail-relay -o jsonpath='{range .items[*]}{.spec.containers[*].image}{"\n"}{end}'
+kubectl get pods -n stalwart-mail -o jsonpath='{range .items[*]}{.spec.containers[*].image}{"\n"}{end}'
 ```
 
 ---
