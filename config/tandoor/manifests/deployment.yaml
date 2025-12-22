@@ -1,0 +1,217 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tandoor
+  namespace: tandoor
+  labels:
+    app: tandoor
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # Required for RWO PVC
+  selector:
+    matchLabels:
+      app: tandoor
+  template:
+    metadata:
+      labels:
+        app: tandoor
+      annotations:
+        # Auto-restart when OIDC config changes (requires Reloader)
+        secret.reloader.stakater.com/reload: "tandoor-oidc"
+    spec:
+      initContainers:
+        # Wait for PostgreSQL to be ready
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - 'sh'
+            - '-c'
+            - |
+              until nc -z tandoor-db-rw.tandoor.svc.cluster.local 5432; do
+                echo "Waiting for PostgreSQL..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready!"
+      containers:
+        - name: tandoor
+          image: vabene1111/recipes:latest
+          ports:
+            - containerPort: 8080
+              name: gunicorn
+          env:
+            # Database configuration
+            - name: DB_ENGINE
+              value: "django.db.backends.postgresql"
+            - name: POSTGRES_HOST
+              value: "tandoor-db-rw.tandoor.svc.cluster.local"
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              value: "tandoor"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: tandoor-db-app
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tandoor-db-app
+                  key: password
+            # Secret key for Django
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: tandoor-secrets
+                  key: secret_key
+            # General settings
+            - name: DEBUG
+              value: "0"
+            - name: ALLOWED_HOSTS
+              value: "*"
+            - name: GUNICORN_MEDIA
+              value: "0"
+            - name: TZ
+              value: "Europe/Bucharest"
+            # OIDC configuration
+            - name: ENABLE_ALLAUTH
+              value: "1"
+            - name: SOCIALACCOUNT_PROVIDERS_FILE
+              value: "/config/socialaccount_providers.json"
+            # Reverse proxy settings
+            - name: TANDOOR_PORT
+              value: "8080"
+            - name: ENABLE_METRICS
+              value: "0"
+          volumeMounts:
+            - name: media
+              mountPath: /opt/recipes/mediafiles
+            - name: staticfiles
+              mountPath: /opt/recipes/staticfiles
+            - name: oidc-config
+              mountPath: /config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: gunicorn
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: gunicorn
+            initialDelaySeconds: 30
+            periodSeconds: 10
+        # Nginx sidecar for static files
+        - name: nginx
+          image: nginx:mainline-alpine
+          ports:
+            - containerPort: 80
+              name: http
+          volumeMounts:
+            - name: staticfiles
+              mountPath: /static
+              readOnly: true
+            - name: media
+              mountPath: /media
+              readOnly: true
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: tandoor-media
+        - name: staticfiles
+          persistentVolumeClaim:
+            claimName: tandoor-staticfiles
+        - name: oidc-config
+          secret:
+            secretName: tandoor-oidc
+            optional: true
+        - name: nginx-config
+          configMap:
+            name: tandoor-nginx
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tandoor-nginx
+  namespace: tandoor
+  labels:
+    app: tandoor
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  default.conf: |
+    upstream tandoor {
+        server localhost:8080;
+    }
+
+    server {
+        listen 80;
+        server_name _;
+
+        client_max_body_size 128M;
+
+        # Serve static files
+        location /static/ {
+            alias /static/;
+            expires 30d;
+            add_header Cache-Control "public, immutable";
+        }
+
+        # Serve media files
+        location /media/ {
+            alias /media/;
+            expires 7d;
+            add_header Cache-Control "public";
+        }
+
+        # Proxy to Gunicorn
+        location / {
+            proxy_pass http://tandoor;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 300;
+            proxy_connect_timeout 300;
+        }
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tandoor
+  namespace: tandoor
+  labels:
+    app: tandoor
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  type: ClusterIP
+  selector:
+    app: tandoor
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP
+

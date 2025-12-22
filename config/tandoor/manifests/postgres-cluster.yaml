@@ -1,0 +1,41 @@
+# Tandoor PostgreSQL Cluster
+# Managed by CloudNativePG operator
+#
+# Credentials are auto-generated and stored in: tandoor-db-app secret
+
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: tandoor-db
+  namespace: tandoor
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  instances: 1
+  
+  imageName: ghcr.io/cloudnative-pg/postgresql:16
+  
+  bootstrap:
+    initdb:
+      database: tandoor
+      owner: tandoor
+      # Password stored in: tandoor-db-app secret (created by operator)
+  
+  storage:
+    size: 5Gi
+    storageClass: longhorn-ssd
+  
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  
+  postgresql:
+    parameters:
+      log_statement: "ddl"
+      shared_buffers: "128MB"
+      max_connections: "50"
+
