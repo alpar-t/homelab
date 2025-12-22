@@ -91,15 +91,19 @@ spec:
               cpu: 500m
               memory: 512Mi
           livenessProbe:
-            tcpSocket:
-              port: imap
+            httpGet:
+              path: /healthz/live
+              port: http
             initialDelaySeconds: 30
             periodSeconds: 30
+            timeoutSeconds: 10
           readinessProbe:
-            tcpSocket:
-              port: imap
+            httpGet:
+              path: /healthz/ready
+              port: http
             initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 5
           volumeMounts:
             - name: stalwart-data
               mountPath: /opt/stalwart-mail

@@ -9,6 +9,12 @@ data:
   # Stalwart configuration - TOML format
   # See https://stalw.art/docs/configuration/overview
   config.toml: |
+    [tracer."stdout"]
+    type = "stdout"
+    level = "debug"
+    ansi = false
+    enable = true
+    
     [server]
     hostname = "mail.newjoy.ro"
     
@@ -53,13 +59,13 @@ data:
     
     [authentication]
     fallback-admin.user = "admin"
-    fallback-admin.secret = "%{env:ADMIN_PASSWORD}%"
+    fallback-admin.secret = "${ADMIN_PASSWORD}"
     
     [oauth]
     oidc.enable = true
     oidc.issuer-url = "https://auth.newjoy.ro"
-    oidc.client-id = "%{env:OIDC_CLIENT_ID}%"
-    oidc.client-secret = "%{env:OIDC_CLIENT_SECRET}%"
+    oidc.client-id = "${OIDC_CLIENT_ID}"
+    oidc.client-secret = "${OIDC_CLIENT_SECRET}"
     oidc.scopes = ["openid", "email", "profile"]
     
     [oauth.claims]
