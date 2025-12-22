@@ -80,6 +80,11 @@ spec:
               value: "allauth.socialaccount.providers.openid_connect"
             - name: SOCIALACCOUNT_PROVIDERS_FILE
               value: "/config/socialaccount_providers.json"
+            # Auto-join new users to default space with user permissions
+            - name: SOCIAL_DEFAULT_ACCESS
+              value: "1"
+            - name: SOCIAL_DEFAULT_GROUP
+              value: "user"
             - name: ENABLE_METRICS
               value: "0"
             # Override Kubernetes-injected TANDOOR_PORT (from service named "tandoor")
