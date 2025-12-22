@@ -82,6 +82,9 @@ spec:
               value: "/config/socialaccount_providers.json"
             - name: ENABLE_METRICS
               value: "0"
+            # Override Kubernetes-injected TANDOOR_PORT (from service named "tandoor")
+            - name: TANDOOR_PORT
+              value: "80"
           volumeMounts:
             - name: media
               mountPath: /opt/recipes/mediafiles

@@ -101,15 +101,22 @@ tar -czvf tandoor_media.tar.gz ./recepies-media
 
 ### Step 3: Import PostgreSQL Database
 
-```bash
-# Copy the backup to the PostgreSQL pod
-kubectl cp tandoor_backup.sql tandoor/tandoor-db-1:/tmp/
+First, drop and recreate the database (Tandoor may have already run migrations):
 
-# Import into the new database
-kubectl exec -it tandoor-db-1 -n tandoor -- psql -U tandoor -d tandoor -f /tmp/tandoor_backup.sql
+```bash
+kubectl exec -i tandoor-db-1 -n tandoor -- psql -U postgres <<EOF
+DROP DATABASE IF EXISTS tandoor;
+CREATE DATABASE tandoor OWNER tandoor;
+EOF
 ```
 
-**Note:** If your old database used different table names or schemas, you may need to adjust the import. Tandoor uses Django migrations, so the schema should be compatible.
+Then import your backup:
+
+```bash
+kubectl exec -i tandoor-db-1 -n tandoor -- psql -U postgres -d tandoor < tandoor_backup.sql
+```
+
+**Note:** We use the `postgres` superuser which has peer authentication on the local socket.
 
 ### Step 4: Import Media Files
 
