@@ -76,8 +76,8 @@ spec:
             - name: TZ
               value: "Europe/Bucharest"
             # OIDC configuration
-            - name: ENABLE_ALLAUTH
-              value: "1"
+            - name: SOCIAL_PROVIDERS
+              value: "allauth.socialaccount.providers.openid_connect"
             - name: SOCIALACCOUNT_PROVIDERS_FILE
               value: "/config/socialaccount_providers.json"
             - name: ENABLE_METRICS
