@@ -11,7 +11,7 @@ data:
   config.toml: |
     [tracer."stdout"]
     type = "stdout"
-    level = "debug"
+    level = "info"
     ansi = false
     enable = true
     
@@ -42,30 +42,39 @@ data:
     protocol = "http"
     
     [storage]
-    data = "rocksdb"
-    fts = "rocksdb"
-    blob = "rocksdb"
-    lookup = "rocksdb"
+    data = "postgresql"
+    fts = "postgresql"
+    blob = "filesystem"
+    lookup = "postgresql"
     directory = "internal"
     
-    [store.rocksdb]
-    type = "rocksdb"
-    path = "/opt/stalwart-mail/data"
-    compression = "lz4"
+    [store.postgresql]
+    type = "postgresql"
+    host = "stalwart-db-rw.stalwart-mail.svc.cluster.local"
+    port = 5432
+    database = "stalwart"
+    user = "stalwart"
+    password = "%{env:DB_PASSWORD}%"
+    timeout = "15s"
+    max-connections = 10
+    
+    [store.filesystem]
+    type = "fs"
+    path = "/opt/stalwart/blobs"
     
     [directory.internal]
     type = "internal"
-    store = "rocksdb"
+    store = "postgresql"
     
     [authentication]
     fallback-admin.user = "admin"
-    fallback-admin.secret = "${ADMIN_PASSWORD}"
+    fallback-admin.secret = "%{env:ADMIN_PASSWORD}%"
     
     [oauth]
     oidc.enable = true
     oidc.issuer-url = "https://auth.newjoy.ro"
-    oidc.client-id = "${OIDC_CLIENT_ID}"
-    oidc.client-secret = "${OIDC_CLIENT_SECRET}"
+    oidc.client-id = "%{env:OIDC_CLIENT_ID}%"
+    oidc.client-secret = "%{env:OIDC_CLIENT_SECRET}%"
     oidc.scopes = ["openid", "email", "profile"]
     
     [oauth.claims]

@@ -56,6 +56,9 @@ spec:
         - name: stalwart
           # Pinned version - see /CLOUD.md for update instructions
           image: stalwartlabs/stalwart:v0.13.2
+          args:
+            - --config
+            - /opt/stalwart/etc/config.toml
           ports:
             - containerPort: 25
               name: smtp
@@ -72,6 +75,11 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: stalwart-admin
+                  key: password
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stalwart-db-app
                   key: password
             - name: OIDC_CLIENT_ID
               valueFrom:
@@ -105,10 +113,10 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 5
           volumeMounts:
-            - name: stalwart-data
-              mountPath: /opt/stalwart-mail
+            - name: stalwart-blobs
+              mountPath: /opt/stalwart/blobs
             - name: stalwart-config
-              mountPath: /opt/stalwart-mail/etc
+              mountPath: /opt/stalwart/etc
         # Fetchmail sidecar - pulls mail from Migadu
         - name: fetchmail
           image: alpine:3.21
@@ -134,9 +142,9 @@ spec:
               mountPath: /config
               readOnly: true
       volumes:
-        - name: stalwart-data
+        - name: stalwart-blobs
           persistentVolumeClaim:
-            claimName: stalwart-data
+            claimName: stalwart-blobs
         - name: stalwart-config
           configMap:
             name: stalwart-config

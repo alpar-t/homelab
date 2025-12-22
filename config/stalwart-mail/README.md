@@ -282,12 +282,12 @@ Stalwart configuration for Pocket ID OIDC (in ConfigMap):
 ```toml
 [authentication]
 fallback-admin.user = "admin"
-fallback-admin.secret = "${ADMIN_PASSWORD}"
+fallback-admin.secret = "%{env:ADMIN_PASSWORD}%"
 
 [oauth]
 oidc.issuer-url = "https://auth.newjoy.ro"
-oidc.client-id = "${OIDC_CLIENT_ID}"
-oidc.client-secret = "${OIDC_CLIENT_SECRET}"
+oidc.client-id = "%{env:OIDC_CLIENT_ID}%"
+oidc.client-secret = "%{env:OIDC_CLIENT_SECRET}%"
 oidc.scopes = ["openid", "email", "profile"]
 
 # Map Pocket ID email to Stalwart account
