@@ -97,18 +97,25 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
+          # Startup probe - allows up to 5 minutes for initial startup (static files processing)
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            failureThreshold: 30
+            periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /
               port: http
-            initialDelaySeconds: 90
             periodSeconds: 30
+            timeoutSeconds: 5
           readinessProbe:
             httpGet:
               path: /
               port: http
-            initialDelaySeconds: 60
             periodSeconds: 10
+            timeoutSeconds: 5
       volumes:
         - name: media
           persistentVolumeClaim:
