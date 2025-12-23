@@ -64,14 +64,25 @@ spec:
               value: "stalwart.stalwart-mail.svc.cluster.local"
             - name: ROUNDCUBEMAIL_DEFAULT_PORT
               value: "143"
-            # SMTP configuration - Stalwart internal relay (no auth needed)
+            # SMTP configuration - Stalwart submission port
             - name: ROUNDCUBEMAIL_SMTP_SERVER
               value: "stalwart.stalwart-mail.svc.cluster.local"
             - name: ROUNDCUBEMAIL_SMTP_PORT
-              value: "25"
+              value: "587"
             # Skin
             - name: ROUNDCUBEMAIL_SKIN
               value: "elastic"
+            # OAuth2 credentials for Pocket ID (reusing oauth2-proxy secret)
+            - name: OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-roundcube
+                  key: client-id
+            - name: OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-roundcube
+                  key: client-secret
           resources:
             requests:
               cpu: 50m
@@ -97,22 +108,10 @@ spec:
             - name: custom-config
               mountPath: /var/roundcube/config/custom.inc.php
               subPath: custom.inc.php
-            - name: htaccess-config
-              mountPath: /var/www/html/.htaccess
-              subPath: htaccess
       volumes:
         - name: custom-config
           configMap:
             name: roundcube-config
-            items:
-              - key: custom.inc.php
-                path: custom.inc.php
-        - name: htaccess-config
-          configMap:
-            name: roundcube-config
-            items:
-              - key: htaccess
-                path: htaccess
 ---
 apiVersion: v1
 kind: Service
@@ -152,6 +151,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: oauth2-proxy-roundcube
+                name: roundcube
                 port:
-                  number: 4180
+                  number: 80

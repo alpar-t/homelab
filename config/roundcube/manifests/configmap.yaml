@@ -24,30 +24,37 @@ data:
     // Force email domain for identities (instead of IMAP server hostname)
     $config['mail_domain'] = 'newjoy.ro';
     
-    // SMTP configuration - disable authentication (internal relay)
+    // IMAP server - Stalwart (internal, no TLS)
+    $config['default_host'] = 'stalwart.stalwart-mail.svc.cluster.local';
+    $config['default_port'] = 143;
+    $config['imap_auth_type'] = 'OAUTHBEARER';
+    
+    // SMTP configuration - Stalwart with OAUTHBEARER
     $config['smtp_server'] = 'stalwart.stalwart-mail.svc.cluster.local';
-    $config['smtp_port'] = 25;
-    $config['smtp_user'] = '';
-    $config['smtp_pass'] = '';
+    $config['smtp_port'] = 587;
+    $config['smtp_auth_type'] = 'OAUTHBEARER';
     
-    // HTTP Basic Auth auto-login via http_authentication plugin
-    // nginx passes Authorization header, Apache converts to PHP_AUTH_*
-    $config['plugins'][] = 'http_authentication';
+    // OAuth2 configuration - Pocket ID
+    $config['oauth_provider'] = 'generic';
+    $config['oauth_provider_name'] = 'Pocket ID';
+    $config['oauth_client_id'] = getenv('OAUTH_CLIENT_ID');
+    $config['oauth_client_secret'] = getenv('OAUTH_CLIENT_SECRET');
+    // Use OIDC discovery for endpoints
+    $config['oauth_config_uri'] = 'https://auth.newjoy.ro/.well-known/openid-configuration';
+    $config['oauth_scope'] = 'openid email profile';
     
-    // http_authentication plugin settings
-    $config['http_authentication_host'] = 'stalwart.stalwart-mail.svc.cluster.local';
+    // Map email field from identity response (without @domain for Stalwart username)
+    $config['oauth_identity_fields'] = ['preferred_username', 'email'];
     
-    // Logout settings  
+    // Redirect directly to OAuth login (skip username/password form)
+    $config['oauth_login_redirect'] = true;
+    
+    // Required for reverse proxy setup
+    $config['use_https'] = true;
+    
+    // Logout settings
     $config['logout_purge'] = false;
     $config['logout_expunge'] = false;
     
     // Auto-create user on first login
     $config['auto_create_user'] = true;
-  # Apache config to pass Authorization header to PHP
-  # This is needed for http_authentication plugin to work
-  htaccess: |
-    # Pass HTTP Authorization header to PHP for http_authentication plugin
-    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
-    RewriteEngine On
-    RewriteCond %{HTTP:Authorization} ^(.*)
-    RewriteRule .* - [E=HTTP_AUTHORIZATION:%1]

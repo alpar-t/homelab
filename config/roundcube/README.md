@@ -1,43 +1,44 @@
 # Roundcube Webmail
 
-Roundcube webmail connecting to Stalwart mail server with Pocket ID SSO.
+Roundcube webmail with Pocket ID SSO, connecting to Stalwart mail server.
 
 ## Overview
 
 - **URL**: https://webmail.newjoy.ro
 - **Image**: `roundcube/roundcubemail:1.6.12-apache`
 - **Database**: PostgreSQL (via CloudNativePG)
-- **Mail Server**: Stalwart (IMAP for reading, SMTP for sending)
-- **Authentication**: Pocket ID via oauth2-proxy
+- **Mail Server**: Stalwart (IMAP/SMTP with OAUTHBEARER)
+- **Authentication**: Pocket ID via OAuth2
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                                                                          │
-│  User → Pocket ID (OIDC) → oauth2-proxy → nginx (auth-mapper)           │
-│                                                     │                    │
-│                                                     ▼                    │
-│                         ┌───────────────────────────────────────────┐   │
-│                         │            Roundcube                       │   │
-│                         │    (receives Basic Auth header)            │   │
-│                         │              │           │                 │   │
-│                         │              ▼           ▼                 │   │
-│                         │         PostgreSQL   Stalwart              │   │
-│                         │        (sessions)   (IMAP/SMTP)            │   │
-│                         └───────────────────────────────────────────┘   │
+│  User → webmail.newjoy.ro → Roundcube                                   │
+│                                │                                         │
+│                    ┌───────────┴───────────┐                            │
+│                    │                       │                            │
+│                    ▼                       ▼                            │
+│              Pocket ID              Stalwart                            │
+│           (OAuth2 login)         (IMAP/SMTP)                           │
+│                    │                   ▲                                │
+│                    │                   │                                │
+│                    └───────────────────┘                                │
+│                      OAUTHBEARER token                                  │
 │                                                                          │
+│  Storage: PostgreSQL (sessions/settings)                                │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Authentication Flow
 
 1. User visits `webmail.newjoy.ro`
-2. **oauth2-proxy** redirects to Pocket ID for login
-3. After OIDC authentication, oauth2-proxy sets `X-Auth-Request-Email` header
-4. **nginx auth-mapper** extracts email, looks up Stalwart password from secret
-5. nginx creates `Authorization: Basic ...` header with username:password
-6. **Roundcube** receives Basic Auth, uses `http_authentication` plugin to auto-login
+2. Roundcube redirects to Pocket ID for OAuth2 login
+3. User authenticates with Pocket ID
+4. Pocket ID returns access token to Roundcube
+5. Roundcube connects to Stalwart IMAP/SMTP using **OAUTHBEARER** with the token
+6. Stalwart validates the token against Pocket ID
 
 ## Setup
 
@@ -46,37 +47,18 @@ Roundcube webmail connecting to Stalwart mail server with Pocket ID SSO.
 In Pocket ID admin:
 
 1. Create new application: **Roundcube Webmail**
-2. Set redirect URI: `https://webmail.newjoy.ro/oauth2/callback`
+2. Set redirect URI: `https://webmail.newjoy.ro/index.php/login/oauth`
 3. Note the `client_id` and `client_secret`
 
-### 2. Create Secrets
-
-#### oauth2-proxy credentials
+### 2. Create Secret
 
 ```bash
-# Generate cookie secret (must be exactly 16, 24, or 32 bytes)
-COOKIE_SECRET=$(openssl rand -hex 16)
-
 kubectl create secret generic oauth2-proxy-roundcube \
   --namespace roundcube \
   --from-literal=client-id="YOUR_POCKET_ID_CLIENT_ID" \
   --from-literal=client-secret="YOUR_POCKET_ID_CLIENT_SECRET" \
-  --from-literal=cookie-secret="$COOKIE_SECRET"
+  --from-literal=cookie-secret="$(openssl rand -hex 16)"  # Not used by Roundcube, but kept for compatibility
 ```
-
-#### User credentials (for alpar and kinga)
-
-These map Pocket ID users to their Stalwart passwords:
-
-```bash
-kubectl create secret generic roundcube-user-credentials \
-  --namespace roundcube \
-  --from-literal=alpar-password="ALPAR_STALWART_PASSWORD" \
-  --from-literal=kinga-password="KINGA_STALWART_PASSWORD"
-```
-
-> **Note**: The password file names must match the username part of the email.
-> For `alpar@newjoy.ro`, the file is `alpar-password`.
 
 ### 3. Add DNS Record
 
@@ -89,21 +71,6 @@ Roundcube is deployed via ArgoCD:
 ```bash
 kubectl apply -f apps/roundcube.yaml
 ```
-
-## Adding New Users
-
-To add a new user (e.g., `newuser@newjoy.ro`):
-
-1. Create the user in Stalwart (via admin UI or OIDC auto-create)
-2. Update the `roundcube-user-credentials` secret:
-
-```bash
-kubectl patch secret roundcube-user-credentials -n roundcube \
-  --type='json' \
-  -p='[{"op": "add", "path": "/data/newuser-password", "value": "'$(echo -n "THEIR_PASSWORD" | base64)'"}]'
-```
-
-3. The user can now login with their Pocket ID account
 
 ## Mobile Access
 
@@ -118,6 +85,8 @@ Mobile email apps connect directly to Stalwart (not through Roundcube):
 | **Username** | Your Stalwart username (e.g., `alpar`) |
 | **Password** | Your Stalwart password |
 
+> **Note**: Mobile apps use password authentication. OAuth2/OAUTHBEARER is only for webmail.
+
 ## Troubleshooting
 
 ### Check Pod Status
@@ -125,25 +94,21 @@ Mobile email apps connect directly to Stalwart (not through Roundcube):
 ```bash
 kubectl get pods -n roundcube
 kubectl logs -n roundcube deployment/roundcube
-kubectl logs -n roundcube deployment/oauth2-proxy-roundcube -c oauth2-proxy
-kubectl logs -n roundcube deployment/oauth2-proxy-roundcube -c auth-mapper
 ```
 
-### Test OAuth Flow
+### Check OAuth Configuration
 
-1. Visit https://webmail.newjoy.ro
-2. You should be redirected to Pocket ID
-3. After login, check nginx logs for auth-mapper output
-
-### Check Secrets
+Verify the OAuth secret exists:
 
 ```bash
-# Verify oauth2-proxy secret
-kubectl get secret oauth2-proxy-roundcube -n roundcube
-
-# Verify user credentials
-kubectl get secret roundcube-user-credentials -n roundcube -o yaml
+kubectl get secret roundcube-oauth -n roundcube
 ```
+
+### OAuth Callback Error
+
+If you get an error on the OAuth callback, check:
+1. Redirect URI in Pocket ID matches: `https://webmail.newjoy.ro/index.php/login/oauth`
+2. The secret has correct `client-id` and `client-secret`
 
 ### IMAP Connection Issues
 
@@ -159,5 +124,4 @@ kubectl exec -n roundcube deployment/roundcube -- \
 | Secret Name | Namespace | Keys | Purpose |
 |-------------|-----------|------|---------|
 | `roundcube-db-app` | roundcube | `username`, `password` | PostgreSQL (auto-created by CloudNativePG) |
-| `oauth2-proxy-roundcube` | roundcube | `client-id`, `client-secret`, `cookie-secret` | Pocket ID OIDC credentials |
-| `roundcube-user-credentials` | roundcube | `alpar-password`, `kinga-password` | Stalwart passwords for SSO users |
+| `roundcube-oauth` | roundcube | `client-id`, `client-secret` | Pocket ID OAuth2 credentials |
