@@ -1,0 +1,145 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: roundcube
+  namespace: roundcube
+  labels:
+    app: roundcube
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: roundcube
+  template:
+    metadata:
+      labels:
+        app: roundcube
+    spec:
+      initContainers:
+        # Wait for PostgreSQL to be ready
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - 'sh'
+            - '-c'
+            - |
+              until nc -z roundcube-db-rw.roundcube.svc.cluster.local 5432; do
+                echo "Waiting for PostgreSQL..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready!"
+      containers:
+        - name: roundcube
+          image: roundcube/roundcubemail:1.6.12-apache
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            # Database configuration
+            - name: ROUNDCUBEMAIL_DB_TYPE
+              value: "pgsql"
+            - name: ROUNDCUBEMAIL_DB_HOST
+              value: "roundcube-db-rw.roundcube.svc.cluster.local"
+            - name: ROUNDCUBEMAIL_DB_PORT
+              value: "5432"
+            - name: ROUNDCUBEMAIL_DB_NAME
+              value: "roundcube"
+            - name: ROUNDCUBEMAIL_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: roundcube-db-app
+                  key: username
+            - name: ROUNDCUBEMAIL_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: roundcube-db-app
+                  key: password
+            # IMAP configuration - Migadu directly
+            - name: ROUNDCUBEMAIL_DEFAULT_HOST
+              value: "ssl://imap.migadu.com"
+            - name: ROUNDCUBEMAIL_DEFAULT_PORT
+              value: "993"
+            # SMTP configuration - Migadu directly  
+            - name: ROUNDCUBEMAIL_SMTP_SERVER
+              value: "tls://smtp.migadu.com"
+            - name: ROUNDCUBEMAIL_SMTP_PORT
+              value: "587"
+            # Skin
+            - name: ROUNDCUBEMAIL_SKIN
+              value: "elastic"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          volumeMounts:
+            - name: custom-config
+              mountPath: /var/roundcube/config/custom.inc.php
+              subPath: custom.inc.php
+      volumes:
+        - name: custom-config
+          configMap:
+            name: roundcube-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: roundcube
+  namespace: roundcube
+  labels:
+    app: roundcube
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  type: ClusterIP
+  selector:
+    app: roundcube
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: roundcube
+  namespace: roundcube
+  labels:
+    app: roundcube
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: webmail.newjoy.ro
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: roundcube
+                port:
+                  number: 80

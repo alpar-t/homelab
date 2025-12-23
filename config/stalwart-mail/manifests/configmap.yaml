@@ -76,6 +76,7 @@ data:
     oidc.client-id = "%{env:OIDC_CLIENT_ID}%"
     oidc.client-secret = "%{env:OIDC_CLIENT_SECRET}%"
     oidc.scopes = ["openid", "email", "profile"]
+    oidc.auto-create = true
     
     [oauth.claims]
     email = "email"

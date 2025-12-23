@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: roundcube-config
+  namespace: roundcube
+  labels:
+    app: roundcube
+data:
+  # Additional Roundcube configuration
+  # Mounted to /var/roundcube/config/custom.inc.php
+  custom.inc.php: |
+    <?php
+    // Custom Roundcube configuration
+    
+    // Product name shown in UI
+    $config['product_name'] = 'Newjoy Mail';
+    
+    // Session lifetime in minutes
+    $config['session_lifetime'] = 60;
+    
+    // Enable plugins
+    $config['plugins'] = ['archive', 'zipdownload', 'managesieve'];

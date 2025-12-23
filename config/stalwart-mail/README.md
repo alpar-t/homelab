@@ -498,6 +498,36 @@ $config['oauth_identity_fields'] = ['email'];
 | Username | Your full email address |
 | Password | App-specific password from Stalwart |
 
+#### iPhone Mail Setup
+
+1. Go to **Settings** → **Mail** → **Accounts** → **Add Account** → **Other** → **Add Mail Account**
+2. Enter:
+   - **Name**: Your name
+   - **Email**: your-email@newjoy.ro
+   - **Password**: Your Stalwart password (or app password)
+   - **Description**: Newjoy Mail
+3. Tap **Next**, select **IMAP**
+4. Configure incoming server:
+   - **Host Name**: `mail.newjoy.ro`
+   - **User Name**: your-email@newjoy.ro
+   - **Password**: (same as above)
+5. Configure outgoing server:
+   - **Host Name**: `mail.newjoy.ro`
+   - **User Name**: your-email@newjoy.ro
+   - **Password**: (same as above)
+6. Tap **Save**
+
+> **Note**: If authentication fails, you may need to set a password in Stalwart first (OIDC accounts don't have passwords by default).
+
+#### Setting a Password for IMAP Access
+
+If you logged into Stalwart via OIDC and need a password for mobile apps:
+
+1. Ask your admin to set a password via Stalwart admin panel at https://mail.newjoy.ro
+2. Or generate an app-specific password (see below)
+
+#### Generating App Passwords
+
 To generate app password:
 1. Login to Stalwart admin or webmail
 2. Go to Settings → Security → App Passwords

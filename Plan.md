@@ -47,7 +47,6 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [ ] how do I monitor the disks e.g. for failure and nottify on them 
 - [ ] backups for longhorn volumes (also backup k8s secrets - needed for disaster recovery) 
 - [ ] How do we keep everything up-to-date
-- [X] Configure Authentik 2FA and app protection after initial setup
 - [X] Add email relay (Stalwart → Migadu) - consolidated into stalwart-mail
 - [ ] Add external heartbeat / down detection 
 - [ ] Monitor mail
@@ -61,20 +60,16 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 
 **APPS:**
 
-- [X] Pihole
-- [X] Database (PostgreSQL with CloudNativePG) - see config/postgres/README.md
-- [ ] Frigate
 - [ ] Omada
 - [ ] OTMonitor
 - [ ] Bitwarden
-- [ ] VPN ( Headscale with Atuthentik )
-- [ ] Nextcloud ( sync-in (if oidc) or owncloud)
-- [ ] Tandoor recepies 
+- [ ] Nextcloud (sync-in (if oidc) or owncloud)
 - [ ] Photoprism or Immich
 - [ ] Paperless 
+
 - [ ] Emby
-- [ ] Home Assistant DB (external PostgreSQL for HA Green) - see config/homeassistant/README.md
-- [X] MetalLB (LoadBalancer IPs for external access) - see config/metallb/README.md
+- [ ] Frigate
+- [ ] VPN ( Headscale with PokcetId )
 
 ## Hardware
 
