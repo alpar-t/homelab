@@ -92,15 +92,17 @@ data:
     [queue.outbound]
     next-hop = "'relay'"
     
-    [remote.relay]
-    type = "smtp"
+    [queue.route.relay]
+    type = "relay"
     address = "smtp.migadu.com"
     port = 465
     protocol = "smtp"
-    tls.implicit = true
     
-    [remote.relay.auth]
-    enable = true
+    [queue.route.relay.tls]
+    implicit = true
+    allow-invalid-certs = false
+    
+    [queue.route.relay.auth]
     username = "%{env:MIGADU_SMTP_USERNAME}%"
     secret = "%{env:MIGADU_SMTP_PASSWORD}%"
 
