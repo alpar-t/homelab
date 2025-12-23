@@ -87,22 +87,28 @@ data:
     email = "email"
     name = "name"
     
-    # Outbound mail relay through Migadu
-    # All outbound mail is routed through Migadu for deliverability
-    [queue.outbound]
-    next-hop = "'relay'"
+    # Outbound mail routing strategy
+    # Local domains delivered locally, everything else relayed through Migadu
+    [queue.strategy]
+    route = [ { if = "is_local_domain('', rcpt_domain)", then = "'local'" },
+              { else = "'migadu'" } ]
     
-    [queue.route.relay]
+    # Local delivery route
+    [queue.route."local"]
+    type = "local"
+    
+    # Migadu relay route for external delivery
+    [queue.route."migadu"]
     type = "relay"
     address = "smtp.migadu.com"
     port = 465
     protocol = "smtp"
     
-    [queue.route.relay.tls]
+    [queue.route."migadu".tls]
     implicit = true
     allow-invalid-certs = false
     
-    [queue.route.relay.auth]
+    [queue.route."migadu".auth]
     username = "%{env:MIGADU_SMTP_USERNAME}%"
     secret = "%{env:MIGADU_SMTP_PASSWORD}%"
 
