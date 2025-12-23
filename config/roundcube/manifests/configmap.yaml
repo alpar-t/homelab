@@ -29,3 +29,13 @@ data:
     $config['smtp_port'] = 25;
     $config['smtp_user'] = '';
     $config['smtp_pass'] = '';
+    
+    // HTTP Basic Auth auto-login via http_authentication plugin
+    // When behind oauth2-proxy, nginx passes credentials via Authorization header
+    // Apache decodes this and sets PHP_AUTH_USER/PHP_AUTH_PW
+    $config['plugins'][] = 'http_authentication';
+    
+    // http_authentication plugin settings
+    $config['http_authentication_host'] = 'stalwart.stalwart-mail.svc.cluster.local';
+    $config['logout_purge'] = false;
+    $config['logout_expunge'] = false;

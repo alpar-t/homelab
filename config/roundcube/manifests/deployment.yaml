@@ -140,6 +140,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: roundcube
+                name: oauth2-proxy-roundcube
                 port:
-                  number: 80
+                  number: 4180
