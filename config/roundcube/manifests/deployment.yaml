@@ -97,10 +97,22 @@ spec:
             - name: custom-config
               mountPath: /var/roundcube/config/custom.inc.php
               subPath: custom.inc.php
+            - name: htaccess-config
+              mountPath: /var/www/html/.htaccess
+              subPath: htaccess
       volumes:
         - name: custom-config
           configMap:
             name: roundcube-config
+            items:
+              - key: custom.inc.php
+                path: custom.inc.php
+        - name: htaccess-config
+          configMap:
+            name: roundcube-config
+            items:
+              - key: htaccess
+                path: htaccess
 ---
 apiVersion: v1
 kind: Service

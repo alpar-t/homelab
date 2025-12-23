@@ -31,11 +31,23 @@ data:
     $config['smtp_pass'] = '';
     
     // HTTP Basic Auth auto-login via http_authentication plugin
-    // When behind oauth2-proxy, nginx passes credentials via Authorization header
-    // Apache decodes this and sets PHP_AUTH_USER/PHP_AUTH_PW
+    // nginx passes Authorization header, Apache converts to PHP_AUTH_*
     $config['plugins'][] = 'http_authentication';
     
     // http_authentication plugin settings
     $config['http_authentication_host'] = 'stalwart.stalwart-mail.svc.cluster.local';
+    
+    // Logout settings  
     $config['logout_purge'] = false;
     $config['logout_expunge'] = false;
+    
+    // Auto-create user on first login
+    $config['auto_create_user'] = true;
+  # Apache config to pass Authorization header to PHP
+  # This is needed for http_authentication plugin to work
+  htaccess: |
+    # Pass HTTP Authorization header to PHP for http_authentication plugin
+    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+    RewriteEngine On
+    RewriteCond %{HTTP:Authorization} ^(.*)
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%1]

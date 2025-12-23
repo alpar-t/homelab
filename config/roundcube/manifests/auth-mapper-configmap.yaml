@@ -35,7 +35,7 @@ data:
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
             
-            # Use Lua to add Basic Auth header based on email
+            # Use Lua to add Authorization header based on email
             access_by_lua_block {
                 local email = ngx.var.http_x_auth_request_email
                 
@@ -62,11 +62,11 @@ data:
                 f:close()
                 password = password:gsub("%s+$", "") -- trim whitespace
                 
-                -- Create Basic Auth header: base64(username:password)
+                -- Set Authorization header (Basic Auth)
                 local credentials = username .. ":" .. password
                 local encoded = ngx.encode_base64(credentials)
-                
                 ngx.req.set_header("Authorization", "Basic " .. encoded)
+                
                 ngx.log(ngx.INFO, "Added Basic Auth for user: ", username)
             }
         }
