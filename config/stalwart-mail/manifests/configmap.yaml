@@ -9,6 +9,15 @@ data:
   # Stalwart configuration - TOML format
   # See https://stalw.art/docs/configuration/overview
   config.toml: |
+    # Force these settings to be read from local config file, not database
+    # See: https://stalw.art/docs/configuration/overview/#local-and-database-settings
+    [config]
+    local-keys = [ "store.*", "directory.*", "tracer.*", "server.*", 
+                   "authentication.fallback-admin.*", "cluster.*", "config.local-keys.*",
+                   "storage.*", "certificate.*",
+                   # Custom additions for our setup:
+                   "oauth.*", "session.*", "queue.*", "spam-filter.*" ]
+    
     [tracer."stdout"]
     type = "stdout"
     level = "info"

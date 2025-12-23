@@ -42,22 +42,33 @@ Roundcube webmail with Pocket ID SSO, connecting to Stalwart mail server.
 
 ## Setup
 
-### 1. Create Pocket ID Application
+### 1. Pocket ID Application (Shared with Stalwart)
+
+Roundcube and Stalwart **must use the same Pocket ID application**. This is because:
+- Roundcube gets an OAuth token from Pocket ID
+- Roundcube uses that token for OAUTHBEARER authentication to Stalwart IMAP/SMTP
+- Stalwart validates the token's audience matches its configured client ID
 
 In Pocket ID admin:
 
-1. Create new application: **Roundcube Webmail**
-2. Set redirect URI: `https://webmail.newjoy.ro/index.php/login/oauth`
-3. Note the `client_id` and `client_secret`
+1. Use the existing **Stalwart** application (or create one if it doesn't exist)
+2. Add redirect URI: `https://webmail.newjoy.ro/index.php/login/oauth`
+3. The `client_id` and `client_secret` must match what's in `stalwart-oidc` secret
 
 ### 2. Create Secret
 
+Use the **same credentials** as `stalwart-oidc`:
+
 ```bash
+# Get the credentials from stalwart-oidc secret
+CLIENT_ID=$(kubectl get secret stalwart-oidc -n stalwart-mail -o jsonpath='{.data.client_id}' | base64 -d)
+CLIENT_SECRET=$(kubectl get secret stalwart-oidc -n stalwart-mail -o jsonpath='{.data.client_secret}' | base64 -d)
+
 kubectl create secret generic oauth2-proxy-roundcube \
   --namespace roundcube \
-  --from-literal=client-id="YOUR_POCKET_ID_CLIENT_ID" \
-  --from-literal=client-secret="YOUR_POCKET_ID_CLIENT_SECRET" \
-  --from-literal=cookie-secret="$(openssl rand -hex 16)"  # Not used by Roundcube, but kept for compatibility
+  --from-literal=client-id="$CLIENT_ID" \
+  --from-literal=client-secret="$CLIENT_SECRET" \
+  --from-literal=cookie-secret="unused"  # Not used by Roundcube, kept for legacy
 ```
 
 ### 3. Add DNS Record

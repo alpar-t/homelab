@@ -205,11 +205,15 @@ kubectl create secret generic migadu-fetch-credentials \
 Contains the Pocket ID OIDC client credentials:
 
 ```bash
+# Use the SAME client ID/secret as Roundcube webmail
+# This allows Roundcube to get OAuth tokens that Stalwart can validate
 kubectl create secret generic stalwart-oidc \
   --namespace stalwart-mail \
   --from-literal=client_id='<client-id-from-pocket-id>' \
   --from-literal=client_secret='<client-secret-from-pocket-id>'
 ```
+
+> **Important**: Stalwart and Roundcube must use the same Pocket ID application (same client ID/secret). This is required for Roundcube's OAUTHBEARER authentication to work - the token's audience must match what Stalwart expects.
 
 #### Secret 3: Email Addresses
 
