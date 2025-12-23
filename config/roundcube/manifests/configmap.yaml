@@ -35,12 +35,14 @@ data:
     $config['smtp_auth_type'] = 'OAUTHBEARER';
     
     // OAuth2 configuration - Pocket ID
+    // Note: oauth_config_uri requires Roundcube 1.7+, so we use explicit endpoints
     $config['oauth_provider'] = 'generic';
     $config['oauth_provider_name'] = 'Pocket ID';
     $config['oauth_client_id'] = getenv('OAUTH_CLIENT_ID');
     $config['oauth_client_secret'] = getenv('OAUTH_CLIENT_SECRET');
-    // Use OIDC discovery for endpoints
-    $config['oauth_config_uri'] = 'https://auth.newjoy.ro/.well-known/openid-configuration';
+    $config['oauth_auth_uri'] = 'https://auth.newjoy.ro/authorize';
+    $config['oauth_token_uri'] = 'https://auth.newjoy.ro/api/oidc/token';
+    $config['oauth_identity_uri'] = 'https://auth.newjoy.ro/api/oidc/userinfo';
     $config['oauth_scope'] = 'openid email profile';
     
     // Map email field from identity response (without @domain for Stalwart username)

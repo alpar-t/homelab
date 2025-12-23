@@ -124,4 +124,4 @@ kubectl exec -n roundcube deployment/roundcube -- \
 | Secret Name | Namespace | Keys | Purpose |
 |-------------|-----------|------|---------|
 | `roundcube-db-app` | roundcube | `username`, `password` | PostgreSQL (auto-created by CloudNativePG) |
-| `roundcube-oauth` | roundcube | `client-id`, `client-secret` | Pocket ID OAuth2 credentials |
+| `oauth2-proxy-roundcube` | roundcube | `client-id`, `client-secret`, `cookie-secret` | Pocket ID OAuth2 credentials |
