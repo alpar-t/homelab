@@ -20,3 +20,12 @@ data:
     
     // Enable plugins
     $config['plugins'] = ['archive', 'zipdownload', 'managesieve'];
+    
+    // Force email domain for identities (instead of IMAP server hostname)
+    $config['mail_domain'] = 'newjoy.ro';
+    
+    // SMTP configuration - disable authentication (internal relay)
+    $config['smtp_server'] = 'stalwart.stalwart-mail.svc.cluster.local';
+    $config['smtp_port'] = 25;
+    $config['smtp_user'] = '';
+    $config['smtp_pass'] = '';
