@@ -59,16 +59,16 @@ spec:
                 secretKeyRef:
                   name: roundcube-db-app
                   key: password
-            # IMAP configuration - Migadu directly
+            # IMAP configuration - Stalwart
             - name: ROUNDCUBEMAIL_DEFAULT_HOST
-              value: "ssl://imap.migadu.com"
+              value: "ssl://stalwart.stalwart-mail.svc.cluster.local"
             - name: ROUNDCUBEMAIL_DEFAULT_PORT
               value: "993"
-            # SMTP configuration - Migadu directly  
+            # SMTP configuration - Stalwart internal relay (no auth needed)
             - name: ROUNDCUBEMAIL_SMTP_SERVER
-              value: "tls://smtp.migadu.com"
+              value: "stalwart.stalwart-mail.svc.cluster.local"
             - name: ROUNDCUBEMAIL_SMTP_PORT
-              value: "587"
+              value: "25"
             # Skin
             - name: ROUNDCUBEMAIL_SKIN
               value: "elastic"
