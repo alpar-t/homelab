@@ -27,6 +27,16 @@ data:
     [session.rcpt]
     relay = true
     
+    # Disable spam filter headers for relayed mail
+    # These headers (X-Spam-Status, X-Spam-Result) can cause external
+    # receivers like Gmail to flag messages as spam
+    # See: https://stalw.art/docs/spamfilter/settings/general/
+    [spam-filter.header.status]
+    enable = false
+    
+    [spam-filter.header.result]
+    enable = false
+    
     [server.listener.submissions]
     bind = ["[::]:587"]
     protocol = "smtp"

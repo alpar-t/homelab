@@ -639,7 +639,21 @@ Before deploying, create these secrets manually:
 
 ## Outbound Mail & DNS Setup
 
-Stalwart relays outbound mail directly through Migadu. Configure these DNS records for proper email deliverability:
+Stalwart relays outbound mail through Migadu using the `service@newjoy.ro` account.
+
+### Migadu Wildcard Sender Configuration
+
+**Important:** Enable "Wildcard Sender" in Migadu for the `service@newjoy.ro` mailbox:
+
+1. Go to Migadu → **Mailboxes** → `service@newjoy.ro`
+2. Click **Sending Identities**
+3. Enable **"Allow sending as any address on this domain"** (wildcard sender)
+
+This allows the service account to send emails on behalf of any `@newjoy.ro` address (e.g., `alpar@newjoy.ro`, `kinga@newjoy.ro`).
+
+### DNS Records
+
+Configure these DNS records for proper email deliverability:
 
 ### SPF Record
 ```
