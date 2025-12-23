@@ -88,15 +88,19 @@ data:
     name = "name"
     
     # Outbound mail relay through Migadu
-    [remote."migadu"]
-    protocol = "smtp"
+    # All outbound mail is routed through Migadu for deliverability
+    [queue.outbound]
+    next-hop = "'relay'"
+    
+    [remote.relay]
+    type = "smtp"
     address = "smtp.migadu.com"
     port = 465
+    protocol = "smtp"
     tls.implicit = true
-    auth.enable = true
-    auth.username = "%{env:MIGADU_SMTP_USERNAME}%"
-    auth.secret = "%{env:MIGADU_SMTP_PASSWORD}%"
     
-    [queue.outbound.next-hop]
-    default = "migadu"
+    [remote.relay.auth]
+    enable = true
+    username = "%{env:MIGADU_SMTP_USERNAME}%"
+    secret = "%{env:MIGADU_SMTP_PASSWORD}%"
 
