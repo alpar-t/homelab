@@ -59,11 +59,11 @@ spec:
                 secretKeyRef:
                   name: roundcube-db-app
                   key: password
-            # IMAP configuration - Stalwart
+            # IMAP configuration - Stalwart (internal, no TLS needed)
             - name: ROUNDCUBEMAIL_DEFAULT_HOST
-              value: "ssl://stalwart.stalwart-mail.svc.cluster.local"
+              value: "stalwart.stalwart-mail.svc.cluster.local"
             - name: ROUNDCUBEMAIL_DEFAULT_PORT
-              value: "993"
+              value: "143"
             # SMTP configuration - Stalwart internal relay (no auth needed)
             - name: ROUNDCUBEMAIL_SMTP_SERVER
               value: "stalwart.stalwart-mail.svc.cluster.local"
