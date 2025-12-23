@@ -13,7 +13,7 @@ data:
     # Email placeholders (*_EMAIL_PLACEHOLDER) are replaced from stalwart-emails secret
     
     set daemon 60
-    set syslog
+    set no syslog
     
     # Service mailbox
     poll imap.migadu.com
@@ -23,6 +23,7 @@ data:
       ssl
       sslcertck
       smtphost localhost/25
+      smtpaddress mail.newjoy.ro
       is "SERVICE_EMAIL_PLACEHOLDER" here
       nokeep
     
@@ -34,6 +35,7 @@ data:
       ssl
       sslcertck
       smtphost localhost/25
+      smtpaddress mail.newjoy.ro
       is "KINGA_EMAIL_PLACEHOLDER" here
       nokeep
     
@@ -45,5 +47,6 @@ data:
       ssl
       sslcertck
       smtphost localhost/25
+      smtpaddress mail.newjoy.ro
       is "ALPAR_EMAIL_PLACEHOLDER" here
       nokeep
