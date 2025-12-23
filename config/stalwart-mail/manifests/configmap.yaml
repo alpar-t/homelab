@@ -22,6 +22,11 @@ data:
     bind = ["[::]:25"]
     protocol = "smtp"
     
+    # Allow relay from internal cluster (port 25 listener)
+    # Any mail received on port 25 is allowed to relay (internal services only)
+    [session.rcpt]
+    relay = true
+    
     [server.listener.submissions]
     bind = ["[::]:587"]
     protocol = "smtp"
