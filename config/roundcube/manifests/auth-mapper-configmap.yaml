@@ -11,6 +11,9 @@ data:
   # nginx + Lua config that maps Pocket ID email to Stalwart credentials
   # and passes them to Roundcube via HTTP Basic Auth
   default.conf: |
+    # Use Kubernetes DNS resolver
+    resolver kube-dns.kube-system.svc.cluster.local valid=30s;
+    
     server {
         listen 8080;
         server_name _;

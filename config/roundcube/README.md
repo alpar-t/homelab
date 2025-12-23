@@ -54,8 +54,8 @@ In Pocket ID admin:
 #### oauth2-proxy credentials
 
 ```bash
-# Generate cookie secret
-COOKIE_SECRET=$(openssl rand -base64 32 | tr -d '\n')
+# Generate cookie secret (must be exactly 16, 24, or 32 bytes)
+COOKIE_SECRET=$(openssl rand -hex 16)
 
 kubectl create secret generic oauth2-proxy-roundcube \
   --namespace roundcube \
