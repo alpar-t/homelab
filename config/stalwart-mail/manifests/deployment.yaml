@@ -84,6 +84,12 @@ spec:
                 secretKeyRef:
                   name: stalwart-oidc
                   key: client_secret
+            # Master user password for accessing any mailbox
+            - name: MASTER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stalwart-master
+                  key: password
             # Migadu SMTP credentials for outbound relay
             - name: MIGADU_SMTP_USERNAME
               valueFrom:

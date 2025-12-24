@@ -1,10 +1,16 @@
-# Secret must be created manually before running this job:
+# Secrets required before running this job:
+#
+# 1. Gmail credentials:
 # kubectl create secret generic imapsync-kinga-gmail \
 #   --namespace stalwart-mail \
 #   --from-literal=gmail-user="kinga@newjoy.ro" \
 #   --from-literal=gmail-password="GMAIL_APP_PASSWORD" \
-#   --from-literal=stalwart-user="kinga" \
-#   --from-literal=stalwart-password="STALWART_PASSWORD"
+#   --from-literal=stalwart-user="kinga"
+#
+# 2. Stalwart master user (one-time setup):
+# kubectl create secret generic stalwart-master \
+#   --namespace stalwart-mail \
+#   --from-literal=password="MASTER_PASSWORD"
 ---
 apiVersion: batch/v1
 kind: Job
@@ -40,10 +46,11 @@ spec:
             - stalwart.stalwart-mail.svc.cluster.local
             - --port2
             - "143"
+            # Master user syntax: targetuser%master
             - --user2
-            - $(STALWART_USER)
+            - $(STALWART_USER)%master
             - --password2
-            - $(STALWART_PASSWORD)
+            - $(MASTER_PASSWORD)
             # Gmail-specific options
             - --gmail1
             # Map Gmail labels to folders
@@ -75,11 +82,11 @@ spec:
                 secretKeyRef:
                   name: imapsync-kinga-gmail
                   key: stalwart-user
-            - name: STALWART_PASSWORD
+            - name: MASTER_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: imapsync-kinga-gmail
-                  key: stalwart-password
+                  name: stalwart-master
+                  key: password
           resources:
             requests:
               cpu: 100m

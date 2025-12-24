@@ -112,6 +112,9 @@ data:
     [authentication]
     fallback-admin.user = "admin"
     fallback-admin.secret = "%{env:ADMIN_PASSWORD}%"
+    # Master user for accessing any mailbox (login as user%master)
+    master.user = "master"
+    master.secret = "%{env:MASTER_PASSWORD}%"
     
     # OIDC settings for admin UI login and token validation
     [oauth]
