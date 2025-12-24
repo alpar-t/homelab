@@ -63,9 +63,9 @@ spec:
             # Application name shown in UI and emails
             - name: APP_NAME
               value: "NewJoy ID"
-            # Accent color (teal)
-            - name: UI_CONFIG
-              value: '{"theme": {"accentColor": "#008080"}}'
+            # Accent color (teal) - accepts any valid CSS color
+            - name: ACCENT_COLOR
+              value: "teal"
             # Session duration in minutes (24 hours - balance of security and convenience)
             - name: SESSION_DURATION
               value: "1440"

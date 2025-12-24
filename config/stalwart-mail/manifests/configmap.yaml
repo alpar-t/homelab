@@ -36,6 +36,11 @@ data:
     [session.rcpt]
     relay = true
     
+    # Accept any EHLO domain from internal cluster services
+    # (pods send their hostname which isn't a valid domain)
+    [session.ehlo]
+    reject-non-fqdn = false
+    
     # Disable spam filter headers for relayed mail
     # These headers (X-Spam-Status, X-Spam-Result) can cause external
     # receivers like Gmail to flag messages as spam
