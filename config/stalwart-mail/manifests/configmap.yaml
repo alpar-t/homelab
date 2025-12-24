@@ -41,6 +41,10 @@ data:
     [session.ehlo]
     reject-non-fqdn = false
     
+    # Increase max message size for large attachments (default is 50MB)
+    [session.data]
+    max-message-size = 104857600
+    
     # Disable spam filter headers for relayed mail
     # These headers (X-Spam-Status, X-Spam-Result) can cause external
     # receivers like Gmail to flag messages as spam
