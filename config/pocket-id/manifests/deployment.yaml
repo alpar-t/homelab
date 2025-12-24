@@ -60,9 +60,18 @@ spec:
             # OIDC clients/users can still be managed via UI
             - name: UI_CONFIG_DISABLED
               value: "true"
+            # Application name shown in UI and emails
+            - name: APP_NAME
+              value: "NewJoy ID"
+            # Accent color (teal)
+            - name: UI_CONFIG
+              value: '{"theme": {"accentColor": "#008080"}}'
             # Session duration in minutes (24 hours - balance of security and convenience)
             - name: SESSION_DURATION
               value: "1440"
+            # Email notification when login from new device
+            - name: EMAIL_LOGIN_NOTIFICATION_ENABLED
+              value: "true"
             # Email configuration - uses Stalwart as local relay (no auth needed on port 25)
             - name: SMTP_HOST
               value: "stalwart.stalwart-mail.svc.cluster.local"
@@ -70,8 +79,9 @@ spec:
               value: "25"
             - name: SMTP_FROM
               value: "auth@newjoy.ro"
+            # Valid values: none, starttls, tls
             - name: SMTP_TLS
-              value: "false"
+              value: "none"
             # App dashboard
             - name: APP_DASHBOARD_ENABLED
               value: "true"
