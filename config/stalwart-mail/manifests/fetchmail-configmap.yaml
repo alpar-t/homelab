@@ -8,9 +8,9 @@ metadata:
 data:
   fetchmailrc.template: |
     # Fetchmail configuration template
-    # Password placeholders (FETCHMAIL_*_PASSWORD) are replaced at runtime
-    # from the migadu-fetch-credentials secret
-    # Email placeholders (*_EMAIL_PLACEHOLDER) are replaced from stalwart-emails secret
+    # Variables are substituted at runtime using envsubst
+    # Passwords from: migadu-fetch-credentials secret
+    # Emails from: stalwart-emails secret
     
     set daemon 60
     set no syslog
@@ -18,35 +18,35 @@ data:
     # Service mailbox - delivers to alpar's account
     poll imap.migadu.com
       protocol IMAP
-      user "SERVICE_EMAIL_PLACEHOLDER"
-      password "FETCHMAIL_SERVICE_PASSWORD"
+      user "${SERVICE_EMAIL}"
+      password "${FETCHMAIL_SERVICE_PASSWORD}"
       ssl
       sslcertck
       smtphost localhost/25
       smtpaddress mail.newjoy.ro
-      is "ALPAR_EMAIL_PLACEHOLDER" here
+      is "${ALPAR_EMAIL}" here
       nokeep
     
     # Kinga mailbox
     poll imap.migadu.com
       protocol IMAP
-      user "KINGA_EMAIL_PLACEHOLDER"
-      password "FETCHMAIL_KINGA_PASSWORD"
+      user "${KINGA_EMAIL}"
+      password "${FETCHMAIL_KINGA_PASSWORD}"
       ssl
       sslcertck
       smtphost localhost/25
       smtpaddress mail.newjoy.ro
-      is "KINGA_EMAIL_PLACEHOLDER" here
+      is "${KINGA_EMAIL}" here
       nokeep
     
     # Alpar mailbox
     poll imap.migadu.com
       protocol IMAP
-      user "ALPAR_EMAIL_PLACEHOLDER"
-      password "FETCHMAIL_ALPAR_PASSWORD"
+      user "${ALPAR_EMAIL}"
+      password "${FETCHMAIL_ALPAR_PASSWORD}"
       ssl
       sslcertck
       smtphost localhost/25
       smtpaddress mail.newjoy.ro
-      is "ALPAR_EMAIL_PLACEHOLDER" here
+      is "${ALPAR_EMAIL}" here
       nokeep
