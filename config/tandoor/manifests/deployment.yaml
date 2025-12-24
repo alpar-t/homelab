@@ -91,6 +91,22 @@ spec:
             # Override Kubernetes-injected TANDOOR_PORT (from service named "tandoor")
             - name: TANDOOR_PORT
               value: "80"
+            # Email configuration - uses Stalwart as local relay (no auth needed on port 25)
+            - name: EMAIL_HOST
+              value: "stalwart.stalwart-mail.svc.cluster.local"
+            - name: EMAIL_PORT
+              value: "25"
+            - name: EMAIL_USE_TLS
+              value: "0"
+            - name: EMAIL_USE_SSL
+              value: "0"
+            - name: DEFAULT_FROM_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: tandoor-email
+                  key: from_address
+            - name: ACCOUNT_EMAIL_SUBJECT_PREFIX
+              value: "[Tandoor] "
           volumeMounts:
             - name: media
               mountPath: /opt/recipes/mediafiles
