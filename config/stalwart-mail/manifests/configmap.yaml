@@ -20,7 +20,7 @@ data:
     
     [tracer."stdout"]
     type = "stdout"
-    level = "trace"
+    level = "info"
     ansi = false
     enable = true
     
@@ -70,7 +70,8 @@ data:
     fts = "postgresql"
     blob = "filesystem"
     lookup = "postgresql"
-    directory = "internal"
+    # Use OIDC directory for bearer token support (OAUTHBEARER)
+    directory = "oidc"
     
     [store.postgresql]
     type = "postgresql"
@@ -86,6 +87,19 @@ data:
     type = "fs"
     path = "/opt/stalwart/blobs"
     
+    # OIDC directory for bearer token validation
+    # Uses userinfo endpoint to validate tokens and get user info
+    [directory.oidc]
+    type = "oidc"
+    store = "postgresql"
+    endpoint.url = "https://auth.newjoy.ro/api/oidc/userinfo"
+    endpoint.method = "userinfo"
+    fields.email = "email"
+    fields.username = "preferred_username"
+    fields.full-name = "name"
+    timeout = "30s"
+    
+    # Internal directory as fallback for password auth
     [directory.internal]
     type = "internal"
     store = "postgresql"
@@ -94,6 +108,7 @@ data:
     fallback-admin.user = "admin"
     fallback-admin.secret = "%{env:ADMIN_PASSWORD}%"
     
+    # OIDC settings for admin UI login and token validation
     [oauth]
     oidc.enable = true
     oidc.issuer-url = "https://auth.newjoy.ro"

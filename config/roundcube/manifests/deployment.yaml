@@ -64,7 +64,7 @@ spec:
               value: "stalwart.stalwart-mail.svc.cluster.local"
             - name: ROUNDCUBEMAIL_DEFAULT_PORT
               value: "143"
-            # SMTP configuration - Stalwart submission port
+            # SMTP configuration - Stalwart with OAUTHBEARER
             - name: ROUNDCUBEMAIL_SMTP_SERVER
               value: "stalwart.stalwart-mail.svc.cluster.local"
             - name: ROUNDCUBEMAIL_SMTP_PORT
@@ -72,7 +72,7 @@ spec:
             # Skin
             - name: ROUNDCUBEMAIL_SKIN
               value: "elastic"
-            # OAuth2 credentials for Pocket ID (reusing oauth2-proxy secret)
+            # OAuth2 credentials for Pocket ID (shared with Stalwart)
             - name: OAUTH_CLIENT_ID
               valueFrom:
                 secretKeyRef:

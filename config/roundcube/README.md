@@ -38,7 +38,7 @@ Roundcube webmail with Pocket ID SSO, connecting to Stalwart mail server.
 3. User authenticates with Pocket ID
 4. Pocket ID returns access token to Roundcube
 5. Roundcube connects to Stalwart IMAP/SMTP using **OAUTHBEARER** with the token
-6. Stalwart validates the token against Pocket ID
+6. Stalwart validates the token against Pocket ID userinfo endpoint
 
 ## Setup
 
@@ -47,7 +47,7 @@ Roundcube webmail with Pocket ID SSO, connecting to Stalwart mail server.
 Roundcube and Stalwart **must use the same Pocket ID application**. This is because:
 - Roundcube gets an OAuth token from Pocket ID
 - Roundcube uses that token for OAUTHBEARER authentication to Stalwart IMAP/SMTP
-- Stalwart validates the token's audience matches its configured client ID
+- Stalwart validates the token by calling Pocket ID's userinfo endpoint
 
 In Pocket ID admin:
 
@@ -112,7 +112,7 @@ kubectl logs -n roundcube deployment/roundcube
 Verify the OAuth secret exists:
 
 ```bash
-kubectl get secret roundcube-oauth -n roundcube
+kubectl get secret oauth2-proxy-roundcube -n roundcube
 ```
 
 ### OAuth Callback Error
@@ -129,6 +129,16 @@ Test Stalwart connection from inside the pod:
 kubectl exec -n roundcube deployment/roundcube -- \
   nc -zv stalwart.stalwart-mail.svc.cluster.local 143
 ```
+
+### Token Validation Issues
+
+If login fails after OAuth callback, check Stalwart logs:
+
+```bash
+kubectl logs -n stalwart-mail deployment/stalwart --tail=50
+```
+
+Look for errors like "Failed to decode token" or "Unauthorized" - these indicate Stalwart can't validate the token against Pocket ID.
 
 ## Secrets Reference
 
