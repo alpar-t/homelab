@@ -42,8 +42,13 @@ data:
     reject-non-fqdn = false
     
     # Increase max message size for large attachments (default is 50MB)
-    [session.data]
-    max-message-size = 104857600
+    # SMTP incoming message limit
+    [session.data.limits]
+    size = 104857600
+    
+    # IMAP request size limit (for imapsync APPEND commands)
+    [imap.request]
+    max-size = 104857600
     
     # Disable spam filter headers for relayed mail
     # These headers (X-Spam-Status, X-Spam-Result) can cause external
