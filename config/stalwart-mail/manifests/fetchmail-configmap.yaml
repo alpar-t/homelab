@@ -15,7 +15,7 @@ data:
     set daemon 60
     set no syslog
     
-    # Service mailbox
+    # Service mailbox - delivers to alpar's account
     poll imap.migadu.com
       protocol IMAP
       user "SERVICE_EMAIL_PLACEHOLDER"
@@ -24,7 +24,7 @@ data:
       sslcertck
       smtphost localhost/25
       smtpaddress mail.newjoy.ro
-      is "SERVICE_EMAIL_PLACEHOLDER" here
+      is "ALPAR_EMAIL_PLACEHOLDER" here
       nokeep
     
     # Kinga mailbox
