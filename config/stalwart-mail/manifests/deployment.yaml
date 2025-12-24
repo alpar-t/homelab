@@ -28,15 +28,20 @@ spec:
             - -c
             - |
               cp /config-template/fetchmailrc.template /config/fetchmailrc
-              # Replace password placeholders
-              for var in $(env | grep '^FETCHMAIL_' | cut -d= -f1); do
-                value=$(eval echo \$$var)
-                sed -i "s|$var|$value|g" /config/fetchmailrc
+              # Replace password placeholders using awk to avoid sed special char issues
+              # Passwords may contain &, $, !, etc. which break sed
+              for var in FETCHMAIL_SERVICE_PASSWORD FETCHMAIL_KINGA_PASSWORD FETCHMAIL_ALPAR_PASSWORD; do
+                value=$(eval echo \"\$$var\")
+                awk -v placeholder="$var" -v replacement="$value" '{gsub(placeholder, replacement)}1' \
+                  /config/fetchmailrc > /config/fetchmailrc.tmp && mv /config/fetchmailrc.tmp /config/fetchmailrc
               done
               # Replace email placeholders
-              sed -i "s|SERVICE_EMAIL_PLACEHOLDER|$SERVICE_EMAIL|g" /config/fetchmailrc
-              sed -i "s|KINGA_EMAIL_PLACEHOLDER|$KINGA_EMAIL|g" /config/fetchmailrc
-              sed -i "s|ALPAR_EMAIL_PLACEHOLDER|$ALPAR_EMAIL|g" /config/fetchmailrc
+              awk -v placeholder="SERVICE_EMAIL_PLACEHOLDER" -v replacement="$SERVICE_EMAIL" '{gsub(placeholder, replacement)}1' \
+                /config/fetchmailrc > /config/fetchmailrc.tmp && mv /config/fetchmailrc.tmp /config/fetchmailrc
+              awk -v placeholder="KINGA_EMAIL_PLACEHOLDER" -v replacement="$KINGA_EMAIL" '{gsub(placeholder, replacement)}1' \
+                /config/fetchmailrc > /config/fetchmailrc.tmp && mv /config/fetchmailrc.tmp /config/fetchmailrc
+              awk -v placeholder="ALPAR_EMAIL_PLACEHOLDER" -v replacement="$ALPAR_EMAIL" '{gsub(placeholder, replacement)}1' \
+                /config/fetchmailrc > /config/fetchmailrc.tmp && mv /config/fetchmailrc.tmp /config/fetchmailrc
               chmod 600 /config/fetchmailrc
               chown 1000:1000 /config/fetchmailrc
               echo "Fetchmail config generated:"
