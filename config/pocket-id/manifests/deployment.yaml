@@ -56,7 +56,14 @@ spec:
                 secretKeyRef:
                   name: pocket-id-secrets
                   key: encryption_key
-            # Email configuration - uses Stalwart as local relay
+            # Disable UI config so env vars take effect for SMTP and app settings
+            # OIDC clients/users can still be managed via UI
+            - name: UI_CONFIG_DISABLED
+              value: "true"
+            # Session duration in minutes (24 hours - balance of security and convenience)
+            - name: SESSION_DURATION
+              value: "1440"
+            # Email configuration - uses Stalwart as local relay (no auth needed on port 25)
             - name: SMTP_HOST
               value: "stalwart.stalwart-mail.svc.cluster.local"
             - name: SMTP_PORT
