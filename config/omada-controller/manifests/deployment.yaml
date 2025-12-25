@@ -40,10 +40,10 @@ spec:
             - name: SHOW_MONGODB_LOGS
               value: "false"
           ports:
-            # Web UI (HTTP) - accessed via oauth2-proxy
-            - name: http
-              containerPort: 8088
-              hostPort: 8088
+            # Web UI (HTTPS) - accessed via oauth2-proxy
+            - name: https
+              containerPort: 8043
+              hostPort: 8043
               protocol: TCP
             # Device discovery (legacy)
             - name: discovery
@@ -91,14 +91,16 @@ spec:
           livenessProbe:
             httpGet:
               path: /
-              port: 8088
+              port: 8043
+              scheme: HTTPS
             initialDelaySeconds: 180
             periodSeconds: 30
             timeoutSeconds: 10
           readinessProbe:
             httpGet:
               path: /
-              port: 8088
+              port: 8043
+              scheme: HTTPS
             initialDelaySeconds: 90
             periodSeconds: 15
             timeoutSeconds: 10
@@ -123,9 +125,9 @@ spec:
   selector:
     app: omada-controller
   ports:
-    - name: http
-      port: 80
-      targetPort: 8088
+    - name: https
+      port: 8043
+      targetPort: 8043
       protocol: TCP
 
 

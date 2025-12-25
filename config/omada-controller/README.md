@@ -42,7 +42,7 @@ This means the pod runs on the node's network directly (not behind kube-proxy).
 
 | Port | Protocol | Purpose |
 |------|----------|---------|
-| 8088 | TCP | HTTP management UI |
+| 8043 | TCP | HTTPS management UI |
 | 27001 | UDP | Device discovery (legacy) |
 | 29810 | UDP | Device discovery (v5.0+) |
 | 29811 | TCP | AP adoption |
@@ -146,7 +146,7 @@ kubectl logs -n omada-controller -l app=omada-controller
 kubectl logs -n omada-controller -l app=oauth2-proxy-omada
 
 # Check if ports are listening on the node
-ss -tlnp | grep -E '8088|27001|2981'
+ss -tlnp | grep -E '8043|27001|2981'
 
 # Check device discovery
 # On a device, check if it can reach the controller:

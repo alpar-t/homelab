@@ -34,8 +34,9 @@ spec:
             # OIDC configuration
             - --provider=oidc
             - --oidc-issuer-url=https://auth.newjoy.ro
-            # Upstream (Omada Controller UI)
-            - --upstream=http://omada-controller.omada-controller.svc.cluster.local:80
+            # Upstream (Omada Controller UI - HTTPS because HTTP is disabled)
+            - --upstream=https://omada-controller.omada-controller.svc.cluster.local:8043
+            - --ssl-upstream-insecure-skip-verify=true
             # Cookie configuration (stateless sessions)
             - --cookie-secure=true
             - --cookie-name=_oauth2_proxy_omada
