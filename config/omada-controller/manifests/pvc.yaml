@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: omada-data
+  namespace: omada-controller
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: omada-logs
+  namespace: omada-controller
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-hdd
+  resources:
+    requests:
+      storage: 1Gi
+
+

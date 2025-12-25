@@ -32,7 +32,8 @@ User → nginx-ingress → oauth2-proxy → Pi-hole Admin
 
 ```bash
 # Generate a random cookie secret
-COOKIE_SECRET=$(openssl rand -base64 32 | tr -d '\n')
+# Must be 16, 24, or 32 bytes
+COOKIE_SECRET=$(openssl rand -hex 16)
 
 # Create the secret with values from Pocket-ID
 kubectl create secret generic oauth2-proxy-pihole \

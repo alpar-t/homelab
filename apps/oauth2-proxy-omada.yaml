@@ -1,23 +1,23 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: tandoor
+  name: oauth2-proxy-omada
   namespace: argocd
+  annotations:
+    # Run after omada-controller and pocket-id are deployed
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
   source:
     repoURL: https://github.com/alpar-t/homelab
     targetRevision: main
-    path: config/tandoor/manifests
+    path: config/oauth2-proxy-omada/manifests
   destination:
     server: https://kubernetes.default.svc
-    namespace: tandoor
+    namespace: omada-controller
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-
 
 

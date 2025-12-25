@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omada-controller
+  namespace: omada-controller
+  labels:
+    app: omada-controller
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # Required for PVC + hostNetwork
+  selector:
+    matchLabels:
+      app: omada-controller
+  template:
+    metadata:
+      labels:
+        app: omada-controller
+    spec:
+      # hostNetwork required for AP discovery and adoption
+      # APs broadcast on the network to find the controller
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: omada-controller
+          image: mbentley/omada-controller:5.14
+          env:
+            - name: TZ
+              value: "Europe/Bucharest"
+            - name: MANAGE_HTTP_PORT
+              value: "8088"
+            - name: MANAGE_HTTPS_PORT
+              value: "8043"
+            - name: PORTAL_HTTP_PORT
+              value: "8088"
+            - name: PORTAL_HTTPS_PORT
+              value: "8843"
+            - name: SHOW_SERVER_LOGS
+              value: "true"
+            - name: SHOW_MONGODB_LOGS
+              value: "false"
+          ports:
+            # Web UI (HTTP) - accessed via oauth2-proxy
+            - name: http
+              containerPort: 8088
+              hostPort: 8088
+              protocol: TCP
+            # Device discovery (legacy)
+            - name: discovery
+              containerPort: 27001
+              hostPort: 27001
+              protocol: UDP
+            # Device discovery (v5.0+)
+            - name: discovery-v2
+              containerPort: 29810
+              hostPort: 29810
+              protocol: UDP
+            # AP adoption
+            - name: adopt
+              containerPort: 29811
+              hostPort: 29811
+              protocol: TCP
+            # AP upgrade
+            - name: upgrade
+              containerPort: 29812
+              hostPort: 29812
+              protocol: TCP
+            # AP manager v1
+            - name: manager-v1
+              containerPort: 29813
+              hostPort: 29813
+              protocol: TCP
+            # AP manager v2
+            - name: manager-v2
+              containerPort: 29814
+              hostPort: 29814
+              protocol: TCP
+          volumeMounts:
+            - name: omada-data
+              mountPath: /opt/tplink/EAPController/data
+            - name: omada-logs
+              mountPath: /opt/tplink/EAPController/logs
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1536Mi
+          # Omada takes a while to start (MongoDB init)
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8088
+            initialDelaySeconds: 180
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8088
+            initialDelaySeconds: 90
+            periodSeconds: 15
+            timeoutSeconds: 10
+      volumes:
+        - name: omada-data
+          persistentVolumeClaim:
+            claimName: omada-data
+        - name: omada-logs
+          persistentVolumeClaim:
+            claimName: omada-logs
+---
+# ClusterIP service for oauth2-proxy to reach Omada
+apiVersion: v1
+kind: Service
+metadata:
+  name: omada-controller
+  namespace: omada-controller
+  labels:
+    app: omada-controller
+spec:
+  type: ClusterIP
+  selector:
+    app: omada-controller
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8088
+      protocol: TCP
+
+

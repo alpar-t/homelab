@@ -46,7 +46,7 @@ data:
     [session.data.limits]
     size = 104857600
     
-    # IMAP request size limit (for imapsync APPEND commands)
+    # IMAP request size limit (for large APPEND commands)
     [imap.request]
     max-size = 104857600
     
