@@ -82,11 +82,11 @@ spec:
               mountPath: /opt/tplink/EAPController/logs
           resources:
             requests:
-              cpu: 200m
-              memory: 512Mi
+              cpu: 500m
+              memory: 1Gi
             limits:
-              cpu: 1000m
-              memory: 1536Mi
+              cpu: 2000m
+              memory: 2560Mi
           # Omada takes a while to start (MongoDB init)
           livenessProbe:
             httpGet:
