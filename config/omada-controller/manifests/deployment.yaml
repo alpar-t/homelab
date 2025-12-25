@@ -87,23 +87,31 @@ spec:
             limits:
               cpu: 2000m
               memory: 2560Mi
-          # Omada takes a while to start (MongoDB init)
+          # Omada takes a while to start (MongoDB init + JVM warmup)
+          startupProbe:
+            httpGet:
+              path: /
+              port: 8043
+              scheme: HTTPS
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 30  # 60s + (30 * 10s) = up to 6 minutes to start
           livenessProbe:
             httpGet:
               path: /
               port: 8043
               scheme: HTTPS
-            initialDelaySeconds: 180
             periodSeconds: 30
             timeoutSeconds: 10
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /
               port: 8043
               scheme: HTTPS
-            initialDelaySeconds: 90
             periodSeconds: 15
             timeoutSeconds: 10
+            failureThreshold: 2
       volumes:
         - name: omada-data
           persistentVolumeClaim:
