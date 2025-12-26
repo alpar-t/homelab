@@ -117,29 +117,4 @@ spec:
       port: 7686
       targetPort: 7686
       protocol: TCP
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: otmonitor
-  namespace: otmonitor
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-spec:
-  ingressClassName: nginx
-  tls:
-    - hosts:
-        - otmonitor.newjoy.ro
-      secretName: otmonitor-tls
-  rules:
-    - host: otmonitor.newjoy.ro
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: otmonitor
-                port:
-                  name: http
 
