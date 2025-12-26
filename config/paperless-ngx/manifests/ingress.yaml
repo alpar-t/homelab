@@ -1,0 +1,31 @@
+# Paperless-ngx Ingress
+# Exposes the web interface at docs.newjoy.ro
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: paperless-ngx
+  namespace: paperless-ngx
+  labels:
+    app: paperless-ngx
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    # Allow large file uploads for document scanning
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    # Increase timeouts for OCR processing
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: docs.newjoy.ro
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: paperless-ngx
+                port:
+                  number: 8000
+

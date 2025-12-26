@@ -1,0 +1,8 @@
+# Paperless-ngx namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: paperless-ngx
+  labels:
+    app.kubernetes.io/name: paperless-ngx
+

@@ -60,16 +60,16 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 
 **APPS:**
 
-- [ ] Omada
-- [ ] OTMonitor
+- [x] Omada
+- [X] OTMonitor
 - [ ] Bitwarden
 - [ ] Nextcloud (sync-in (if oidc) or owncloud)
 - [ ] Photoprism or Immich
-- [ ] Paperless 
+- [x] Paperless-ngx 
 
 - [ ] Emby
 - [ ] Frigate
-- [ ] VPN ( Headscale with PokcetId )
+- [ ] VPN ( Headscale with PokcetId ?)
 
 ## Hardware
 

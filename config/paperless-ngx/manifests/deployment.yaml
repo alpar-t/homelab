@@ -1,0 +1,336 @@
+# Paperless-ngx main application deployment
+# Document management system with OCR
+#
+# Includes FTP server as sidecar container for scanner uploads.
+# Both containers share the same consume volume (RWO PVC).
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paperless-ngx
+  namespace: paperless-ngx
+  labels:
+    app: paperless-ngx
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  # Start with 0 replicas if migrating data - scale to 1 after DB import
+  replicas: 0
+  strategy:
+    type: Recreate  # Required for RWO PVCs
+  selector:
+    matchLabels:
+      app: paperless-ngx
+  template:
+    metadata:
+      labels:
+        app: paperless-ngx
+      annotations:
+        # Auto-restart when secrets change (requires Reloader)
+        secret.reloader.stakater.com/reload: "paperless-secrets,paperless-oidc"
+    spec:
+      initContainers:
+        # Wait for PostgreSQL to be ready
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - 'sh'
+            - '-c'
+            - |
+              until nc -z paperless-db-rw.paperless-ngx.svc.cluster.local 5432; do
+                echo "Waiting for PostgreSQL..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready!"
+        # Wait for Redis to be ready
+        - name: wait-for-redis
+          image: busybox:1.36
+          command:
+            - 'sh'
+            - '-c'
+            - |
+              until nc -z redis.paperless-ngx.svc.cluster.local 6379; do
+                echo "Waiting for Redis..."
+                sleep 2
+              done
+              echo "Redis is ready!"
+      containers:
+        # FTP server sidecar for scanner uploads
+        # Shares the consume volume with Paperless
+        - name: ftp-server
+          image: stilliard/pure-ftpd:latest
+          env:
+            - name: PUBLICHOST
+              value: "192.168.1.201"
+            - name: FTP_USER_NAME
+              value: "scanner"
+            - name: FTP_USER_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: ftp-credentials
+                  key: password
+            - name: FTP_USER_HOME
+              value: "/scanner"
+            - name: FTP_USER_UID
+              value: "1000"
+            - name: FTP_USER_GID
+              value: "1000"
+            - name: FTP_PASSIVE_PORTS
+              value: "30000:30009"
+            - name: ADDED_FLAGS
+              value: "-d -d"
+          ports:
+            - containerPort: 21
+              name: ftp-control
+            - containerPort: 30000
+              name: ftp-data-0
+            - containerPort: 30001
+              name: ftp-data-1
+            - containerPort: 30002
+              name: ftp-data-2
+            - containerPort: 30003
+              name: ftp-data-3
+            - containerPort: 30004
+              name: ftp-data-4
+            - containerPort: 30005
+              name: ftp-data-5
+            - containerPort: 30006
+              name: ftp-data-6
+            - containerPort: 30007
+              name: ftp-data-7
+            - containerPort: 30008
+              name: ftp-data-8
+            - containerPort: 30009
+              name: ftp-data-9
+          volumeMounts:
+            - name: consume
+              mountPath: /scanner
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+        
+        # Main Paperless-ngx application
+        - name: paperless-ngx
+          image: ghcr.io/paperless-ngx/paperless-ngx:latest
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            # User mapping for file permissions
+            - name: USERMAP_UID
+              value: "1000"
+            - name: USERMAP_GID
+              value: "1000"
+            
+            # Database configuration (PostgreSQL via CloudNativePG)
+            - name: PAPERLESS_DBENGINE
+              value: "postgresql"
+            - name: PAPERLESS_DBHOST
+              value: "paperless-db-rw.paperless-ngx.svc.cluster.local"
+            - name: PAPERLESS_DBPORT
+              value: "5432"
+            - name: PAPERLESS_DBNAME
+              value: "paperless"
+            - name: PAPERLESS_DBUSER
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-db-app
+                  key: username
+            - name: PAPERLESS_DBPASS
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-db-app
+                  key: password
+            
+            # Redis for task queue
+            - name: PAPERLESS_REDIS
+              value: "redis://redis.paperless-ngx.svc.cluster.local:6379"
+            
+            # Secret key for Django
+            - name: PAPERLESS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-secrets
+                  key: secret_key
+            
+            # OCR configuration
+            - name: PAPERLESS_OCR_LANGUAGES
+              value: "ron hun"
+            - name: PAPERLESS_OCR_LANGUAGE
+              value: "eng+ron+hun"
+            - name: PAPERLESS_OCR_MODE
+              value: "redo"
+            - name: PAPERLESS_OCR_USER_ARGS
+              value: '{"invalidate_digital_signatures": true}'
+            
+            # Tika and Gotenberg for document conversion
+            - name: PAPERLESS_TIKA_ENABLED
+              value: "1"
+            - name: PAPERLESS_TIKA_ENDPOINT
+              value: "http://tika.paperless-ngx.svc.cluster.local:9998"
+            - name: PAPERLESS_TIKA_GOTENBERG_ENDPOINT
+              value: "http://gotenberg.paperless-ngx.svc.cluster.local:3000"
+            
+            # General settings
+            - name: PAPERLESS_URL
+              value: "https://docs.newjoy.ro"
+            - name: PAPERLESS_TIME_ZONE
+              value: "Europe/Bucharest"
+            
+            # Consume directory configuration
+            # Scanner uploads to /scanner/paperless/ via FTP
+            - name: PAPERLESS_CONSUMPTION_DIR
+              value: "/usr/src/paperless/consume/paperless"
+            
+            # Email configuration - uses Stalwart as local relay
+            - name: PAPERLESS_EMAIL_HOST
+              value: "stalwart.stalwart-mail.svc.cluster.local"
+            - name: PAPERLESS_EMAIL_PORT
+              value: "25"
+            - name: PAPERLESS_EMAIL_HOST_USER
+              value: ""
+            - name: PAPERLESS_EMAIL_HOST_PASSWORD
+              value: ""
+            - name: PAPERLESS_EMAIL_USE_TLS
+              value: "false"
+            - name: PAPERLESS_EMAIL_USE_SSL
+              value: "false"
+            
+            # OIDC configuration via Pocket ID
+            - name: PAPERLESS_APPS
+              value: "allauth.socialaccount.providers.openid_connect"
+            - name: PAPERLESS_SOCIALACCOUNT_PROVIDERS
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-oidc
+                  key: providers
+            # Allow login only via OIDC (disable password login after setup)
+            - name: PAPERLESS_DISABLE_REGULAR_LOGIN
+              value: "false"
+            # Auto-create users on first OIDC login
+            - name: PAPERLESS_SOCIAL_AUTO_SIGNUP
+              value: "true"
+          
+          volumeMounts:
+            - name: media
+              mountPath: /usr/src/paperless/media
+            - name: export
+              mountPath: /usr/src/paperless/export
+            - name: consume
+              mountPath: /usr/src/paperless/consume
+          
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          
+          # Startup probe - allows up to 10 minutes for initial startup
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            failureThreshold: 60
+            periodSeconds: 10
+            timeoutSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 10
+      
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: paperless-media
+        - name: export
+          persistentVolumeClaim:
+            claimName: paperless-export
+        - name: consume
+          persistentVolumeClaim:
+            claimName: paperless-consume
+---
+# ClusterIP service for web interface (accessed via Ingress)
+apiVersion: v1
+kind: Service
+metadata:
+  name: paperless-ngx
+  namespace: paperless-ngx
+  labels:
+    app: paperless-ngx
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  type: ClusterIP
+  selector:
+    app: paperless-ngx
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
+---
+# LoadBalancer service for FTP scanner uploads
+# Fixed IP via MetalLB: 192.168.1.201
+apiVersion: v1
+kind: Service
+metadata:
+  name: paperless-ftp
+  namespace: paperless-ngx
+  labels:
+    app: paperless-ngx
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    metallb.universe.tf/loadBalancerIPs: 192.168.1.201
+spec:
+  type: LoadBalancer
+  selector:
+    app: paperless-ngx
+  ports:
+    - name: ftp-control
+      port: 21
+      targetPort: 21
+    - name: ftp-data-0
+      port: 30000
+      targetPort: 30000
+    - name: ftp-data-1
+      port: 30001
+      targetPort: 30001
+    - name: ftp-data-2
+      port: 30002
+      targetPort: 30002
+    - name: ftp-data-3
+      port: 30003
+      targetPort: 30003
+    - name: ftp-data-4
+      port: 30004
+      targetPort: 30004
+    - name: ftp-data-5
+      port: 30005
+      targetPort: 30005
+    - name: ftp-data-6
+      port: 30006
+      targetPort: 30006
+    - name: ftp-data-7
+      port: 30007
+      targetPort: 30007
+    - name: ftp-data-8
+      port: 30008
+      targetPort: 30008
+    - name: ftp-data-9
+      port: 30009
+      targetPort: 30009
+

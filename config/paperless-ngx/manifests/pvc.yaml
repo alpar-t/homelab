@@ -1,0 +1,63 @@
+# Paperless-ngx Persistent Volume Claims
+# Using SSD storage for better performance with 2.4GB dataset
+#
+# Note: No separate "data" PVC needed - that was for SQLite.
+# With PostgreSQL, the data directory only contains ephemeral files
+# like the search index which can be regenerated.
+
+---
+# Media directory - stores original and archived documents
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: paperless-media
+  namespace: paperless-ngx
+  labels:
+    app: paperless-ngx
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 10Gi
+---
+# Export directory - for document exports
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: paperless-export
+  namespace: paperless-ngx
+  labels:
+    app: paperless-ngx
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Consume directory - where scanner uploads files
+# Shared between FTP server and Paperless
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: paperless-consume
+  namespace: paperless-ngx
+  labels:
+    app: paperless-ngx
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 2Gi
+
