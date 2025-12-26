@@ -96,8 +96,8 @@ data:
     }
     logfile {
       pattern otlog-%Y%m%d.txt
-      directory {/config/}
-      enable false
+      directory {/config/logs/}
+      enable true
     }
     tspeak {
       key {}
