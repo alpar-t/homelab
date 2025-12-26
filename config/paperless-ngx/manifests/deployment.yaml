@@ -14,8 +14,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
-  # Start with 0 replicas if migrating data - scale to 1 after DB import
-  replicas: 0
+  replicas: 1
   strategy:
     type: Recreate  # Required for RWO PVCs
   selector:
