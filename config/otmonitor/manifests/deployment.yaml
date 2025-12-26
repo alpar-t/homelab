@@ -1,0 +1,145 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otmonitor
+  namespace: otmonitor
+  labels:
+    app: otmonitor
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: otmonitor
+  template:
+    metadata:
+      labels:
+        app: otmonitor
+      annotations:
+        # Auto-restart when config changes (requires Reloader)
+        configmap.reloader.stakater.com/reload: "otmonitor-config"
+        secret.reloader.stakater.com/reload: "otmonitor-secrets"
+    spec:
+      initContainers:
+        # Generate config file with secrets using envsubst
+        - name: generate-config
+          image: bhgedigital/envsubst:latest
+          command: ['sh', '-c']
+          args:
+            - |
+              envsubst < /config-template/otmonitor.conf > /config/otmonitor.conf
+              echo "Config generated:"
+              cat /config/otmonitor.conf
+          envFrom:
+            - secretRef:
+                name: otmonitor-secrets
+          volumeMounts:
+            - name: config-template
+              mountPath: /config-template
+            - name: config
+              mountPath: /config
+      containers:
+        - name: otmonitor
+          image: ghcr.io/alpar-t/otmonitor:latest
+          env:
+            - name: TZ
+              value: "Europe/Bucharest"
+            - name: GROUP_ID
+              value: "1000"
+            - name: USER_ID
+              value: "1000"
+            - name: UMASK
+              value: "002"
+            - name: KEEP_APP_RUNNING
+              value: "1"
+            - name: DISPLAY_WIDTH
+              value: "1800"
+            - name: DISPLAY_HEIGHT
+              value: "950"
+          ports:
+            # Web GUI (jlesage-style VNC web interface)
+            - name: http
+              containerPort: 5800
+              protocol: TCP
+            # OTMonitor native port
+            - name: otmonitor
+              containerPort: 7686
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 5800
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 5800
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+      volumes:
+        - name: config-template
+          configMap:
+            name: otmonitor-config
+        - name: config
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otmonitor
+  namespace: otmonitor
+  labels:
+    app: otmonitor
+spec:
+  type: ClusterIP
+  selector:
+    app: otmonitor
+  ports:
+    - name: http
+      port: 80
+      targetPort: 5800
+      protocol: TCP
+    - name: otmonitor
+      port: 7686
+      targetPort: 7686
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: otmonitor
+  namespace: otmonitor
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - otmonitor.newjoy.ro
+      secretName: otmonitor-tls
+  rules:
+    - host: otmonitor.newjoy.ro
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: otmonitor
+                port:
+                  name: http
+

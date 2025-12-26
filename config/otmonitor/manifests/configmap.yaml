@@ -1,0 +1,167 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otmonitor-config
+  namespace: otmonitor
+data:
+  otmonitor.conf: |
+    datalog {
+      append false
+      file {/config/otdata.txt}
+      enable false
+      itemlist {
+        flame
+        dhwmode
+        chmode
+        dhwenable
+        diag
+        fault
+        outside
+        roomtemp
+        setpoint
+        modulation
+        boilertemp
+        returntemp
+        controlsp
+        dhwsetpoint
+        chwsetpoint
+        timestamp
+      }
+      interval 30000
+    }
+    web {
+      sslport 0
+      graphlegend false
+      theme default
+      enable false
+      sslprotocols tls1,tls1.1,tls1.2
+      nopass false
+      certonly false
+      port 7686
+    }
+    clock {
+      year false
+      date false
+      auto false
+    }
+    sms {
+      enable false
+      ventilationfault false
+      phonenumber {}
+      route {}
+      sender {}
+      password {}
+      provider VoipPlanet
+      account {}
+      pressure false
+      solarfault false
+      roomcold false
+      watchdogtimer false
+      boilerfault false
+      commproblem false
+    }
+    email {
+      password {}
+      server stalwart-mail.stalwart-mail.svc.cluster.local
+      pressure true
+      roomcold false
+      boilerfault true
+      watchdogtimer true
+      solarfault true
+      commproblem true
+      port 25
+      enable true
+      secure none
+      recipient ${EMAIL_RECIPIENT}
+      user {}
+      sender ${EMAIL_SENDER}
+      ventilationfault true
+    }
+    mqtt {
+      retransmit 10
+      format json2
+      port 1883
+      qos 1
+      keepalive 120
+      eventtopic events/central_heating/otmonitor
+      username ${MQTT_USERNAME}
+      actiontopic actions/otmonitor
+      password ${MQTT_PASSWORD_BASE64}
+      enable true
+      messages false
+      client ${MQTT_CLIENT_ID}
+      broker ${MQTT_BROKER}
+      secure false
+      version 4
+    }
+    logfile {
+      pattern otlog-%Y%m%d.txt
+      directory {/config/}
+      enable false
+    }
+    tspeak {
+      key {}
+      sync false
+      enable false
+      interval 120
+      field1 roomtemp
+      field2 setpoint
+      field3 boilertemp
+      field4 returntemp
+      field5 controlsp
+      field6 modulation
+      field7 {}
+      field8 {}
+    }
+    firmware {
+      hexfile /config/gateway.hex.5.8
+    }
+    alert {
+      pressurelow 1.5
+      roomcold 14
+      pressurehigh 2.0
+    }
+    otgw {
+      pic 16f88
+    }
+    fsdialog {
+      duopane 0
+      reverse 0
+      sort name
+      historylist {
+        /config/gateway.hex.5.8
+        /config/gateway.hex.5.4
+        /
+        /config
+      }
+      mixed 0
+      hidden 0
+      details 1
+    }
+    connection {
+      device {}
+      type tcp
+      port 23
+      host 192.168.1.16
+      enable true
+    }
+    server {
+      relay true
+      enable false
+      port 7686
+    }
+    view {
+      tab graph
+      messageid false
+      order increasing
+      sort name
+      bitflags false
+      resumelog false
+    }
+    status {
+      ch1list {
+      }
+      ch2list {
+      }
+    }
+
