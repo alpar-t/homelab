@@ -23,13 +23,14 @@ spec:
     spec:
       initContainers:
         # Generate config file with secrets using envsubst
+        # OTMonitor is started with -f /config/otmonitor.conf
         - name: generate-config
           image: bhgedigital/envsubst:latest
           command: ['sh', '-c']
           args:
             - |
               envsubst < /config-template/otmonitor.conf > /config/otmonitor.conf
-              echo "Config generated:"
+              echo "Config generated at /config/otmonitor.conf:"
               cat /config/otmonitor.conf
           envFrom:
             - secretRef:
