@@ -48,7 +48,7 @@ needing ReadWriteMany storage.
 | PostgreSQL | Database (via CloudNativePG) | ghcr.io/cloudnative-pg/postgresql:16 |
 | Redis | Task queue / message broker | redis:7-alpine |
 | Gotenberg | Document conversion (Office → PDF) | gotenberg/gotenberg:8 |
-| Tika | Text extraction | ghcr.io/paperless-ngx/tika:latest |
+| Tika | Text extraction | apache/tika:latest |
 
 ## Initial Setup
 
@@ -209,21 +209,11 @@ kubectl exec -it $PAPERLESS_POD -n paperless-ngx -c paperless-ngx -- bash -c '
 kubectl exec -it $PAPERLESS_POD -n paperless-ngx -c paperless-ngx -- document_index reindex
 ```
 
-### Step 6: Verify and Continue Setup
+### Step 5: Verify and Continue Setup
 
-1. Access https://docs.newjoy.ro and log in with your existing credentials
+1. Access https://docs.newjoy.ro and log in via OIDC (your old user is imported)
 2. Verify documents and media are present
 3. Continue with Initial Setup steps 4-5 (FTP password, scanner config)
-
-### Fresh Install (No Migration)
-
-If starting fresh without migrating data, change replicas to 1:
-
-```bash
-kubectl scale deployment paperless-ngx -n paperless-ngx --replicas=1
-```
-
-Then follow Initial Setup step 3 to create an admin user.
 
 ## Storage
 
