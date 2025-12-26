@@ -128,18 +128,15 @@ Configure your scanner to upload via FTP:
 
 ## Data Migration from MariaDB
 
-**Important**: The deployment starts with `replicas: 0` to allow data migration.
-
-### Overview
-
 Paperless's built-in `document_exporter` creates database-agnostic JSON files, so no SQL 
 conversion is needed. The `document_importer` reads these and populates PostgreSQL directly.
 
+### Overview
+
 1. Export from old system (JSON + media files)
-2. Deploy Kubernetes (Paperless at 0 replicas)
-3. Scale up Paperless (creates empty database)
-4. Import data using `document_importer`
-5. Copy media files
+2. Deploy Kubernetes
+3. Import data using `document_importer`
+4. Copy media files
 
 ### Step 1: Export from Old System
 
@@ -168,25 +165,13 @@ Follow Initial Setup steps 1-2:
 1. Create the OIDC secret
 2. Deploy via ArgoCD
 
-Wait for PostgreSQL to be ready (Paperless pod won't start - replicas=0):
+Wait for all pods to be ready:
 
 ```bash
 kubectl get pods -n paperless-ngx -w
-# Wait until paperless-db-1 is Running
 ```
 
-### Step 3: Scale Up Paperless
-
-```bash
-kubectl scale deployment paperless-ngx -n paperless-ngx --replicas=1
-
-# Wait for pod to be ready
-kubectl get pods -n paperless-ngx -w
-```
-
-Paperless initializes with an empty database and runs migrations.
-
-### Step 4: Import Data
+### Step 3: Import Data
 
 ```bash
 # Get the Paperless pod name
@@ -207,7 +192,7 @@ kubectl exec -it $PAPERLESS_POD -n paperless-ngx -c paperless-ngx -- bash -c '
 The importer reads the JSON files and populates PostgreSQL with all documents, tags, 
 correspondents, document types, and other metadata.
 
-### Step 5: Copy Media Files
+### Step 4: Copy Media Files
 
 ```bash
 # Copy media tarball to pod
