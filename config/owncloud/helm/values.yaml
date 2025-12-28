@@ -19,8 +19,6 @@ features:
       userIDClaim: preferred_username
       userIDClaimAttributeMapping: username
       accessTokenVerifyMethod: jwt
-      # Client ID must match the Pocket ID OIDC client
-      webClientID: owncloud
     # Auto-provision accounts from OIDC
     autoprovisionAccounts:
       enabled: true
@@ -143,6 +141,11 @@ services:
   web:
     persistence:
       enabled: false
+    # OIDC client configuration for the web frontend
+    config:
+      oidc:
+        # Client ID must match the Pocket ID OIDC client
+        webClientID: owncloud
   
   # IDM (Identity Management)
   idm:
