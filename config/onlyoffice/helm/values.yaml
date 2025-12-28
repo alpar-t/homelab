@@ -15,10 +15,6 @@ connections:
   dbHost: "onlyoffice-postgresql-rw"
   dbName: onlyoffice
   dbUser: onlyoffice
-  # Disable RabbitMQ - use dummy password to satisfy chart
-  amqpType: ""
-  amqpExistingSecret: ""
-  amqpPassword: "not-used"
   # Use existing Redis from paperless-ngx (passwordless)
   redisHost: "redis.paperless-ngx.svc.cluster.local"
   redisNoPass: true
@@ -38,16 +34,15 @@ resources:
     cpu: 2000m
     memory: 2Gi
 
-# Disable external dependencies - we'll create our own PostgreSQL
+# Disable bundled PostgreSQL - we use CloudNativePG
 postgresql:
   enabled: false
 
-# Disable RabbitMQ for simple setup
+# Use bundled RabbitMQ (required for OnlyOffice)
 rabbitmq:
-  enabled: false
+  enabled: true
 
-# Redis - only supported in Enterprise Edition, not Community
-# Community Edition doesn't use Redis even if configured
+# Disable bundled Redis - we use existing one from paperless-ngx
 redis:
   enabled: false
 
@@ -78,4 +73,3 @@ probes:
 upgrade:
   job:
     enabled: false
-
