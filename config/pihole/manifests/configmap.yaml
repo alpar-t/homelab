@@ -1,15 +1,14 @@
 ---
-# Custom dnsmasq config to avoid conflict with systemd-resolved
-# systemd-resolved listens on 127.0.0.53:53
-# Pi-hole listens on all other interfaces (node IPs)
+# Custom dnsmasq configuration for Pi-hole
+# Now using MetalLB LoadBalancer instead of hostNetwork
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: pihole-dnsmasq
   namespace: pihole
 data:
-  99-bind-interfaces.conf: |
-    # Don't bind to localhost - let systemd-resolved handle that
-    except-interface=lo
-    bind-interfaces
-
+  99-custom.conf: |
+    # Listen on all interfaces inside the container
+    # MetalLB handles external traffic routing
+    interface=*
+    bind-dynamic

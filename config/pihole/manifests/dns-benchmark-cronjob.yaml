@@ -1,7 +1,7 @@
 ---
 # DNS Benchmark CronJob
 # Periodically tests upstream DNS servers and configures Pi-hole to use the fastest ones
-# Uses Pi-hole v6 REST API - no kubectl exec needed!
+# Uses Pi-hole v6 REST API
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -39,8 +39,6 @@ spec:
       template:
         spec:
           restartPolicy: OnFailure
-          # Use host network to access Pi-hole on localhost
-          hostNetwork: true
           containers:
             - name: benchmark
               # Alpine with curl, dig, and jq
@@ -57,8 +55,8 @@ spec:
                   echo "=== DNS Benchmark Started at $(date) ==="
                   echo ""
                   
-                  # Pi-hole API endpoint (using hostNetwork, so localhost works)
-                  PIHOLE_API="http://localhost:8080/api"
+                  # Pi-hole API endpoint via Kubernetes service
+                  PIHOLE_API="http://pihole-web.pihole.svc.cluster.local/api"
                   
                   # DNS servers to benchmark
                   DNS_SERVERS="
@@ -133,45 +131,45 @@ spec:
                   CURRENT_CONFIG=$(curl -s "$PIHOLE_API/config/dns/upstreams" 2>/dev/null || echo "{}")
                   echo "Current config: $CURRENT_CONFIG"
                   
-                  # Extract current upstreams
-                  CURRENT_UPSTREAMS=$(echo "$CURRENT_CONFIG" | jq -r '.config.dns.upstreams // empty' 2>/dev/null || echo "")
+                  # Extract current upstreams as a comparable string
+                  CURRENT_UPSTREAMS=$(echo "$CURRENT_CONFIG" | jq -r '.config.dns.upstreams // [] | sort | join(",")' 2>/dev/null || echo "")
+                  NEW_UPSTREAMS_SORTED=$(echo "$BEST_DNS1,$BEST_DNS2" | tr ',' '\n' | sort | tr '\n' ',' | sed 's/,$//')
+                  
                   echo "Current upstreams: $CURRENT_UPSTREAMS"
+                  echo "New upstreams: $NEW_UPSTREAMS_SORTED"
                   
-                  # New upstream configuration
-                  NEW_UPSTREAMS="$BEST_DNS1,$BEST_DNS2"
-                  
-                  echo ""
-                  echo "=== Updating Pi-hole via API ==="
-                  echo "New upstreams: $NEW_UPSTREAMS"
-                  
-                  # Update DNS upstreams via Pi-hole v6 REST API
-                  # PATCH /api/config/dns/upstreams
-                  RESPONSE=$(curl -s -X PATCH \
-                    -H "Content-Type: application/json" \
-                    -d "{\"config\": {\"dns\": {\"upstreams\": [\"$BEST_DNS1\", \"$BEST_DNS2\"]}}}" \
-                    "$PIHOLE_API/config/dns/upstreams" 2>/dev/null || echo '{"error": "request failed"}')
-                  
-                  echo "API Response: $RESPONSE"
-                  
-                  # Check if successful
-                  if echo "$RESPONSE" | jq -e '.config' > /dev/null 2>&1; then
+                  if [ "$CURRENT_UPSTREAMS" = "$NEW_UPSTREAMS_SORTED" ]; then
                     echo ""
-                    echo "Pi-hole updated successfully!"
+                    echo "No change needed - already using optimal DNS servers"
                   else
                     echo ""
-                    echo "Warning: API update may have failed. Trying alternative method..."
+                    echo "=== Updating Pi-hole via API ==="
                     
-                    # Alternative: Update the TOML config file directly
-                    # Pi-hole v6 uses /etc/pihole/pihole.toml
-                    # But since we don't have access to the filesystem, we rely on API
-                    
-                    # Try the simpler PUT endpoint
-                    RESPONSE=$(curl -s -X PUT \
+                    # Pi-hole v6 API: PATCH /api/config with JSON body
+                    RESPONSE=$(curl -s -X PATCH \
                       -H "Content-Type: application/json" \
-                      -d "[\"$BEST_DNS1\", \"$BEST_DNS2\"]" \
-                      "$PIHOLE_API/config/dns.upstreams" 2>/dev/null || echo '{"error": "request failed"}')
+                      -d "{\"config\": {\"dns\": {\"upstreams\": [\"$BEST_DNS1\", \"$BEST_DNS2\"]}}}" \
+                      "$PIHOLE_API/config" 2>/dev/null)
                     
-                    echo "Alternative API Response: $RESPONSE"
+                    echo "API Response: $RESPONSE"
+                    
+                    # Check if successful
+                    if echo "$RESPONSE" | jq -e '.config' > /dev/null 2>&1; then
+                      echo ""
+                      echo "Pi-hole updated successfully!"
+                    else
+                      echo ""
+                      echo "Warning: API update may have failed"
+                      echo "Trying alternative endpoint..."
+                      
+                      # Try PUT to specific config key
+                      RESPONSE=$(curl -s -X PUT \
+                        -H "Content-Type: application/json" \
+                        -d "[\"$BEST_DNS1\", \"$BEST_DNS2\"]" \
+                        "$PIHOLE_API/config/dns.upstreams" 2>/dev/null)
+                      
+                      echo "Alternative Response: $RESPONSE"
+                    fi
                   fi
                   
                   rm -f "$RESULTS_FILE"

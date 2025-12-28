@@ -1,6 +1,34 @@
 ---
-# Web UI Service - ClusterIP (accessed via oauth2-proxy)
-# DNS is accessed directly on node IPs port 53 (hostNetwork)
+# Pi-hole DNS Service - LoadBalancer via MetalLB
+# Provides a stable IP address for DNS (192.168.1.202)
+# Configure your router/DHCP to use this IP as DNS server
+apiVersion: v1
+kind: Service
+metadata:
+  name: pihole-dns
+  namespace: pihole
+  labels:
+    app: pihole
+  annotations:
+    # Request a specific IP from MetalLB
+    metallb.universe.tf/loadBalancerIPs: "192.168.1.202"
+spec:
+  type: LoadBalancer
+  # Preserve client IP for DNS logging
+  externalTrafficPolicy: Local
+  selector:
+    app: pihole
+  ports:
+    - name: dns-udp
+      port: 53
+      targetPort: 53
+      protocol: UDP
+    - name: dns-tcp
+      port: 53
+      targetPort: 53
+      protocol: TCP
+---
+# Web UI Service - ClusterIP (accessed via oauth2-proxy or directly)
 apiVersion: v1
 kind: Service
 metadata:
