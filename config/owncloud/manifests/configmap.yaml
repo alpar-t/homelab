@@ -1,6 +1,8 @@
 # ownCloud Infinite Scale ConfigMaps
 #
-# Contains CSP configuration to allow external OIDC provider (Pocket ID)
+# Contains:
+# - CSP configuration to allow external OIDC provider (Pocket ID)
+# - App registry for OnlyOffice integration (enables creating Office docs)
 
 apiVersion: v1
 kind: ConfigMap
@@ -52,4 +54,63 @@ data:
         - "'unsafe-inline'"
       worker-src:
         - "'self'"
+  
+  # App Registry configuration
+  # Defines which MIME types can be created and which app handles them
+  # This enables "New Document/Spreadsheet/Presentation" in the UI
+  app-registry.yaml: |
+    app_registry:
+      mimetypes:
+        # Microsoft Office formats (handled by OnlyOffice)
+        - mime_type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+          extension: docx
+          name: Microsoft Word
+          description: Microsoft Word document
+          icon: ''
+          default_app: OnlyOffice
+          allow_creation: true
+        - mime_type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+          extension: xlsx
+          name: Microsoft Excel
+          description: Microsoft Excel spreadsheet
+          icon: ''
+          default_app: OnlyOffice
+          allow_creation: true
+        - mime_type: application/vnd.openxmlformats-officedocument.presentationml.presentation
+          extension: pptx
+          name: Microsoft PowerPoint
+          description: Microsoft PowerPoint presentation
+          icon: ''
+          default_app: OnlyOffice
+          allow_creation: true
+        # OpenDocument formats (also handled by OnlyOffice)
+        - mime_type: application/vnd.oasis.opendocument.text
+          extension: odt
+          name: OpenDocument Text
+          description: OpenDocument text document
+          icon: ''
+          default_app: OnlyOffice
+          allow_creation: true
+        - mime_type: application/vnd.oasis.opendocument.spreadsheet
+          extension: ods
+          name: OpenDocument Spreadsheet
+          description: OpenDocument spreadsheet
+          icon: ''
+          default_app: OnlyOffice
+          allow_creation: true
+        - mime_type: application/vnd.oasis.opendocument.presentation
+          extension: odp
+          name: OpenDocument Presentation
+          description: OpenDocument presentation
+          icon: ''
+          default_app: OnlyOffice
+          allow_creation: true
+        # PDF (view/edit with OnlyOffice)
+        - mime_type: application/pdf
+          extension: pdf
+          name: PDF
+          description: PDF document
+          icon: ''
+          default_app: OnlyOffice
+          allow_creation: false
 

@@ -72,16 +72,26 @@ After creating the OIDC client, create the Kubernetes secret:
 # Create namespace first
 kubectl create namespace owncloud
 
-# Create the OIDC secret with your Pocket ID credentials
+# Create the OIDC secret with your Pocket ID client ID
+# (no secret needed for public clients)
 kubectl create secret generic owncloud-oidc \
   --namespace owncloud \
-  --from-literal=client-id='YOUR_CLIENT_ID_FROM_POCKET_ID' \
-  --from-literal=client-secret='YOUR_CLIENT_SECRET_FROM_POCKET_ID'
+  --from-literal=client-id='YOUR_CLIENT_ID_FROM_POCKET_ID'
 ```
 
-**Important**: Replace `YOUR_CLIENT_ID_FROM_POCKET_ID` and `YOUR_CLIENT_SECRET_FROM_POCKET_ID` with the actual values from Pocket ID.
+**Important**: Replace `YOUR_CLIENT_ID_FROM_POCKET_ID` with the actual Client ID from Pocket ID.
 
-### 3. DNS Configuration
+### 3. Create the Email Secret
+
+Create a secret for the email sender address:
+
+```bash
+kubectl create secret generic owncloud-email \
+  --namespace owncloud \
+  --from-literal=from-address='service@newjoy.ro'
+```
+
+### 4. DNS Configuration
 
 Ensure `drive.newjoy.ro` points to your ingress controller IP address.
 

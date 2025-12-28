@@ -32,7 +32,7 @@ spec:
         app: owncloud
       annotations:
         # Auto-restart when secrets change (requires Reloader)
-        secret.reloader.stakater.com/reload: "owncloud-secrets,owncloud-oidc,onlyoffice-secrets"
+        secret.reloader.stakater.com/reload: "owncloud-secrets,owncloud-oidc,owncloud-email"
     spec:
       # Run as oCIS user (UID 1000)
       securityContext:
@@ -118,10 +118,9 @@ spec:
             # OIDC Configuration (Pocket ID)
             # ===================
             # Disable built-in IDP - use external Pocket ID
-            # Also disable search temporarily until core is working
             # Note: NATS must remain enabled - it's required for oCIS event messaging
             - name: OCIS_EXCLUDE_RUN_SERVICES
-              value: "idp,search"
+              value: "idp"
             
             # Proxy OIDC settings
             - name: PROXY_OIDC_ISSUER
@@ -180,11 +179,14 @@ spec:
             # ===================
             # oCIS requires NATS for internal event messaging between services
             # Posix FS driver also requires nats-js-kv for ID cache (per docs)
-            # Using the embedded NATS server
+            # Using the embedded NATS server, bound to 0.0.0.0 for collaboration sidecar
             - name: NATS_NATS_HOST
-              value: "127.0.0.1"
+              value: "0.0.0.0"
             - name: NATS_NATS_PORT
               value: "9233"
+            # Make gateway accessible to collaboration service
+            - name: GATEWAY_GRPC_ADDR
+              value: "0.0.0.0:9142"
             
             # ===================
             # ID Cache for Posix FS (required!)
@@ -223,23 +225,25 @@ spec:
               value: "/var/lib/ocis/search"
             
             # ===================
-            # OnlyOffice Integration (WOPI)
+            # Email Notifications (via Stalwart relay)
             # ===================
-            - name: COLLABORATION_WOPI_SRC
-              value: "https://drive.newjoy.ro"
-            - name: COLLABORATION_APP_NAME
-              value: "OnlyOffice"
-            - name: COLLABORATION_APP_ADDR
-              value: "https://onlyoffice:443"
-            - name: COLLABORATION_APP_INSECURE
-              value: "true"  # Internal service, self-signed cert
-            - name: COLLABORATION_APP_ICON
-              value: "https://drive.newjoy.ro/themes/owncloud/assets/onlyoffice.svg"
-            - name: COLLABORATION_WOPI_SECRET
+            - name: NOTIFICATIONS_SMTP_HOST
+              value: "stalwart.stalwart-mail.svc.cluster.local"
+            - name: NOTIFICATIONS_SMTP_PORT
+              value: "25"
+            - name: NOTIFICATIONS_SMTP_SENDER
               valueFrom:
                 secretKeyRef:
-                  name: onlyoffice-secrets
-                  key: jwt-secret
+                  name: owncloud-email
+                  key: from-address
+            - name: NOTIFICATIONS_SMTP_INSECURE
+              value: "true"  # Internal traffic, no TLS needed
+            
+            # ===================
+            # App Registry Configuration
+            # ===================
+            - name: APP_REGISTRY_CONFIG_FILE
+              value: "/etc/ocis/app-registry.yaml"
           
           volumeMounts:
             - name: data
@@ -249,6 +253,9 @@ spec:
             - name: csp-config
               mountPath: /etc/ocis/csp.yaml
               subPath: csp.yaml
+            - name: app-registry-config
+              mountPath: /etc/ocis/app-registry.yaml
+              subPath: app-registry.yaml
             - name: thumbnails
               mountPath: /var/lib/ocis/thumbnails
             - name: search
@@ -281,6 +288,91 @@ spec:
               port: https
             periodSeconds: 10
             timeoutSeconds: 5
+        
+        # ===================
+        # Collaboration Service (OnlyOffice WOPI)
+        # ===================
+        # This sidecar runs the collaboration service that bridges oCIS and OnlyOffice
+        - name: collaboration
+          image: owncloud/ocis:7.0.0
+          command: ["ocis", "collaboration", "server"]
+          ports:
+            - containerPort: 9300
+              name: wopi-http
+            - containerPort: 9301
+              name: wopi-grpc
+          env:
+            # Service addresses
+            - name: COLLABORATION_GRPC_ADDR
+              value: "0.0.0.0:9301"
+            - name: COLLABORATION_HTTP_ADDR
+              value: "0.0.0.0:9300"
+            
+            # Connect to main oCIS NATS for service registry
+            - name: MICRO_REGISTRY
+              value: "nats-js-kv"
+            - name: MICRO_REGISTRY_ADDRESS
+              value: "127.0.0.1:9233"
+            
+            # WOPI configuration
+            - name: COLLABORATION_WOPI_SRC
+              value: "https://drive.newjoy.ro"
+            - name: COLLABORATION_APP_NAME
+              value: "OnlyOffice"
+            - name: COLLABORATION_APP_PRODUCT
+              value: "OnlyOffice"
+            - name: COLLABORATION_APP_ADDR
+              value: "http://onlyoffice:80"
+            - name: COLLABORATION_APP_ICON
+              value: "https://drive.newjoy.ro/web-apps/apps/documenteditor/main/resources/img/favicon.ico"
+            - name: COLLABORATION_APP_INSECURE
+              value: "true"
+            - name: COLLABORATION_CS3API_DATAGATEWAY_INSECURE
+              value: "true"
+            
+            # oCIS URL for callbacks
+            - name: OCIS_URL
+              value: "https://drive.newjoy.ro"
+            
+            # Logging
+            - name: COLLABORATION_LOG_LEVEL
+              value: "info"
+            
+            # Shared secrets (must match main container)
+            - name: OCIS_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: owncloud-secrets
+                  key: jwt-secret
+            - name: OCIS_MACHINE_AUTH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: owncloud-secrets
+                  key: machine-auth-api-key
+          
+          volumeMounts:
+            - name: config
+              mountPath: /etc/ocis
+          
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          
+          # Simple TCP check for WOPI HTTP endpoint
+          readinessProbe:
+            tcpSocket:
+              port: wopi-http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: wopi-http
+            periodSeconds: 30
+            timeoutSeconds: 10
       
       volumes:
         - name: data
@@ -290,6 +382,9 @@ spec:
           persistentVolumeClaim:
             claimName: owncloud-config
         - name: csp-config
+          configMap:
+            name: owncloud-config
+        - name: app-registry-config
           configMap:
             name: owncloud-config
         - name: thumbnails
@@ -316,5 +411,13 @@ spec:
     - name: https
       port: 9200
       targetPort: 9200
+      protocol: TCP
+    - name: wopi-http
+      port: 9300
+      targetPort: 9300
+      protocol: TCP
+    - name: wopi-grpc
+      port: 9301
+      targetPort: 9301
       protocol: TCP
 
