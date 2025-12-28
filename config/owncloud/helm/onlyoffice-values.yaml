@@ -18,8 +18,9 @@ connections:
   # Disable RabbitMQ - must clear the secret reference
   amqpType: ""
   amqpExistingSecret: ""
-  # Disable Redis - must clear the secret reference
+  # Disable Redis - clear secret reference and set no password
   redisExistingSecret: ""
+  redisNoPass: true
 
 # Persistence for document server data
 persistence:
