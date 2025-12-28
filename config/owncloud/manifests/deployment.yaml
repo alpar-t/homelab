@@ -118,10 +118,10 @@ spec:
             # OIDC Configuration (Pocket ID)
             # ===================
             # Disable built-in IDP - use external Pocket ID
+            # Also disable search temporarily until core is working
             # Note: NATS must remain enabled - it's required for oCIS event messaging
-            # (Redis is only used for ID cache, not events)
             - name: OCIS_EXCLUDE_RUN_SERVICES
-              value: "idp"
+              value: "idp,search"
             - name: PROXY_OIDC_ISSUER
               value: "https://auth.newjoy.ro"
             - name: PROXY_OIDC_REWRITE_WELLKNOWN
@@ -167,9 +167,10 @@ spec:
               value: "true"
             
             # ===================
-            # NATS Configuration (Event Messaging)
+            # NATS Configuration (Event Messaging + ID Cache)
             # ===================
             # oCIS requires NATS for internal event messaging between services
+            # Posix FS driver also requires nats-js-kv for ID cache (per docs)
             # Using the embedded NATS server
             - name: NATS_NATS_HOST
               value: "127.0.0.1"
@@ -179,18 +180,17 @@ spec:
             # ===================
             # ID Cache for Posix FS (required!)
             # ===================
-            # Posix FS driver requires a shared ID cache for file ID mapping
-            # Reusing Redis from paperless-ngx namespace for the cache
-            # (NATS is still needed for events, Redis is just for caching)
+            # Posix FS driver requires nats-js-kv for ID cache (not Redis!)
+            # This is per ownCloud documentation for PosixFS driver
             - name: STORAGE_USERS_ID_CACHE_STORE
-              value: "redis"
+              value: "nats-js-kv"
             - name: STORAGE_USERS_ID_CACHE_STORE_NODES
-              value: "redis.paperless-ngx.svc.cluster.local:6379"
+              value: "127.0.0.1:9233"
             # Also configure for storage-system
             - name: STORAGE_SYSTEM_ID_CACHE_STORE
-              value: "redis"
+              value: "nats-js-kv"
             - name: STORAGE_SYSTEM_ID_CACHE_STORE_NODES
-              value: "redis.paperless-ngx.svc.cluster.local:6379"
+              value: "127.0.0.1:9233"
             
             # ===================
             # Thumbnail Configuration
