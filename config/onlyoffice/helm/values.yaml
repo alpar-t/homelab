@@ -81,3 +81,8 @@ probes:
 upgrade:
   job:
     enabled: false
+
+# Enable example component - provides /hosting/discovery WOPI endpoint
+# Required for oCIS collaboration integration
+example:
+  enabled: true
