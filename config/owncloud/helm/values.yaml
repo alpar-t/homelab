@@ -41,8 +41,9 @@ features:
     ldap:
       uri: ldap://lldap:3890
       bindDN: uid=admin,ou=people,dc=newjoy,dc=ro
-      # DISABLED: LLDAP doesn't support LDAP modify operations
-      writeable: false
+      # Required for autoprovisioning to create users
+      # Note: LLDAP supports ADD but not MODIFY operations
+      writeable: true
       insecure: true
       certTrusted: true
       useServerUUID: true
