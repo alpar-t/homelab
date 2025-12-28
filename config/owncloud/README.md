@@ -47,14 +47,23 @@ Instead of using Helm + patches at deploy time, we **render the Helm chart local
 ```
 config/owncloud/
 ├── helm/
-│   └── values.yaml          # Helm values (for re-rendering)
+│   └── values.yaml           # Helm values (for re-rendering)
 ├── rendered/
-│   ├── base.yaml            # All manifests except modified ones
+│   ├── base.yaml             # All manifests (no secrets!)
 │   ├── proxy-deployment.yaml # Modified for Pocket ID
 │   ├── web-deployment.yaml   # Modified for Pocket ID  
-│   └── proxy-config.yaml     # CSP config with Pocket ID
+│   ├── proxy-config.yaml     # CSP config with Pocket ID
+│   └── secrets-job.yaml      # PreSync job to generate secrets
 └── README.md
 ```
+
+### Secrets Management
+
+Secrets are **NOT** stored in git. Instead, a PreSync job (`secrets-job.yaml`) generates them on first deployment:
+- All passwords and API keys are randomly generated
+- LDAP CA and server certificates are auto-generated
+- IDP signing keys are auto-generated
+- Secrets are only created if they don't exist (idempotent)
 
 ### Re-rendering the Chart
 
