@@ -9,11 +9,45 @@ metadata:
   namespace: owncloud
 type: Opaque
 stringData:
-  # Placeholder - will be replaced by secrets-job
+  # Placeholder - will be replaced by init container on first deploy
   LLDAP_LDAP_USER_PASS: "CHANGE_ME_ON_FIRST_DEPLOY"
   LLDAP_JWT_SECRET: "CHANGE_ME_ON_FIRST_DEPLOY"
   # Key expected by oCIS helm chart for LDAP bind
   reva-ldap-bind-password: "CHANGE_ME_ON_FIRST_DEPLOY"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: lldap-secrets-sa
+  namespace: owncloud
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: lldap-secrets-role
+  namespace: owncloud
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["lldap-secrets"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: lldap-secrets-rolebinding
+  namespace: owncloud
+subjects:
+  - kind: ServiceAccount
+    name: lldap-secrets-sa
+    namespace: owncloud
+roleRef:
+  kind: Role
+  name: lldap-secrets-role
+  apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -34,7 +68,30 @@ spec:
       labels:
         app: lldap
     spec:
-      # Let LLDAP manage its own permissions
+      serviceAccountName: lldap-secrets-sa
+      initContainers:
+        - name: init-secrets
+          image: bitnami/kubectl:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              EXISTING=$(kubectl get secret lldap-secrets -n owncloud -o jsonpath='{.data.LLDAP_LDAP_USER_PASS}' 2>/dev/null | base64 -d || echo "")
+              if [ -n "$EXISTING" ] && [ "$EXISTING" != "CHANGE_ME_ON_FIRST_DEPLOY" ]; then
+                echo "Secrets already initialized"
+                exit 0
+              fi
+              echo "Generating LLDAP secrets..."
+              LDAP_PASS=$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)
+              JWT_SECRET=$(openssl rand -base64 32 | tr -d '/+=' | head -c 48)
+              kubectl create secret generic lldap-secrets \
+                --namespace owncloud \
+                --from-literal=LLDAP_LDAP_USER_PASS="$LDAP_PASS" \
+                --from-literal=LLDAP_JWT_SECRET="$JWT_SECRET" \
+                --from-literal=reva-ldap-bind-password="$LDAP_PASS" \
+                --dry-run=client -o yaml | kubectl apply -f -
+              echo "Secrets generated"
       containers:
         - name: lldap
           image: lldap/lldap:v0.6.1
