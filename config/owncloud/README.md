@@ -38,21 +38,19 @@ Cloud file storage and collaboration platform deployed via the official oCIS Hel
 
 ## Prerequisites
 
-### 1. Create User Groups in Pocket ID
+### 1. Configure Pocket ID User Groups
 
-In Pocket ID (https://auth.newjoy.ro), create user groups for role assignment:
+We use existing Pocket ID groups for oCIS role assignment. Add custom claims to these groups:
 
-1. Go to **Admin** → **User Groups** → **Add Group**
-2. Create these 4 groups with custom claims:
+| Group | Custom Claim Key | Custom Claim Value | oCIS Role |
+|-------|------------------|-------------------|-----------|
+| `advanced_apps` | `roles` | `advanced_apps` | Admin |
+| `family_users` | `roles` | `family_users` | User |
 
-| Group Name | Friendly Name | Custom Claim Key | Custom Claim Value |
-|------------|---------------|------------------|-------------------|
-| `ocisAdmin` | oCIS Admin Users | `roles` | `ocisAdmin` |
-| `ocisSpaceAdmin` | oCIS Space Admin Users | `roles` | `ocisSpaceAdmin` |
-| `ocisUser` | oCIS User | `roles` | `ocisUser` |
-| `ocisGuest` | oCIS Guest | `roles` | `ocisGuest` |
-
-3. Assign users to appropriate groups (at minimum, add yourself to `ocisAdmin`)
+To add custom claims:
+1. Go to https://auth.newjoy.ro → **User Groups**
+2. Click **...** → **Edit** on each group
+3. Add the custom claim key `roles` with the group name as the value
 
 ### 2. Create Pocket ID OIDC Client (Web)
 
@@ -65,30 +63,26 @@ In Pocket ID (https://auth.newjoy.ro), create user groups for role assignment:
      - `https://drive.newjoy.ro/oidc-silent-redirect.html`
    - **Public Client**: ✅ Enabled
 3. Save and copy the generated **Client ID**
-4. Edit the client again and add **User Groups**: `ocisAdmin`, `ocisSpaceAdmin`, `ocisUser`, `ocisGuest`
+4. Edit the client again and add **User Groups**: `advanced_apps`, `family_users`
 5. Update `values.yaml` with the Client ID in `services.web.config.oidc.webClientID`
 
-### 3. Create OIDC Clients for Desktop/Mobile Apps (Optional)
+### 3. Create OIDC Clients for Desktop/Mobile Apps
 
-The ownCloud desktop and mobile clients have hardcoded Client IDs. Create these as **public clients**:
+The ownCloud desktop and mobile clients have **hardcoded Client IDs** that cannot be changed. You must create OIDC clients in Pocket ID with these exact Client IDs for the apps to work with external OIDC providers.
 
-**Desktop Client:**
-- Name: `ownCloud Desktop Client`
-- Client ID: `xdXOt13JKxym1B1QcEncf2XDkLAexMBFwiT9j6EfhhHFJhs2KM9jbjTmf8JBXE69`
-- Callback URLs: `http://127.0.0.1:*`
-- Public Client: ✅
+> **Note**: Since Pocket ID doesn't support hardcoded client secrets, all clients must be configured as **Public Clients** with PKCE enabled (which the ownCloud apps support).
 
-**iOS Client:**
-- Name: `ownCloud iOS Client`
-- Client ID: `mxd5OQDk6es5LzOzRvidJNfXLUZS2oN3oUFeXPP8LpPrhx3UroJFduGEYIBOxkY1`
-- Callback URLs: `oc://ios.owncloud.com`
-- Public Client: ✅
+Create these clients in Pocket ID (**Admin** → **OIDC Clients** → **Add Client**):
 
-**Android Client:**
-- Name: `ownCloud Android Client`
-- Client ID: `e4rAsNUSIUs0lF4nbv9FmCeUkTlV9GdgTLDH1b5uie7syb90SzEVrbN7HIpmWJeD`
-- Callback URLs: `oc://android.owncloud.com`
-- Public Client: ✅
+| Client | Name | Client ID | Callback URLs | Public |
+|--------|------|-----------|---------------|--------|
+| Desktop | ownCloud Desktop | `xdXOt13JKxym1B1QcEncf2XDkLAexMBFwiT9j6EfhhHFJhs2KM9jbjTmf8JBXE69` | `http://127.0.0.1:*` | ✅ |
+| iOS | ownCloud iOS | `mxd5OQDk6es5LzOzRvidJNfXLUZS2oN3oUFeXPP8LpPrhx3UroJFduGEYIBOxkY1` | `oc://ios.owncloud.com` | ✅ |
+| Android | ownCloud Android | `e4rAsNUSIUs0lF4nbv9FmCeUkTlV9GdgTLDH1b5uie7syb90SzEVrbN7HIpmWJeD` | `oc://android.owncloud.com` | ✅ |
+
+For each client, also add the **User Groups**: `advanced_apps`, `family_users`
+
+Reference: [Pocket ID oCIS Client Examples](https://pocket-id.org/docs/client-examples/oCIS)
 
 ### 2. Create Required Secrets
 

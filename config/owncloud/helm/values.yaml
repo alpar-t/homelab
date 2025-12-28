@@ -21,20 +21,17 @@ features:
       userIDClaim: preferred_username
       userIDClaimAttributeMapping: username
       accessTokenVerifyMethod: jwt
-      # Rewrite well-known to point to external OIDC provider
-      rewriteWellKnown: true
-    # Role assignment from OIDC claims
-    # Maps Pocket ID group claims to oCIS roles
-    # advanced_apps group -> admin, family_users group -> regular user
-    roleAssignment:
-      driver: oidc
-      oidcRoleMapper:
-        roleClaim: roles
-        roleMapping:
-          - roleName: admin
-            claimValue: advanced_apps
-          - roleName: user
-            claimValue: family_users
+      # Role assignment from OIDC claims
+      # Maps Pocket ID group claims to oCIS roles
+      # advanced_apps group -> admin, family_users group -> regular user
+      roleAssignment:
+        enabled: true
+        claim: roles
+        mapping:
+          - role_name: admin
+            claim_value: advanced_apps
+          - role_name: user
+            claim_value: family_users
     # Auto-provision accounts from OIDC
     autoprovisionAccounts:
       enabled: true
