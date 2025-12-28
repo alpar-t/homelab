@@ -1,6 +1,8 @@
 # ownCloud Infinite Scale (oCIS)
 
-Cloud file storage and collaboration platform deployed via the official oCIS Helm chart.
+Cloud file storage and collaboration platform deployed via the official oCIS Helm chart with Pocket ID for SSO.
+
+Based on: [Pocket ID oCIS Integration](https://pocket-id.org/docs/client-examples/oCIS)
 
 ## Architecture
 
@@ -15,131 +17,96 @@ Cloud file storage and collaboration platform deployed via the official oCIS Hel
 │                     oCIS (Helm Chart)                        │
 │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐           │
 │  │  Proxy  │ │   Web   │ │ Storage │ │ Search  │           │
-│  └────┬────┘ └─────────┘ └────┬────┘ └────┬────┘           │
-│       │                       │           │                  │
-│       │    ┌─────────────────┼───────────┘                  │
+│  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘           │
+│       │          │           │           │                  │
+│       │    ┌─────┴───────────┼───────────┘                  │
 │       │    │                 │                               │
 │       ▼    ▼                 ▼                               │
 │  ┌─────────────┐       ┌──────────┐                         │
-│  │    NATS     │       │  Tika    │ (shared with paperless) │
-│  │  (embedded) │       │ (external)│                         │
-│  └─────────────┘       └──────────┘                         │
+│  │  Internal   │       │  Tika    │ (shared with paperless) │
+│  │    IDM      │       │ (external)│                         │
+│  │ (user store)│       └──────────┘                         │
+│  └─────────────┘                                             │
 └─────────────────────────────────────────────────────────────┘
-         │                    │                    │
          │                    │                    │
          ▼                    ▼                    ▼
 ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│  Pocket ID  │      │   LLDAP     │      │  OnlyOffice │
-│   (OIDC)    │      │   (LDAP)    │      │  (internal) │
-│auth.newjoy.ro│      │ User Store  │      │             │
-└─────────────┘      └─────────────┘      └─────────────┘
-       │                    │
-       │   Authentication   │   User Storage
-       └────────────────────┘
+│  Pocket ID  │      │   NATS      │      │  OnlyOffice │
+│   (OIDC)    │      │ (messaging) │      │  (internal) │
+│auth.newjoy.ro│     └─────────────┘      │             │
+└─────────────┘                           └─────────────┘
 ```
 
-### Authentication Flow
+### Key Design
 
-1. User visits `drive.newjoy.ro`
-2. oCIS redirects to Pocket ID (`auth.newjoy.ro`) for authentication
-3. User authenticates with Pocket ID (passkey, password, etc.)
-4. Pocket ID returns OIDC token with user claims and group memberships
-5. oCIS auto-provisions user in LLDAP if first login
-6. oCIS assigns role based on `roles` claim from Pocket ID groups
-7. User is logged in to oCIS
+- **Authentication**: Pocket ID (external OIDC)
+- **User Storage**: Internal IDM with auto-provisioning
+- **Internal IDP**: Disabled via `OCIS_EXCLUDE_RUN_SERVICES=idp`
 
 ## Prerequisites
 
 ### 1. Configure Pocket ID User Groups
 
-We use existing Pocket ID groups for oCIS role assignment. Add custom claims to these groups:
+Add custom claims to your existing groups for role assignment:
 
 | Group | Custom Claim Key | Custom Claim Value | oCIS Role |
 |-------|------------------|-------------------|-----------|
-| `advanced_apps` | `roles` | `advanced_apps` | Admin |
-| `family_users` | `roles` | `family_users` | User |
+| `advanced_apps` | `roles` | `admin` | Admin |
+| `family_users` | `roles` | `user` | User |
 
-To add custom claims:
+Steps:
 1. Go to https://auth.newjoy.ro → **User Groups**
 2. Click **...** → **Edit** on each group
-3. Add the custom claim key `roles` with the group name as the value
+3. Add custom claim: key=`roles`, value=`admin` or `user`
 
 ### 2. Create Pocket ID OIDC Client (Web)
 
-1. Go to **Admin** → **OIDC Clients** → **Add Client**
+1. Go to **Admin** → **OIDC Clients** → **Add OIDC Client**
 2. Configure:
    - **Name**: ownCloud
    - **Callback URLs**: 
      - `https://drive.newjoy.ro/`
      - `https://drive.newjoy.ro/oidc-callback.html`
      - `https://drive.newjoy.ro/oidc-silent-redirect.html`
-   - **Public Client**: ✅ Enabled
-3. Save and copy the generated **Client ID**
-4. Edit the client again and add **User Groups**: `advanced_apps`, `family_users`
+   - **Public Client**: ✅ Yes
+3. Save and copy the **Client ID**
+4. Edit the client and add groups: `advanced_apps`, `family_users`
 5. Update `values.yaml` with the Client ID in `services.web.config.oidc.webClientID`
 
 ### 3. Create OIDC Clients for Desktop/Mobile Apps
 
-The ownCloud desktop and mobile clients have **hardcoded Client IDs** that cannot be changed. You must create OIDC clients in Pocket ID with these exact Client IDs for the apps to work with external OIDC providers.
+The ownCloud clients have hardcoded Client IDs. Create these as **Public Clients**:
 
-> **Note**: Since Pocket ID doesn't support hardcoded client secrets, all clients must be configured as **Public Clients** with PKCE enabled (which the ownCloud apps support).
+| Client | Name | Client ID | Callback URLs |
+|--------|------|-----------|---------------|
+| Desktop | ownCloud Desktop | `xdXOt13JKxym1B1QcEncf2XDkLAexMBFwiT9j6EfhhHFJhs2KM9jbjTmf8JBXE69` | `http://127.0.0.1:*` |
+| iOS | ownCloud iOS | `mxd5OQDk6es5LzOzRvidJNfXLUZS2oN3oUFeXPP8LpPrhx3UroJFduGEYIBOxkY1` | `oc://ios.owncloud.com` |
+| Android | ownCloud Android | `e4rAsNUSIUs0lF4nbv9FmCeUkTlV9GdgTLDH1b5uie7syb90SzEVrbN7HIpmWJeD` | `oc://android.owncloud.com` |
 
-Create these clients in Pocket ID (**Admin** → **OIDC Clients** → **Add Client**):
+Add your groups to each client.
 
-| Client | Name | Client ID | Callback URLs | Public |
-|--------|------|-----------|---------------|--------|
-| Desktop | ownCloud Desktop | `xdXOt13JKxym1B1QcEncf2XDkLAexMBFwiT9j6EfhhHFJhs2KM9jbjTmf8JBXE69` | `http://127.0.0.1:*` | ✅ |
-| iOS | ownCloud iOS | `mxd5OQDk6es5LzOzRvidJNfXLUZS2oN3oUFeXPP8LpPrhx3UroJFduGEYIBOxkY1` | `oc://ios.owncloud.com` | ✅ |
-| Android | ownCloud Android | `e4rAsNUSIUs0lF4nbv9FmCeUkTlV9GdgTLDH1b5uie7syb90SzEVrbN7HIpmWJeD` | `oc://android.owncloud.com` | ✅ |
+## Configuration Files
 
-For each client, also add the **User Groups**: `advanced_apps`, `family_users`
+### `helm/values.yaml`
+Standard oCIS Helm chart values with:
+- `externalUserManagement.enabled: false` (keeps internal IDM)
+- Web client ID from Pocket ID
+- Storage configuration
 
-Reference: [Pocket ID oCIS Client Examples](https://pocket-id.org/docs/client-examples/oCIS)
-
-### 4. LLDAP (User Storage Backend)
-
-LLDAP is deployed automatically in the same namespace. It provides the LDAP backend that oCIS requires for user storage when using external OIDC authentication.
-
-- **Service**: `lldap:3890` (LDAP)
-- **Web UI**: Port 17170 (for user management)
-- **Storage**: Persistent (1Gi on longhorn-ssd)
-
-> **Important**: LLDAP doesn't support LDAP modify operations, so autoprovisioning is disabled.
-> Users must be manually created in LLDAP before they can log in via Pocket ID.
-
-#### Creating Users in LLDAP
-
-1. Port forward to the LLDAP web UI:
-   ```bash
-   kubectl port-forward -n owncloud svc/lldap 17170:17170
-   ```
-
-2. Get the admin password:
-   ```bash
-   kubectl get secret -n owncloud lldap-secrets -o jsonpath='{.data.LLDAP_LDAP_USER_PASS}' | base64 -d
-   ```
-
-3. Open http://localhost:17170 and login with `admin` / `<password>`
-
-4. Create a new user with:
-   - **User ID**: Must match the `preferred_username` from Pocket ID
-   - **Email**: Must match the email in Pocket ID
-   - **Display Name**: User's display name
-
-5. The user can now log in via Pocket ID
-
-### 5. Secrets (Auto-generated)
-
-All secrets are auto-generated on first deployment:
-- **LLDAP secrets**: Generated by `lldap-secrets-init` PreSync job
-- **oCIS secrets**: Auto-generated by Helm chart
+### `manifests/external-oidc.yaml`
+Patches the Helm chart output with:
+- `OCIS_EXCLUDE_RUN_SERVICES=idp` - disables internal IDP
+- `OCIS_OIDC_ISSUER=https://auth.newjoy.ro` - points to Pocket ID
+- `PROXY_AUTOPROVISION_ACCOUNTS=true` - auto-creates users
+- `PROXY_ROLE_ASSIGNMENT_DRIVER=oidc` - assigns roles from OIDC claims
+- CSP configuration allowing Pocket ID
 
 ## Deployment
 
-The deployment is managed via a single ArgoCD application (`owncloud`) that includes:
-- **LLDAP** - Lightweight LDAP server for user storage (manifests)
-- **oCIS Helm Chart** from `https://github.com/owncloud/ocis-charts`
-- **OnlyOffice** deployed separately via custom manifest
+ArgoCD application with:
+- oCIS Helm chart from `https://github.com/owncloud/ocis-charts`
+- External OIDC patches from `manifests/`
+- Server-Side Apply for strategic merge patching
 
 ## Storage
 
@@ -149,34 +116,7 @@ The deployment is managed via a single ArgoCD application (`owncloud`) that incl
 | Search Index | longhorn-ssd | 15Gi | Bleve search index |
 | Thumbnails | longhorn-ssd | 30Gi | Image/video thumbnails |
 | NATS | longhorn-ssd | 1Gi | Message queue persistence |
-| OnlyOffice | longhorn-ssd | 10Gi | Document server data |
-| LLDAP | longhorn-ssd | 1Gi | User database (persistent, manual user creation) |
-
-## Features
-
-- **Authentication**: External OIDC via Pocket ID
-- **User Storage**: LLDAP (manual user creation required)
-- **Office Integration**: OnlyOffice Document Server (internal)
-- **Full-Text Search**: Via shared Tika instance (paperless-ngx)
-- **Email Notifications**: Via Stalwart mail relay
-
-## File Migration
-
-Since we're using the default `ocis` storage driver (not posix), files cannot be directly copied to the filesystem. Instead, use one of these methods:
-
-### Option 1: WebDAV Upload
-```bash
-# Using rclone
-rclone copy /path/to/files remote:drive.newjoy.ro --webdav-url=https://drive.newjoy.ro/remote.php/webdav
-```
-
-### Option 2: ownCloud Desktop Client
-Use the official ownCloud desktop sync client to upload files.
-
-### Option 3: oCIS CLI (if available)
-```bash
-# Check oCIS documentation for CLI import tools
-```
+| IDM | longhorn-ssd | 1Gi | Internal user database |
 
 ## Troubleshooting
 
@@ -185,65 +125,33 @@ Use the official ownCloud desktop sync client to upload files.
 kubectl get pods -n owncloud
 ```
 
-### View oCIS logs
+### Verify IDP is excluded
 ```bash
-kubectl logs -n owncloud -l app.kubernetes.io/name=ocis -f
+kubectl get pods -n owncloud | grep idp
+# Should return nothing - IDP is not running
 ```
 
-### View LLDAP logs
+### View proxy logs (auth issues)
 ```bash
-kubectl logs -n lldap -l app=lldap -f
-```
-
-### View OnlyOffice logs
-```bash
-kubectl logs -n owncloud -l app=onlyoffice -f
-```
-
-### Check secrets
-```bash
-kubectl get secrets -n owncloud
-```
-
-### Access LLDAP Web UI
-```bash
-# Port forward to local machine
-kubectl port-forward -n owncloud svc/lldap 17170:17170
-
-# Get admin password
-kubectl get secret -n owncloud lldap-secrets -o jsonpath='{.data.LLDAP_LDAP_USER_PASS}' | base64 -d
-
-# Open http://localhost:17170 and login with admin/<password>
-```
-
-### Test LDAP Connection
-```bash
-# Check if oCIS can reach LLDAP
-kubectl exec -n owncloud -it deploy/proxy -- nc -zv lldap 3890
+kubectl logs -n owncloud -l app=proxy -f
 ```
 
 ### Common Issues
 
 1. **"Not logged in" after Pocket ID auth**
-   - **Most common cause**: User doesn't exist in LLDAP. Create the user manually (see "Creating Users in LLDAP" above)
-   - Check that user is in `advanced_apps` or `family_users` group in Pocket ID
-   - Verify custom claims are set on groups (key: `roles`, value: group name)
-   - Check oCIS proxy logs for role assignment errors
+   - Verify user is in `advanced_apps` or `family_users` group
+   - Check custom claims on groups (key: `roles`, value: `admin` or `user`)
+   - Check proxy logs for role assignment
 
-2. **LDAP connection errors**
-   - Verify LLDAP pod is running: `kubectl get pods -n owncloud -l app=lldap`
-   - Check LDAP bind secret exists: `kubectl get secret -n owncloud lldap-secrets`
-   - Verify password matches LLDAP admin password
+2. **CSP errors in browser console**
+   - Verify `ocis-csp-config` ConfigMap has correct Pocket ID URL
 
-3. **User not found / cannot login**
-   - Autoprovisioning is disabled due to LLDAP limitations
-   - Users must be manually created in LLDAP before first login
-   - The LLDAP username must match the `preferred_username` claim from Pocket ID
+3. **Desktop/mobile apps don't work**
+   - Verify OIDC clients with exact hardcoded Client IDs exist
+   - Ensure clients are marked as Public
 
 ## References
 
 - [oCIS Documentation](https://doc.owncloud.com/ocis/next/)
 - [oCIS Helm Chart](https://github.com/owncloud/ocis-charts)
-- [LLDAP Documentation](https://github.com/lldap/lldap)
 - [Pocket ID oCIS Integration](https://pocket-id.org/docs/client-examples/oCIS)
-- [OnlyOffice Integration](https://doc.owncloud.com/ocis/next/deployment/services/s-list/collaboration.html)

@@ -1,5 +1,7 @@
 # ownCloud Infinite Scale Helm Chart Values
 # https://github.com/owncloud/ocis-charts
+# 
+# Pocket ID Integration: https://pocket-id.org/docs/client-examples/oCIS
 
 # ===================
 # External Access
@@ -10,64 +12,10 @@ externalDomain: drive.newjoy.ro
 # Features
 # ===================
 features:
-  # External OIDC authentication via Pocket ID + LLDAP for user storage
+  # Keep externalUserManagement DISABLED - we use internal IDM for user storage
+  # External OIDC (Pocket ID) is configured via the external-oidc.yaml manifest
   externalUserManagement:
-    enabled: true
-    # OIDC configuration for Pocket ID
-    oidc:
-      issuerURI: https://auth.newjoy.ro
-      # Use preferred_username as the user identifier
-      userIDClaim: preferred_username
-      userIDClaimAttributeMapping: username
-      accessTokenVerifyMethod: jwt
-      # Role assignment from OIDC claims
-      # Maps Pocket ID group claims to oCIS roles
-      roleAssignment:
-        enabled: true
-        claim: roles
-        mapping:
-          - role_name: admin
-            claim_value: advanced_apps
-          - role_name: user
-            claim_value: family_users
-    # Auto-provision accounts from OIDC claims into LLDAP
-    autoprovisionAccounts:
-      enabled: true
-      claimEmail: email
-      claimDisplayname: name
-      claimGroups: groups
-      claimUserName: preferred_username
-    # LLDAP backend for user storage (same namespace)
-    ldap:
-      uri: ldap://lldap:3890
-      bindDN: uid=admin,ou=people,dc=newjoy,dc=ro
-      # Required for autoprovisioning to create users
-      # Note: LLDAP supports ADD but not MODIFY operations
-      writeable: true
-      insecure: true
-      certTrusted: true
-      useServerUUID: true
-      refintEnabled: false
-      passwordModifyExOpEnabled: false
-      user:
-        schema:
-          id: entryUUID
-          mail: mail
-          displayName: displayName
-          userName: uid
-        baseDN: ou=people,dc=newjoy,dc=ro
-        scope: one
-        filter: "(objectClass=person)"
-        objectClass: inetOrgPerson
-      group:
-        schema:
-          id: entryUUID
-          groupName: cn
-          member: member
-        baseDN: ou=groups,dc=newjoy,dc=ro
-        scope: one
-        filter: "(objectClass=groupOfUniqueNames)"
-        objectClass: groupOfUniqueNames
+    enabled: false
   
   # Email notifications via Stalwart
   emailNotifications:
@@ -87,42 +35,18 @@ features:
         - name: OnlyOffice
           product: OnlyOffice
           enabled: true
-          # OnlyOffice Helm chart creates service named 'documentserver'
           uri: http://documentserver.owncloud.svc.cluster.local
           insecure: true
           disableProof: false
           secureViewEnabled: false
           disableChat: false
-          # Icon URL required by oCIS Web UI
           iconURI: https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/onlyoffice.svg
           ingress:
             enabled: false
-            domain: ""
-            ingressClassName: null
-            annotations: {}
-            labels: {}
-            tls: []
-
-# ===================
-# HTTP / CSP Configuration
-# ===================
-# CSP settings to allow external OIDC provider (Pocket ID)
-http:
-  csp:
-    directives:
-      connectSrc:
-        - "'self'"
-        - "blob:"
-        - "https://auth.newjoy.ro"
-      frameSrc:
-        - "'self'"
-        - "blob:"
-        - "https://auth.newjoy.ro"
 
 # ===================
 # Ingress Configuration
 # ===================
-# Note: TLS is handled by Cloudflare tunnel, not at the ingress level
 ingress:
   enabled: true
   ingressClassName: nginx
@@ -133,16 +57,8 @@ ingress:
   tls: []
 
 # ===================
-# Secrets Configuration
-# ===================
-# Use lldap-secrets for LDAP bind password (created by our PreSync job)
-secretRefs:
-  ldapSecretRef: lldap-secrets
-
-# ===================
 # Security Context
 # ===================
-# Fix permissions on Longhorn volumes
 securityContext:
   fsGroup: 1000
   fsGroupChangePolicy: Always
@@ -186,11 +102,23 @@ services:
   web:
     persistence:
       enabled: false
-    # OIDC client configuration for the web frontend
     config:
       oidc:
-        # Client ID must match the Pocket ID OIDC client
+        # Client ID from Pocket ID OIDC client
+        # Create client in Pocket ID with callback URLs:
+        #   https://drive.newjoy.ro/
+        #   https://drive.newjoy.ro/oidc-callback.html
+        #   https://drive.newjoy.ro/oidc-silent-redirect.html
         webClientID: b85f28eb-bf7d-4544-a311-eadcd5c09a2d
+  
+  # IDM (internal identity management) - stores users locally
+  # Users are auto-provisioned from Pocket ID on first login
+  idm:
+    persistence:
+      enabled: true
+      chownInitContainer: true
+      storageClassName: longhorn-ssd
+      size: 1Gi
   
   # NATS for internal messaging
   nats:
@@ -203,7 +131,6 @@ services:
 # ===================
 # Resource Limits
 # ===================
-# Reasonable defaults for a small deployment (~6 users)
 resources:
   limits:
     cpu: 2000m

@@ -1,0 +1,133 @@
+# External OIDC Configuration for oCIS with Pocket ID
+# ====================================================
+# Based on: https://pocket-id.org/docs/client-examples/oCIS
+#
+# This configures oCIS to use Pocket ID as the OIDC provider.
+# The internal IDP is excluded via OCIS_EXCLUDE_RUN_SERVICES=idp
+#
+# Prerequisites in Pocket ID:
+# ---------------------------
+# 1. Create/use user groups with custom claims:
+#    - advanced_apps: custom claim key="roles", value="admin"
+#    - family_users: custom claim key="roles", value="user"
+#
+# 2. Create OIDC client for oCIS web:
+#    - Name: ocis
+#    - Callback URLs:
+#      - https://drive.newjoy.ro/
+#      - https://drive.newjoy.ro/oidc-callback.html
+#      - https://drive.newjoy.ro/oidc-silent-redirect.html
+#    - Public Client: Yes
+#    - Add groups to the client
+#
+# 3. Create OIDC clients for desktop/mobile (hardcoded client IDs):
+#    - Desktop: xdXOt13JKxym1B1QcEncf2XDkLAexMBFwiT9j6EfhhHFJhs2KM9jbjTmf8JBXE69
+#      Callback: http://127.0.0.1:*
+#    - iOS: mxd5OQDk6es5LzOzRvidJNfXLUZS2oN3oUFeXPP8LpPrhx3UroJFduGEYIBOxkY1
+#      Callback: oc://ios.owncloud.com
+#    - Android: e4rAsNUSIUs0lF4nbv9FmCeUkTlV9GdgTLDH1b5uie7syb90SzEVrbN7HIpmWJeD
+#      Callback: oc://android.owncloud.com
+---
+# CSP configuration to allow Pocket ID
+# Mount this to /etc/ocis/csp.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ocis-csp-config
+  namespace: owncloud
+data:
+  csp.yaml: |
+    directives:
+      child-src:
+        - "'self'"
+      connect-src:
+        - "'self'"
+        - "blob:"
+        - "https://raw.githubusercontent.com/owncloud/awesome-ocis/"
+        - "https://auth.newjoy.ro/"
+      default-src:
+        - "'none'"
+      font-src:
+        - "'self'"
+      frame-ancestors:
+        - "'none'"
+      frame-src:
+        - "'self'"
+        - "blob:"
+        - "https://embed.diagrams.net/"
+      img-src:
+        - "'self'"
+        - "data:"
+        - "blob:"
+        - "https://raw.githubusercontent.com/owncloud/awesome-ocis/"
+      manifest-src:
+        - "'self'"
+      media-src:
+        - "'self'"
+      object-src:
+        - "'self'"
+        - "blob:"
+      script-src:
+        - "'self'"
+        - "'unsafe-inline'"
+      style-src:
+        - "'self'"
+        - "'unsafe-inline'"
+---
+# Patch proxy deployment with Pocket ID OIDC configuration
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxy
+  namespace: owncloud
+spec:
+  template:
+    spec:
+      containers:
+        - name: proxy
+          env:
+            # Disable internal IDP - use Pocket ID instead
+            - name: OCIS_EXCLUDE_RUN_SERVICES
+              value: "idp"
+            # External OIDC issuer (Pocket ID)
+            - name: OCIS_OIDC_ISSUER
+              value: "https://auth.newjoy.ro"
+            # Rewrite .well-known to external IDP
+            - name: PROXY_OIDC_REWRITE_WELLKNOWN
+              value: "true"
+            # User claim mapping
+            - name: PROXY_USER_OIDC_CLAIM
+              value: "preferred_username"
+            # Auto-provisioning
+            - name: PROXY_AUTOPROVISION_ACCOUNTS
+              value: "true"
+            # Role assignment from OIDC
+            - name: PROXY_ROLE_ASSIGNMENT_DRIVER
+              value: "oidc"
+            # CSP config location
+            - name: PROXY_CSP_CONFIG_FILE_LOCATION
+              value: "/etc/ocis/csp.yaml"
+          volumeMounts:
+            - name: csp-config
+              mountPath: /etc/ocis/csp.yaml
+              subPath: csp.yaml
+              readOnly: true
+      volumes:
+        - name: csp-config
+          configMap:
+            name: ocis-csp-config
+---
+# Patch web deployment with Pocket ID OIDC authority
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: owncloud
+spec:
+  template:
+    spec:
+      containers:
+        - name: web
+          env:
+            - name: WEB_OIDC_AUTHORITY
+              value: "https://auth.newjoy.ro"
