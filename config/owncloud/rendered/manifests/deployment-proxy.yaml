@@ -78,11 +78,7 @@ spec:
             - name: PROXY_USER_OIDC_CLAIM
               value: "preferred_username"
             - name: PROXY_ROLE_ASSIGNMENT_DRIVER
-              value: "oidc"
-            - name: PROXY_ROLE_ASSIGNMENT_OIDC_CLAIM
-              value: "roles"
-            - name: PROXY_ROLE_ASSIGNMENT_OIDC_ROLE_MAPPING
-              value: '[{"role_name":"admin","claim_value":"admin"},{"role_name":"user","claim_value":"user"}]'
+              value: "default"
             # === End Pocket ID Configuration ===
 
             - name: PROXY_LOG_COLOR
