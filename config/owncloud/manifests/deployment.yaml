@@ -117,9 +117,9 @@ spec:
             # ===================
             # OIDC Configuration (Pocket ID)
             # ===================
-            # Disable built-in IDP - use external Pocket ID
+            # Disable built-in IDP (using external Pocket ID) and NATS (using external Redis)
             - name: OCIS_EXCLUDE_RUN_SERVICES
-              value: "idp"
+              value: "idp,nats"
             - name: PROXY_OIDC_ISSUER
               value: "https://auth.newjoy.ro"
             - name: PROXY_OIDC_REWRITE_WELLKNOWN
@@ -163,6 +163,21 @@ spec:
             # Use space groups for file permissions
             - name: STORAGE_USERS_POSIX_USE_SPACE_GROUPS
               value: "true"
+            
+            # ===================
+            # ID Cache for Posix FS (required!)
+            # ===================
+            # Posix FS driver requires a shared ID cache for file ID mapping
+            # Reusing Redis from paperless-ngx namespace
+            - name: STORAGE_USERS_ID_CACHE_STORE
+              value: "redis"
+            - name: STORAGE_USERS_ID_CACHE_STORE_NODES
+              value: "redis.paperless-ngx.svc.cluster.local:6379"
+            # Also configure for storage-system
+            - name: STORAGE_SYSTEM_ID_CACHE_STORE
+              value: "redis"
+            - name: STORAGE_SYSTEM_ID_CACHE_STORE_NODES
+              value: "redis.paperless-ngx.svc.cluster.local:6379"
             
             # ===================
             # Thumbnail Configuration
