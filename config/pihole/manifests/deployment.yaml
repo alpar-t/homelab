@@ -38,7 +38,8 @@ spec:
               mountPath: /etc/dnsmasq.d
       containers:
         - name: pihole
-          image: pihole/pihole:2024.07.0@sha256:0def896a596e8d45780b6359dbf82fc8c75ef05b97e095452e67a0a4ccc95377
+          # Pi-hole v6 - Alpine-based with REST API
+          image: pihole/pihole:2025.11.1
           securityContext:
             capabilities:
               add:
@@ -47,18 +48,21 @@ spec:
           env:
             - name: TZ
               value: "Europe/Bucharest"
-            - name: WEBPASSWORD
+            # Pi-hole v6 uses FTLCONF_ prefix for configuration
+            # Empty password allows passwordless access to web UI
+            - name: FTLCONF_webserver_api_password
               value: ""
-            - name: PIHOLE_DNS_
+            # Upstream DNS servers (will be managed by benchmark job)
+            - name: FTLCONF_dns_upstreams
               value: "1.1.1.1;1.0.0.1"
-            - name: DNSSEC
+            - name: FTLCONF_dns_dnssec
               value: "true"
-            - name: DNSMASQ_LISTENING
+            # Listen on all interfaces
+            - name: FTLCONF_dns_listeningMode
               value: "all"
-            - name: WEB_PORT
+            # Web interface port
+            - name: FTLCONF_webserver_port
               value: "8080"
-            - name: VIRTUAL_HOST
-              value: "pihole.newjoy.ro"
           ports:
             - name: dns-tcp
               containerPort: 53
@@ -110,4 +114,3 @@ spec:
         - name: dnsmasq-config
           configMap:
             name: pihole-dnsmasq
-

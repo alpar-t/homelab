@@ -47,6 +47,10 @@ Total: ~12TB storage across cluster
 - ✅ Low power (~15W total)
 - ✅ Enterprise-grade practices
 
+## External Monitoring
+
+Uptime monitoring is handled externally via [Better Uptime](https://uptime.betterstack.com/) to ensure we get alerted even if the entire cluster goes down.
+
 ## Installation
 
 See [genesis/README.md](genesis/README.md) for complete step-by-step instructions.

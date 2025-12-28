@@ -1,0 +1,186 @@
+---
+# DNS Benchmark CronJob
+# Periodically tests upstream DNS servers and configures Pi-hole to use the fastest ones
+# Uses Pi-hole v6 REST API - no kubectl exec needed!
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dns-benchmark-config
+  namespace: pihole
+data:
+  # DNS servers to benchmark (one per line, format: IP|Name)
+  dns-servers.txt: |
+    1.1.1.1|Cloudflare-Primary
+    1.0.0.1|Cloudflare-Secondary
+    8.8.8.8|Google-Primary
+    8.8.4.4|Google-Secondary
+    9.9.9.9|Quad9-Primary
+    149.112.112.112|Quad9-Secondary
+    193.231.236.25|Digi-Romania-Primary
+    193.231.236.30|Digi-Romania-Secondary
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: dns-benchmark
+  namespace: pihole
+  labels:
+    app: dns-benchmark
+spec:
+  # Run every 6 hours
+  schedule: "0 */6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 600  # 10 minute timeout
+      template:
+        spec:
+          restartPolicy: OnFailure
+          # Use host network to access Pi-hole on localhost
+          hostNetwork: true
+          containers:
+            - name: benchmark
+              # Alpine with curl, dig, and jq
+              image: alpine:3.21
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  
+                  # Install required tools
+                  apk add --no-cache bind-tools curl jq > /dev/null 2>&1
+                  
+                  echo "=== DNS Benchmark Started at $(date) ==="
+                  echo ""
+                  
+                  # Pi-hole API endpoint (using hostNetwork, so localhost works)
+                  PIHOLE_API="http://localhost:8080/api"
+                  
+                  # DNS servers to benchmark
+                  DNS_SERVERS="
+                  1.1.1.1|Cloudflare-Primary
+                  1.0.0.1|Cloudflare-Secondary
+                  8.8.8.8|Google-Primary
+                  8.8.4.4|Google-Secondary
+                  9.9.9.9|Quad9-Primary
+                  149.112.112.112|Quad9-Secondary
+                  193.231.236.25|Digi-Romania-Primary
+                  193.231.236.30|Digi-Romania-Secondary
+                  "
+                  
+                  QUERIES=3
+                  TEST_DOMAINS="google.com cloudflare.com github.com"
+                  RESULTS_FILE=$(mktemp)
+                  
+                  echo "Benchmarking DNS servers..."
+                  echo ""
+                  
+                  echo "$DNS_SERVERS" | grep -v "^$" | while IFS='|' read -r server name; do
+                    [ -z "$server" ] && continue
+                    
+                    total_time=0
+                    success=0
+                    
+                    for domain in $TEST_DOMAINS; do
+                      for i in $(seq 1 $QUERIES); do
+                        result=$(dig @"$server" "$domain" +noall +stats +time=2 +tries=1 2>/dev/null | grep "Query time" | awk '{print $4}')
+                        if [ -n "$result" ]; then
+                          total_time=$((total_time + result))
+                          success=$((success + 1))
+                        fi
+                      done
+                    done
+                    
+                    if [ $success -gt 0 ]; then
+                      avg_time=$((total_time / success))
+                      printf "%03d|%s|%s\n" "$avg_time" "$server" "$name" >> "$RESULTS_FILE"
+                      echo "$name ($server): ${avg_time}ms"
+                    else
+                      echo "$name ($server): FAILED"
+                    fi
+                  done
+                  
+                  echo ""
+                  
+                  # Sort and get top 2
+                  SORTED=$(sort -t'|' -k1 -n "$RESULTS_FILE" | head -2)
+                  
+                  if [ -z "$SORTED" ] || [ $(echo "$SORTED" | wc -l) -lt 2 ]; then
+                    echo "ERROR: Not enough successful benchmarks"
+                    rm -f "$RESULTS_FILE"
+                    exit 1
+                  fi
+                  
+                  BEST_DNS1=$(echo "$SORTED" | head -1 | cut -d'|' -f2)
+                  BEST_NAME1=$(echo "$SORTED" | head -1 | cut -d'|' -f3)
+                  BEST_TIME1=$(echo "$SORTED" | head -1 | cut -d'|' -f1 | sed 's/^0*//')
+                  
+                  BEST_DNS2=$(echo "$SORTED" | tail -1 | cut -d'|' -f2)
+                  BEST_NAME2=$(echo "$SORTED" | tail -1 | cut -d'|' -f3)
+                  BEST_TIME2=$(echo "$SORTED" | tail -1 | cut -d'|' -f1 | sed 's/^0*//')
+                  
+                  echo "=== Results ==="
+                  echo "Fastest: $BEST_NAME1 ($BEST_DNS1) - ${BEST_TIME1}ms"
+                  echo "Second:  $BEST_NAME2 ($BEST_DNS2) - ${BEST_TIME2}ms"
+                  echo ""
+                  
+                  # Get current DNS config from Pi-hole v6 API
+                  echo "Checking current Pi-hole configuration..."
+                  CURRENT_CONFIG=$(curl -s "$PIHOLE_API/config/dns/upstreams" 2>/dev/null || echo "{}")
+                  echo "Current config: $CURRENT_CONFIG"
+                  
+                  # Extract current upstreams
+                  CURRENT_UPSTREAMS=$(echo "$CURRENT_CONFIG" | jq -r '.config.dns.upstreams // empty' 2>/dev/null || echo "")
+                  echo "Current upstreams: $CURRENT_UPSTREAMS"
+                  
+                  # New upstream configuration
+                  NEW_UPSTREAMS="$BEST_DNS1,$BEST_DNS2"
+                  
+                  echo ""
+                  echo "=== Updating Pi-hole via API ==="
+                  echo "New upstreams: $NEW_UPSTREAMS"
+                  
+                  # Update DNS upstreams via Pi-hole v6 REST API
+                  # PATCH /api/config/dns/upstreams
+                  RESPONSE=$(curl -s -X PATCH \
+                    -H "Content-Type: application/json" \
+                    -d "{\"config\": {\"dns\": {\"upstreams\": [\"$BEST_DNS1\", \"$BEST_DNS2\"]}}}" \
+                    "$PIHOLE_API/config/dns/upstreams" 2>/dev/null || echo '{"error": "request failed"}')
+                  
+                  echo "API Response: $RESPONSE"
+                  
+                  # Check if successful
+                  if echo "$RESPONSE" | jq -e '.config' > /dev/null 2>&1; then
+                    echo ""
+                    echo "Pi-hole updated successfully!"
+                  else
+                    echo ""
+                    echo "Warning: API update may have failed. Trying alternative method..."
+                    
+                    # Alternative: Update the TOML config file directly
+                    # Pi-hole v6 uses /etc/pihole/pihole.toml
+                    # But since we don't have access to the filesystem, we rely on API
+                    
+                    # Try the simpler PUT endpoint
+                    RESPONSE=$(curl -s -X PUT \
+                      -H "Content-Type: application/json" \
+                      -d "[\"$BEST_DNS1\", \"$BEST_DNS2\"]" \
+                      "$PIHOLE_API/config/dns.upstreams" 2>/dev/null || echo '{"error": "request failed"}')
+                    
+                    echo "Alternative API Response: $RESPONSE"
+                  fi
+                  
+                  rm -f "$RESULTS_FILE"
+                  echo ""
+                  echo "=== Completed at $(date) ==="
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 32Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
