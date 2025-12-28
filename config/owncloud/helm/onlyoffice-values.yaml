@@ -15,8 +15,11 @@ connections:
   dbHost: "onlyoffice-postgresql-rw"
   dbName: onlyoffice
   dbUser: onlyoffice
-  # Disable RabbitMQ
+  # Disable RabbitMQ - must clear the secret reference
   amqpType: ""
+  amqpExistingSecret: ""
+  # Disable Redis - must clear the secret reference
+  redisExistingSecret: ""
 
 # Persistence for document server data
 persistence:
