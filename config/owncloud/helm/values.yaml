@@ -19,6 +19,8 @@ features:
       userIDClaim: preferred_username
       userIDClaimAttributeMapping: username
       accessTokenVerifyMethod: jwt
+      # Client ID must match the Pocket ID OIDC client
+      webClientID: owncloud
     # Auto-provision accounts from OIDC
     autoprovisionAccounts:
       enabled: true
@@ -26,15 +28,15 @@ features:
       claimDisplayname: name
       claimGroups: groups
       claimUserName: preferred_username
-    # LDAP is disabled - using OIDC only
+    # LDAP must be writable for auto-provisioning to work
     ldap:
-      writeable: false
+      writeable: true
   
   # Email notifications via Stalwart
   emailNotifications:
     enabled: true
     smtp:
-      host: stalwart-mail.stalwart-mail.svc.cluster.local
+      host: stalwart.stalwart-mail.svc.cluster.local
       port: 25
       sender: "ownCloud <service@newjoy.ro>"
       authentication: none
@@ -48,8 +50,8 @@ features:
         - name: OnlyOffice
           product: OnlyOffice
           enabled: true
-          # OnlyOffice Helm chart creates service: {release-name}-docs
-          uri: http://onlyoffice-docs.owncloud.svc.cluster.local
+          # OnlyOffice Helm chart creates service named 'documentserver'
+          uri: http://documentserver.owncloud.svc.cluster.local
           insecure: true
           disableProof: false
           secureViewEnabled: false

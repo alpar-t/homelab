@@ -45,35 +45,30 @@ In Pocket ID (https://auth.newjoy.ro), create a new OIDC client:
 1. Go to **Admin** → **OIDC Clients** → **Add Client**
 2. Configure:
    - **Name**: ownCloud
-   - **Client ID**: `owncloud` (or auto-generated)
+   - **Client ID**: `owncloud` (must match `webClientID` in values.yaml)
    - **Redirect URIs**: 
      - `https://drive.newjoy.ro/`
      - `https://drive.newjoy.ro/oidc-callback.html`
      - `https://drive.newjoy.ro/oidc-silent-redirect.html`
    - **Client Type**: Public (no secret required for web frontend)
    - **PKCE**: Enable if available
-3. Save and note the Client ID
+3. Save - the Client ID must be exactly `owncloud`
 
 ### 2. Create Required Secrets
 
+The oCIS Helm chart can auto-generate most secrets if not provided. Only create these if you want to manage them yourself:
+
 ```bash
-# OIDC client configuration
-kubectl create secret generic owncloud-oidc \
-  --namespace owncloud \
-  --from-literal=client-id=YOUR_CLIENT_ID
+# Create namespace first
+kubectl create namespace owncloud
 
-# Email sender (for notifications)
-kubectl create secret generic owncloud-email \
-  --namespace owncloud \
-  --from-literal=sender=service@newjoy.ro
-
-# Admin user (for initial setup - optional, can use OIDC user)
+# Admin user (for initial setup - optional with external OIDC)
 kubectl create secret generic owncloud-admin-secret \
   --namespace owncloud \
   --from-literal=user=admin \
   --from-literal=password=$(openssl rand -base64 32)
 
-# Auto-generated secrets (Helm chart will create these if not present)
+# Optional: Pre-create secrets (Helm chart will auto-generate if not present)
 # JWT secret
 kubectl create secret generic owncloud-jwt-secret \
   --namespace owncloud \
