@@ -154,8 +154,10 @@ services:
         # Client ID must match the Pocket ID OIDC client
         webClientID: b85f28eb-bf7d-4544-a311-eadcd5c09a2d
   
-  # IDM (Identity Management)
+  # IDM (Identity Management) - required for user auto-provisioning
+  # Even with external OIDC, IDM is needed to store provisioned users
   idm:
+    enabled: true
     persistence:
       enabled: true
       chownInitContainer: true
