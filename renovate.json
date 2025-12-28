@@ -1,0 +1,44 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "docker:enableMajor"
+  ],
+  "labels": ["dependencies", "renovate"],
+  "kubernetes": {
+    "fileMatch": ["config/.+\\.yaml$"]
+  },
+  "packageRules": [
+    {
+      "description": "Pin latest tags to specific versions with digests",
+      "matchDatasources": ["docker"],
+      "matchCurrentValue": "/^latest$/",
+      "pinDigests": true
+    },
+    {
+      "description": "Pin digest for all docker images for reproducibility",
+      "matchDatasources": ["docker"],
+      "pinDigests": true
+    },
+    {
+      "description": "Group all oauth2-proxy updates together",
+      "matchPackagePatterns": ["oauth2-proxy"],
+      "groupName": "oauth2-proxy"
+    },
+    {
+      "description": "Automerge patch updates for non-critical services",
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "matchPackagePatterns": ["busybox", "redis", "nginx"],
+      "automerge": true
+    },
+    {
+      "description": "Schedule updates for weekends to reduce noise",
+      "matchDatasources": ["docker"],
+      "schedule": ["after 9am on saturday"]
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true
+  }
+}
+

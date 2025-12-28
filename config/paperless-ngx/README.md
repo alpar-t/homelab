@@ -60,11 +60,12 @@ Before deploying, create an OIDC application in Pocket ID:
 3. Set redirect URI: `https://docs.newjoy.ro/accounts/oidc/pocket-id/login/callback/`
 4. Note the client ID and secret
 
-Then create the OIDC secret:
+Then create the secrets:
 
 ```bash
 kubectl create namespace paperless-ngx
 
+# OIDC configuration
 kubectl create secret generic paperless-oidc -n paperless-ngx \
   --from-literal=providers='{
     "openid_connect": {
@@ -80,6 +81,10 @@ kubectl create secret generic paperless-oidc -n paperless-ngx \
       }]
     }
   }'
+
+# Email from address
+kubectl create secret generic paperless-email -n paperless-ngx \
+  --from-literal=from_address="service@newjoy.ro"
 ```
 
 Replace `YOUR_CLIENT_ID` and `YOUR_CLIENT_SECRET` with your actual values.
@@ -95,20 +100,7 @@ ArgoCD will automatically:
 2. Run secrets generator, deploy FTP server (sync-wave 1)
 3. Deploy Paperless-ngx (sync-wave 2)
 
-### 3. Admin User Setup
 
-**If migrating data**: Skip this step. Your existing admin user is imported with the data.
-After import, log in via OIDC and link your account in Settings → Social Accounts.
-
-**If fresh install**: The first OIDC login automatically creates an admin user (via 
-`PAPERLESS_SOCIAL_AUTO_SIGNUP`). Just log in with Pocket ID.
-
-**If you need a local admin** (optional fallback):
-
-```bash
-PAPERLESS_POD=$(kubectl get pods -n paperless-ngx -l app=paperless-ngx -o jsonpath='{.items[0].metadata.name}')
-kubectl exec -it $PAPERLESS_POD -n paperless-ngx -c paperless-ngx -- python manage.py createsuperuser
-```
 
 ### 4. Get the FTP Password
 
@@ -143,26 +135,25 @@ conversion is needed. The `document_importer` reads these and populates PostgreS
 On your Docker Compose host:
 
 ```bash
-# Export using Paperless's built-in exporter (creates JSON files)
+# Export using Paperless's built-in exporter
+# This creates JSON metadata + copies all document files
 docker exec paperless_ngx document_exporter /usr/src/paperless/export
 
-# Create tarballs
+# Create tarball of the export
 cd /srv/paperless
 tar -czvf paperless-export.tar.gz export/
-tar -czvf paperless-media.tar.gz media/
 ```
 
 Copy to your local machine:
 
 ```bash
 scp your-server:/srv/paperless/paperless-export.tar.gz ./
-scp your-server:/srv/paperless/paperless-media.tar.gz ./
 ```
 
 ### Step 2: Deploy Kubernetes
 
 Follow Initial Setup steps 1-2:
-1. Create the OIDC secret
+1. Create the secrets (OIDC + email)
 2. Deploy via ArgoCD
 
 Wait for all pods to be ready:
@@ -180,7 +171,7 @@ PAPERLESS_POD=$(kubectl get pods -n paperless-ngx -l app=paperless-ngx -o jsonpa
 # Copy export tarball to pod
 kubectl cp paperless-export.tar.gz paperless-ngx/$PAPERLESS_POD:/tmp/ -c paperless-ngx
 
-# Extract and import
+# Extract and import (includes both metadata and document files)
 kubectl exec -it $PAPERLESS_POD -n paperless-ngx -c paperless-ngx -- bash -c '
   cd /tmp
   tar -xzvf paperless-export.tar.gz
@@ -189,31 +180,14 @@ kubectl exec -it $PAPERLESS_POD -n paperless-ngx -c paperless-ngx -- bash -c '
 '
 ```
 
-The importer reads the JSON files and populates PostgreSQL with all documents, tags, 
-correspondents, document types, and other metadata.
+The importer reads the JSON metadata and copies all document files (originals + archived 
+versions) into the media directory. It also rebuilds the search index automatically.
 
-### Step 4: Copy Media Files
-
-```bash
-# Copy media tarball to pod
-kubectl cp paperless-media.tar.gz paperless-ngx/$PAPERLESS_POD:/tmp/ -c paperless-ngx
-
-# Extract media files
-kubectl exec -it $PAPERLESS_POD -n paperless-ngx -c paperless-ngx -- bash -c '
-  cd /usr/src/paperless
-  tar -xzvf /tmp/paperless-media.tar.gz
-  rm /tmp/paperless-media.tar.gz
-'
-
-# Rebuild search index
-kubectl exec -it $PAPERLESS_POD -n paperless-ngx -c paperless-ngx -- document_index reindex
-```
-
-### Step 5: Verify and Continue Setup
+### Step 4: Verify and Continue Setup
 
 1. Access https://docs.newjoy.ro and log in via OIDC (your old user is imported)
-2. Verify documents and media are present
-3. Continue with Initial Setup steps 4-5 (FTP password, scanner config)
+2. Verify documents are present and viewable
+3. Continue with Initial Setup step 4 (FTP password, scanner config)
 
 ## Storage
 
