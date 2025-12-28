@@ -15,11 +15,12 @@ connections:
   dbHost: "onlyoffice-postgresql-rw"
   dbName: onlyoffice
   dbUser: onlyoffice
-  # Disable RabbitMQ - must clear the secret reference
+  # Disable RabbitMQ - use dummy password to satisfy chart
   amqpType: ""
   amqpExistingSecret: ""
-  # Disable Redis - clear secret reference and set no password
-  redisExistingSecret: ""
+  amqpPassword: "not-used"
+  # Use existing Redis from paperless-ngx (passwordless)
+  redisHost: "redis.paperless-ngx.svc.cluster.local"
   redisNoPass: true
 
 # Persistence for document server data
