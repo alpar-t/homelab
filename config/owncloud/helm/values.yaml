@@ -14,6 +14,8 @@ features:
   externalUserManagement:
     enabled: true
     # OIDC configuration for Pocket ID
+    # Supported claims: sub, given_name, family_name, name, email, email_verified, preferred_username, picture, groups
+    # Supported scopes: openid, profile, email, groups
     oidc:
       issuerURI: https://auth.newjoy.ro
       userIDClaim: preferred_username
