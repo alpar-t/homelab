@@ -54,6 +54,8 @@ features:
           disableProof: false
           secureViewEnabled: false
           disableChat: false
+          # Icon URL required by oCIS Web UI
+          iconURI: https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/onlyoffice.svg
           ingress:
             enabled: false
             domain: ""
