@@ -5,22 +5,11 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  sources:
-    # oCIS Helm Chart (from Git - not published to Helm repo)
-    - repoURL: https://github.com/owncloud/ocis-charts.git
-      targetRevision: main
-      path: charts/ocis
-      helm:
-        valueFiles:
-          - $values/config/owncloud/helm/values.yaml
-    # Values from git repo (referenced by $values)
-    - repoURL: https://github.com/alpar-t/homelab
-      targetRevision: main
-      ref: values
-    # Additional manifests (external OIDC config patches)
-    - repoURL: https://github.com/alpar-t/homelab
-      targetRevision: main
-      path: config/owncloud/manifests
+  source:
+    # Pre-rendered manifests from Helm chart + Pocket ID modifications
+    repoURL: https://github.com/alpar-t/homelab
+    targetRevision: main
+    path: config/owncloud/rendered
   destination:
     server: https://kubernetes.default.svc
     namespace: owncloud
@@ -30,6 +19,3 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      # Enable Server-Side Apply for strategic merge patches
-      # This allows our OIDC config to be merged into Helm-created deployments
-      - ServerSideApply=true

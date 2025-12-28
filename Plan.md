@@ -65,6 +65,7 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [ ] Bitwarden
 - [X] ownCloud Infinite Scale (drive.newjoy.ro) - manifests created, needs OIDC secret
 - [ ] Photoprism or Immich
+- [ ] Node Red
 - [x] Paperless-ngx 
 
 - [ ] Emby

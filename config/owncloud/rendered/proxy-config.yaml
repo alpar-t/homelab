@@ -1,0 +1,57 @@
+---
+# Source: ocis/templates/proxy/config.yaml
+# Modified for Pocket ID OIDC integration - added auth.newjoy.ro to connect-src
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: proxy-config
+  namespace: owncloud
+  labels:
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+data:
+  proxy.yaml: |
+    ---
+    policy_selector:
+      static:
+        policy: ocis
+
+  csp.yaml: |
+    ---
+    directives:
+      child-src:
+        - '''self'''
+      connect-src:
+        - '''self'''
+        - "https://auth.newjoy.ro/"
+      default-src:
+        - '''none'''
+      font-src:
+        - '''self'''
+      frame-ancestors:
+        - '''self'''
+      frame-src:
+        - '''self'''
+        - 'blob:'
+        - "http://documentserver.owncloud.svc.cluster.local/"
+      img-src:
+        - '''self'''
+        - 'data:'
+        - 'blob:'
+        - "https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/onlyoffice.svg"
+      manifest-src:
+        - '''self'''
+      media-src:
+        - '''self'''
+      object-src:
+        - '''self'''
+        - 'blob:'
+      script-src:
+        - '''self'''
+        - '''unsafe-inline'''
+      style-src:
+        - '''self'''
+        - '''unsafe-inline'''

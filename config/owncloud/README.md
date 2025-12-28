@@ -1,6 +1,6 @@
 # ownCloud Infinite Scale (oCIS)
 
-Cloud file storage and collaboration platform deployed via the official oCIS Helm chart with Pocket ID for SSO.
+Cloud file storage and collaboration platform with Pocket ID for SSO.
 
 Based on: [Pocket ID oCIS Integration](https://pocket-id.org/docs/client-examples/oCIS)
 
@@ -14,144 +14,148 @@ Based on: [Pocket ID oCIS Integration](https://pocket-id.org/docs/client-example
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                     oCIS (Helm Chart)                        │
+│                     oCIS (Rendered Manifests)                │
 │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐           │
 │  │  Proxy  │ │   Web   │ │ Storage │ │ Search  │           │
 │  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘           │
 │       │          │           │           │                  │
-│       │    ┌─────┴───────────┼───────────┘                  │
-│       │    │                 │                               │
-│       ▼    ▼                 ▼                               │
-│  ┌─────────────┐       ┌──────────┐                         │
-│  │  Internal   │       │  Tika    │ (shared with paperless) │
-│  │    IDM      │       │ (external)│                         │
-│  │ (user store)│       └──────────┘                         │
-│  └─────────────┘                                             │
+│       ▼          ▼           ▼           ▼                  │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │              Internal IDM (user store)               │   │
+│  │          Auto-provisioned from Pocket ID             │   │
+│  └─────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────┘
-         │                    │                    │
-         ▼                    ▼                    ▼
-┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-│  Pocket ID  │      │   NATS      │      │  OnlyOffice │
-│   (OIDC)    │      │ (messaging) │      │  (internal) │
-│auth.newjoy.ro│     └─────────────┘      │             │
-└─────────────┘                           └─────────────┘
+         │
+         ▼
+┌─────────────┐
+│  Pocket ID  │
+│   (OIDC)    │
+│auth.newjoy.ro│
+└─────────────┘
 ```
 
-### Key Design
+## Deployment Approach: Rendered Manifests
 
-- **Authentication**: Pocket ID (external OIDC)
-- **User Storage**: Internal IDM with auto-provisioning
-- **Internal IDP**: Disabled via `OCIS_EXCLUDE_RUN_SERVICES=idp`
+Instead of using Helm + patches at deploy time, we **render the Helm chart locally** and commit the resulting manifests. This approach:
 
-## Prerequisites
+- **Explicit**: You see exactly what's being deployed
+- **Simple**: No Helm/Kustomize magic in ArgoCD
+- **Modifiable**: Easy to edit specific deployments
 
-### 1. Configure Pocket ID User Groups
+### File Structure
 
-Add custom claims to your existing groups for role assignment:
+```
+config/owncloud/
+├── helm/
+│   └── values.yaml          # Helm values (for re-rendering)
+├── rendered/
+│   ├── base.yaml            # All manifests except modified ones
+│   ├── proxy-deployment.yaml # Modified for Pocket ID
+│   ├── web-deployment.yaml   # Modified for Pocket ID  
+│   └── proxy-config.yaml     # CSP config with Pocket ID
+└── README.md
+```
+
+### Re-rendering the Chart
+
+When upgrading oCIS or changing base configuration:
+
+```bash
+# Clone the chart
+git clone --depth 1 https://github.com/owncloud/ocis-charts.git /tmp/ocis-charts
+
+# Render with values
+helm template ocis /tmp/ocis-charts/charts/ocis \
+  --namespace owncloud \
+  --values config/owncloud/helm/values.yaml \
+  > /tmp/ocis-rendered.yaml
+
+# Extract base (excluding proxy/web deployments and proxy-config)
+# Then manually update proxy-deployment.yaml, web-deployment.yaml, proxy-config.yaml
+# with the Pocket ID changes marked with "=== Pocket ID OIDC Configuration ==="
+```
+
+## Modified Files for Pocket ID
+
+### `proxy-deployment.yaml`
+Added environment variables:
+- `OCIS_EXCLUDE_RUN_SERVICES=idp` - Disables internal IDP
+- `PROXY_OIDC_ISSUER=https://auth.newjoy.ro` - Points to Pocket ID
+- `PROXY_OIDC_REWRITE_WELLKNOWN=true` - Rewrites .well-known
+- `PROXY_USER_OIDC_CLAIM=preferred_username` - User claim mapping
+- `PROXY_AUTOPROVISION_ACCOUNTS=true` - Auto-creates users
+- `PROXY_ROLE_ASSIGNMENT_DRIVER=oidc` - Role assignment from claims
+
+### `web-deployment.yaml`
+Changed:
+- `WEB_OIDC_AUTHORITY=https://auth.newjoy.ro` - Points to Pocket ID
+
+### `proxy-config.yaml`
+Added to CSP `connect-src`:
+- `https://auth.newjoy.ro/`
+
+## Prerequisites in Pocket ID
+
+### 1. Configure User Groups
+
+Add custom claims to your groups for role assignment:
 
 | Group | Custom Claim Key | Custom Claim Value | oCIS Role |
 |-------|------------------|-------------------|-----------|
 | `advanced_apps` | `roles` | `admin` | Admin |
 | `family_users` | `roles` | `user` | User |
 
-Steps:
-1. Go to https://auth.newjoy.ro → **User Groups**
-2. Click **...** → **Edit** on each group
-3. Add custom claim: key=`roles`, value=`admin` or `user`
+### 2. Create OIDC Client (Web)
 
-### 2. Create Pocket ID OIDC Client (Web)
+1. **Name**: ownCloud
+2. **Callback URLs**: 
+   - `https://drive.newjoy.ro/`
+   - `https://drive.newjoy.ro/oidc-callback.html`
+   - `https://drive.newjoy.ro/oidc-silent-redirect.html`
+3. **Public Client**: Yes
+4. Add your groups to the client
+5. Copy Client ID to `web-deployment.yaml` → `WEB_OIDC_CLIENT_ID`
 
-1. Go to **Admin** → **OIDC Clients** → **Add OIDC Client**
-2. Configure:
-   - **Name**: ownCloud
-   - **Callback URLs**: 
-     - `https://drive.newjoy.ro/`
-     - `https://drive.newjoy.ro/oidc-callback.html`
-     - `https://drive.newjoy.ro/oidc-silent-redirect.html`
-   - **Public Client**: ✅ Yes
-3. Save and copy the **Client ID**
-4. Edit the client and add groups: `advanced_apps`, `family_users`
-5. Update `values.yaml` with the Client ID in `services.web.config.oidc.webClientID`
+### 3. Create Desktop/Mobile Clients
 
-### 3. Create OIDC Clients for Desktop/Mobile Apps
+Hardcoded Client IDs (create as Public Clients):
 
-The ownCloud clients have hardcoded Client IDs. Create these as **Public Clients**:
-
-| Client | Name | Client ID | Callback URLs |
-|--------|------|-----------|---------------|
-| Desktop | ownCloud Desktop | `xdXOt13JKxym1B1QcEncf2XDkLAexMBFwiT9j6EfhhHFJhs2KM9jbjTmf8JBXE69` | `http://127.0.0.1:*` |
-| iOS | ownCloud iOS | `mxd5OQDk6es5LzOzRvidJNfXLUZS2oN3oUFeXPP8LpPrhx3UroJFduGEYIBOxkY1` | `oc://ios.owncloud.com` |
-| Android | ownCloud Android | `e4rAsNUSIUs0lF4nbv9FmCeUkTlV9GdgTLDH1b5uie7syb90SzEVrbN7HIpmWJeD` | `oc://android.owncloud.com` |
-
-Add your groups to each client.
-
-## Configuration Files
-
-### `helm/values.yaml`
-Standard oCIS Helm chart values with:
-- `externalUserManagement.enabled: false` (keeps internal IDM)
-- Web client ID from Pocket ID
-- Storage configuration
-
-### `manifests/external-oidc.yaml`
-Patches the Helm chart output with:
-- `OCIS_EXCLUDE_RUN_SERVICES=idp` - disables internal IDP
-- `OCIS_OIDC_ISSUER=https://auth.newjoy.ro` - points to Pocket ID
-- `PROXY_AUTOPROVISION_ACCOUNTS=true` - auto-creates users
-- `PROXY_ROLE_ASSIGNMENT_DRIVER=oidc` - assigns roles from OIDC claims
-- CSP configuration allowing Pocket ID
-
-## Deployment
-
-ArgoCD application with:
-- oCIS Helm chart from `https://github.com/owncloud/ocis-charts`
-- External OIDC patches from `manifests/`
-- Server-Side Apply for strategic merge patching
+| Client | Client ID | Callback |
+|--------|-----------|----------|
+| Desktop | `xdXOt13JKxym1B1QcEncf2XDkLAexMBFwiT9j6EfhhHFJhs2KM9jbjTmf8JBXE69` | `http://127.0.0.1:*` |
+| iOS | `mxd5OQDk6es5LzOzRvidJNfXLUZS2oN3oUFeXPP8LpPrhx3UroJFduGEYIBOxkY1` | `oc://ios.owncloud.com` |
+| Android | `e4rAsNUSIUs0lF4nbv9FmCeUkTlV9GdgTLDH1b5uie7syb90SzEVrbN7HIpmWJeD` | `oc://android.owncloud.com` |
 
 ## Storage
 
-| Component | Storage Class | Size | Purpose |
-|-----------|--------------|------|---------|
-| User Files | longhorn-hdd | 1.5TB | Primary file storage |
-| Search Index | longhorn-ssd | 15Gi | Bleve search index |
-| Thumbnails | longhorn-ssd | 30Gi | Image/video thumbnails |
-| NATS | longhorn-ssd | 1Gi | Message queue persistence |
-| IDM | longhorn-ssd | 1Gi | Internal user database |
+| Component | Storage Class | Size |
+|-----------|--------------|------|
+| User Files | longhorn-hdd | 1.5TB |
+| Search Index | longhorn-ssd | 15Gi |
+| Thumbnails | longhorn-ssd | 30Gi |
+| NATS | longhorn-ssd | 1Gi |
+| IDM | longhorn-ssd | 1Gi |
 
 ## Troubleshooting
 
-### Check pod status
 ```bash
+# Check pods
 kubectl get pods -n owncloud
-```
 
-### Verify IDP is excluded
-```bash
+# Verify IDP is not running (should return nothing)
 kubectl get pods -n owncloud | grep idp
-# Should return nothing - IDP is not running
-```
 
-### View proxy logs (auth issues)
-```bash
+# View proxy logs for auth issues
 kubectl logs -n owncloud -l app=proxy -f
 ```
 
 ### Common Issues
 
-1. **"Not logged in" after Pocket ID auth**
-   - Verify user is in `advanced_apps` or `family_users` group
-   - Check custom claims on groups (key: `roles`, value: `admin` or `user`)
-   - Check proxy logs for role assignment
-
-2. **CSP errors in browser console**
-   - Verify `ocis-csp-config` ConfigMap has correct Pocket ID URL
-
-3. **Desktop/mobile apps don't work**
-   - Verify OIDC clients with exact hardcoded Client IDs exist
-   - Ensure clients are marked as Public
+1. **"Not logged in" after auth** - Check user is in a group with `roles` custom claim
+2. **CSP errors** - Verify `proxy-config.yaml` has Pocket ID in `connect-src`
+3. **Apps don't work** - Verify hardcoded Client IDs exist as Public Clients
 
 ## References
 
-- [oCIS Documentation](https://doc.owncloud.com/ocis/next/)
-- [oCIS Helm Chart](https://github.com/owncloud/ocis-charts)
 - [Pocket ID oCIS Integration](https://pocket-id.org/docs/client-examples/oCIS)
+- [oCIS Helm Chart](https://github.com/owncloud/ocis-charts)
