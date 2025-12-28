@@ -1,0 +1,27 @@
+---
+# Source: ocis/templates/users/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: users
+  namespace: owncloud
+  labels:
+    app: users
+    ocis-metrics: enabled
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    app: users
+  ports:
+    - name: grpc
+      port: 9144
+      protocol: TCP
+      appProtocol: "grpc"
+    - name: metrics-debug
+      port: 9145
+      protocol: TCP
+      appProtocol: "http"

@@ -1,0 +1,122 @@
+---
+# Source: ocis/templates/storagepubliclink/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storagepubliclink
+  annotations:
+    reloader.stakater.com/auto: "true"
+  namespace: owncloud
+  labels:
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app: storagepubliclink
+  replicas: 1
+  
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  template:
+    metadata:
+      labels:
+        app: storagepubliclink
+        helm.sh/chart: ocis-0.7.0
+        app.kubernetes.io/name: ocis
+        app.kubernetes.io/instance: ocis
+        app.kubernetes.io/version: "7.1.4"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      
+      securityContext:
+          fsGroup: 1000
+          fsGroupChangePolicy: Always
+      
+      
+      nodeSelector: 
+        {}
+      containers:
+        - name: storagepubliclink
+          image: "owncloud/ocis:7.1.4"
+          imagePullPolicy: IfNotPresent
+          command: ["ocis"]
+          args: ["storage-publiclink", "server"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            readOnlyRootFilesystem: true
+          env:
+            - name: MICRO_REGISTRY
+              value: "nats-js-kv"
+            - name: MICRO_REGISTRY_ADDRESS
+              value: "nats:9233"
+
+            - name: STORAGE_PUBLICLINK_LOG_COLOR
+              value: "false"
+            - name: STORAGE_PUBLICLINK_LOG_LEVEL
+              value: "info"
+            - name: STORAGE_PUBLICLINK_LOG_PRETTY
+              value: "false"
+
+            - name: STORAGE_PUBLICLINK_TRACING_ENABLED
+              value: "false"
+            - name: STORAGE_PUBLICLINK_TRACING_TYPE
+              value: "jaeger"
+            - name: STORAGE_PUBLICLINK_TRACING_ENDPOINT
+              value: 
+            - name: STORAGE_PUBLICLINK_TRACING_COLLECTOR
+              value: 
+
+            - name: STORAGE_PUBLICLINK_DEBUG_PPROF
+              value: "false"
+
+            - name: STORAGE_PUBLICLINK_GRPC_ADDR
+              value: 0.0.0.0:9178
+            - name: STORAGE_PUBLICLINK_DEBUG_ADDR
+              value: 0.0.0.0:9179
+
+            - name: STORAGE_PUBLICLINK_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: "jwt-secret"
+                  key: jwt-secret
+            
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics-debug
+            timeoutSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
+
+          resources: 
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
+              cpu: 200m
+              memory: 512Mi
+
+          ports:
+            - name: grpc
+              containerPort: 9178
+            - name: metrics-debug
+              containerPort: 9179
+
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+            
+      
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}

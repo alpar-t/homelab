@@ -1,0 +1,158 @@
+---
+# Source: ocis/templates/storagesystem/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storagesystem
+  annotations:
+    reloader.stakater.com/auto: "true"
+  namespace: owncloud
+  labels:
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app: storagesystem
+  replicas: 1
+  
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  template:
+    metadata:
+      labels:
+        app: storagesystem
+        helm.sh/chart: ocis-0.7.0
+        app.kubernetes.io/name: ocis
+        app.kubernetes.io/instance: ocis
+        app.kubernetes.io/version: "7.1.4"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      
+      securityContext:
+          fsGroup: 1000
+          fsGroupChangePolicy: Always
+      
+      
+      nodeSelector: 
+        {}
+      containers:
+        - name: storagesystem
+          image: "owncloud/ocis:7.1.4"
+          imagePullPolicy: IfNotPresent
+          command: ["ocis"]
+          args: ["storage-system", "server"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            readOnlyRootFilesystem: true
+          env:
+            - name: MICRO_REGISTRY
+              value: "nats-js-kv"
+            - name: MICRO_REGISTRY_ADDRESS
+              value: "nats:9233"
+            - name: OCIS_CACHE_STORE
+              value: "nats-js-kv"
+            - name: OCIS_CACHE_STORE_NODES
+              value: "nats:9233"
+            - name: OCIS_CACHE_DISABLE_PERSISTENCE
+              value: "true"
+
+            # logging
+            - name: STORAGE_SYSTEM_LOG_COLOR
+              value: "false"
+            - name: STORAGE_SYSTEM_LOG_LEVEL
+              value: "info"
+            - name: STORAGE_SYSTEM_LOG_PRETTY
+              value: "false"
+
+            - name: STORAGE_SYSTEM_TRACING_ENABLED
+              value: "false"
+            - name: STORAGE_SYSTEM_TRACING_TYPE
+              value: "jaeger"
+            - name: STORAGE_SYSTEM_TRACING_ENDPOINT
+              value: 
+            - name: STORAGE_SYSTEM_TRACING_COLLECTOR
+              value: 
+
+            - name: STORAGE_SYSTEM_DEBUG_PPROF
+              value: "false"
+
+            # bind configuration
+            - name: STORAGE_SYSTEM_GRPC_ADDR
+              value: 0.0.0.0:9215
+            - name: STORAGE_SYSTEM_DEBUG_ADDR
+              value: 0.0.0.0:9217
+
+            # external availability data gateway
+            - name: STORAGE_SYSTEM_HTTP_ADDR
+              value: 0.0.0.0:9216
+            - name: STORAGE_SYSTEM_DATA_SERVER_URL
+              value: http://storagesystem:9216/data
+
+            - name: STORAGE_SYSTEM_DRIVER
+              value: ocis
+
+            - name: STORAGE_SYSTEM_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: "storage-system-jwt-secret"
+                  key: storage-system-jwt-secret
+
+            - name: OCIS_SYSTEM_USER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: "storage-system"
+                  key: api-key
+
+            - name: OCIS_SYSTEM_USER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: "storage-system"
+                  key: user-id
+            
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics-debug
+            timeoutSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
+
+          resources: 
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
+              cpu: 200m
+              memory: 512Mi
+
+          ports:
+            - name: grpc
+              containerPort: 9215
+            - name: http
+              containerPort: 9216
+            - name: metrics-debug
+              containerPort: 9217
+
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+            - name: storagesystem-data
+              mountPath: /var/lib/ocis
+            
+      
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+        
+        - name: storagesystem-data
+          emptyDir: {}

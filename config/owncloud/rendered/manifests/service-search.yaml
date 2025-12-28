@@ -1,0 +1,27 @@
+---
+# Source: ocis/templates/search/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: search
+  namespace: owncloud
+  labels:
+    app: search
+    ocis-metrics: enabled
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    app: search
+  ports:
+    - name: grpc
+      port: 9220
+      protocol: TCP
+      appProtocol: "grpc"
+    - name: metrics-debug
+      port: 9224
+      protocol: TCP
+      appProtocol: "http"

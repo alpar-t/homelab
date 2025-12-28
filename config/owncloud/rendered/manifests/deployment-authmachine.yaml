@@ -1,0 +1,128 @@
+---
+# Source: ocis/templates/authmachine/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authmachine
+  annotations:
+    reloader.stakater.com/auto: "true"
+  namespace: owncloud
+  labels:
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app: authmachine
+  replicas: 1
+  
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  template:
+    metadata:
+      labels:
+        app: authmachine
+        helm.sh/chart: ocis-0.7.0
+        app.kubernetes.io/name: ocis
+        app.kubernetes.io/instance: ocis
+        app.kubernetes.io/version: "7.1.4"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      
+      securityContext:
+          fsGroup: 1000
+          fsGroupChangePolicy: Always
+      
+      
+      nodeSelector: 
+        {}
+      containers:
+        - name: authmachine
+          image: "owncloud/ocis:7.1.4"
+          imagePullPolicy: IfNotPresent
+          command: ["ocis"]
+          args: ["auth-machine", "server"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            readOnlyRootFilesystem: true
+          env:
+            - name: MICRO_REGISTRY
+              value: "nats-js-kv"
+            - name: MICRO_REGISTRY_ADDRESS
+              value: "nats:9233"
+
+            - name: AUTH_MACHINE_LOG_COLOR
+              value: "false"
+            - name: AUTH_MACHINE_LOG_LEVEL
+              value: "info"
+            - name: AUTH_MACHINE_LOG_PRETTY
+              value: "false"
+
+            - name: AUTH_MACHINE_TRACING_ENABLED
+              value: "false"
+            - name: AUTH_MACHINE_TRACING_TYPE
+              value: "jaeger"
+            - name: AUTH_MACHINE_TRACING_ENDPOINT
+              value: 
+            - name: AUTH_MACHINE_TRACING_COLLECTOR
+              value: 
+
+            - name: AUTH_MACHINE_DEBUG_PPROF
+              value: "false"
+
+            - name: AUTH_MACHINE_GRPC_ADDR
+              value: 0.0.0.0:9166
+            - name: AUTH_MACHINE_DEBUG_ADDR
+              value: 0.0.0.0:9167
+
+            - name: AUTH_MACHINE_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: "jwt-secret"
+                  key: jwt-secret
+
+            - name: AUTH_MACHINE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: "machine-auth-api-key"
+                  key: machine-auth-api-key
+            
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics-debug
+            timeoutSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
+
+          resources: 
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
+              cpu: 200m
+              memory: 512Mi
+
+          ports:
+            - name: grpc
+              containerPort: 9166
+            - name: metrics-debug
+              containerPort: 9167
+
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+            
+      
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}

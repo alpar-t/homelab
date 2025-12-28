@@ -1,0 +1,27 @@
+---
+# Source: ocis/templates/eventhistory/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: eventhistory
+  namespace: owncloud
+  labels:
+    app: eventhistory
+    ocis-metrics: enabled
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    app: eventhistory
+  ports:
+    - name: grpc
+      port: 8080
+      protocol: TCP
+      appProtocol: "grpc"
+    - name: metrics-debug
+      port: 9270
+      protocol: TCP
+      appProtocol: "http"

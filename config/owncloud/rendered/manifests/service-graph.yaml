@@ -1,0 +1,27 @@
+---
+# Source: ocis/templates/graph/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: graph
+  namespace: owncloud
+  labels:
+    app: graph
+    ocis-metrics: enabled
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    app: graph
+  ports:
+    - name: http
+      port: 9120
+      protocol: TCP
+      appProtocol: "http"
+    - name: metrics-debug
+      port: 9124
+      protocol: TCP
+      appProtocol: "http"

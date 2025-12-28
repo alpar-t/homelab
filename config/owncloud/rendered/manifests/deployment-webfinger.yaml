@@ -1,0 +1,122 @@
+---
+# Source: ocis/templates/webfinger/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webfinger
+  annotations:
+    reloader.stakater.com/auto: "true"
+  namespace: owncloud
+  labels:
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app: webfinger
+  replicas: 1
+  
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  template:
+    metadata:
+      labels:
+        app: webfinger
+        helm.sh/chart: ocis-0.7.0
+        app.kubernetes.io/name: ocis
+        app.kubernetes.io/instance: ocis
+        app.kubernetes.io/version: "7.1.4"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      
+      securityContext:
+          fsGroup: 1000
+          fsGroupChangePolicy: Always
+      
+      
+      nodeSelector: 
+        {}
+      containers:
+        - name: webfinger
+          image: "owncloud/ocis:7.1.4"
+          imagePullPolicy: IfNotPresent
+          command: ["ocis"]
+          args: ["webfinger", "server"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            readOnlyRootFilesystem: true
+          env:
+            - name: MICRO_REGISTRY
+              value: "nats-js-kv"
+            - name: MICRO_REGISTRY_ADDRESS
+              value: "nats:9233"
+            - name: OCIS_CORS_ALLOW_ORIGINS
+              value: "https://drive.newjoy.ro"
+
+            - name: WEBFINGER_LOG_COLOR
+              value: "false"
+            - name: WEBFINGER_LOG_LEVEL
+              value: "info"
+            - name: WEBFINGER_LOG_PRETTY
+              value: "false"
+
+            - name: WEBFINGER_TRACING_ENABLED
+              value: "false"
+            - name: WEBFINGER_TRACING_TYPE
+              value: "jaeger"
+            - name: WEBFINGER_TRACING_ENDPOINT
+              value: 
+
+            - name: WEBFINGER_TRACING_COLLECTOR
+              value: 
+
+            - name: WEBFINGER_DEBUG_PPROF
+              value: "false"
+
+            - name: WEBFINGER_HTTP_ADDR
+              value: 0.0.0.0:8080
+            - name: WEBFINGER_DEBUG_ADDR
+              value: 0.0.0.0:8081
+
+            - name: WEBFINGER_OIDC_ISSUER
+              value: "https://drive.newjoy.ro"
+            - name: WEBFINGER_OWNCLOUD_SERVER_INSTANCE_URL
+              value: "https://drive.newjoy.ro"
+            - name: WEBFINGER_INSECURE
+              value: "false"
+            
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics-debug
+            timeoutSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
+
+          resources: 
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
+              cpu: 200m
+              memory: 512Mi
+
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: metrics-debug
+              containerPort: 8081
+
+          volumeMounts:
+            
+      
+      volumes:

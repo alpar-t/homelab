@@ -1,0 +1,188 @@
+---
+# Source: ocis/templates/sharing/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sharing
+  annotations:
+    reloader.stakater.com/auto: "true"
+  namespace: owncloud
+  labels:
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app: sharing
+  replicas: 1
+  
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  template:
+    metadata:
+      labels:
+        app: sharing
+        helm.sh/chart: ocis-0.7.0
+        app.kubernetes.io/name: ocis
+        app.kubernetes.io/instance: ocis
+        app.kubernetes.io/version: "7.1.4"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      
+      securityContext:
+          fsGroup: 1000
+          fsGroupChangePolicy: Always
+      
+      
+      nodeSelector: 
+        {}
+      containers:
+        - name: sharing
+          image: "owncloud/ocis:7.1.4"
+          imagePullPolicy: IfNotPresent
+          command: ["ocis"]
+          args: ["sharing", "server"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            readOnlyRootFilesystem: true
+          env:
+            - name: MICRO_REGISTRY
+              value: "nats-js-kv"
+            - name: MICRO_REGISTRY_ADDRESS
+              value: "nats:9233"
+            
+            - name: OCIS_EVENTS_ENDPOINT
+              value: nats:9233
+
+            - name: SHARING_LOG_COLOR
+              value: "false"
+            - name: SHARING_LOG_LEVEL
+              value: "info"
+            - name: SHARING_LOG_PRETTY
+              value: "false"
+
+            - name: SHARING_TRACING_ENABLED
+              value: "false"
+            - name: SHARING_TRACING_TYPE
+              value: "jaeger"
+            - name: SHARING_TRACING_ENDPOINT
+              value: 
+            - name: SHARING_TRACING_COLLECTOR
+              value: 
+
+            - name: SHARING_DEBUG_PPROF
+              value: "false"
+
+            - name: SHARING_GRPC_ADDR
+              value: 0.0.0.0:9150
+            - name: SHARING_DEBUG_ADDR
+              value: 0.0.0.0:9151
+
+            - name: SHARING_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: "jwt-secret"
+                  key: jwt-secret
+
+            - name: SHARING_PUBLIC_WRITEABLE_SHARE_MUST_HAVE_PASSWORD
+              value: "false"
+
+            - name: SHARING_PUBLIC_SHARE_MUST_HAVE_PASSWORD
+              value: "false"
+
+            # password policies
+            - name: SHARING_PASSWORD_POLICY_MIN_CHARACTERS
+              value: "0"
+            - name: SHARING_PASSWORD_POLICY_MIN_LOWERCASE_CHARACTERS
+              value: "0"
+            - name: SHARING_PASSWORD_POLICY_MIN_UPPERCASE_CHARACTERS
+              value: "0"
+            - name: SHARING_PASSWORD_POLICY_MIN_DIGITS
+              value: "0"
+            - name: SHARING_PASSWORD_POLICY_MIN_SPECIAL_CHARACTERS
+              value: "0"
+            - name: SHARING_PASSWORD_POLICY_BANNED_PASSWORDS_LIST
+              value: /etc/ocis/sharing-banned-passwords.txt
+
+            # user sharing
+            - name: SHARING_USER_DRIVER
+              value: jsoncs3
+            - name: SHARING_USER_JSONCS3_SYSTEM_USER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: "storage-system"
+                  key: api-key
+            - name: SHARING_USER_JSONCS3_SYSTEM_USER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: "storage-system"
+                  key: user-id
+
+            # public sharing
+            - name: SHARING_PUBLIC_DRIVER
+              value: jsoncs3
+            - name: SHARING_PUBLIC_JSONCS3_SYSTEM_USER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: "storage-system"
+                  key: api-key
+            - name: SHARING_PUBLIC_JSONCS3_SYSTEM_USER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: "storage-system"
+                  key: user-id
+
+            - name: SHARING_USER_JSONCS3_MAX_CONCURRENCY
+              value: "20"
+            
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics-debug
+            timeoutSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
+
+          resources: 
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
+              cpu: 200m
+              memory: 512Mi
+
+          ports:
+            - name: grpc
+              containerPort: 9150
+            - name: metrics-debug
+              containerPort: 9151
+
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+            - name: messaging-system-ca
+              mountPath: /etc/ocis/messaging-system-ca
+              readOnly: true
+            - name: configs
+              mountPath: /etc/ocis
+            
+      
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+        - name: messaging-system-ca
+          
+          emptyDir: {}
+          
+        - name: configs
+          configMap:
+            name: sharing-banned-passwords-sharing

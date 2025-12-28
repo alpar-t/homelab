@@ -1,0 +1,27 @@
+---
+# Source: ocis/templates/storagepubliclink/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: storagepubliclink
+  namespace: owncloud
+  labels:
+    app: storagepubliclink
+    ocis-metrics: enabled
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    app: storagepubliclink
+  ports:
+    - name: grpc
+      port: 9178
+      protocol: TCP
+      appProtocol: "grpc"
+    - name: metrics-debug
+      port: 9179
+      protocol: TCP
+      appProtocol: "http"

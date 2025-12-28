@@ -1,0 +1,129 @@
+---
+# Source: ocis/templates/appregistry/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appregistry
+  annotations:
+    reloader.stakater.com/auto: "true"
+  namespace: owncloud
+  labels:
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app: appregistry
+  replicas: 1 #TODO: https://github.com/owncloud/ocis-charts/issues/48
+  
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  template:
+    metadata:
+      labels:
+        app: appregistry
+        helm.sh/chart: ocis-0.7.0
+        app.kubernetes.io/name: ocis
+        app.kubernetes.io/instance: ocis
+        app.kubernetes.io/version: "7.1.4"
+        app.kubernetes.io/managed-by: Helm
+      annotations:
+        checksum/config: 1aa33cef9a7e9086c2b27d28f0b2cf65572b1170774e264efe91164672f32949
+    spec:
+      
+      securityContext:
+          fsGroup: 1000
+          fsGroupChangePolicy: Always
+      
+      
+      nodeSelector: 
+        {}
+      containers:
+        - name: appregistry
+          image: "owncloud/ocis:7.1.4"
+          imagePullPolicy: IfNotPresent
+          command: ["ocis"]
+          args: ["app-registry", "server"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            readOnlyRootFilesystem: true
+          env:
+            - name: MICRO_REGISTRY
+              value: "nats-js-kv"
+            - name: MICRO_REGISTRY_ADDRESS
+              value: "nats:9233"
+
+            - name: APP_REGISTRY_LOG_COLOR
+              value: "false"
+            - name: APP_REGISTRY_LOG_LEVEL
+              value: "info"
+            - name: APP_REGISTRY_LOG_PRETTY
+              value: "false"
+
+            - name: APP_REGISTRY_TRACING_ENABLED
+              value: "false"
+            - name: APP_REGISTRY_TRACING_TYPE
+              value: "jaeger"
+            - name: APP_REGISTRY_TRACING_ENDPOINT
+              value: 
+            - name: APP_REGISTRY_TRACING_COLLECTOR
+              value: 
+
+            - name: APP_REGISTRY_DEBUG_PPROF
+              value: "false"
+
+            - name: APP_REGISTRY_GRPC_ADDR
+              value: 0.0.0.0:9242
+            - name: APP_REGISTRY_DEBUG_ADDR
+              value: 0.0.0.0:9243
+
+            - name: APP_REGISTRY_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: "jwt-secret"
+                  key: jwt-secret
+            
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics-debug
+            timeoutSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
+
+          resources: 
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
+              cpu: 200m
+              memory: 512Mi
+
+          ports:
+            - name: grpc
+              containerPort: 9242
+            - name: metrics-debug
+              containerPort: 9243
+
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+            - name: configs
+              mountPath: /etc/ocis
+            
+      
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}
+        - name: configs
+          configMap:
+            name: appregistry-config

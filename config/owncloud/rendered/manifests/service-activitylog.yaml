@@ -1,0 +1,27 @@
+---
+# Source: ocis/templates/activitylog/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: activitylog
+  namespace: owncloud
+  labels:
+    app: activitylog
+    ocis-metrics: enabled
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    app: activitylog
+  ports:
+    - name: http
+      port: 9195
+      protocol: TCP
+      appProtocol: "http"
+    - name: metrics-debug
+      port: 9197
+      protocol: TCP
+      appProtocol: "http"

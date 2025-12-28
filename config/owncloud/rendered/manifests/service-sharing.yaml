@@ -1,0 +1,27 @@
+---
+# Source: ocis/templates/sharing/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: sharing
+  namespace: owncloud
+  labels:
+    app: sharing
+    ocis-metrics: enabled
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    app: sharing
+  ports:
+    - name: grpc
+      port: 9150
+      protocol: TCP
+      appProtocol: "grpc"
+    - name: metrics-debug
+      port: 9151
+      protocol: TCP
+      appProtocol: "http"

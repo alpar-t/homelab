@@ -1,9 +1,11 @@
 ---
-# Source: ocis/templates/web/deployment.yaml
+# Source: ocis/templates/ocs/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: web
+  name: ocs
+  annotations:
+    reloader.stakater.com/auto: "true"
   namespace: owncloud
   labels:
     helm.sh/chart: ocis-0.7.0
@@ -14,7 +16,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: web
+      app: ocs
   replicas: 1
   
   strategy:
@@ -25,14 +27,12 @@ spec:
   template:
     metadata:
       labels:
-        app: web
+        app: ocs
         helm.sh/chart: ocis-0.7.0
         app.kubernetes.io/name: ocis
         app.kubernetes.io/instance: ocis
         app.kubernetes.io/version: "7.1.4"
         app.kubernetes.io/managed-by: Helm
-      annotations:
-        checksum/config: d8cae2071ea381168a7cbe21363fa63c78399a6726cf52d877f4fef9788f5403
     spec:
       
       securityContext:
@@ -43,11 +43,11 @@ spec:
       nodeSelector: 
         {}
       containers:
-        - name: web
+        - name: ocs
           image: "owncloud/ocis:7.1.4"
           imagePullPolicy: IfNotPresent
           command: ["ocis"]
-          args: ["web", "server"]
+          args: ["ocs", "server"]
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
@@ -60,56 +60,43 @@ spec:
               value: "nats:9233"
             - name: OCIS_CORS_ALLOW_ORIGINS
               value: "https://drive.newjoy.ro"
+            - name: OCIS_CACHE_STORE
+              value: "nats-js-kv"
+            - name: OCIS_CACHE_STORE_NODES
+              value: "nats:9233"
+            - name: OCIS_CACHE_DISABLE_PERSISTENCE
+              value: "true"
 
-            - name: WEB_LOG_COLOR
+            - name: OCS_LOG_COLOR
               value: "false"
-            - name: WEB_LOG_LEVEL
+            - name: OCS_LOG_LEVEL
               value: "info"
-            - name: WEB_LOG_PRETTY
+            - name: OCS_LOG_PRETTY
               value: "false"
 
-            - name: WEB_TRACING_ENABLED
+            - name: OCS_TRACING_ENABLED
               value: "false"
-            - name: WEB_TRACING_TYPE
+            - name: OCS_TRACING_TYPE
               value: "jaeger"
-            - name: WEB_TRACING_ENDPOINT
+            - name: OCS_TRACING_ENDPOINT
               value: 
-            - name: WEB_TRACING_COLLECTOR
+            - name: OCS_TRACING_COLLECTOR
               value: 
 
-            - name: WEB_DEBUG_PPROF
+            - name: OCS_DEBUG_PPROF
               value: "false"
 
-            - name: WEB_HTTP_ADDR
-              value: 0.0.0.0:9100
-            - name: WEB_DEBUG_ADDR
-              value: 0.0.0.0:9104
+            - name: OCS_HTTP_ADDR
+              value: 0.0.0.0:9110
+            - name: OCS_DEBUG_ADDR
+              value: 0.0.0.0:9114
 
-            - name: WEB_OIDC_AUTHORITY
-              value: "https://auth.newjoy.ro"
-            - name: WEB_OIDC_CLIENT_ID
-              value: "b85f28eb-bf7d-4544-a311-eadcd5c09a2d"
-            - name: WEB_OIDC_SCOPE
-              value: "openid profile email"
-
-            - name: WEB_UI_THEME_SERVER
-              value: https://drive.newjoy.ro
-            - name: WEB_UI_THEME_PATH
-              value: "/themes/owncloud/theme.json"
-
-            - name: WEB_UI_CONFIG_SERVER
+            - name: OCS_IDM_ADDRESS
+            
               value: "https://drive.newjoy.ro"
+            
 
-            - name: WEB_OPTION_CONTEXTHELPERS_READ_MORE
-              value: "true"
-
-            - name: WEB_OPTION_DISABLE_FEEDBACK_LINK
-              value: "true"
-
-            - name: WEB_OPTION_TOKEN_STORAGE_LOCAL
-              value: "true"
-
-            - name: WEB_JWT_SECRET
+            - name: OCS_JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: "jwt-secret"
@@ -131,28 +118,13 @@ spec:
             requests:
               cpu: 200m
               memory: 512Mi
-
           ports:
             - name: http
-              containerPort: 9100
+              containerPort: 9110
             - name: metrics-debug
-              containerPort: 9104
+              containerPort: 9114
 
           volumeMounts:
-            - name: configs
-              mountPath: /etc/ocis
-            - name: apps
-              mountPath: /var/lib/ocis/web/assets/apps
-            - name: web-data
-              mountPath: /var/lib/ocis
             
       
       volumes:
-        - name: configs
-          configMap:
-            name: web-config
-        - name: apps
-          emptyDir: {}
-        
-        - name: web-data
-          emptyDir: {}

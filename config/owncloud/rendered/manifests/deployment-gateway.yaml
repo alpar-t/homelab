@@ -1,0 +1,148 @@
+---
+# Source: ocis/templates/gateway/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  annotations:
+    reloader.stakater.com/auto: "true"
+  namespace: owncloud
+  labels:
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app: gateway
+  replicas: 1
+  
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  template:
+    metadata:
+      labels:
+        app: gateway
+        helm.sh/chart: ocis-0.7.0
+        app.kubernetes.io/name: ocis
+        app.kubernetes.io/instance: ocis
+        app.kubernetes.io/version: "7.1.4"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      
+      securityContext:
+          fsGroup: 1000
+          fsGroupChangePolicy: Always
+      
+      
+      nodeSelector: 
+        {}
+      containers:
+        - name: gateway
+          image: "owncloud/ocis:7.1.4"
+          imagePullPolicy: IfNotPresent
+          command: ["ocis"]
+          args: ["gateway", "server"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            readOnlyRootFilesystem: true
+          env:
+            - name: MICRO_REGISTRY
+              value: "nats-js-kv"
+            - name: MICRO_REGISTRY_ADDRESS
+              value: "nats:9233"
+
+            - name: GATEWAY_LOG_COLOR
+              value: "false"
+            - name: GATEWAY_LOG_LEVEL
+              value: "info"
+            - name: GATEWAY_LOG_PRETTY
+              value: "false"
+
+            - name: GATEWAY_TRACING_ENABLED
+              value: "false"
+            - name: GATEWAY_TRACING_TYPE
+              value: "jaeger"
+            - name: GATEWAY_TRACING_ENDPOINT
+              value: 
+            - name: GATEWAY_TRACING_COLLECTOR
+              value: 
+
+            - name: GATEWAY_DEBUG_PPROF
+              value: "false"
+
+            - name: GATEWAY_GRPC_ADDR
+              value: 0.0.0.0:9142
+            - name: GATEWAY_DEBUG_ADDR
+              value: 0.0.0.0:9143
+
+            - name: GATEWAY_FRONTEND_PUBLIC_URL
+              value: "https://drive.newjoy.ro"
+
+            # cache
+            # the stat cache is disabled for now for performance reasons, see https://github.com/owncloud/ocis-charts/issues/214
+            - name: GATEWAY_STAT_CACHE_STORE
+              value: noop
+            # provider cache in kubernetes defaults to noop because we might have regularily changing ip addresses
+            - name: GATEWAY_PROVIDER_CACHE_STORE
+              value: noop
+            # create home cache defaults to memory so we don't put too much load on our shared cache
+            - name: GATEWAY_CREATE_HOME_CACHE_STORE
+              value: memory
+
+            - name: GATEWAY_STORAGE_USERS_MOUNT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: "storage-users"
+                  key: storage-uuid
+
+            - name: GATEWAY_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: "jwt-secret"
+                  key: jwt-secret
+
+            - name: OCIS_TRANSFER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: "transfer-secret"
+                  key: transfer-secret
+            
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics-debug
+            timeoutSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
+
+          resources: 
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
+              cpu: 200m
+              memory: 512Mi
+
+          ports:
+            - name: grpc
+              containerPort: 9142
+            - name: metrics-debug
+              containerPort: 9143
+
+          volumeMounts:
+            - name: tmp-volume
+              mountPath: /tmp
+            
+      
+      volumes:
+        - name: tmp-volume
+          emptyDir: {}

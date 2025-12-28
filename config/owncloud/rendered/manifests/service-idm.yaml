@@ -1,0 +1,27 @@
+---
+# Source: ocis/templates/idm/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: idm
+  namespace: owncloud
+  labels:
+    app: idm
+    ocis-metrics: enabled
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    app: idm
+  ports:
+    - name: ldaps
+      port: 9235
+      protocol: TCP
+      appProtocol: "tcp"
+    - name: metrics-debug
+      port: 9239
+      protocol: TCP
+      appProtocol: "http"

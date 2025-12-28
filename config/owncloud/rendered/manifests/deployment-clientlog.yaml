@@ -1,0 +1,134 @@
+---
+# Source: ocis/templates/clientlog/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clientlog
+  annotations:
+    reloader.stakater.com/auto: "true"
+  namespace: owncloud
+  labels:
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app: clientlog
+  replicas: 1
+  
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  template:
+    metadata:
+      labels:
+        app: clientlog
+        helm.sh/chart: ocis-0.7.0
+        app.kubernetes.io/name: ocis
+        app.kubernetes.io/instance: ocis
+        app.kubernetes.io/version: "7.1.4"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      
+      securityContext:
+          fsGroup: 1000
+          fsGroupChangePolicy: Always
+      
+      
+      nodeSelector: 
+        {}
+      containers:
+        - name: clientlog
+          image: "owncloud/ocis:7.1.4"
+          imagePullPolicy: IfNotPresent
+          command: ["ocis"]
+          args: ["clientlog", "server"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            readOnlyRootFilesystem: true
+          env:
+            - name: MICRO_REGISTRY
+              value: "nats-js-kv"
+            - name: MICRO_REGISTRY_ADDRESS
+              value: "nats:9233"
+            
+            - name: OCIS_EVENTS_ENDPOINT
+              value: nats:9233
+
+            - name: CLIENTLOG_LOG_COLOR
+              value: "false"
+            - name: CLIENTLOG_LOG_LEVEL
+              value: "info"
+            - name: CLIENTLOG_LOG_PRETTY
+              value: "false"
+
+            - name: CLIENTLOG_TRACING_ENABLED
+              value: "false"
+            - name: CLIENTLOG_TRACING_TYPE
+              value: "jaeger"
+            - name: CLIENTLOG_TRACING_ENDPOINT
+              value: 
+            - name: CLIENTLOG_TRACING_COLLECTOR
+              value: 
+
+            - name: CLIENTLOG_DEBUG_PPROF
+              value: "false"
+
+            - name: CLIENTLOG_DEBUG_ADDR
+              value: 0.0.0.0:9260
+
+            - name: CLIENTLOG_SERVICE_ACCOUNT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: "auth-service"
+                  key: service-account-id
+            - name: CLIENTLOG_SERVICE_ACCOUNT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: "service-account-secret"
+                  key: service-account-secret
+
+            - name: CLIENTLOG_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: "jwt-secret"
+                  key: jwt-secret
+            
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics-debug
+            timeoutSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
+
+          resources: 
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
+              cpu: 200m
+              memory: 512Mi
+
+          ports:
+            - name: metrics-debug
+              containerPort: 9260
+
+          volumeMounts:
+            - name: messaging-system-ca
+              mountPath: /etc/ocis/messaging-system-ca
+              readOnly: true
+            
+      
+      volumes:
+        - name: messaging-system-ca
+          
+          emptyDir: {}
