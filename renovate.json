@@ -4,41 +4,63 @@
     "config:recommended",
     "docker:enableMajor"
   ],
-  "labels": ["dependencies", "renovate"],
+  "labels": [
+    "dependencies",
+    "renovate"
+  ],
   "kubernetes": {
-    "fileMatch": ["config/.+\\.yaml$"]
+    "managerFilePatterns": [
+      "/config/.+\\.yaml$/"
+    ]
   },
   "packageRules": [
     {
       "description": "Pin latest tags to specific versions with digests",
-      "matchDatasources": ["docker"],
+      "matchDatasources": [
+        "docker"
+      ],
       "matchCurrentValue": "/^latest$/",
       "pinDigests": true
     },
     {
       "description": "Pin digest for all docker images for reproducibility",
-      "matchDatasources": ["docker"],
+      "matchDatasources": [
+        "docker"
+      ],
       "pinDigests": true
     },
     {
       "description": "Group all oauth2-proxy updates together",
-      "matchPackagePatterns": ["oauth2-proxy"],
-      "groupName": "oauth2-proxy"
+      "groupName": "oauth2-proxy",
+      "matchPackageNames": [
+        "/oauth2-proxy/"
+      ]
     },
     {
       "description": "Automerge patch updates for non-critical services",
-      "matchUpdateTypes": ["patch", "pin", "digest"],
-      "matchPackagePatterns": ["busybox", "redis", "nginx"],
-      "automerge": true
+      "matchUpdateTypes": [
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "automerge": true,
+      "matchPackageNames": [
+        "/busybox/",
+        "/redis/",
+        "/nginx/"
+      ]
     },
     {
       "description": "Schedule updates for weekends to reduce noise",
-      "matchDatasources": ["docker"],
-      "schedule": ["after 9am on saturday"]
+      "matchDatasources": [
+        "docker"
+      ],
+      "schedule": [
+        "after 9am on saturday"
+      ]
     }
   ],
   "vulnerabilityAlerts": {
     "enabled": true
   }
 }
-
