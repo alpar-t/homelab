@@ -69,3 +69,8 @@ probes:
     enabled: true
     periodSeconds: 30
 
+# Disable upgrade job for initial install (causes chicken-egg problem)
+upgrade:
+  job:
+    enabled: false
+

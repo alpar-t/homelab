@@ -98,6 +98,16 @@ ingress:
 # Do NOT specify secretRefs - the chart will create them automatically
 
 # ===================
+# Security Context
+# ===================
+# Fix permissions on Longhorn volumes
+securityContext:
+  fsGroup: 1000
+  fsGroupChangePolicy: Always
+  runAsUser: 1000
+  runAsGroup: 1000
+
+# ===================
 # Storage Configuration
 # ===================
 services:
