@@ -16,37 +16,67 @@ features:
     # OIDC configuration for Pocket ID
     oidc:
       issuerURI: https://auth.newjoy.ro
-      # Web client configuration (public client)
-      webClientID:
-        valueFrom:
-          secretKeyRef:
-            name: owncloud-oidc
-            key: client-id
       userIDClaim: preferred_username
       userIDClaimAttributeMapping: username
+      accessTokenVerifyMethod: jwt
+    # Auto-provision accounts from OIDC
+    autoprovisionAccounts:
+      enabled: true
+      claimEmail: email
+      claimDisplayname: name
+      claimGroups: groups
+      claimUserName: preferred_username
     # LDAP is disabled - using OIDC only
     ldap:
       writeable: false
+  
+  # Email notifications via Stalwart
+  emailNotifications:
+    enabled: true
+    smtp:
+      host: stalwart-mail.stalwart-mail.svc.cluster.local
+      port: 25
+      sender: "ownCloud <service@newjoy.ro>"
+      authentication: none
+      encryption: none
+  
   # Apps integration (OnlyOffice)
   appsIntegration:
     enabled: true
     wopiIntegration:
-      - name: OnlyOffice
-        product: OnlyOffice
-        enabled: true
-        # OnlyOffice Helm chart creates service: {release-name}-docs
-        uri: http://onlyoffice-docs.owncloud.svc.cluster.local
-        insecure: true
-        disableProof: false
-        secureViewEnabled: false
-        disableChat: false
-        ingress:
-          enabled: false
-          domain: ""
-          ingressClassName: null
-          annotations: {}
-          labels: {}
-          tls: []
+      officeSuites:
+        - name: OnlyOffice
+          product: OnlyOffice
+          enabled: true
+          # OnlyOffice Helm chart creates service: {release-name}-docs
+          uri: http://onlyoffice-docs.owncloud.svc.cluster.local
+          insecure: true
+          disableProof: false
+          secureViewEnabled: false
+          disableChat: false
+          ingress:
+            enabled: false
+            domain: ""
+            ingressClassName: null
+            annotations: {}
+            labels: {}
+            tls: []
+
+# ===================
+# HTTP / CSP Configuration
+# ===================
+# CSP settings to allow external OIDC provider
+http:
+  csp:
+    directives:
+      connectSrc:
+        - "'self'"
+        - "blob:"
+        - "https://auth.newjoy.ro"
+      frameSrc:
+        - "'self'"
+        - "blob:"
+        - "https://auth.newjoy.ro"
 
 # ===================
 # Ingress Configuration
@@ -80,7 +110,6 @@ secretRefs:
 # ===================
 # Storage Configuration
 # ===================
-# Using default decomposedfs driver (ocis) - more stable than posix
 services:
   storageusers:
     persistence:
@@ -113,7 +142,7 @@ services:
     persistence:
       enabled: false
   
-  # IDM (Identity Management) - using external OIDC
+  # IDM (Identity Management)
   idm:
     persistence:
       enabled: true
@@ -126,39 +155,6 @@ services:
       enabled: true
       storageClassName: longhorn-ssd
       size: 1Gi
-  
-  # Store service
-  store:
-    persistence:
-      enabled: true
-      storageClassName: longhorn-ssd
-      size: 5Gi
-
-  # Proxy CSP configuration for external OIDC
-  proxy:
-    csp:
-      directives:
-        connectSrc:
-          - "'self'"
-          - "blob:"
-          - "https://raw.githubusercontent.com/owncloud/awesome-ocis/"
-          - "https://auth.newjoy.ro"
-        frameSrc:
-          - "'self'"
-          - "https://auth.newjoy.ro"
-
-  # Notifications service - email configuration
-  notifications:
-    notifications:
-      smtp:
-        host: stalwart-mail.stalwart-mail.svc.cluster.local
-        port: 25
-        sender:
-          valueFrom:
-            secretKeyRef:
-              name: owncloud-email
-              key: sender
-        insecure: true
 
 # ===================
 # Resource Limits
@@ -171,4 +167,3 @@ resources:
   requests:
     cpu: 200m
     memory: 512Mi
-
