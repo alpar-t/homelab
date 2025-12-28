@@ -88,7 +88,7 @@ spec:
             - name: PROXY_LOG_COLOR
               value: "false"
             - name: PROXY_LOG_LEVEL
-              value: "info"
+              value: "debug"
             - name: PROXY_LOG_PRETTY
               value: "false"
 
