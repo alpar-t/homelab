@@ -40,28 +40,6 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
       initContainers:
-        # Clear corrupted search index (one-time fix)
-        # TODO: Remove this init container after search index is fixed
-        - name: clear-search-index
-          image: busybox:stable
-          command:
-            - /bin/sh
-            - -c
-            - |
-              echo "Checking search index..."
-              if [ -d /var/lib/ocis/search/bleve ]; then
-                echo "Found existing search index, clearing it..."
-                rm -rf /var/lib/ocis/search/bleve
-                echo "Search index cleared"
-              else
-                echo "No search index found, nothing to clear"
-              fi
-          volumeMounts:
-            - name: search
-              mountPath: /var/lib/ocis/search
-          securityContext:
-            runAsUser: 1000
-            runAsGroup: 1000
         # Initialize oCIS config if not present
         - name: init-config
           image: owncloud/ocis:7.0.0
