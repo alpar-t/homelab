@@ -6,10 +6,10 @@ metadata:
 spec:
   project: default
   sources:
-    # oCIS Helm Chart
-    - repoURL: https://owncloud.github.io/ocis-charts
-      chart: ocis
-      targetRevision: 0.8.0
+    # oCIS Helm Chart (from Git - not published to Helm repo)
+    - repoURL: https://github.com/owncloud/ocis-charts.git
+      targetRevision: main
+      path: charts/ocis
       helm:
         valueFiles:
           - $values/config/owncloud/helm/values.yaml
