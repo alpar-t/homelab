@@ -1,0 +1,174 @@
+# ownCloud Infinite Scale Helm Chart Values
+# https://github.com/owncloud/ocis-charts
+
+# ===================
+# External Access
+# ===================
+externalDomain: drive.newjoy.ro
+
+# ===================
+# Features
+# ===================
+features:
+  # Enable external user management (Pocket ID)
+  externalUserManagement:
+    enabled: true
+    # OIDC configuration for Pocket ID
+    oidc:
+      issuerURI: https://auth.newjoy.ro
+      # Web client configuration (public client)
+      webClientID:
+        valueFrom:
+          secretKeyRef:
+            name: owncloud-oidc
+            key: client-id
+      userIDClaim: preferred_username
+      userIDClaimAttributeMapping: username
+    # LDAP is disabled - using OIDC only
+    ldap:
+      writeable: false
+  # Apps integration (OnlyOffice)
+  appsIntegration:
+    enabled: true
+    wopiIntegration:
+      - name: OnlyOffice
+        product: OnlyOffice
+        enabled: true
+        # OnlyOffice Helm chart creates service: {release-name}-docs
+        uri: http://onlyoffice-docs.owncloud.svc.cluster.local
+        insecure: true
+        disableProof: false
+        secureViewEnabled: false
+        disableChat: false
+        ingress:
+          enabled: false
+          domain: ""
+          ingressClassName: null
+          annotations: {}
+          labels: {}
+          tls: []
+
+# ===================
+# Ingress Configuration
+# ===================
+# Note: TLS is handled by Cloudflare tunnel, not at the ingress level
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+  tls: []
+
+# ===================
+# Secrets Configuration
+# ===================
+# Auto-generate secrets on first install
+secretRefs:
+  # JWT secret for internal service communication
+  jwtSecretRef: owncloud-jwt-secret
+  # Machine auth API key
+  machineAuthApiKeySecretRef: owncloud-machine-auth
+  # Transfer secret
+  transferSecretSecretRef: owncloud-transfer-secret
+  # Thumbnails transfer secret
+  thumbnailsSecretRef: owncloud-thumbnails-secret
+  # Admin user secret (for initial setup)
+  adminUserSecretRef: owncloud-admin-secret
+
+# ===================
+# Storage Configuration
+# ===================
+# Using default decomposedfs driver (ocis) - more stable than posix
+services:
+  storageusers:
+    persistence:
+      enabled: true
+      storageClassName: longhorn-hdd
+      size: 1500Gi
+    storageBackend:
+      driver: ocis
+  
+  # Search service with Tika integration
+  search:
+    persistence:
+      enabled: true
+      storageClassName: longhorn-ssd
+      size: 15Gi
+    extractor:
+      type: tika
+      tika:
+        url: http://tika.paperless-ngx.svc.cluster.local:9998
+  
+  # Thumbnails service
+  thumbnails:
+    persistence:
+      enabled: true
+      storageClassName: longhorn-ssd
+      size: 30Gi
+  
+  # Web frontend configuration
+  web:
+    persistence:
+      enabled: false
+  
+  # IDM (Identity Management) - using external OIDC
+  idm:
+    persistence:
+      enabled: true
+      storageClassName: longhorn-ssd
+      size: 1Gi
+  
+  # NATS for internal messaging
+  nats:
+    persistence:
+      enabled: true
+      storageClassName: longhorn-ssd
+      size: 1Gi
+  
+  # Store service
+  store:
+    persistence:
+      enabled: true
+      storageClassName: longhorn-ssd
+      size: 5Gi
+
+  # Proxy CSP configuration for external OIDC
+  proxy:
+    csp:
+      directives:
+        connectSrc:
+          - "'self'"
+          - "blob:"
+          - "https://raw.githubusercontent.com/owncloud/awesome-ocis/"
+          - "https://auth.newjoy.ro"
+        frameSrc:
+          - "'self'"
+          - "https://auth.newjoy.ro"
+
+  # Notifications service - email configuration
+  notifications:
+    notifications:
+      smtp:
+        host: stalwart-mail.stalwart-mail.svc.cluster.local
+        port: 25
+        sender:
+          valueFrom:
+            secretKeyRef:
+              name: owncloud-email
+              key: sender
+        insecure: true
+
+# ===================
+# Resource Limits
+# ===================
+# Reasonable defaults for a small deployment (~6 users)
+resources:
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+  requests:
+    cpu: 200m
+    memory: 512Mi
+

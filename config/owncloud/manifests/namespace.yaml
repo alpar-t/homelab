@@ -1,8 +1,0 @@
-# ownCloud Infinite Scale namespace
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: owncloud
-  labels:
-    app.kubernetes.io/name: owncloud
-

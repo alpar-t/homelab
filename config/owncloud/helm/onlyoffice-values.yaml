@@ -1,0 +1,64 @@
+# OnlyOffice Document Server Helm Chart Values
+# https://github.com/ONLYOFFICE/Kubernetes-Docs
+
+# Disable JWT - oCIS handles authentication
+jwt:
+  enabled: false
+
+# Allow connections from private IPs (internal cluster)
+connections:
+  allowPrivateIPAddress: true
+  allowMetaIPAddress: true
+
+# Persistence for document server data
+persistence:
+  enabled: true
+  storageClass: longhorn-ssd
+  size: 10Gi
+
+# Resource limits
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+# Use embedded database (PostgreSQL)
+# For a small deployment, the embedded DB is fine
+postgresql:
+  enabled: true
+
+# Disable RabbitMQ for simple setup
+rabbitmq:
+  enabled: false
+
+# Redis - only supported in Enterprise Edition, not Community
+# Community Edition doesn't use Redis even if configured
+redis:
+  enabled: false
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+
+# No ingress - internal only, accessed via oCIS WOPI
+ingress:
+  enabled: false
+
+# Probes - OnlyOffice takes a while to start
+probes:
+  startup:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    failureThreshold: 30
+  readiness:
+    enabled: true
+    periodSeconds: 10
+  liveness:
+    enabled: true
+    periodSeconds: 30
+

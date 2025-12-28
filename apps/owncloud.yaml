@@ -5,10 +5,26 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  source:
-    repoURL: https://github.com/alpar-t/homelab
-    targetRevision: main
-    path: config/owncloud/manifests
+  sources:
+    # oCIS Helm Chart
+    - repoURL: https://owncloud.github.io/ocis-charts
+      chart: ocis
+      targetRevision: 0.8.0
+      helm:
+        valueFiles:
+          - $values/config/owncloud/helm/values.yaml
+    # OnlyOffice Helm Chart
+    - repoURL: https://download.onlyoffice.com/charts/stable
+      chart: docs
+      targetRevision: "*"
+      helm:
+        releaseName: onlyoffice
+        valueFiles:
+          - $values/config/owncloud/helm/onlyoffice-values.yaml
+    # Values from git repo (referenced by $values)
+    - repoURL: https://github.com/alpar-t/homelab
+      targetRevision: main
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: owncloud

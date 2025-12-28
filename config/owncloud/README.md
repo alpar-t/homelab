@@ -1,318 +1,167 @@
-# ownCloud Infinite Scale
+# ownCloud Infinite Scale (oCIS)
 
-ownCloud Infinite Scale (oCIS) deployment for file sync and sharing with integrated office editing.
-
-## Features
-
-- **File Sync & Share**: Desktop clients for Windows, macOS, Linux; mobile apps for iOS and Android
-- **Office Integration**: OnlyOffice for document, spreadsheet, and presentation editing
-- **Authentication**: OIDC integration with Pocket ID (external IDP)
-- **Storage**: Posix FS driver for easy migration and direct filesystem access
-- **Performance**: Go-based microservices architecture (no database required!)
-- **Full-text Search**: Reuses Apache Tika from paperless-ngx for content extraction
+Cloud file storage and collaboration platform deployed via the official oCIS Helm chart.
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Ingress (drive.newjoy.ro)                     │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                        Ingress                               │
+│                   drive.newjoy.ro                            │
+└─────────────────────────────────────────────────────────────┘
                               │
-              ┌───────────────┴───────────────┐
-              ▼                               ▼
-┌─────────────────────────┐     ┌─────────────────────────┐
-│         oCIS            │     │   OnlyOffice DocServer  │
-│   (Posix FS driver)     │────▶│   (internal service)    │
-│                         │     │                         │
-│  Auth: Pocket ID (OIDC) │     └─────────────────────────┘
-└─────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                         Storage                                  │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────┐ │
-│  │ User Data   │  │   Config    │  │ Thumbnails  │  │ Search  │ │
-│  │   (HDD)     │  │   (SSD)     │  │   (SSD)     │  │  (SSD)  │ │
-│  │  1500Gi     │  │    10Gi     │  │    30Gi     │  │  15Gi   │ │
-│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────┘ │
-└─────────────────────────────────────────────────────────────────┘
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     oCIS (Helm Chart)                        │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐           │
+│  │  Proxy  │ │   Web   │ │ Storage │ │ Search  │           │
+│  └────┬────┘ └─────────┘ └────┬────┘ └────┬────┘           │
+│       │                       │           │                  │
+│       │    ┌─────────────────┼───────────┘                  │
+│       │    │                 │                               │
+│       ▼    ▼                 ▼                               │
+│  ┌─────────────┐       ┌──────────┐                         │
+│  │    NATS     │       │  Tika    │ (shared with paperless) │
+│  │  (embedded) │       │ (external)│                         │
+│  └─────────────┘       └──────────┘                         │
+└─────────────────────────────────────────────────────────────┘
+                              │
+         ┌────────────────────┼────────────────────┐
+         │                    │                    │
+         ▼                    ▼                    ▼
+┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+│  Pocket ID  │      │  OnlyOffice │      │  Stalwart   │
+│   (OIDC)    │      │  (internal) │      │   (SMTP)    │
+│auth.newjoy.ro│      │             │      │             │
+└─────────────┘      └─────────────┘      └─────────────┘
 ```
 
 ## Prerequisites
 
-### 1. Create OIDC Client in Pocket ID
+### 1. Create Pocket ID OIDC Client
 
-Before deploying, you must create an OIDC client in Pocket ID:
+In Pocket ID (https://auth.newjoy.ro), create a new OIDC client:
 
-1. Log in to Pocket ID admin panel at `https://auth.newjoy.ro`
+1. Go to **Admin** → **OIDC Clients** → **Add Client**
+2. Configure:
+   - **Name**: ownCloud
+   - **Client ID**: `owncloud` (or auto-generated)
+   - **Redirect URIs**: 
+     - `https://drive.newjoy.ro/`
+     - `https://drive.newjoy.ro/oidc-callback.html`
+     - `https://drive.newjoy.ro/oidc-silent-redirect.html`
+   - **Client Type**: Public (no secret required for web frontend)
+   - **PKCE**: Enable if available
+3. Save and note the Client ID
 
-2. Navigate to **OIDC Clients** → **Create New Client**
-
-3. Configure the client with these settings:
-
-   | Setting | Value |
-   |---------|-------|
-   | **Client Name** | `ownCloud` |
-   | **Client ID** | (auto-generated, copy this) |
-   | **Client Secret** | (auto-generated, copy this) |
-   | **Redirect URIs** | `https://drive.newjoy.ro/` |
-   |  | `https://drive.newjoy.ro/oidc-callback.html` |
-   |  | `https://drive.newjoy.ro/oidc-silent-redirect.html` |
-   | **Post Logout Redirect URIs** | `https://drive.newjoy.ro/` |
-   | **Grant Types** | `authorization_code`, `refresh_token` |
-   | **Scopes** | `openid`, `profile`, `email`, `offline_access` |
-
-4. Save the client and note down the **Client ID** and **Client Secret**
-
-### 2. Create the OIDC Secret
-
-After creating the OIDC client, create the Kubernetes secret:
+### 2. Create Required Secrets
 
 ```bash
-# Create namespace first
-kubectl create namespace owncloud
-
-# Create the OIDC secret with your Pocket ID client ID
-# (no secret needed for public clients)
+# OIDC client configuration
 kubectl create secret generic owncloud-oidc \
   --namespace owncloud \
-  --from-literal=client-id='YOUR_CLIENT_ID_FROM_POCKET_ID'
-```
+  --from-literal=client-id=YOUR_CLIENT_ID
 
-**Important**: Replace `YOUR_CLIENT_ID_FROM_POCKET_ID` with the actual Client ID from Pocket ID.
-
-### 3. Create the Email Secret
-
-Create a secret for the email sender address:
-
-```bash
+# Email sender (for notifications)
 kubectl create secret generic owncloud-email \
   --namespace owncloud \
-  --from-literal=from-address='service@newjoy.ro'
+  --from-literal=sender=service@newjoy.ro
+
+# Admin user (for initial setup - optional, can use OIDC user)
+kubectl create secret generic owncloud-admin-secret \
+  --namespace owncloud \
+  --from-literal=user=admin \
+  --from-literal=password=$(openssl rand -base64 32)
+
+# Auto-generated secrets (Helm chart will create these if not present)
+# JWT secret
+kubectl create secret generic owncloud-jwt-secret \
+  --namespace owncloud \
+  --from-literal=jwt-secret=$(openssl rand -base64 32)
+
+# Machine auth API key
+kubectl create secret generic owncloud-machine-auth \
+  --namespace owncloud \
+  --from-literal=machine-auth-api-key=$(openssl rand -base64 32)
+
+# Transfer secret
+kubectl create secret generic owncloud-transfer-secret \
+  --namespace owncloud \
+  --from-literal=transfer-secret=$(openssl rand -base64 32)
+
+# Thumbnails secret
+kubectl create secret generic owncloud-thumbnails-secret \
+  --namespace owncloud \
+  --from-literal=thumbnails-transfer-secret=$(openssl rand -base64 32)
 ```
-
-### 4. DNS Configuration
-
-Ensure `drive.newjoy.ro` points to your ingress controller IP address.
 
 ## Deployment
 
-The deployment is managed via ArgoCD. Once the OIDC secret is created, ArgoCD will automatically deploy:
+The deployment is managed via ArgoCD using:
+- **oCIS Helm Chart** (v0.8.0) from `https://owncloud.github.io/ocis-charts`
+- **OnlyOffice** deployed separately via custom manifest
 
-1. **Namespace** and **PVCs** (sync-wave 0)
-2. **Secrets Job** - generates internal secrets (sync-wave 1)
-3. **oCIS** and **OnlyOffice** deployments (sync-wave 2)
-4. **Ingress** (sync-wave 3)
+## Storage
 
-## Storage Configuration
+| Component | Storage Class | Size | Purpose |
+|-----------|--------------|------|---------|
+| User Files | longhorn-hdd | 1.5TB | Primary file storage |
+| Search Index | longhorn-ssd | 15Gi | Bleve search index |
+| Thumbnails | longhorn-ssd | 30Gi | Image/video thumbnails |
+| IDM | longhorn-ssd | 1Gi | Identity management data |
+| NATS | longhorn-ssd | 1Gi | Message queue persistence |
+| Store | longhorn-ssd | 5Gi | General metadata store |
+| OnlyOffice | longhorn-ssd | 10Gi | Document server data |
 
-| Volume | Storage Class | Size | Purpose |
-|--------|---------------|------|---------|
-| `owncloud-data` | `longhorn-hdd` | 1500Gi | User files (Posix FS) |
-| `owncloud-config` | `longhorn-ssd` | 10Gi | Config, metadata |
-| `owncloud-thumbnails` | `longhorn-ssd` | 30Gi | Thumbnail cache |
-| `owncloud-search` | `longhorn-ssd` | 15Gi | Search index |
-| `onlyoffice-data` | `longhorn-ssd` | 10Gi | OnlyOffice cache |
+## Features
 
-All volumes use Longhorn with 2 replicas for redundancy.
+- **Authentication**: External OIDC via Pocket ID
+- **Office Integration**: OnlyOffice Document Server (internal)
+- **Full-Text Search**: Via shared Tika instance (paperless-ngx)
+- **Email Notifications**: Via Stalwart mail relay
 
-## Migration from Nextcloud / Other Servers
+## File Migration
 
-The Posix FS driver allows direct file copying for migration:
+Since we're using the default `ocis` storage driver (not posix), files cannot be directly copied to the filesystem. Instead, use one of these methods:
 
-### Step 1: Have Users Log In
-
-Each user must log in via Pocket ID at least once to create their account in oCIS:
-
-1. User visits `https://drive.newjoy.ro`
-2. Redirected to Pocket ID for authentication
-3. After login, oCIS auto-provisions the user account
-4. A user directory is created in the storage
-
-### Step 2: Find User Directories
-
+### Option 1: WebDAV Upload
 ```bash
-# Exec into the oCIS pod
-kubectl exec -it -n owncloud deploy/owncloud -- sh
-
-# List user directories
-ls -la /var/lib/ocis/storage/users/
-
-# Each user has a directory like:
-# /var/lib/ocis/storage/users/<username>/
+# Using rclone
+rclone copy /path/to/files remote:drive.newjoy.ro --webdav-url=https://drive.newjoy.ro/remote.php/webdav
 ```
 
-### Step 3: Copy Files
+### Option 2: ownCloud Desktop Client
+Use the official ownCloud desktop sync client to upload files.
 
-**Option A: Using kubectl cp (for smaller amounts)**
-
+### Option 3: oCIS CLI (if available)
 ```bash
-# Copy files for a specific user
-kubectl cp /local/path/to/user/files \
-  owncloud/owncloud-pod:/var/lib/ocis/storage/users/<username>/
-
-# Example:
-kubectl cp ~/migration/alice/ \
-  owncloud/owncloud-xxxx:/var/lib/ocis/storage/users/alice/
-```
-
-**Option B: Using a migration job (recommended for large data)**
-
-Create a migration job that mounts both the source (via NFS/hostPath) and destination PVC:
-
-```yaml
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: owncloud-migration
-  namespace: owncloud
-spec:
-  template:
-    spec:
-      restartPolicy: Never
-      containers:
-        - name: rsync
-          image: instrumentisto/rsync-ssh
-          command:
-            - rsync
-            - -avP
-            - --chown=1000:1000
-            - /source/
-            - /dest/users/
-          volumeMounts:
-            - name: source
-              mountPath: /source
-              readOnly: true
-            - name: dest
-              mountPath: /dest
-      volumes:
-        - name: source
-          # Mount your source data (NFS, hostPath, etc.)
-          nfs:
-            server: your-nfs-server
-            path: /path/to/nextcloud/data
-        - name: dest
-          persistentVolumeClaim:
-            claimName: owncloud-data
-```
-
-### Step 4: Fix Permissions
-
-After copying, ensure files are owned by UID 1000 (oCIS user):
-
-```bash
-kubectl exec -it -n owncloud deploy/owncloud -- \
-  chown -R 1000:1000 /var/lib/ocis/storage/users/
-```
-
-### Step 5: Trigger Rescan
-
-oCIS with Posix FS driver uses inotify to detect changes. Files should appear automatically. If not, restart the pod:
-
-```bash
-kubectl rollout restart -n owncloud deploy/owncloud
-```
-
-## Client Applications
-
-### Desktop Clients
-
-Download from: https://owncloud.com/desktop-app/
-
-- Windows
-- macOS  
-- Linux (AppImage, Flatpak, packages)
-
-Configure with:
-- **Server URL**: `https://drive.newjoy.ro`
-- Authentication will redirect to Pocket ID
-
-### Mobile Apps
-
-- **iOS**: [App Store](https://apps.apple.com/app/owncloud/id1359583808)
-- **Android**: [Google Play](https://play.google.com/store/apps/details?id=com.owncloud.android) or [F-Droid](https://f-droid.org/packages/com.owncloud.android/)
-
-### WebDAV Access
-
-For third-party apps, use WebDAV:
-
-```
-URL: https://drive.newjoy.ro/remote.php/webdav/
+# Check oCIS documentation for CLI import tools
 ```
 
 ## Troubleshooting
 
-### Check oCIS Logs
-
+### Check pod status
 ```bash
-kubectl logs -n owncloud deploy/owncloud -f
+kubectl get pods -n owncloud
 ```
 
-### Check OnlyOffice Logs
-
+### View oCIS logs
 ```bash
-kubectl logs -n owncloud deploy/onlyoffice -f
+kubectl logs -n owncloud -l app.kubernetes.io/name=ocis -f
 ```
 
-### OIDC Issues
+### View OnlyOffice logs
+```bash
+kubectl logs -n owncloud -l app=onlyoffice -f
+```
 
-If authentication fails:
+### Check secrets
+```bash
+kubectl get secrets -n owncloud
+```
 
-1. Verify the OIDC secret has correct credentials:
-   ```bash
-   kubectl get secret -n owncloud owncloud-oidc -o yaml
-   ```
+## References
 
-2. Check Pocket ID client configuration (redirect URIs must match exactly)
-
-3. Check oCIS logs for OIDC-related errors
-
-### Files Not Appearing After Migration
-
-1. Check file permissions (should be UID 1000):
-   ```bash
-   kubectl exec -n owncloud deploy/owncloud -- ls -la /var/lib/ocis/storage/users/
-   ```
-
-2. Check if inotify is working:
-   ```bash
-   kubectl logs -n owncloud deploy/owncloud | grep -i inotify
-   ```
-
-3. Restart the pod to trigger a full rescan:
-   ```bash
-   kubectl rollout restart -n owncloud deploy/owncloud
-   ```
-
-### OnlyOffice Not Working
-
-1. Verify OnlyOffice is running:
-   ```bash
-   kubectl get pods -n owncloud -l app=onlyoffice
-   ```
-
-2. Check JWT secret matches between oCIS and OnlyOffice:
-   ```bash
-   kubectl get secret -n owncloud onlyoffice-secrets -o jsonpath='{.data.jwt-secret}' | base64 -d
-   ```
-
-3. Test OnlyOffice healthcheck:
-   ```bash
-   kubectl exec -n owncloud deploy/owncloud -- curl -s http://onlyoffice/healthcheck
-   ```
-
-## Secrets Reference
-
-| Secret | Keys | Purpose |
-|--------|------|---------|
-| `owncloud-secrets` | `jwt-secret`, `machine-auth-api-key`, `transfer-secret`, `system-user-api-key` | Internal oCIS secrets (auto-generated) |
-| `owncloud-oidc` | `client-id`, `client-secret` | Pocket ID OIDC credentials (**manual**) |
-| `onlyoffice-secrets` | `jwt-secret` | OnlyOffice JWT auth (auto-generated) |
-
-## Resources
-
-- [oCIS Documentation](https://doc.owncloud.com/ocis/)
-- [oCIS GitHub](https://github.com/owncloud/ocis)
-- [OnlyOffice Documentation](https://helpcenter.onlyoffice.com/installation/docs-community-install-docker.aspx)
-- [Pocket ID Documentation](https://github.com/pocket-id/pocket-id)
-
+- [oCIS Documentation](https://doc.owncloud.com/ocis/next/)
+- [oCIS Helm Chart](https://github.com/owncloud/ocis-charts)
+- [OnlyOffice Integration](https://doc.owncloud.com/ocis/next/deployment/services/s-list/collaboration.html)
