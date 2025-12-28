@@ -94,18 +94,8 @@ ingress:
 # ===================
 # Secrets Configuration
 # ===================
-# Auto-generate secrets on first install
-secretRefs:
-  # JWT secret for internal service communication
-  jwtSecretRef: owncloud-jwt-secret
-  # Machine auth API key
-  machineAuthApiKeySecretRef: owncloud-machine-auth
-  # Transfer secret
-  transferSecretSecretRef: owncloud-transfer-secret
-  # Thumbnails transfer secret
-  thumbnailsSecretRef: owncloud-thumbnails-secret
-  # Admin user secret (for initial setup)
-  adminUserSecretRef: owncloud-admin-secret
+# Let the Helm chart auto-generate all secrets on first install
+# Do NOT specify secretRefs - the chart will create them automatically
 
 # ===================
 # Storage Configuration
