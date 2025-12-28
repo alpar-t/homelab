@@ -1,7 +1,7 @@
 # OTMonitor - OpenTherm Gateway Monitor
 # Based on jlesage/baseimage-gui for VNC web access
 
-FROM jlesage/baseimage-gui:ubuntu-20.04
+FROM jlesage/baseimage-gui:ubuntu-20.04@sha256:a9e5908f9f299354833c0117064185ed3279c773dbfdcaa9847a75b870af8364
 
 EXPOSE 5800 7686
 

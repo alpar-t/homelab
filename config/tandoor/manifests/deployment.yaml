@@ -25,7 +25,7 @@ spec:
       initContainers:
         # Wait for PostgreSQL to be ready
         - name: wait-for-postgres
-          image: busybox:1.36
+          image: busybox:1.36@sha256:6b219909078e3fc93b81f83cb438bd7a5457984a01a478c76fe9777a8c67c39e
           command:
             - 'sh'
             - '-c'
@@ -38,7 +38,7 @@ spec:
       containers:
         - name: tandoor
           # Tandoor 2.3+ has built-in nginx, serves on port 80
-          image: vabene1111/recipes:2.3.6
+          image: vabene1111/recipes:2.3.6@sha256:5cd01ba0473a48878db3ed9b2c6f2c5db12b68649e169ce9cfa43f052fb0aa95
           ports:
             - containerPort: 80
               name: http

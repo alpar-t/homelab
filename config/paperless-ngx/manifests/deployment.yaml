@@ -31,7 +31,7 @@ spec:
       initContainers:
         # Wait for PostgreSQL to be ready
         - name: wait-for-postgres
-          image: busybox:1.36
+          image: busybox:1.36@sha256:6b219909078e3fc93b81f83cb438bd7a5457984a01a478c76fe9777a8c67c39e
           command:
             - 'sh'
             - '-c'
@@ -43,7 +43,7 @@ spec:
               echo "PostgreSQL is ready!"
         # Wait for Redis to be ready
         - name: wait-for-redis
-          image: busybox:1.36
+          image: busybox:1.36@sha256:6b219909078e3fc93b81f83cb438bd7a5457984a01a478c76fe9777a8c67c39e
           command:
             - 'sh'
             - '-c'
@@ -57,7 +57,7 @@ spec:
         # FTP server sidecar for scanner uploads
         # Shares the consume volume with Paperless
         - name: ftp-server
-          image: stilliard/pure-ftpd:latest
+          image: stilliard/pure-ftpd:latest@sha256:bfdfe0d725bee473b6c06ec0c39d6956dcaa2a504a1e33825ecf41242f05b436
           env:
             - name: PUBLICHOST
               value: "192.168.1.201"
@@ -114,7 +114,7 @@ spec:
         
         # Main Paperless-ngx application
         - name: paperless-ngx
-          image: ghcr.io/paperless-ngx/paperless-ngx:latest
+          image: ghcr.io/paperless-ngx/paperless-ngx:latest@sha256:57ad9565bff3bdf2378ab1dcc21ea649dfd68ee58e0eeca2bfba0120a26563e8
           ports:
             - containerPort: 8000
               name: http
