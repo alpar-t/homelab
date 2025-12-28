@@ -9,6 +9,14 @@ jwt:
 connections:
   allowPrivateIPAddress: true
   allowMetaIPAddress: true
+  # Database connection - CloudNativePG creates secret: onlyoffice-postgresql-app
+  dbExistingSecret: "onlyoffice-postgresql-app"
+  dbSecretKeyName: "password"
+  dbHost: "onlyoffice-postgresql-rw"
+  dbName: onlyoffice
+  dbUser: onlyoffice
+  # Disable RabbitMQ
+  amqpType: ""
 
 # Persistence for document server data
 persistence:
@@ -25,10 +33,9 @@ resources:
     cpu: 2000m
     memory: 2Gi
 
-# Use embedded database (PostgreSQL)
-# For a small deployment, the embedded DB is fine
+# Disable external dependencies - we'll create our own PostgreSQL
 postgresql:
-  enabled: true
+  enabled: false
 
 # Disable RabbitMQ for simple setup
 rabbitmq:

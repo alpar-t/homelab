@@ -6,6 +6,10 @@ metadata:
 spec:
   project: default
   sources:
+    # OnlyOffice PostgreSQL (CloudNativePG) - must deploy first
+    - repoURL: https://github.com/alpar-t/homelab
+      targetRevision: main
+      path: config/owncloud/manifests
     # oCIS Helm Chart (from Git - not published to Helm repo)
     - repoURL: https://github.com/owncloud/ocis-charts.git
       targetRevision: main
