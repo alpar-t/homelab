@@ -2,18 +2,8 @@
 # Used as the LDAP backend when using external OIDC (Pocket ID) for authentication
 # Deployed in owncloud namespace for simplicity
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: lldap-secrets
-  namespace: owncloud
-type: Opaque
-stringData:
-  # Placeholder - will be replaced by init container on first deploy
-  LLDAP_LDAP_USER_PASS: "CHANGE_ME_ON_FIRST_DEPLOY"
-  LLDAP_JWT_SECRET: "CHANGE_ME_ON_FIRST_DEPLOY"
-  # Key expected by oCIS helm chart for LDAP bind
-  reva-ldap-bind-password: "CHANGE_ME_ON_FIRST_DEPLOY"
+# Note: lldap-secrets is created by the init container, not managed by ArgoCD
+# This prevents ArgoCD from overwriting generated passwords
 ---
 apiVersion: v1
 kind: ServiceAccount
