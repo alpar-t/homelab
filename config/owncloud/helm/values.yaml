@@ -150,7 +150,7 @@ services:
     config:
       oidc:
         # Client ID must match the Pocket ID OIDC client
-        webClientID: owncloud
+        webClientID: b85f28eb-bf7d-4544-a311-eadcd5c09a2d
   
   # IDM (Identity Management)
   idm:
