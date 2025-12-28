@@ -101,8 +101,32 @@ Reference: [Pocket ID oCIS Client Examples](https://pocket-id.org/docs/client-ex
 LLDAP is deployed automatically in the same namespace. It provides the LDAP backend that oCIS requires for user storage when using external OIDC authentication.
 
 - **Service**: `lldap:3890` (LDAP)
-- **Web UI**: Port 17170 (for manual user management if needed)
-- **Storage**: EmptyDir (users are auto-provisioned from Pocket ID on each login)
+- **Web UI**: Port 17170 (for user management)
+- **Storage**: Persistent (1Gi on longhorn-ssd)
+
+> **Important**: LLDAP doesn't support LDAP modify operations, so autoprovisioning is disabled.
+> Users must be manually created in LLDAP before they can log in via Pocket ID.
+
+#### Creating Users in LLDAP
+
+1. Port forward to the LLDAP web UI:
+   ```bash
+   kubectl port-forward -n owncloud svc/lldap 17170:17170
+   ```
+
+2. Get the admin password:
+   ```bash
+   kubectl get secret -n owncloud lldap-secrets -o jsonpath='{.data.LLDAP_LDAP_USER_PASS}' | base64 -d
+   ```
+
+3. Open http://localhost:17170 and login with `admin` / `<password>`
+
+4. Create a new user with:
+   - **User ID**: Must match the `preferred_username` from Pocket ID
+   - **Email**: Must match the email in Pocket ID
+   - **Display Name**: User's display name
+
+5. The user can now log in via Pocket ID
 
 ### 5. Secrets (Auto-generated)
 
@@ -126,12 +150,12 @@ The deployment is managed via a single ArgoCD application (`owncloud`) that incl
 | Thumbnails | longhorn-ssd | 30Gi | Image/video thumbnails |
 | NATS | longhorn-ssd | 1Gi | Message queue persistence |
 | OnlyOffice | longhorn-ssd | 10Gi | Document server data |
-| LLDAP | emptyDir | - | User database (ephemeral, auto-provisioned) |
+| LLDAP | longhorn-ssd | 1Gi | User database (persistent, manual user creation) |
 
 ## Features
 
 - **Authentication**: External OIDC via Pocket ID
-- **User Storage**: LLDAP (auto-provisioned from OIDC claims)
+- **User Storage**: LLDAP (manual user creation required)
 - **Office Integration**: OnlyOffice Document Server (internal)
 - **Full-Text Search**: Via shared Tika instance (paperless-ngx)
 - **Email Notifications**: Via Stalwart mail relay
@@ -201,19 +225,20 @@ kubectl exec -n owncloud -it deploy/proxy -- nc -zv lldap 3890
 ### Common Issues
 
 1. **"Not logged in" after Pocket ID auth**
+   - **Most common cause**: User doesn't exist in LLDAP. Create the user manually (see "Creating Users in LLDAP" above)
    - Check that user is in `advanced_apps` or `family_users` group in Pocket ID
    - Verify custom claims are set on groups (key: `roles`, value: group name)
    - Check oCIS proxy logs for role assignment errors
 
 2. **LDAP connection errors**
-   - Verify LLDAP pod is running: `kubectl get pods -n lldap`
-   - Check LDAP bind secret exists: `kubectl get secret -n owncloud ldap-bind-secrets`
+   - Verify LLDAP pod is running: `kubectl get pods -n owncloud -l app=lldap`
+   - Check LDAP bind secret exists: `kubectl get secret -n owncloud lldap-secrets`
    - Verify password matches LLDAP admin password
 
-3. **User not provisioned**
-   - Check that `autoprovisionAccounts.enabled: true` in values.yaml
-   - Verify LDAP is writable: `ldap.writeable: true`
-   - Check LLDAP logs for write errors
+3. **User not found / cannot login**
+   - Autoprovisioning is disabled due to LLDAP limitations
+   - Users must be manually created in LLDAP before first login
+   - The LLDAP username must match the `preferred_username` claim from Pocket ID
 
 ## References
 

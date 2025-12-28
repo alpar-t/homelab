@@ -107,7 +107,7 @@ spec:
                   key: LLDAP_JWT_SECRET
             - name: LLDAP_VERBOSE
               value: "false"
-            # Use emptyDir - users are auto-provisioned from Pocket ID
+            # Use persistent storage - users must be manually created
             - name: LLDAP_DATABASE_URL
               value: "sqlite:///data/lldap.db?mode=rwc"
           volumeMounts:
@@ -134,7 +134,21 @@ spec:
             periodSeconds: 10
       volumes:
         - name: data
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: lldap-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lldap-data
+  namespace: owncloud
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 1Gi
 ---
 apiVersion: v1
 kind: Service

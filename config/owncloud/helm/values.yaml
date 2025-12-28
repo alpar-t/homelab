@@ -41,7 +41,8 @@ features:
     ldap:
       uri: ldap://lldap:3890
       bindDN: uid=admin,ou=people,dc=newjoy,dc=ro
-      writeable: true
+      # DISABLED: LLDAP doesn't support LDAP modify operations
+      writeable: false
       insecure: true
       certTrusted: true
       useServerUUID: true
