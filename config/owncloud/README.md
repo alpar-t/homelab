@@ -38,21 +38,57 @@ Cloud file storage and collaboration platform deployed via the official oCIS Hel
 
 ## Prerequisites
 
-### 1. Create Pocket ID OIDC Client
+### 1. Create User Groups in Pocket ID
 
-In Pocket ID (https://auth.newjoy.ro), create a new OIDC client:
+In Pocket ID (https://auth.newjoy.ro), create user groups for role assignment:
+
+1. Go to **Admin** → **User Groups** → **Add Group**
+2. Create these 4 groups with custom claims:
+
+| Group Name | Friendly Name | Custom Claim Key | Custom Claim Value |
+|------------|---------------|------------------|-------------------|
+| `ocisAdmin` | oCIS Admin Users | `roles` | `ocisAdmin` |
+| `ocisSpaceAdmin` | oCIS Space Admin Users | `roles` | `ocisSpaceAdmin` |
+| `ocisUser` | oCIS User | `roles` | `ocisUser` |
+| `ocisGuest` | oCIS Guest | `roles` | `ocisGuest` |
+
+3. Assign users to appropriate groups (at minimum, add yourself to `ocisAdmin`)
+
+### 2. Create Pocket ID OIDC Client (Web)
 
 1. Go to **Admin** → **OIDC Clients** → **Add Client**
 2. Configure:
    - **Name**: ownCloud
-   - **Client ID**: `owncloud` (must match `webClientID` in values.yaml)
-   - **Redirect URIs**: 
+   - **Callback URLs**: 
      - `https://drive.newjoy.ro/`
      - `https://drive.newjoy.ro/oidc-callback.html`
      - `https://drive.newjoy.ro/oidc-silent-redirect.html`
-   - **Client Type**: Public (no secret required for web frontend)
-   - **PKCE**: Enable if available
-3. Save - the Client ID must be exactly `owncloud`
+   - **Public Client**: ✅ Enabled
+3. Save and copy the generated **Client ID**
+4. Edit the client again and add **User Groups**: `ocisAdmin`, `ocisSpaceAdmin`, `ocisUser`, `ocisGuest`
+5. Update `values.yaml` with the Client ID in `services.web.config.oidc.webClientID`
+
+### 3. Create OIDC Clients for Desktop/Mobile Apps (Optional)
+
+The ownCloud desktop and mobile clients have hardcoded Client IDs. Create these as **public clients**:
+
+**Desktop Client:**
+- Name: `ownCloud Desktop Client`
+- Client ID: `xdXOt13JKxym1B1QcEncf2XDkLAexMBFwiT9j6EfhhHFJhs2KM9jbjTmf8JBXE69`
+- Callback URLs: `http://127.0.0.1:*`
+- Public Client: ✅
+
+**iOS Client:**
+- Name: `ownCloud iOS Client`
+- Client ID: `mxd5OQDk6es5LzOzRvidJNfXLUZS2oN3oUFeXPP8LpPrhx3UroJFduGEYIBOxkY1`
+- Callback URLs: `oc://ios.owncloud.com`
+- Public Client: ✅
+
+**Android Client:**
+- Name: `ownCloud Android Client`
+- Client ID: `e4rAsNUSIUs0lF4nbv9FmCeUkTlV9GdgTLDH1b5uie7syb90SzEVrbN7HIpmWJeD`
+- Callback URLs: `oc://android.owncloud.com`
+- Public Client: ✅
 
 ### 2. Create Required Secrets
 
