@@ -34,10 +34,7 @@ spec:
       labels:
         app: lldap
     spec:
-      securityContext:
-        fsGroup: 1000
-        runAsUser: 1000
-        runAsGroup: 1000
+      # Let LLDAP manage its own permissions
       containers:
         - name: lldap
           image: lldap/lldap:v0.6.1
