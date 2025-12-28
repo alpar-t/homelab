@@ -1,0 +1,113 @@
+# LLDAP - Lightweight LDAP server for oCIS user storage
+# Used as the LDAP backend when using external OIDC (Pocket ID) for authentication
+# Deployed in owncloud namespace for simplicity
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: lldap-secrets
+  namespace: owncloud
+type: Opaque
+stringData:
+  # Placeholder - will be replaced by secrets-job
+  LLDAP_LDAP_USER_PASS: "CHANGE_ME_ON_FIRST_DEPLOY"
+  LLDAP_JWT_SECRET: "CHANGE_ME_ON_FIRST_DEPLOY"
+  # Key expected by oCIS helm chart for LDAP bind
+  reva-ldap-bind-password: "CHANGE_ME_ON_FIRST_DEPLOY"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lldap
+  namespace: owncloud
+  labels:
+    app: lldap
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: lldap
+  template:
+    metadata:
+      labels:
+        app: lldap
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: lldap
+          image: lldap/lldap:v0.6.1
+          ports:
+            - containerPort: 3890
+              name: ldap
+            - containerPort: 17170
+              name: http
+          env:
+            - name: LLDAP_LDAP_BASE_DN
+              value: "dc=newjoy,dc=ro"
+            - name: LLDAP_LDAP_USER_DN
+              value: "admin"
+            - name: LLDAP_LDAP_USER_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: lldap-secrets
+                  key: LLDAP_LDAP_USER_PASS
+            - name: LLDAP_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: lldap-secrets
+                  key: LLDAP_JWT_SECRET
+            - name: LLDAP_VERBOSE
+              value: "false"
+            # Use emptyDir - users are auto-provisioned from Pocket ID
+            - name: LLDAP_DATABASE_URL
+              value: "sqlite:///data/lldap.db?mode=rwc"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lldap
+  namespace: owncloud
+  labels:
+    app: lldap
+spec:
+  type: ClusterIP
+  selector:
+    app: lldap
+  ports:
+    - name: ldap
+      port: 3890
+      targetPort: 3890
+    - name: http
+      port: 17170
+      targetPort: 17170
+

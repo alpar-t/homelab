@@ -17,6 +17,10 @@ spec:
     - repoURL: https://github.com/alpar-t/homelab
       targetRevision: main
       ref: values
+    # Additional manifests (LLDAP + secrets job)
+    - repoURL: https://github.com/alpar-t/homelab
+      targetRevision: main
+      path: config/owncloud/manifests
   destination:
     server: https://kubernetes.default.svc
     namespace: owncloud

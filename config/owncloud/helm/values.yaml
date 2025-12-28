@@ -10,20 +10,18 @@ externalDomain: drive.newjoy.ro
 # Features
 # ===================
 features:
-  # Enable external user management (Pocket ID)
+  # External OIDC authentication via Pocket ID + LLDAP for user storage
   externalUserManagement:
     enabled: true
     # OIDC configuration for Pocket ID
-    # Supported claims: sub, given_name, family_name, name, email, email_verified, preferred_username, picture, groups
-    # Supported scopes: openid, profile, email, groups
     oidc:
       issuerURI: https://auth.newjoy.ro
+      # Use preferred_username as the user identifier
       userIDClaim: preferred_username
       userIDClaimAttributeMapping: username
       accessTokenVerifyMethod: jwt
       # Role assignment from OIDC claims
       # Maps Pocket ID group claims to oCIS roles
-      # advanced_apps group -> admin, family_users group -> regular user
       roleAssignment:
         enabled: true
         claim: roles
@@ -32,14 +30,42 @@ features:
             claim_value: advanced_apps
           - role_name: user
             claim_value: family_users
-    # Auto-provision accounts from OIDC
-    # Users are created automatically on first login via Pocket ID
+    # Auto-provision accounts from OIDC claims into LLDAP
     autoprovisionAccounts:
       enabled: true
       claimEmail: email
       claimDisplayname: name
       claimGroups: groups
       claimUserName: preferred_username
+    # LLDAP backend for user storage (same namespace)
+    ldap:
+      uri: ldap://lldap:3890
+      bindDN: uid=admin,ou=people,dc=newjoy,dc=ro
+      writeable: true
+      insecure: true
+      certTrusted: true
+      useServerUUID: true
+      refintEnabled: false
+      passwordModifyExOpEnabled: false
+      user:
+        schema:
+          id: entryUUID
+          mail: mail
+          displayName: displayName
+          userName: uid
+        baseDN: ou=people,dc=newjoy,dc=ro
+        scope: one
+        filter: "(objectClass=person)"
+        objectClass: inetOrgPerson
+      group:
+        schema:
+          id: entryUUID
+          groupName: cn
+          member: member
+        baseDN: ou=groups,dc=newjoy,dc=ro
+        scope: one
+        filter: "(objectClass=groupOfUniqueNames)"
+        objectClass: groupOfUniqueNames
   
   # Email notifications via Stalwart
   emailNotifications:
@@ -78,7 +104,7 @@ features:
 # ===================
 # HTTP / CSP Configuration
 # ===================
-# CSP settings to allow external OIDC provider
+# CSP settings to allow external OIDC provider (Pocket ID)
 http:
   csp:
     directives:
@@ -162,14 +188,6 @@ services:
       oidc:
         # Client ID must match the Pocket ID OIDC client
         webClientID: b85f28eb-bf7d-4544-a311-eadcd5c09a2d
-  
-  # IDM (Identity Management)
-  idm:
-    persistence:
-      enabled: true
-      chownInitContainer: true
-      storageClassName: longhorn-ssd
-      size: 1Gi
   
   # NATS for internal messaging
   nats:
