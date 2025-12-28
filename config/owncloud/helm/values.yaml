@@ -104,6 +104,7 @@ services:
   storageusers:
     persistence:
       enabled: true
+      chownInitContainer: true
       storageClassName: longhorn-hdd
       size: 1500Gi
     storageBackend:
@@ -113,6 +114,7 @@ services:
   search:
     persistence:
       enabled: true
+      chownInitContainer: true
       storageClassName: longhorn-ssd
       size: 15Gi
     extractor:
@@ -124,6 +126,7 @@ services:
   thumbnails:
     persistence:
       enabled: true
+      chownInitContainer: true
       storageClassName: longhorn-ssd
       size: 30Gi
   
@@ -141,6 +144,7 @@ services:
   idm:
     persistence:
       enabled: true
+      chownInitContainer: true
       storageClassName: longhorn-ssd
       size: 1Gi
   
@@ -148,6 +152,7 @@ services:
   nats:
     persistence:
       enabled: true
+      chownInitContainer: true
       storageClassName: longhorn-ssd
       size: 1Gi
 
