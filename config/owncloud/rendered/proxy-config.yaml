@@ -1,6 +1,5 @@
 ---
 # Source: ocis/templates/proxy/config.yaml
-# Modified for Pocket ID OIDC integration - added auth.newjoy.ro to connect-src
 apiVersion: v1
 kind: ConfigMap
 metadata:

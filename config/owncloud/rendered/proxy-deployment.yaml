@@ -1,7 +1,5 @@
 ---
 # Source: ocis/templates/proxy/deployment.yaml
-# Modified for Pocket ID OIDC integration
-# See: https://pocket-id.org/docs/client-examples/oCIS
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -71,27 +69,12 @@ spec:
               value: nats:9233
 
             # === Pocket ID OIDC Configuration ===
-            # Disable internal IDP - use Pocket ID instead
             - name: OCIS_EXCLUDE_RUN_SERVICES
               value: "idp"
-            
-            # External OIDC issuer (Pocket ID)
-            - name: PROXY_OIDC_ISSUER
-              value: "https://auth.newjoy.ro"
-            
-            # Rewrite .well-known to external IDP
             - name: PROXY_OIDC_REWRITE_WELLKNOWN
               value: "true"
-            
-            # User claim mapping
             - name: PROXY_USER_OIDC_CLAIM
               value: "preferred_username"
-            
-            # Auto-provisioning - creates users in IDM on first login
-            - name: PROXY_AUTOPROVISION_ACCOUNTS
-              value: "true"
-            
-            # Role assignment from OIDC claims
             - name: PROXY_ROLE_ASSIGNMENT_DRIVER
               value: "oidc"
             # === End Pocket ID Configuration ===
@@ -119,6 +102,9 @@ spec:
               value: 0.0.0.0:9200
             - name: PROXY_DEBUG_ADDR
               value: 0.0.0.0:9205
+
+            - name: PROXY_OIDC_ISSUER
+              value: "https://auth.newjoy.ro"
 
             - name: PROXY_TLS
               value: "false"
@@ -151,6 +137,9 @@ spec:
 
             - name: PROXY_CSP_CONFIG_FILE_LOCATION
               value: /etc/ocis/csp.yaml
+
+            - name: PROXY_AUTOPROVISION_ACCOUNTS
+              value: "true"
             
           livenessProbe:
             httpGet:

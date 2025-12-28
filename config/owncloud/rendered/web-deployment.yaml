@@ -1,7 +1,5 @@
 ---
 # Source: ocis/templates/web/deployment.yaml
-# Modified for Pocket ID OIDC integration
-# See: https://pocket-id.org/docs/client-examples/oCIS
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -87,12 +85,8 @@ spec:
             - name: WEB_DEBUG_ADDR
               value: 0.0.0.0:9104
 
-            # === Pocket ID OIDC Configuration ===
-            # Point web frontend to Pocket ID for authentication
             - name: WEB_OIDC_AUTHORITY
               value: "https://auth.newjoy.ro"
-            # === End Pocket ID Configuration ===
-            
             - name: WEB_OIDC_CLIENT_ID
               value: "b85f28eb-bf7d-4544-a311-eadcd5c09a2d"
             - name: WEB_OIDC_SCOPE

@@ -170,6 +170,7 @@ metadata:
   labels:
 data:
   application-id: "bfcb55e8-525c-43b3-b752-182efef7dca0"
+---
 # Source: ocis/templates/sharing/config.yaml
 apiVersion: v1
 kind: ConfigMap
@@ -4006,6 +4007,7 @@ spec:
         - name: messaging-system-ca
           
           emptyDir: {}
+---
 # Source: ocis/templates/search/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -5717,6 +5719,7 @@ spec:
           
           secret:
             secretName: "ldap-ca"
+---
 # Source: ocis/templates/webdav/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
