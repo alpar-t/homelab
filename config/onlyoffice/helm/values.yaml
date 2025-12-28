@@ -18,6 +18,13 @@ connections:
   # Use existing Redis from paperless-ngx (passwordless)
   redisHost: "redis.paperless-ngx.svc.cluster.local"
   redisNoPass: true
+  # External RabbitMQ connection (deployed via manifests/rabbitmq.yaml)
+  amqpHost: "rabbitmq"
+  amqpPort: "5672"
+  amqpUser: "onlyoffice"
+  amqpProto: "amqp"
+  amqpExistingSecret: "rabbitmq"
+  amqpSecretKeyName: "rabbitmq-password"
 
 # Persistence for document server data
 persistence:
@@ -38,9 +45,10 @@ resources:
 postgresql:
   enabled: false
 
-# Use bundled RabbitMQ (required for OnlyOffice)
+# Disable bundled RabbitMQ - we deploy it separately via manifests
+# (Helm subcharts don't work well with ArgoCD multi-source applications)
 rabbitmq:
-  enabled: true
+  enabled: false
 
 # Disable bundled Redis - we use existing one from paperless-ngx
 redis:
