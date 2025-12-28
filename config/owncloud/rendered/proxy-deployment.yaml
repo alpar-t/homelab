@@ -1,0 +1,177 @@
+---
+# Source: ocis/templates/proxy/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxy
+  namespace: owncloud
+  annotations:
+    reloader.stakater.com/auto: "true"
+  labels:
+    helm.sh/chart: ocis-0.7.0
+    app.kubernetes.io/name: ocis
+    app.kubernetes.io/instance: ocis
+    app.kubernetes.io/version: "7.1.4"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  selector:
+    matchLabels:
+      app: proxy
+  replicas: 1
+  
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+  template:
+    metadata:
+      labels:
+        app: proxy
+        helm.sh/chart: ocis-0.7.0
+        app.kubernetes.io/name: ocis
+        app.kubernetes.io/instance: ocis
+        app.kubernetes.io/version: "7.1.4"
+        app.kubernetes.io/managed-by: Helm
+      annotations:
+        checksum/config: 4f9f307e0d12e5c0b441215aaacea19e302d1987207fb21b28c97c225a1c11f7
+    spec:
+      
+      securityContext:
+          fsGroup: 1000
+          fsGroupChangePolicy: Always
+      
+      
+      nodeSelector: 
+        {}
+      containers:
+        - name: proxy
+          image: "owncloud/ocis:7.1.4"
+          imagePullPolicy: IfNotPresent
+          command: ["ocis"]
+          args: ["proxy", "server"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            readOnlyRootFilesystem: true
+          env:
+            - name: MICRO_REGISTRY
+              value: "nats-js-kv"
+            - name: MICRO_REGISTRY_ADDRESS
+              value: "nats:9233"
+            - name: OCIS_CACHE_STORE
+              value: "nats-js-kv"
+            - name: OCIS_CACHE_STORE_NODES
+              value: "nats:9233"
+            - name: OCIS_CACHE_DISABLE_PERSISTENCE
+              value: "true"
+            
+            - name: OCIS_EVENTS_ENDPOINT
+              value: nats:9233
+
+            # === Pocket ID OIDC Configuration ===
+            - name: OCIS_EXCLUDE_RUN_SERVICES
+              value: "idp"
+            - name: PROXY_OIDC_REWRITE_WELLKNOWN
+              value: "true"
+            - name: PROXY_USER_OIDC_CLAIM
+              value: "preferred_username"
+            - name: PROXY_ROLE_ASSIGNMENT_DRIVER
+              value: "oidc"
+            # === End Pocket ID Configuration ===
+
+            - name: PROXY_LOG_COLOR
+              value: "false"
+            - name: PROXY_LOG_LEVEL
+              value: "info"
+            - name: PROXY_LOG_PRETTY
+              value: "false"
+
+            - name: PROXY_TRACING_ENABLED
+              value: "false"
+            - name: PROXY_TRACING_TYPE
+              value: "jaeger"
+            - name: PROXY_TRACING_ENDPOINT
+              value: 
+            - name: PROXY_TRACING_COLLECTOR
+              value: 
+
+            - name: PROXY_DEBUG_PPROF
+              value: "false"
+
+            - name: PROXY_HTTP_ADDR
+              value: 0.0.0.0:9200
+            - name: PROXY_DEBUG_ADDR
+              value: 0.0.0.0:9205
+
+            - name: PROXY_OIDC_ISSUER
+              value: "https://auth.newjoy.ro"
+
+            - name: PROXY_TLS
+              value: "false"
+
+            - name: PROXY_OIDC_INSECURE
+              value: "false"
+
+            - name: PROXY_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: "jwt-secret"
+                  key: jwt-secret
+
+            - name: PROXY_MACHINE_AUTH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: "machine-auth-api-key"
+                  key: machine-auth-api-key
+
+            - name: PROXY_SERVICE_ACCOUNT_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: "auth-service"
+                  key: service-account-id
+            - name: PROXY_SERVICE_ACCOUNT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: "service-account-secret"
+                  key: service-account-secret
+
+            - name: PROXY_CSP_CONFIG_FILE_LOCATION
+              value: /etc/ocis/csp.yaml
+
+            - name: PROXY_AUTOPROVISION_ACCOUNTS
+              value: "true"
+            
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics-debug
+            timeoutSeconds: 10
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 3
+
+          resources: 
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
+              cpu: 200m
+              memory: 512Mi
+
+          ports:
+            - name: http
+              containerPort: 9200
+            - name: metrics-debug
+              containerPort: 9205
+
+          volumeMounts:
+            - name: configs
+              mountPath: /etc/ocis
+            
+      
+      volumes:
+        - name: configs
+          configMap:
+            name: proxy-config
