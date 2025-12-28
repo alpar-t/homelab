@@ -65,6 +65,7 @@ storage:
     # Network configuration for enp2s0 (Management/General traffic VLAN)
     # This interface carries: SSH, k3s API, general cluster traffic
     # Note: Odroid uses enp1s0/enp2s0 interface names, not eth0/eth1
+    # DNS: Use Cloudflare/Google directly to avoid circular dependency with Pi-hole
     - path: /etc/NetworkManager/system-connections/enp2s0.nmconnection
       mode: 0600
       contents:
@@ -78,6 +79,8 @@ storage:
           
           [ipv4]
           method=auto
+          dns=1.1.1.1;8.8.8.8;
+          ignore-auto-dns=true
           
           [ipv6]
           method=auto
