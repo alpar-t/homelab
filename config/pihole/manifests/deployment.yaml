@@ -29,7 +29,7 @@ spec:
           - 1.1.1.1
       initContainers:
         - name: copy-dnsmasq-config
-          image: busybox:1.36
+          image: busybox:1.36@sha256:6b219909078e3fc93b81f83cb438bd7a5457984a01a478c76fe9777a8c67c39e
           command: ['sh', '-c', 'cp /config/* /etc/dnsmasq.d/']
           volumeMounts:
             - name: dnsmasq-config
@@ -38,7 +38,7 @@ spec:
               mountPath: /etc/dnsmasq.d
       containers:
         - name: pihole
-          image: pihole/pihole:2024.07.0
+          image: pihole/pihole:2024.07.0@sha256:0def896a596e8d45780b6359dbf82fc8c75ef05b97e095452e67a0a4ccc95377
           securityContext:
             capabilities:
               add:

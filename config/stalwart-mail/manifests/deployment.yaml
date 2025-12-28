@@ -22,7 +22,7 @@ spec:
       initContainers:
         # Init container to substitute secrets into fetchmail config
         - name: fetchmail-config-init
-          image: alpine:3.21
+          image: alpine:3.21@sha256:5405e8f36ce1878720f71217d664aa3dea32e5e5df11acbf07fc78ef5661465b
           command:
             - sh
             - -c
@@ -48,7 +48,7 @@ spec:
         # Main Stalwart container
         - name: stalwart
           # Pinned version - see /CLOUD.md for update instructions
-          image: stalwartlabs/stalwart:v0.13.2
+          image: stalwartlabs/stalwart:v0.13.2@sha256:e682677f83ebb44632e41684db293fd46db8ff94487cef3b894b5c668b448716
           args:
             - --config
             - /opt/stalwart/etc/config.toml
@@ -129,7 +129,7 @@ spec:
               mountPath: /opt/stalwart/etc
         # Fetchmail sidecar - pulls mail from Migadu
         - name: fetchmail
-          image: alpine:3.21
+          image: alpine:3.21@sha256:5405e8f36ce1878720f71217d664aa3dea32e5e5df11acbf07fc78ef5661465b
           command:
             - sh
             - -c
