@@ -117,9 +117,11 @@ spec:
             # ===================
             # OIDC Configuration (Pocket ID)
             # ===================
-            # Disable built-in IDP (using external Pocket ID) and NATS (using external Redis)
+            # Disable built-in IDP - use external Pocket ID
+            # Note: NATS must remain enabled - it's required for oCIS event messaging
+            # (Redis is only used for ID cache, not events)
             - name: OCIS_EXCLUDE_RUN_SERVICES
-              value: "idp,nats"
+              value: "idp"
             - name: PROXY_OIDC_ISSUER
               value: "https://auth.newjoy.ro"
             - name: PROXY_OIDC_REWRITE_WELLKNOWN
@@ -165,10 +167,21 @@ spec:
               value: "true"
             
             # ===================
+            # NATS Configuration (Event Messaging)
+            # ===================
+            # oCIS requires NATS for internal event messaging between services
+            # Using the embedded NATS server
+            - name: NATS_NATS_HOST
+              value: "127.0.0.1"
+            - name: NATS_NATS_PORT
+              value: "9233"
+            
+            # ===================
             # ID Cache for Posix FS (required!)
             # ===================
             # Posix FS driver requires a shared ID cache for file ID mapping
-            # Reusing Redis from paperless-ngx namespace
+            # Reusing Redis from paperless-ngx namespace for the cache
+            # (NATS is still needed for events, Redis is just for caching)
             - name: STORAGE_USERS_ID_CACHE_STORE
               value: "redis"
             - name: STORAGE_USERS_ID_CACHE_STORE_NODES
