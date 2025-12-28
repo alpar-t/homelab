@@ -1,0 +1,83 @@
+# ownCloud Infinite Scale Persistent Volume Claims
+#
+# Storage strategy:
+# - User data (blobs): HDD for capacity (1.5TB, 2 replicas via Longhorn)
+# - Config/metadata: SSD for performance
+# - Thumbnails: SSD for fast image loading
+# - Search index: SSD for responsive search
+#
+# All volumes use Longhorn with 2 replicas for redundancy
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: owncloud-data
+  namespace: owncloud
+  labels:
+    app: owncloud
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-hdd
+  resources:
+    requests:
+      # User files - sized for ~6 users with heavy usage
+      # Adjust based on actual migration size
+      storage: 1500Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: owncloud-config
+  namespace: owncloud
+  labels:
+    app: owncloud
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      # Config, metadata, and system files
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: owncloud-thumbnails
+  namespace: owncloud
+  labels:
+    app: owncloud
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      # Thumbnail cache - regenerable but improves UX
+      storage: 30Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: owncloud-search
+  namespace: owncloud
+  labels:
+    app: owncloud
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      # Search index (Bleve)
+      storage: 15Gi
+

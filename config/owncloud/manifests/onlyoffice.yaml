@@ -1,0 +1,150 @@
+# OnlyOffice Document Server
+#
+# Internal-only deployment for oCIS integration
+# Provides document editing capabilities (Word, Excel, PowerPoint)
+#
+# Note: This uses the Community Edition which is free but limited to
+# 20 simultaneous connections. For more, consider Enterprise Edition.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: onlyoffice
+  namespace: owncloud
+  labels:
+    app: onlyoffice
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: onlyoffice
+  template:
+    metadata:
+      labels:
+        app: onlyoffice
+      annotations:
+        secret.reloader.stakater.com/reload: "onlyoffice-secrets"
+    spec:
+      containers:
+        - name: onlyoffice
+          image: onlyoffice/documentserver:8.2
+          ports:
+            - containerPort: 80
+              name: http
+            - containerPort: 443
+              name: https
+          env:
+            # JWT authentication (required for oCIS integration)
+            - name: JWT_ENABLED
+              value: "true"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: onlyoffice-secrets
+                  key: jwt-secret
+            - name: JWT_HEADER
+              value: "Authorization"
+            - name: JWT_IN_BODY
+              value: "true"
+            
+            # Disable example documents
+            - name: USE_UNAUTHORIZED_STORAGE
+              value: "true"
+            
+            # Performance tuning
+            - name: DS_LOG_LEVEL
+              value: "WARN"
+            
+            # WOPI support for oCIS
+            - name: WOPI_ENABLED
+              value: "true"
+          
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/onlyoffice
+            - name: logs
+              mountPath: /var/log/onlyoffice
+            - name: fonts
+              mountPath: /var/lib/onlyoffice/documentserver/sdkjs-plugins
+          
+          resources:
+            requests:
+              cpu: 500m
+              memory: 2Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+          
+          # OnlyOffice takes a while to start
+          startupProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            failureThreshold: 60
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+      
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+        - name: fonts
+          emptyDir: {}
+---
+# OnlyOffice PVC for persistent data (fonts, cache)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: onlyoffice-data
+  namespace: owncloud
+  labels:
+    app: onlyoffice
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: onlyoffice
+  namespace: owncloud
+  labels:
+    app: onlyoffice
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  type: ClusterIP
+  selector:
+    app: onlyoffice
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP
+    - name: https
+      port: 443
+      targetPort: 443
+      protocol: TCP
+

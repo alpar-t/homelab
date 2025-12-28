@@ -63,7 +63,7 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [x] Omada
 - [X] OTMonitor
 - [ ] Bitwarden
-- [ ] Nextcloud (sync-in (if oidc) or owncloud)
+- [ ] ownCloud Infinite Scale (drive.newjoy.ro) - manifests created, needs OIDC secret
 - [ ] Photoprism or Immich
 - [x] Paperless-ngx 
 

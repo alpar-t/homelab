@@ -1,0 +1,277 @@
+# ownCloud Infinite Scale Deployment
+#
+# Uses Posix FS driver for easy file migration (just cp files in)
+# Configured for external OIDC authentication via Pocket ID
+# Integrated with OnlyOffice for document editing
+#
+# Storage layout:
+# - /var/lib/ocis/storage (HDD) - user files
+# - /var/lib/ocis/config (SSD) - config and metadata
+# - /var/lib/ocis/thumbnails (SSD) - thumbnail cache
+# - /var/lib/ocis/search (SSD) - search index
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: owncloud
+  namespace: owncloud
+  labels:
+    app: owncloud
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # Required for RWO PVCs
+  selector:
+    matchLabels:
+      app: owncloud
+  template:
+    metadata:
+      labels:
+        app: owncloud
+      annotations:
+        # Auto-restart when secrets change (requires Reloader)
+        secret.reloader.stakater.com/reload: "owncloud-secrets,owncloud-oidc,onlyoffice-secrets"
+    spec:
+      # Run as oCIS user (UID 1000)
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      initContainers:
+        # Initialize oCIS config if not present
+        - name: init-config
+          image: owncloud/ocis:7.0.0
+          command:
+            - /bin/sh
+            - -c
+            - |
+              # Only initialize if config doesn't exist
+              if [ ! -f /etc/ocis/ocis.yaml ]; then
+                echo "Initializing oCIS configuration..."
+                ocis init --config-path /etc/ocis
+              else
+                echo "Configuration already exists, skipping init"
+              fi
+          env:
+            - name: OCIS_URL
+              value: "https://drive.newjoy.ro"
+            - name: OCIS_INSECURE
+              value: "false"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/ocis
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+      containers:
+        - name: owncloud
+          image: owncloud/ocis:7.0.0
+          ports:
+            - containerPort: 9200
+              name: https
+          env:
+            # ===================
+            # Core Configuration
+            # ===================
+            - name: OCIS_URL
+              value: "https://drive.newjoy.ro"
+            - name: OCIS_LOG_LEVEL
+              value: "info"
+            - name: OCIS_LOG_PRETTY
+              value: "true"
+            - name: OCIS_CONFIG_DIR
+              value: "/etc/ocis"
+            
+            # Proxy configuration (behind ingress)
+            - name: PROXY_HTTP_ADDR
+              value: "0.0.0.0:9200"
+            - name: PROXY_TLS
+              value: "false"  # TLS terminated at ingress
+            
+            # ===================
+            # Security Secrets
+            # ===================
+            - name: OCIS_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: owncloud-secrets
+                  key: jwt-secret
+            - name: OCIS_MACHINE_AUTH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: owncloud-secrets
+                  key: machine-auth-api-key
+            - name: OCIS_TRANSFER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: owncloud-secrets
+                  key: transfer-secret
+            - name: OCIS_SYSTEM_USER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: owncloud-secrets
+                  key: system-user-api-key
+            
+            # ===================
+            # OIDC Configuration (Pocket ID)
+            # ===================
+            # Disable built-in IDP - use external Pocket ID
+            - name: OCIS_EXCLUDE_RUN_SERVICES
+              value: "idp"
+            - name: PROXY_OIDC_ISSUER
+              value: "https://auth.newjoy.ro"
+            - name: PROXY_OIDC_REWRITE_WELLKNOWN
+              value: "true"
+            - name: PROXY_OIDC_ACCESS_TOKEN_VERIFY_METHOD
+              value: "jwt"
+            - name: PROXY_USER_OIDC_CLAIM
+              value: "preferred_username"
+            - name: PROXY_USER_CS3_CLAIM
+              value: "username"
+            - name: WEB_OIDC_AUTHORITY
+              value: "https://auth.newjoy.ro"
+            - name: WEB_OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: owncloud-oidc
+                  key: client-id
+            - name: WEB_OIDC_SCOPE
+              value: "openid profile email"
+            # Auto-provision users on first OIDC login
+            - name: PROXY_AUTOPROVISION_ACCOUNTS
+              value: "true"
+            - name: GRAPH_IDENTITY_BACKEND
+              value: "ldap"
+            # Use LibreGraph for user management (works with external OIDC)
+            - name: IDM_CREATE_DEMO_USERS
+              value: "false"
+            
+            # ===================
+            # Storage Configuration (Posix FS)
+            # ===================
+            - name: STORAGE_USERS_DRIVER
+              value: "posix"
+            - name: STORAGE_USERS_POSIX_ROOT
+              value: "/var/lib/ocis/storage/users"
+            - name: STORAGE_USERS_POSIX_PERMISSIONS_DRIVER
+              value: "posixfs"
+            # Watch for filesystem changes (for migration support)
+            - name: STORAGE_USERS_POSIX_WATCH_TYPE
+              value: "inotifywait"
+            # Use space groups for file permissions
+            - name: STORAGE_USERS_POSIX_USE_SPACE_GROUPS
+              value: "true"
+            
+            # ===================
+            # Thumbnail Configuration
+            # ===================
+            - name: THUMBNAILS_DATA_PATH
+              value: "/var/lib/ocis/thumbnails"
+            
+            # ===================
+            # Search Configuration
+            # ===================
+            # Full-text search via Apache Tika for content extraction
+            # Reuses the Tika instance from paperless-ngx namespace
+            # If Tika is unavailable, search still works but only on filenames
+            - name: SEARCH_EXTRACTOR_TYPE
+              value: "tika"
+            # Note: SEARCH_EXTRACTOR_TIKA_TIKA_URL is the correct env var name
+            # (SEARCH service, EXTRACTOR_TIKA subsection, TIKA_URL setting)
+            - name: SEARCH_EXTRACTOR_TIKA_TIKA_URL
+              value: "http://tika.paperless-ngx.svc.cluster.local:9998"
+            - name: SEARCH_INDEX_DIR
+              value: "/var/lib/ocis/search"
+            
+            # ===================
+            # OnlyOffice Integration (WOPI)
+            # ===================
+            - name: COLLABORATION_WOPI_SRC
+              value: "https://drive.newjoy.ro"
+            - name: COLLABORATION_APP_NAME
+              value: "OnlyOffice"
+            - name: COLLABORATION_APP_ADDR
+              value: "https://onlyoffice:443"
+            - name: COLLABORATION_APP_INSECURE
+              value: "true"  # Internal service, self-signed cert
+            - name: COLLABORATION_APP_ICON
+              value: "https://drive.newjoy.ro/themes/owncloud/assets/onlyoffice.svg"
+            - name: COLLABORATION_WOPI_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: onlyoffice-secrets
+                  key: jwt-secret
+          
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/ocis/storage
+            - name: config
+              mountPath: /etc/ocis
+            - name: thumbnails
+              mountPath: /var/lib/ocis/thumbnails
+            - name: search
+              mountPath: /var/lib/ocis/search
+          
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          
+          # Startup probe - allows up to 5 minutes for initial startup
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: https
+            failureThreshold: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: https
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: https
+            periodSeconds: 10
+            timeoutSeconds: 5
+      
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: owncloud-data
+        - name: config
+          persistentVolumeClaim:
+            claimName: owncloud-config
+        - name: thumbnails
+          persistentVolumeClaim:
+            claimName: owncloud-thumbnails
+        - name: search
+          persistentVolumeClaim:
+            claimName: owncloud-search
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: owncloud
+  namespace: owncloud
+  labels:
+    app: owncloud
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  type: ClusterIP
+  selector:
+    app: owncloud
+  ports:
+    - name: https
+      port: 9200
+      targetPort: 9200
+      protocol: TCP
+
