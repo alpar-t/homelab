@@ -122,6 +122,8 @@ spec:
             # Note: NATS must remain enabled - it's required for oCIS event messaging
             - name: OCIS_EXCLUDE_RUN_SERVICES
               value: "idp,search"
+            
+            # Proxy OIDC settings
             - name: PROXY_OIDC_ISSUER
               value: "https://auth.newjoy.ro"
             - name: PROXY_OIDC_REWRITE_WELLKNOWN
@@ -132,6 +134,10 @@ spec:
               value: "preferred_username"
             - name: PROXY_USER_CS3_CLAIM
               value: "username"
+            - name: PROXY_AUTOPROVISION_ACCOUNTS
+              value: "true"
+            
+            # Web OIDC settings (frontend)
             - name: WEB_OIDC_AUTHORITY
               value: "https://auth.newjoy.ro"
             - name: WEB_OIDC_CLIENT_ID
@@ -141,12 +147,15 @@ spec:
                   key: client-id
             - name: WEB_OIDC_SCOPE
               value: "openid profile email"
-            # Auto-provision users on first OIDC login
-            - name: PROXY_AUTOPROVISION_ACCOUNTS
-              value: "true"
+            
+            # CSP Configuration - allow external OIDC provider
+            # This is required for the web frontend to connect to Pocket ID
+            - name: PROXY_CSP_CONFIG_FILE_LOCATION
+              value: "/etc/ocis/csp.yaml"
+            
+            # Identity backend
             - name: GRAPH_IDENTITY_BACKEND
               value: "ldap"
-            # Use LibreGraph for user management (works with external OIDC)
             - name: IDM_CREATE_DEMO_USERS
               value: "false"
             
@@ -237,6 +246,9 @@ spec:
               mountPath: /var/lib/ocis/storage
             - name: config
               mountPath: /etc/ocis
+            - name: csp-config
+              mountPath: /etc/ocis/csp.yaml
+              subPath: csp.yaml
             - name: thumbnails
               mountPath: /var/lib/ocis/thumbnails
             - name: search
@@ -277,6 +289,9 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: owncloud-config
+        - name: csp-config
+          configMap:
+            name: owncloud-config
         - name: thumbnails
           persistentVolumeClaim:
             claimName: owncloud-thumbnails
