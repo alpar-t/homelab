@@ -1,18 +1,23 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: owncloud
+  name: onlyoffice
   namespace: argocd
 spec:
   project: default
   sources:
-    # oCIS Helm Chart (from Git - not published to Helm repo)
-    - repoURL: https://github.com/owncloud/ocis-charts.git
+    # OnlyOffice PostgreSQL (CloudNativePG)
+    - repoURL: https://github.com/alpar-t/homelab
       targetRevision: main
-      path: charts/ocis
+      path: config/onlyoffice/manifests
+    # OnlyOffice Helm Chart
+    - repoURL: https://download.onlyoffice.com/charts/stable
+      chart: docs
+      targetRevision: "*"
       helm:
+        releaseName: onlyoffice
         valueFiles:
-          - $values/config/owncloud/helm/values.yaml
+          - $values/config/onlyoffice/helm/values.yaml
     # Values from git repo (referenced by $values)
     - repoURL: https://github.com/alpar-t/homelab
       targetRevision: main
@@ -26,3 +31,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+
