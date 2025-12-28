@@ -22,7 +22,7 @@ spec:
         valueFiles:
           - $values/config/owncloud/helm/onlyoffice-values.yaml
     # Values from git repo (referenced by $values)
-    - repoURL: https://github.com/alpar-t/homepbp
+    - repoURL: https://github.com/alpar-t/homelab
       targetRevision: main
       ref: values
   destination:
