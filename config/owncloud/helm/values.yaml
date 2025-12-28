@@ -133,8 +133,9 @@ ingress:
 # ===================
 # Secrets Configuration
 # ===================
-# Let the Helm chart auto-generate all secrets on first install
-# Do NOT specify secretRefs - the chart will create them automatically
+# Use lldap-secrets for LDAP bind password (created by our PreSync job)
+secretRefs:
+  ldapSecretRef: lldap-secrets
 
 # ===================
 # Security Context
