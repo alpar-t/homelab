@@ -28,9 +28,13 @@ features:
       claimDisplayname: name
       claimGroups: groups
       claimUserName: preferred_username
-    # LDAP must be writable for auto-provisioning to work
+    # LDAP settings - point to internal IDM for auto-provisioning
     ldap:
       writeable: true
+      # Use internal IDM service as LDAP backend
+      uri: ldaps://idm.owncloud.svc.cluster.local:9235
+      insecure: true
+      certTrusted: false
   
   # Email notifications via Stalwart
   emailNotifications:
@@ -154,10 +158,8 @@ services:
         # Client ID must match the Pocket ID OIDC client
         webClientID: b85f28eb-bf7d-4544-a311-eadcd5c09a2d
   
-  # IDM (Identity Management) - required for user auto-provisioning
-  # Even with external OIDC, IDM is needed to store provisioned users
+  # IDM (Identity Management)
   idm:
-    enabled: true
     persistence:
       enabled: true
       chownInitContainer: true
