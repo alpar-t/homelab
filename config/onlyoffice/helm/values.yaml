@@ -5,6 +5,11 @@
 jwt:
   enabled: false
 
+# Enable WOPI support for oCIS integration
+# This enables the /hosting/discovery endpoint
+wopi:
+  enabled: true
+
 # Allow connections from private IPs (internal cluster)
 connections:
   allowPrivateIPAddress: true
