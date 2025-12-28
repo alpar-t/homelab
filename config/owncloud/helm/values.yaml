@@ -33,19 +33,13 @@ features:
           - role_name: user
             claim_value: family_users
     # Auto-provision accounts from OIDC
+    # Users are created automatically on first login via Pocket ID
     autoprovisionAccounts:
       enabled: true
       claimEmail: email
       claimDisplayname: name
       claimGroups: groups
       claimUserName: preferred_username
-    # LDAP settings - point to internal IDM for auto-provisioning
-    ldap:
-      writeable: true
-      # Use internal IDM service as LDAP backend
-      uri: ldaps://idm.owncloud.svc.cluster.local:9235
-      insecure: true
-      certTrusted: false
   
   # Email notifications via Stalwart
   emailNotifications:
