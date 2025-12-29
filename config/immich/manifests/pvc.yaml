@@ -122,6 +122,25 @@ spec:
     requests:
       storage: 500Gi
 ---
+# Backups - database and configuration backups
+# SSD with 2 replicas for data safety
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-backups
+  namespace: immich
+  labels:
+    app: immich
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 10Gi
+---
 # ML model cache - stores downloaded ML models
 # SSD for fast loading
 apiVersion: v1

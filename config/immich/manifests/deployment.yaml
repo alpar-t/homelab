@@ -161,6 +161,9 @@ spec:
             # Profile pictures
             - name: profile
               mountPath: /usr/src/app/upload/profile
+            # Backups
+            - name: backups
+              mountPath: /usr/src/app/upload/backups
             # Import staging area
             - name: import
               mountPath: /import
@@ -210,6 +213,9 @@ spec:
         - name: profile
           persistentVolumeClaim:
             claimName: immich-profile
+        - name: backups
+          persistentVolumeClaim:
+            claimName: immich-backups
         - name: import
           persistentVolumeClaim:
             claimName: immich-import

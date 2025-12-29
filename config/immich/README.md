@@ -56,6 +56,7 @@ A high-performance, self-hosted alternative to Google Photos with ML-powered fea
 | upload | 50Gi | SSD | 1 | Incoming upload buffer |
 | encoded-video | 500Gi | HDD | 1 | Transcoded videos (regenerable) |
 | profile | 1Gi | SSD | 2 | User profile pictures |
+| backups | 10Gi | SSD | 2 | Database and configuration backups |
 | import | 500Gi | HDD | 1 | Bulk import staging area |
 | model-cache | 10Gi | SSD | 2 | ML model cache |
 
