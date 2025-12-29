@@ -127,6 +127,15 @@ kind: Ingress
 metadata:
   name: pocket-id
   namespace: pocket-id
+  annotations:
+    # Override Pocket ID's restrictive CSP to allow framing from oCIS
+    # This enables OAuth flow within OnlyOffice iframe
+    # Security: Only trusted domains are allowed to embed auth pages
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      # Remove Pocket ID's default CSP header
+      proxy_hide_header Content-Security-Policy;
+      # Add our own CSP with frame-ancestors allowing trusted domains
+      add_header Content-Security-Policy "frame-ancestors 'self' https://drive.newjoy.ro https://office.newjoy.ro;" always;
 spec:
   ingressClassName: nginx
   rules:
