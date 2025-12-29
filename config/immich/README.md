@@ -279,6 +279,11 @@ Environment variables in `deployment.yaml` are primarily for:
 
 See [Immich Environment Variables](https://immich.app/docs/install/environment-variables) for full list.
 
+## TODO
+
+- [ ] **Video Transcoding:** Review and configure hardware acceleration settings in Administration → Settings → Video Transcoding. Consider enabling VAAPI/QSV if your nodes have Intel GPUs, or configure software transcoding limits to prevent CPU overload.
+- [ ] **Import Photos:** Start importing existing photo library - see "Importing Existing Photos" section above for methods (bulk import via kubectl, Immich CLI, or web upload).
+
 ## Upgrading
 
 Immich releases frequently. To upgrade:
