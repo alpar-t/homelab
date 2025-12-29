@@ -1,6 +1,17 @@
 # OnlyOffice Document Server Helm Chart Values
 # https://github.com/ONLYOFFICE/Kubernetes-Docs
 
+# ===================
+# Use Community Edition (free, AGPL v3 license)
+# ===================
+# The helm chart defaults to Developer Edition which has a 30-day trial.
+# Community Edition is free forever for up to 20 concurrent connections.
+# See: https://www.onlyoffice.com/en/license-faq.aspx
+image:
+  repository: onlyoffice/documentserver
+  tag: latest
+  pullPolicy: IfNotPresent
+
 # JWT disabled for WOPI mode - oCIS WOPI handles authentication via WOPI tokens
 # Note: JWT and WOPI are different auth mechanisms:
 # - JWT: Direct API access protection (e.g., Nextcloud integration)
