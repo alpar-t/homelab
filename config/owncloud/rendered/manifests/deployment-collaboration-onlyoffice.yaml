@@ -94,7 +94,7 @@ spec:
               value: com.github.owncloud.collaboration-OnlyOffice
 
             - name: COLLABORATION_APP_INSECURE
-              value: "true"
+              value: "false"
 
             - name: COLLABORATION_CS3API_DATAGATEWAY_INSECURE
               value: "false"
@@ -105,8 +105,10 @@ spec:
             - name: COLLABORATION_APP_ICON
               value: "https://cdn.jsdelivr.net/npm/simple-icons@v9/icons/onlyoffice.svg"
 
+            # COLLABORATION_APP_ADDR is the browser-facing URL (user's browser loads OnlyOffice iframe)
+            # Must be externally accessible since the browser needs to reach it
             - name: COLLABORATION_APP_ADDR
-              value: "http://documentserver.owncloud.svc.cluster.local"
+              value: "https://office.newjoy.ro"
 
             - name: COLLABORATION_WOPI_SRC
               value: http://collaboration-onlyoffice.owncloud.svc.cluster.local:9300

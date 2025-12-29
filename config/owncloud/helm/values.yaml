@@ -28,6 +28,8 @@ features:
       encryption: none
   
   # Apps integration (OnlyOffice)
+  # Note: uri is the browser-facing URL (user's browser loads OnlyOffice iframe)
+  # The oCIS collaboration service connects to OnlyOffice internally via WOPI
   appsIntegration:
     enabled: true
     wopiIntegration:
@@ -35,8 +37,8 @@ features:
         - name: OnlyOffice
           product: OnlyOffice
           enabled: true
-          uri: http://documentserver.owncloud.svc.cluster.local
-          insecure: true
+          uri: https://office.newjoy.ro
+          insecure: false
           disableProof: false
           secureViewEnabled: false
           disableChat: false

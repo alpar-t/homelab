@@ -58,7 +58,8 @@ config/owncloud/
 |------|--------------|
 | `deployment-proxy.yaml` | Pocket ID OIDC config, reloader annotation |
 | `deployment-web.yaml` | Pocket ID OIDC authority, reloader annotation |
-| `configmap-proxy-config.yaml` | CSP allows auth.newjoy.ro |
+| `configmap-proxy-config.yaml` | CSP allows auth.newjoy.ro and office.newjoy.ro |
+| `deployment-collaboration-onlyoffice.yaml` | External OnlyOffice URL for browser access |
 
 ### Secrets Management
 
@@ -93,18 +94,60 @@ helm template ocis /tmp/ocis-charts/charts/ocis \
 #   - configmap-proxy-config.yaml
 ```
 
+## OnlyOffice Integration
+
+Document editing is provided by OnlyOffice, deployed separately and exposed at `office.newjoy.ro`.
+
+### Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                           User's Browser                              │
+│  ┌─────────────────────┐         ┌────────────────────────────────┐  │
+│  │ drive.newjoy.ro     │         │ office.newjoy.ro (iframe)     │  │
+│  │ (oCIS Web UI)       │ ──────► │ (OnlyOffice Document Server)  │  │
+│  └─────────────────────┘         └────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────┘
+                │                                │
+                │ WOPI Protocol                  │ WOPI Callback
+                ▼                                ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                        Kubernetes Cluster                             │
+│  ┌──────────────────────────────────────┐  ┌─────────────────────┐  │
+│  │ collaboration-onlyoffice (oCIS)      │  │ documentserver      │  │
+│  │ • Generates WOPI tokens              │◄─┤ (OnlyOffice)        │  │
+│  │ • Provides /wopi/files/* endpoints   │  │ • Fetches documents │  │
+│  └──────────────────────────────────────┘  │   via WOPI tokens   │  │
+│                                            └─────────────────────┘  │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### Security
+
+OnlyOffice is publicly accessible but protected by WOPI tokens:
+- **WOPI Protocol**: When a user opens a document, oCIS generates a time-limited access token
+- **Token Validation**: OnlyOffice must present this token to fetch/save documents via WOPI callbacks
+- **No Direct Access**: Users cannot access documents directly through OnlyOffice without going through oCIS first
+
+### Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `helm/values.yaml` | Sets `uri: https://office.newjoy.ro` for browser access |
+| `rendered/manifests/deployment-collaboration-onlyoffice.yaml` | `COLLABORATION_APP_ADDR=https://office.newjoy.ro` |
+| `rendered/manifests/configmap-proxy-config.yaml` | CSP `frame-src` allows `https://office.newjoy.ro/` |
+
+## TODO
+
+- [ ] **Verify storage configuration**: Check how user files are stored and whether we're using the correct persistent volumes (HDD for bulk storage vs SSD for metadata/search).
+
+- [ ] **Nextcloud migration**: Come up with a way to import files only (not metadata) from Nextcloud. Consider rsync to storage volume or oCIS import tools.
+
+- [ ] **Email setup**: Check the email/SMTP configuration and verify that notification emails are being sent correctly.
+
 ## Prerequisites in Pocket ID
 
-### 1. Configure User Groups
-
-Add custom claims to your groups for role assignment:
-
-| Group | Custom Claim Key | Custom Claim Value | oCIS Role |
-|-------|------------------|-------------------|-----------|
-| `advanced_apps` | `roles` | `admin` | Admin |
-| `family_users` | `roles` | `user` | User |
-
-### 2. Create OIDC Client (Web)
+### 1. Create OIDC Client (Web)
 
 1. **Name**: ownCloud
 2. **Callback URLs**: 
@@ -112,10 +155,11 @@ Add custom claims to your groups for role assignment:
    - `https://drive.newjoy.ro/oidc-callback.html`
    - `https://drive.newjoy.ro/oidc-silent-redirect.html`
 3. **Public Client**: Yes
-4. Add your groups to the client
-5. Copy Client ID to `deployment-web.yaml` → `WEB_OIDC_CLIENT_ID`
+4. Copy Client ID to `deployment-web.yaml` → `WEB_OIDC_CLIENT_ID`
 
-### 3. Create Desktop/Mobile Clients
+> **Note**: All users get the default "user" role. Promote to admin via oCIS settings if needed.
+
+### 2. Create Desktop/Mobile Clients
 
 Hardcoded Client IDs (create as Public Clients):
 

@@ -35,7 +35,7 @@ data:
       frame-src:
         - '''self'''
         - 'blob:'
-        - "http://documentserver.owncloud.svc.cluster.local/"
+        - "https://office.newjoy.ro/"
       img-src:
         - '''self'''
         - 'data:'
