@@ -207,20 +207,20 @@ spec:
           # Startup probe - allows up to 10 minutes for initial startup
           startupProbe:
             httpGet:
-              path: /api/server-info/ping
+              path: /api/server/ping
               port: http
             failureThreshold: 60
             periodSeconds: 10
             timeoutSeconds: 5
           livenessProbe:
             httpGet:
-              path: /api/server-info/ping
+              path: /api/server/ping
               port: http
             periodSeconds: 30
             timeoutSeconds: 5
           readinessProbe:
             httpGet:
-              path: /api/server-info/ping
+              path: /api/server/ping
               port: http
             periodSeconds: 10
             timeoutSeconds: 5
