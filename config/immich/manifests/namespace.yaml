@@ -1,0 +1,12 @@
+# Immich namespace
+# Self-hosted photo and video management
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: immich
+  labels:
+    app.kubernetes.io/name: immich
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+

@@ -1,0 +1,236 @@
+# Immich Server Deployment
+# Main API server and web interface
+#
+# Handles: authentication, uploads, API, background jobs
+# All persistent data is stored in PVCs
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: immich-server
+  namespace: immich
+  labels:
+    app: immich-server
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # Required for RWO PVCs
+  selector:
+    matchLabels:
+      app: immich-server
+  template:
+    metadata:
+      labels:
+        app: immich-server
+      annotations:
+        # Auto-restart when OIDC secret changes (requires Reloader)
+        secret.reloader.stakater.com/reload: "immich-oidc"
+    spec:
+      initContainers:
+        # Wait for PostgreSQL to be ready
+        - name: wait-for-postgres
+          image: busybox:1.36@sha256:6b219909078e3fc93b81f83cb438bd7a5457984a01a478c76fe9777a8c67c39e
+          command:
+            - 'sh'
+            - '-c'
+            - |
+              until nc -z immich-db-rw.immich.svc.cluster.local 5432; do
+                echo "Waiting for PostgreSQL..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready!"
+        # Wait for Redis to be ready
+        - name: wait-for-redis
+          image: busybox:1.36@sha256:6b219909078e3fc93b81f83cb438bd7a5457984a01a478c76fe9777a8c67c39e
+          command:
+            - 'sh'
+            - '-c'
+            - |
+              until nc -z redis.immich.svc.cluster.local 6379; do
+                echo "Waiting for Redis..."
+                sleep 2
+              done
+              echo "Redis is ready!"
+      
+      containers:
+        - name: immich-server
+          image: ghcr.io/immich-app/immich-server:v1.123.0
+          ports:
+            - containerPort: 2283
+              name: http
+          env:
+            # ===================
+            # Database Configuration
+            # ===================
+            - name: DB_HOSTNAME
+              value: "immich-db-rw.immich.svc.cluster.local"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_DATABASE_NAME
+              value: "immich"
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: immich-db-app
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: immich-db-app
+                  key: password
+            
+            # ===================
+            # Redis Configuration
+            # ===================
+            - name: REDIS_HOSTNAME
+              value: "redis.immich.svc.cluster.local"
+            - name: REDIS_PORT
+              value: "6379"
+            
+            # ===================
+            # Storage Paths
+            # ===================
+            - name: IMMICH_MEDIA_LOCATION
+              value: "/usr/src/app/upload"
+            
+            # ===================
+            # Server Configuration
+            # ===================
+            - name: IMMICH_HOST
+              value: "0.0.0.0"
+            - name: IMMICH_PORT
+              value: "2283"
+            
+            # ===================
+            # OIDC Configuration (Pocket ID)
+            # ===================
+            - name: OAUTH_ENABLED
+              value: "true"
+            - name: OAUTH_ISSUER_URL
+              value: "https://auth.newjoy.ro"
+            - name: OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: immich-oidc
+                  key: client_id
+            - name: OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: immich-oidc
+                  key: client_secret
+            - name: OAUTH_SCOPE
+              value: "openid profile email"
+            - name: OAUTH_AUTO_REGISTER
+              value: "true"
+            - name: OAUTH_AUTO_LAUNCH
+              value: "false"
+            - name: OAUTH_BUTTON_TEXT
+              value: "Login with Pocket ID"
+            - name: OAUTH_MOBILE_OVERRIDE_ENABLED
+              value: "true"
+            - name: OAUTH_MOBILE_REDIRECT_URI
+              value: "app.immich:/"
+            
+            # ===================
+            # Machine Learning Service
+            # ===================
+            - name: IMMICH_MACHINE_LEARNING_URL
+              value: "http://immich-ml.immich.svc.cluster.local:3003"
+            
+            # ===================
+            # Logging
+            # ===================
+            - name: LOG_LEVEL
+              value: "log"
+          
+          volumeMounts:
+            # Main library - original photos/videos
+            - name: library
+              mountPath: /usr/src/app/upload/library
+            # Upload buffer - incoming files
+            - name: upload
+              mountPath: /usr/src/app/upload/upload
+            # Thumbnails
+            - name: thumbs
+              mountPath: /usr/src/app/upload/thumbs
+            # Encoded videos
+            - name: encoded-video
+              mountPath: /usr/src/app/upload/encoded-video
+            # Profile pictures
+            - name: profile
+              mountPath: /usr/src/app/upload/profile
+            # Import staging area
+            - name: import
+              mountPath: /import
+          
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          
+          # Startup probe - allows up to 10 minutes for initial startup
+          startupProbe:
+            httpGet:
+              path: /api/server-info/ping
+              port: http
+            failureThreshold: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/server-info/ping
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /api/server-info/ping
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+      
+      volumes:
+        - name: library
+          persistentVolumeClaim:
+            claimName: immich-library
+        - name: upload
+          persistentVolumeClaim:
+            claimName: immich-upload
+        - name: thumbs
+          persistentVolumeClaim:
+            claimName: immich-thumbs
+        - name: encoded-video
+          persistentVolumeClaim:
+            claimName: immich-encoded-video
+        - name: profile
+          persistentVolumeClaim:
+            claimName: immich-profile
+        - name: import
+          persistentVolumeClaim:
+            claimName: immich-import
+---
+# Immich Server Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: immich-server
+  namespace: immich
+  labels:
+    app: immich-server
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  type: ClusterIP
+  selector:
+    app: immich-server
+  ports:
+    - name: http
+      port: 2283
+      targetPort: 2283
+      protocol: TCP
+

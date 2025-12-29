@@ -1,0 +1,46 @@
+# Immich Ingress
+# Exposes the web interface at photos.newjoy.ro
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: immich
+  namespace: immich
+  labels:
+    app: immich
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    # Allow large file uploads (photos, videos, RAW files)
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    # Increase timeouts for large uploads
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    # WebSocket support for real-time updates
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/proxy-set-headers: "immich/nginx-proxy-headers"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: photos.newjoy.ro
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: immich-server
+                port:
+                  number: 2283
+---
+# ConfigMap for WebSocket proxy headers
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-proxy-headers
+  namespace: immich
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+data:
+  Upgrade: $http_upgrade
+  Connection: "upgrade"
+

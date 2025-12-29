@@ -1,0 +1,127 @@
+# Immich Machine Learning Service
+# Handles: face detection, face recognition, CLIP smart search, object detection
+#
+# Resource-intensive - scheduled preferentially on the 32GB RAM node
+# Models are cached in a PVC to avoid re-downloading
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: immich-ml
+  namespace: immich
+  labels:
+    app: immich-ml
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # Required for RWO PVC
+  selector:
+    matchLabels:
+      app: immich-ml
+  template:
+    metadata:
+      labels:
+        app: immich-ml
+    spec:
+      # Prefer scheduling on high-memory node (32GB)
+      # Label your H3 Ultra node with: kubectl label node <node-name> immich.io/ml-node=true
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: immich.io/ml-node
+                    operator: In
+                    values:
+                      - "true"
+      
+      containers:
+        - name: immich-ml
+          image: ghcr.io/immich-app/immich-machine-learning:v1.123.0
+          ports:
+            - containerPort: 3003
+              name: http
+          env:
+            # Cache directory for ML models
+            - name: MACHINE_LEARNING_CACHE_FOLDER
+              value: "/cache"
+            
+            # Model settings - using efficient defaults
+            # CLIP for smart search
+            - name: MACHINE_LEARNING_CLIP_MODEL
+              value: "ViT-B-32__openai"
+            
+            # Face detection and recognition
+            - name: MACHINE_LEARNING_FACIAL_RECOGNITION_MODEL
+              value: "buffalo_l"
+            
+            # Workers - 2 workers for parallel processing
+            # Each worker loads models (~3GB), so 2 workers ≈ 6GB
+            - name: MACHINE_LEARNING_WORKERS
+              value: "2"
+            
+            # Request timeout (seconds)
+            - name: MACHINE_LEARNING_REQUEST_THREADS
+              value: "4"
+          
+          volumeMounts:
+            - name: model-cache
+              mountPath: /cache
+          
+          resources:
+            requests:
+              cpu: 500m
+              memory: 4Gi
+            limits:
+              cpu: 4000m
+              memory: 8Gi
+          
+          # ML service takes time to load models on startup
+          startupProbe:
+            httpGet:
+              path: /ping
+              port: http
+            failureThreshold: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+      
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: immich-model-cache
+---
+# Immich ML Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: immich-ml
+  namespace: immich
+  labels:
+    app: immich-ml
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  type: ClusterIP
+  selector:
+    app: immich-ml
+  ports:
+    - name: http
+      port: 3003
+      targetPort: 3003
+      protocol: TCP
+

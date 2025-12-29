@@ -1,0 +1,143 @@
+# Immich Persistent Volume Claims
+# Tiered storage: SSD for performance-critical, HDD for bulk storage
+
+---
+# Library - stores original photos and videos (your 2+ TB collection)
+# Using HDD with 2 replicas for bulk storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-library
+  namespace: immich
+  labels:
+    app: immich
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-hdd
+  resources:
+    requests:
+      storage: 3000Gi
+---
+# Thumbnails - generated previews for fast browsing
+# SSD for fast read performance
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-thumbs
+  namespace: immich
+  labels:
+    app: immich
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 100Gi
+---
+# Upload - temporary buffer for incoming uploads
+# SSD for fast writes, 1 replica (temporary data)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-upload
+  namespace: immich
+  labels:
+    app: immich
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    # Single replica - temporary data, not critical
+    longhorn.io/number-of-replicas: "1"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 50Gi
+---
+# Encoded video - transcoded versions for streaming
+# HDD with 1 replica (regenerable from originals)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-encoded-video
+  namespace: immich
+  labels:
+    app: immich
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    # Single replica - can be regenerated from originals
+    longhorn.io/number-of-replicas: "1"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-hdd
+  resources:
+    requests:
+      storage: 500Gi
+---
+# Profile - user profile pictures
+# SSD, small volume
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-profile
+  namespace: immich
+  labels:
+    app: immich
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Import - staging area for bulk imports via kubectl cp
+# HDD with 1 replica (temporary staging, source files exist elsewhere)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-import
+  namespace: immich
+  labels:
+    app: immich
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    # Single replica - temporary staging area
+    longhorn.io/number-of-replicas: "1"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-hdd
+  resources:
+    requests:
+      storage: 500Gi
+---
+# ML model cache - stores downloaded ML models
+# SSD for fast loading
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-model-cache
+  namespace: immich
+  labels:
+    app: immich
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 10Gi
+

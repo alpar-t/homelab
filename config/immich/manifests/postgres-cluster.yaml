@@ -1,0 +1,48 @@
+# Immich PostgreSQL Cluster
+# Managed by CloudNativePG operator
+#
+# Credentials are auto-generated and stored in: immich-db-app secret
+# Immich requires the pgvecto.rs extension for vector search
+
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: immich-db
+  namespace: immich
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  instances: 2
+  
+  # Use tensorchord/cloudnative-pgvecto.rs image for vector extension support
+  # Required for Immich's smart search feature
+  imageName: ghcr.io/tensorchord/cloudnative-pgvecto.rs:16-v0.3.0
+  
+  bootstrap:
+    initdb:
+      database: immich
+      owner: immich
+      postInitSQL:
+        - CREATE EXTENSION IF NOT EXISTS vectors;
+        - CREATE EXTENSION IF NOT EXISTS earthdistance CASCADE;
+  
+  storage:
+    size: 10Gi
+    storageClass: longhorn-ssd
+  
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  
+  postgresql:
+    parameters:
+      log_statement: "ddl"
+      shared_buffers: "256MB"
+      max_connections: "100"
+      # Required for pgvecto.rs
+      shared_preload_libraries: "vectors.so"
+
