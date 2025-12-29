@@ -185,6 +185,11 @@ spec:
             - name: PAPERLESS_CONSUMPTION_DIR
               value: "/usr/src/paperless/consume/paperless"
             
+            # Scratch directory for temporary processing files
+            # Must be persistent to survive pod restarts (queued tasks reference these files)
+            - name: PAPERLESS_SCRATCH_DIR
+              value: "/usr/src/paperless/media/.scratch"
+            
             # Email configuration - uses Stalwart as local relay
             - name: PAPERLESS_EMAIL_HOST
               value: "stalwart.stalwart-mail.svc.cluster.local"

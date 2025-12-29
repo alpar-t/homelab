@@ -151,9 +151,26 @@ OnlyOffice is protected by **two layers**:
 | `rendered/manifests/configmap-proxy-config.yaml` | CSP `frame-src` allows `https://office.newjoy.ro/` |
 | `../oauth2-proxy-onlyoffice/` | SSO authentication for OnlyOffice |
 
-## TODO
+## Nextcloud Migration
 
-- [ ] **Nextcloud migration**: Come up with a way to import files only (not metadata) from Nextcloud. Consider rsync to storage volume or oCIS import tools.
+Migrate files using desktop sync clients. This transfers **files only** (no shares, comments, tags, or metadata).
+
+### Steps
+
+1. **Sync Nextcloud to local folder** using Nextcloud Desktop Client
+2. **Disconnect** Nextcloud client (or pause sync)
+3. **Install** [ownCloud Desktop Client](https://owncloud.com/desktop-app/)
+4. **Connect** to `https://drive.newjoy.ro` (authenticates via Pocket ID in browser)
+5. **Point sync** to the same local folder
+6. **Wait** for upload to complete
+
+### What Migrates
+
+| ✅ Migrates | ❌ Does NOT Migrate |
+|-------------|---------------------|
+| Files and folders | Shares (internal/external) |
+| Directory structure | Comments, Tags, Favorites |
+| File contents | Activity history, Trash |
 
 ## Prerequisites in Pocket ID
 
