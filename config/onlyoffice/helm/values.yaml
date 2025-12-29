@@ -4,13 +4,22 @@
 # ===================
 # Use Community Edition (free, AGPL v3 license)
 # ===================
-# The helm chart defaults to Developer Edition which has a 30-day trial.
-# Community Edition is free forever for up to 20 concurrent connections.
+# The helm chart defaults to Developer Edition (-de suffix) which has a 30-day trial.
+# Community Edition (no -de suffix) is free forever for up to 20 concurrent connections.
 # See: https://www.onlyoffice.com/en/license-faq.aspx
-image:
-  repository: onlyoffice/documentserver
-  tag: latest
-  pullPolicy: IfNotPresent
+#
+# Override each component's image to use Community Edition (remove -de suffix)
+docservice:
+  image:
+    repository: onlyoffice/docs-docservice
+    
+converter:
+  image:
+    repository: onlyoffice/docs-converter
+
+proxy:
+  image:
+    repository: onlyoffice/docs-proxy
 
 # JWT disabled for WOPI mode - oCIS WOPI handles authentication via WOPI tokens
 # Note: JWT and WOPI are different auth mechanisms:
