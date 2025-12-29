@@ -188,7 +188,14 @@ spec:
             # Scratch directory for temporary processing files
             # Must be persistent to survive pod restarts (queued tasks reference these files)
             - name: PAPERLESS_SCRATCH_DIR
-              value: "/usr/src/paperless/media/.scratch"
+              value: "/usr/src/paperless/data/.scratch"
+            
+            # Cache directories for fontconfig, etc.
+            # Prevents "No writable cache directories" errors
+            - name: XDG_CACHE_HOME
+              value: "/usr/src/paperless/data/.cache"
+            - name: FONTCONFIG_CACHE
+              value: "/usr/src/paperless/data/.cache/fontconfig"
             
             # Email configuration - uses Stalwart as local relay
             - name: PAPERLESS_EMAIL_HOST

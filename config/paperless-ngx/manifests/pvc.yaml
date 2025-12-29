@@ -2,8 +2,8 @@
 # Using SSD storage for better performance with 2.4GB dataset
 
 ---
-# Data directory - stores search index and classification model
-# Must be persistent to avoid lengthy index rebuilds on every restart
+# Data directory - stores search index, classification model, scratch files, and caches
+# Must be persistent to avoid lengthy index rebuilds and queue failures on restart
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -19,7 +19,7 @@ spec:
   storageClassName: longhorn-ssd
   resources:
     requests:
-      storage: 2Gi
+      storage: 5Gi
 ---
 # Media directory - stores original and archived documents
 apiVersion: v1
