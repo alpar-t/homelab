@@ -153,11 +153,7 @@ OnlyOffice is protected by **two layers**:
 
 ## TODO
 
-- [ ] **Verify storage configuration**: Check how user files are stored and whether we're using the correct persistent volumes (HDD for bulk storage vs SSD for metadata/search).
-
 - [ ] **Nextcloud migration**: Come up with a way to import files only (not metadata) from Nextcloud. Consider rsync to storage volume or oCIS import tools.
-
-- [ ] **Email setup**: Check the email/SMTP configuration and verify that notification emails are being sent correctly.
 
 ## Prerequisites in Pocket ID
 

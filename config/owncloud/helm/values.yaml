@@ -76,7 +76,7 @@ services:
       enabled: true
       chownInitContainer: true
       storageClassName: longhorn-hdd
-      size: 1500Gi
+      size: 3000Gi
     storageBackend:
       driver: ocis
   
