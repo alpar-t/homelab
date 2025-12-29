@@ -22,9 +22,12 @@ spec:
     initdb:
       database: immich
       owner: immich
-      postInitSQL:
+      # postInitTemplateSQL runs as postgres superuser on template1
+      # Extensions installed here are copied to new databases
+      postInitTemplateSQL:
         - CREATE EXTENSION IF NOT EXISTS vectors;
-        - CREATE EXTENSION IF NOT EXISTS earthdistance CASCADE;
+        - CREATE EXTENSION IF NOT EXISTS cube;
+        - CREATE EXTENSION IF NOT EXISTS earthdistance;
   
   storage:
     size: 10Gi
