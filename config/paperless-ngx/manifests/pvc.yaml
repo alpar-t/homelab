@@ -1,10 +1,25 @@
 # Paperless-ngx Persistent Volume Claims
 # Using SSD storage for better performance with 2.4GB dataset
-#
-# Note: No separate "data" PVC needed - that was for SQLite.
-# With PostgreSQL, the data directory only contains ephemeral files
-# like the search index which can be regenerated.
 
+---
+# Data directory - stores search index and classification model
+# Must be persistent to avoid lengthy index rebuilds on every restart
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: paperless-data
+  namespace: paperless-ngx
+  labels:
+    app: paperless-ngx
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 2Gi
 ---
 # Media directory - stores original and archived documents
 apiVersion: v1

@@ -220,6 +220,8 @@ spec:
               value: "true"
           
           volumeMounts:
+            - name: data
+              mountPath: /usr/src/paperless/data
             - name: media
               mountPath: /usr/src/paperless/media
             - name: export
@@ -235,12 +237,13 @@ spec:
               cpu: 2000m
               memory: 2Gi
           
-          # Startup probe - allows up to 10 minutes for initial startup
+          # Startup probe - allows up to 30 minutes for initial startup
+          # (index rebuild after updates can take a long time)
           startupProbe:
             httpGet:
               path: /
               port: http
-            failureThreshold: 60
+            failureThreshold: 180
             periodSeconds: 10
             timeoutSeconds: 10
           livenessProbe:
@@ -257,6 +260,9 @@ spec:
             timeoutSeconds: 10
       
       volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: paperless-data
         - name: media
           persistentVolumeClaim:
             claimName: paperless-media
