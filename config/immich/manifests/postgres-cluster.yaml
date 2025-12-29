@@ -43,6 +43,5 @@ spec:
       log_statement: "ddl"
       shared_buffers: "256MB"
       max_connections: "100"
-      # Required for pgvecto.rs
-      shared_preload_libraries: "vectors.so"
+      # Note: shared_preload_libraries is already set in the pgvecto.rs image
 
