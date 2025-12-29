@@ -1,0 +1,85 @@
+# Node-RED deployment
+# Low-code programming for event-driven applications
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodered
+  namespace: nodered
+  labels:
+    app: nodered
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # Required for RWO PVC
+  selector:
+    matchLabels:
+      app: nodered
+  template:
+    metadata:
+      labels:
+        app: nodered
+    spec:
+      # Node-RED runs as uid 1000 by default
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: nodered
+          image: nodered/node-red:latest
+          ports:
+            - name: http
+              containerPort: 1880
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Bucharest"
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: nodered-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodered
+  namespace: nodered
+  labels:
+    app: nodered
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  type: ClusterIP
+  selector:
+    app: nodered
+  ports:
+    - name: http
+      port: 1880
+      targetPort: 1880
+      protocol: TCP
+

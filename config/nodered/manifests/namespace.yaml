@@ -1,0 +1,8 @@
+# Node-RED namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nodered
+  labels:
+    app: nodered
+

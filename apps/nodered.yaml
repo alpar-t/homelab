@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nodered
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/alpar-t/homelab
+    targetRevision: main
+    path: config/nodered/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nodered
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
