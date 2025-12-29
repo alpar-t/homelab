@@ -84,7 +84,7 @@ spec:
       
       containers:
         - name: immich-server
-          image: ghcr.io/immich-app/immich-server:v1.123.0
+          image: ghcr.io/immich-app/immich-server:v2.4.1
           ports:
             - containerPort: 2283
               name: http
@@ -132,34 +132,11 @@ spec:
               value: "2283"
             
             # ===================
-            # OIDC Configuration (Pocket ID)
+            # OIDC Configuration
             # ===================
-            - name: OAUTH_ENABLED
-              value: "true"
-            - name: OAUTH_ISSUER_URL
-              value: "https://auth.newjoy.ro"
-            - name: OAUTH_CLIENT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: immich-oidc
-                  key: client_id
-            - name: OAUTH_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: immich-oidc
-                  key: client_secret
-            - name: OAUTH_SCOPE
-              value: "openid profile email"
-            - name: OAUTH_AUTO_REGISTER
-              value: "true"
-            - name: OAUTH_AUTO_LAUNCH
-              value: "false"
-            - name: OAUTH_BUTTON_TEXT
-              value: "Login with Pocket ID"
-            - name: OAUTH_MOBILE_OVERRIDE_ENABLED
-              value: "true"
-            - name: OAUTH_MOBILE_REDIRECT_URI
-              value: "app.immich:/"
+            # NOTE: In Immich v2.x, OIDC is configured via the Admin UI
+            # Go to: Administration → Settings → OAuth Authentication
+            # See README.md for setup instructions
             
             # ===================
             # Machine Learning Service

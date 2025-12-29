@@ -85,13 +85,21 @@ kubectl label node <node-name> immich.io/ml-node=true
      - `app.immich:/` (for mobile app)
 3. Copy the **Client ID** and **Client Secret**
 
-### 3. Create the OIDC Secret
+### 3. Configure OIDC in Immich Admin UI
 
-```bash
-kubectl create secret generic immich-oidc -n immich \
-  --from-literal=client_id="YOUR_CLIENT_ID" \
-  --from-literal=client_secret="YOUR_CLIENT_SECRET"
-```
+In Immich v2.x, OIDC is configured via the web interface:
+
+1. First, create a local admin account at https://photos.newjoy.ro
+2. Go to **Administration** → **Settings** → **OAuth Authentication**
+3. Enable OAuth and configure:
+   - **Issuer URL:** `https://auth.newjoy.ro`
+   - **Client ID:** (from Pocket ID)
+   - **Client Secret:** (from Pocket ID)
+   - **Scope:** `openid profile email`
+   - **Button Text:** `Login with Pocket ID`
+   - **Auto Register:** Enable
+   - **Mobile Redirect URI Override:** `app.immich:/`
+4. Save settings
 
 ### 4. Add DNS to Cloudflare Tunnel
 
