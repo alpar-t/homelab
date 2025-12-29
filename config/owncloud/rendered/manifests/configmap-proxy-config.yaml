@@ -36,6 +36,7 @@ data:
         - '''self'''
         - 'blob:'
         - "https://office.newjoy.ro/"
+        - "https://auth.newjoy.ro/"
       img-src:
         - '''self'''
         - 'data:'
