@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth2-proxy-onlyoffice
+  namespace: owncloud
+  labels:
+    app: oauth2-proxy-onlyoffice
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: oauth2-proxy-onlyoffice
+  template:
+    metadata:
+      labels:
+        app: oauth2-proxy-onlyoffice
+    spec:
+      # Spread across nodes for HA
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: oauth2-proxy-onlyoffice
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.13.0@sha256:56e3daedf765c7a1eea6e366fbe684be7d3084830ade14b6174570d3c7960954
+          args:
+            - --http-address=0.0.0.0:4180
+            - --reverse-proxy=true
+            # OIDC configuration
+            - --provider=oidc
+            - --oidc-issuer-url=https://auth.newjoy.ro
+            # Upstream (OnlyOffice Document Server)
+            # Note: Check `kubectl get svc -n owncloud` if service name differs
+            - --upstream=http://onlyoffice-docs.owncloud.svc.cluster.local:80
+            # Cookie configuration (stateless sessions)
+            - --cookie-secure=true
+            - --cookie-name=_oauth2_proxy_onlyoffice
+            - --cookie-domain=office.newjoy.ro
+            # Email/user validation
+            - --email-domain=*
+            - --insecure-oidc-allow-unverified-email=true
+            # Redirect configuration
+            - --redirect-url=https://office.newjoy.ro/oauth2/callback
+            # Skip auth for WOPI discovery endpoint (needed for oCIS to discover OnlyOffice capabilities)
+            # The actual document operations require WOPI tokens from oCIS
+            - --skip-auth-route=^/hosting/discovery$
+            # WebSocket support (OnlyOffice uses WebSockets for real-time collaboration)
+            - --proxy-websockets=true
+          env:
+            # oauth2-proxy reads these env vars directly
+            - name: OAUTH2_PROXY_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-onlyoffice
+                  key: client-id
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-onlyoffice
+                  key: client-secret
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-onlyoffice
+                  key: cookie-secret
+          ports:
+            - containerPort: 4180
+              name: http
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oauth2-proxy-onlyoffice
+  namespace: owncloud
+  labels:
+    app: oauth2-proxy-onlyoffice
+spec:
+  type: ClusterIP
+  selector:
+    app: oauth2-proxy-onlyoffice
+  ports:
+    - name: http
+      port: 4180
+      targetPort: 4180
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: onlyoffice
+  namespace: owncloud
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # WebSocket support
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$http_x_forwarded_for"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: office.newjoy.ro
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: oauth2-proxy-onlyoffice
+                port:
+                  number: 4180
+

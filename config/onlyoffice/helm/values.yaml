@@ -68,19 +68,10 @@ service:
   type: ClusterIP
   port: 80
 
-# Enable ingress for browser access
-# Security: OnlyOffice is protected by WOPI tokens from oCIS - only users with valid
-# oCIS sessions can open documents (oCIS generates time-limited WOPI access tokens)
+# Ingress disabled - handled by oauth2-proxy-onlyoffice for authentication
+# See config/oauth2-proxy-onlyoffice/README.md
 ingress:
-  enabled: true
-  ingressClassName: nginx
-  host: office.newjoy.ro
-  ssl:
-    enabled: false  # TLS handled by ingress-nginx
-  annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  enabled: false
 
 # Probes - OnlyOffice takes a while to start
 probes:

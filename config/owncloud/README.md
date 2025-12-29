@@ -105,11 +105,17 @@ Document editing is provided by OnlyOffice, deployed separately and exposed at `
 │                           User's Browser                              │
 │  ┌─────────────────────┐         ┌────────────────────────────────┐  │
 │  │ drive.newjoy.ro     │         │ office.newjoy.ro (iframe)     │  │
-│  │ (oCIS Web UI)       │ ──────► │ (OnlyOffice Document Server)  │  │
+│  │ (oCIS Web UI)       │ ──────► │ ← oauth2-proxy (Pocket ID)    │  │
 │  └─────────────────────┘         └────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────────┘
                 │                                │
-                │ WOPI Protocol                  │ WOPI Callback
+                │                                ▼
+                │                  ┌────────────────────────────────┐
+                │                  │ oauth2-proxy-onlyoffice        │
+                │                  │ (SSO authentication)           │
+                │                  └────────────────────────────────┘
+                │                                │
+                │ WOPI Protocol                  │ authenticated
                 ▼                                ▼
 ┌──────────────────────────────────────────────────────────────────────┐
 │                        Kubernetes Cluster                             │
@@ -122,12 +128,19 @@ Document editing is provided by OnlyOffice, deployed separately and exposed at `
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### Security
+### Security (Defense in Depth)
 
-OnlyOffice is publicly accessible but protected by WOPI tokens:
-- **WOPI Protocol**: When a user opens a document, oCIS generates a time-limited access token
-- **Token Validation**: OnlyOffice must present this token to fetch/save documents via WOPI callbacks
-- **No Direct Access**: Users cannot access documents directly through OnlyOffice without going through oCIS first
+OnlyOffice is protected by **two layers**:
+
+1. **oauth2-proxy** (Pocket ID SSO):
+   - All requests to `office.newjoy.ro` require authentication
+   - Uses same SSO as oCIS, so users are already authenticated
+   - See `config/oauth2-proxy-onlyoffice/README.md`
+
+2. **WOPI Protocol** (Document-level):
+   - When a user opens a document, oCIS generates a time-limited access token
+   - OnlyOffice must present this token to fetch/save documents via WOPI callbacks
+   - Users cannot access documents without a valid WOPI token from oCIS
 
 ### Configuration Files
 
@@ -136,6 +149,7 @@ OnlyOffice is publicly accessible but protected by WOPI tokens:
 | `helm/values.yaml` | Sets `uri: https://office.newjoy.ro` for browser access |
 | `rendered/manifests/deployment-collaboration-onlyoffice.yaml` | `COLLABORATION_APP_ADDR=https://office.newjoy.ro` |
 | `rendered/manifests/configmap-proxy-config.yaml` | CSP `frame-src` allows `https://office.newjoy.ro/` |
+| `../oauth2-proxy-onlyoffice/` | SSO authentication for OnlyOffice |
 
 ## TODO
 
