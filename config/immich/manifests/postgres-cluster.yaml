@@ -39,9 +39,11 @@ spec:
       cpu: "1000m"
   
   postgresql:
+    # shared_preload_libraries must be set via dedicated field, not parameters
+    shared_preload_libraries:
+      - "vectors.so"
     parameters:
       log_statement: "ddl"
       shared_buffers: "256MB"
       max_connections: "100"
-      # Note: shared_preload_libraries is already set in the pgvecto.rs image
 
