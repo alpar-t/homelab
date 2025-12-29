@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: oauth2-proxy-nodered
+  namespace: argocd
+  annotations:
+    # Run after nodered and pocket-id are deployed
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/alpar-t/homelab
+    targetRevision: main
+    path: config/oauth2-proxy-nodered/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: nodered
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+

@@ -6,7 +6,13 @@ Low-code programming for event-driven applications.
 
 - **Deployment**: Node-RED container with persistent storage
 - **PVC**: 1GB SSD storage for flows, credentials, and installed nodes
-- **Ingress**: Exposed at `nodered.newjoy.ro`
+- **Service**: ClusterIP on port 1880 (accessed via OAuth2 proxy)
+
+## Authentication
+
+Node-RED is protected by OAuth2 proxy with Pocket ID. See `config/oauth2-proxy-nodered/` for the authentication layer.
+
+**Access URL**: `https://nodered.newjoy.ro`
 
 ## Data Migration
 
@@ -42,29 +48,8 @@ Node-RED is configured with:
 - **Port**: 1880 (internal)
 - **User/Group**: 1000 (default Node-RED user)
 
-## Security Considerations
-
-Node-RED does not have authentication enabled by default. Consider:
-
-1. **Setting up authentication** in Node-RED's `settings.js`:
-   ```javascript
-   adminAuth: {
-       type: "credentials",
-       users: [{
-           username: "admin",
-           password: "$2b$08$...", // bcrypt hash
-           permissions: "*"
-       }]
-   }
-   ```
-
-2. **Using OAuth2 Proxy** for OIDC authentication (like other apps in this cluster):
-   - Copy the pattern from `oauth2-proxy-omada` or similar
-   - Add an oauth2-proxy deployment in front of Node-RED
-
 ## Resources
 
 - **CPU**: 100m request, 1000m limit
 - **Memory**: 256Mi request, 1Gi limit
 - **Storage**: 1Gi on SSD
-
