@@ -94,7 +94,7 @@ kubectl logs -n owncloud -l app=oauth2-proxy-onlyoffice -f
 # Verify secret exists
 kubectl get secret oauth2-proxy-onlyoffice -n owncloud
 
-# Check OnlyOffice service name (update deployment.yaml if different)
-kubectl get svc -n owncloud | grep -i docs
+# Check OnlyOffice service (should be 'documentserver' on port 80)
+kubectl get svc -n owncloud | grep documentserver
 ```
 

@@ -35,8 +35,7 @@ spec:
             - --provider=oidc
             - --oidc-issuer-url=https://auth.newjoy.ro
             # Upstream (OnlyOffice Document Server)
-            # Note: Check `kubectl get svc -n owncloud` if service name differs
-            - --upstream=http://onlyoffice-docs.owncloud.svc.cluster.local:80
+            - --upstream=http://documentserver.owncloud.svc.cluster.local:80
             # Cookie configuration (stateless sessions)
             - --cookie-secure=true
             - --cookie-name=_oauth2_proxy_onlyoffice
@@ -120,6 +119,11 @@ metadata:
     # WebSocket support
     nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
     nginx.ingress.kubernetes.io/upstream-hash-by: "$http_x_forwarded_for"
+    # Strip X-Frame-Options header from OnlyOffice to allow embedding in oCIS
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_hide_header X-Frame-Options;
+      # Add permissive frame-ancestors for oCIS embedding
+      add_header Content-Security-Policy "frame-ancestors 'self' https://drive.newjoy.ro;" always;
 spec:
   ingressClassName: nginx
   rules:
