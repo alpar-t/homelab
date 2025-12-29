@@ -259,16 +259,22 @@ kubectl get cluster immich-db -n immich
 kubectl get secret immich-db-app -n immich -o jsonpath='{.data.password}' | base64 -d
 ```
 
-## Environment Variables
+## Configuration
 
-Key configuration in `deployment.yaml`:
+In Immich v2.x, most settings are configured via the **Admin UI** rather than environment variables:
+
+- **OAuth/OIDC:** Administration → Settings → OAuth Authentication
+- **Machine Learning:** Administration → Settings → Machine Learning
+- **Storage Templates:** Administration → Settings → Storage Template
+- **Transcoding:** Administration → Settings → Video Transcoding
+
+Environment variables in `deployment.yaml` are primarily for:
 
 | Variable | Value | Description |
 |----------|-------|-------------|
-| `OAUTH_ENABLED` | true | Enable OIDC login |
-| `OAUTH_ISSUER_URL` | https://auth.newjoy.ro | Pocket ID URL |
-| `OAUTH_AUTO_REGISTER` | true | Auto-create users on first login |
-| `OAUTH_BUTTON_TEXT` | Login with Pocket ID | Login button text |
+| `DB_HOSTNAME` | immich-db-rw... | PostgreSQL service |
+| `REDIS_HOSTNAME` | redis... | Redis service |
+| `IMMICH_MACHINE_LEARNING_URL` | http://immich-ml... | ML service URL |
 | `LOG_LEVEL` | log | Logging verbosity |
 
 See [Immich Environment Variables](https://immich.app/docs/install/environment-variables) for full list.
