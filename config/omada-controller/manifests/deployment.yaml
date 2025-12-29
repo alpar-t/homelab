@@ -75,6 +75,11 @@ spec:
               containerPort: 29814
               hostPort: 29814
               protocol: TCP
+            # Device features (v6.0+)
+            - name: device-features
+              containerPort: 29817
+              hostPort: 29817
+              protocol: TCP
           volumeMounts:
             - name: omada-data
               mountPath: /opt/tplink/EAPController/data
