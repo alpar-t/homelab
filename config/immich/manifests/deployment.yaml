@@ -31,6 +31,10 @@ spec:
         # Auto-restart when OIDC secret changes (requires Reloader)
         secret.reloader.stakater.com/reload: "immich-oidc"
     spec:
+      # Security context for GPU access (Intel QSV/VAAPI hardware transcoding)
+      # GID 39 = video group, GID 105 = render group on CoreOS hosts
+      securityContext:
+        supplementalGroups: [39, 105]
       initContainers:
         # Create .immich marker files in each bucket for mount verification
         # These will be visible through the merged view
