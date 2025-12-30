@@ -11,6 +11,7 @@ metadata:
     app: nodered
     # Contains flows, credentials, installed nodes - user configuration
     data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:

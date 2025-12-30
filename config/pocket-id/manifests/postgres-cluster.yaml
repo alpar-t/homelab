@@ -26,6 +26,9 @@ spec:
   storage:
     size: 1Gi  # Small - just users, passkeys, and OIDC clients
     storageClass: longhorn-ssd
+    pvcTemplate:
+      labels:
+        recurring-job-group.longhorn.io/critical: enabled
   
   resources:
     requests:

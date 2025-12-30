@@ -13,6 +13,7 @@ metadata:
     app: vaultwarden
     # Contains attachments, sends, RSA keys - irreplaceable user data
     data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:

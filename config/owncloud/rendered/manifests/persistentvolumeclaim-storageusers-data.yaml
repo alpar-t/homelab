@@ -13,6 +13,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     # User file storage - irreplaceable user data
     data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
   finalizers:
     - kubernetes.io/pvc-protection
 spec:

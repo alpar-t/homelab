@@ -33,6 +33,7 @@ metadata:
     app: paperless-ngx
     # Original scanned documents - irreplaceable user data
     data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:

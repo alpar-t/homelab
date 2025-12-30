@@ -29,6 +29,7 @@ metadata:
     immich-library-bucket: "01"
     # Original photos and videos - irreplaceable user data
     data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
@@ -50,6 +51,7 @@ metadata:
     immich-library-bucket: "02"
     # Original photos and videos - irreplaceable user data
     data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
@@ -71,6 +73,7 @@ metadata:
     immich-library-bucket: "03"
     # Original photos and videos - irreplaceable user data
     data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
@@ -92,6 +95,7 @@ metadata:
     immich-library-bucket: "04"
     # Original photos and videos - irreplaceable user data
     data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
@@ -113,6 +117,7 @@ metadata:
     immich-library-bucket: "05"
     # Original photos and videos - irreplaceable user data
     data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
@@ -134,6 +139,7 @@ metadata:
     immich-library-bucket: "06"
     # Original photos and videos - irreplaceable user data
     data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
@@ -222,6 +228,7 @@ metadata:
     app: immich
     # User profile pictures - user-uploaded content
     data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
@@ -266,6 +273,7 @@ metadata:
     app: immich
     # Database and configuration backups - important for recovery
     data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:

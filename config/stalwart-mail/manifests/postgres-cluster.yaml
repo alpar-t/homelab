@@ -29,6 +29,9 @@ spec:
   storage:
     size: 5Gi  # Metadata only - blobs stored separately
     storageClass: longhorn-ssd
+    pvcTemplate:
+      labels:
+        recurring-job-group.longhorn.io/critical: enabled
   
   resources:
     requests:
