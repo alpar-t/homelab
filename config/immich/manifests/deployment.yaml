@@ -156,8 +156,11 @@ spec:
         - name: immich-server
           image: ghcr.io/immich-app/immich-server:v2.4.1
           # GPU access for hardware transcoding (Intel QSV/VAAPI)
+          # Requires seccomp unconfined for DRM ioctls on /dev/dri devices
           securityContext:
             privileged: false
+            seccompProfile:
+              type: Unconfined
           ports:
             - containerPort: 2283
               name: http
