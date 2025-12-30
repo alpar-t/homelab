@@ -1,0 +1,22 @@
+---
+# NetworkAttachmentDefinition for Longhorn storage network
+# Uses macvlan on enp1s0 (storage interface) with DHCP
+# Reference: https://longhorn.io/docs/1.10.1/advanced-resources/deploy/storage-network/
+apiVersion: k8s.cni.cncf.io/v1
+kind: NetworkAttachmentDefinition
+metadata:
+  name: longhorn-storage-network
+  namespace: longhorn-system
+spec:
+  config: |
+    {
+      "cniVersion": "0.3.1",
+      "name": "longhorn-storage-network",
+      "type": "macvlan",
+      "master": "enp1s0",
+      "mode": "bridge",
+      "ipam": {
+        "type": "dhcp"
+      }
+    }
+

@@ -68,6 +68,58 @@ Helm values are in `config/longhorn/values.yaml`. Key settings:
 - `defaultClassReplicaCount: 3` - Each volume has 3 replicas (one per node)
 - `defaultDataPath: /var/mnt/disk1` - Default storage location
 - `replicaAutoBalance: best-effort` - Automatically balance replicas across nodes
+- `storageNetwork: longhorn-system/longhorn-storage-network` - Dedicated network for replica traffic
+
+## Storage Network
+
+Longhorn is configured to use a dedicated storage network (`enp1s0` / 192.168.42.0/24) for replica traffic, keeping it separate from the management network (`enp2s0` / 192.168.1.0/24).
+
+This requires:
+1. **Multus CNI** - Installed via `apps/multus.yaml`
+2. **NetworkAttachmentDefinition** - Defined in `config/longhorn/manifests/storage-network.yaml`
+
+### How it works
+
+- Multus enables pods to have multiple network interfaces
+- Longhorn's instance-manager pods get an additional interface on the storage network
+- Replica synchronization traffic flows through this dedicated network
+- Management/API traffic continues to use the default cluster network
+
+### Verifying storage network is working
+
+Check that instance-manager pods have the storage network annotation:
+
+```bash
+kubectl get pods -n longhorn-system -l longhorn.io/component=instance-manager -o jsonpath='{range .items[*]}{.metadata.name}: {.metadata.annotations.k8s\.v1\.cni\.cncf\.io/networks}{"\n"}{end}'
+```
+
+Check traffic on the storage interface (should show significant RX/TX):
+
+```bash
+for node in pufi buksi pamacs; do
+  echo "=== $node ==="
+  ssh core@${node}.local "ip -s link show enp1s0 | head -8"
+done
+```
+
+### Troubleshooting
+
+If instance-manager pods fail to start after enabling storage network:
+
+```bash
+# Check pod events
+kubectl describe pods -n longhorn-system -l longhorn.io/component=instance-manager
+
+# Verify Multus is running
+kubectl get pods -n kube-system -l app=multus
+
+# Verify NetworkAttachmentDefinition exists
+kubectl get net-attach-def -n longhorn-system
+```
+
+References:
+- [Longhorn Storage Network docs](https://longhorn.io/docs/1.10.1/advanced-resources/deploy/storage-network/)
+- [Multus CNI](https://github.com/k8snetworkplumbingwg/multus-cni)
 
 ## Accessing the UI
 
