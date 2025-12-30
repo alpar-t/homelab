@@ -4,8 +4,9 @@
 # Handles: authentication, uploads, API, background jobs
 # All persistent data is stored in PVCs
 #
-# Hardware Transcoding: Intel Quick Sync (QSV) / VAAPI enabled via /dev/dri passthrough
+# Hardware Transcoding: Intel Quick Sync (QSV) / VAAPI enabled via Intel GPU Device Plugin
 # Odroid H3+/Ultra use Intel Celeron N5105 with UHD Graphics (Jasper Lake)
+# GPU access is provided by requesting gpu.intel.com/i915 resource
 
 apiVersion: apps/v1
 kind: Deployment
@@ -31,10 +32,6 @@ spec:
         # Auto-restart when OIDC secret changes (requires Reloader)
         secret.reloader.stakater.com/reload: "immich-oidc"
     spec:
-      # Security context for GPU access (Intel QSV/VAAPI hardware transcoding)
-      # GID 39 = video group, GID 105 = render group on CoreOS hosts
-      securityContext:
-        supplementalGroups: [39, 105]
       initContainers:
         # Create .immich marker files in each bucket for mount verification
         # These will be visible through the merged view
@@ -156,11 +153,10 @@ spec:
         - name: immich-server
           image: ghcr.io/immich-app/immich-server:v2.4.1
           # GPU access for hardware transcoding (Intel QSV/VAAPI)
-          # Requires seccomp unconfined for DRM ioctls on /dev/dri devices
+          # GPU is provided by Intel GPU Device Plugin via gpu.intel.com/i915 resource
           securityContext:
             privileged: false
-            seccompProfile:
-              type: Unconfined
+            allowPrivilegeEscalation: false
           ports:
             - containerPort: 2283
               name: http
@@ -249,17 +245,17 @@ spec:
             # Import staging area
             - name: import
               mountPath: /import
-            # Intel GPU for hardware transcoding (QSV/VAAPI)
-            - name: dri
-              mountPath: /dev/dri
           
           resources:
             requests:
               cpu: 200m
               memory: 512Mi
+              # GPU provided by Intel GPU Device Plugin
+              gpu.intel.com/i915: 1
             limits:
               cpu: 2000m
               memory: 2Gi
+              gpu.intel.com/i915: 1
           
           # Startup probe - allows up to 10 minutes for initial startup
           # Immich will refuse to start if library mount is missing (.immich check is built-in)
@@ -327,11 +323,8 @@ spec:
         - name: import
           persistentVolumeClaim:
             claimName: immich-import
-        # Intel GPU device for hardware transcoding
-        - name: dri
-          hostPath:
-            path: /dev/dri
-            type: Directory
+        # Note: Intel GPU device is injected by Intel GPU Device Plugin
+        # via CDI when gpu.intel.com/i915 resource is requested
 ---
 # Immich Server Service (ClusterIP - internal access via Ingress)
 apiVersion: v1

@@ -1,0 +1,8 @@
+# Intel GPU Device Plugin Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: intel-gpu-plugin
+  labels:
+    app.kubernetes.io/name: intel-gpu-plugin
+

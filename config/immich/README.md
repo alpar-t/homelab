@@ -371,9 +371,35 @@ See [Immich Environment Variables](https://immich.app/docs/install/environment-v
 The Odroid H3+/Ultra nodes have Intel Celeron N5105 CPUs with integrated Intel UHD Graphics (Jasper Lake).
 This enables hardware-accelerated video transcoding via **Intel Quick Sync (QSV)** or **VAAPI**.
 
-### What's Enabled
+### Prerequisites
 
-The deployment passes through `/dev/dri` to the Immich server container, giving it access to the Intel GPU.
+Hardware transcoding requires the **Intel GPU Device Plugin** to be installed in the cluster.
+The plugin exposes Intel GPUs as schedulable Kubernetes resources (`gpu.intel.com/i915`).
+
+```bash
+# Verify the GPU plugin is running
+kubectl get pods -n intel-gpu-plugin
+
+# Verify GPUs are detected on nodes
+kubectl get nodes -o=jsonpath="{range .items[*]}{.metadata.name}{'\n'}{' i915: '}{.status.allocatable.gpu\.intel\.com/i915}{'\n'}"
+```
+
+See `config/intel-gpu-plugin/README.md` for plugin documentation.
+
+### How It Works
+
+The Immich server deployment requests a GPU resource:
+
+```yaml
+resources:
+  limits:
+    gpu.intel.com/i915: 1
+```
+
+The Intel GPU Device Plugin automatically:
+- Mounts `/dev/dri` devices into the container
+- Sets proper SELinux contexts for device access
+- Handles all permissions without privileged mode
 
 **Supported codecs (hardware accelerated):**
 - H.264 (encode/decode)
@@ -398,14 +424,14 @@ After deploying, configure hardware transcoding in the Immich web interface:
 
 ```bash
 # Check GPU is visible in the pod
-kubectl exec -n immich deploy/immich-server -- ls -la /dev/dri
+kubectl exec -n immich deploy/immich-server -c immich-server -- ls -la /dev/dri
 
 # Expected output:
 # crw-rw---- 1 root video 226,   0 ... card0
 # crw-rw---- 1 root video 226, 128 ... renderD128
 
 # Check Intel GPU info (if vainfo is available)
-kubectl exec -n immich deploy/immich-server -- vainfo 2>/dev/null || echo "vainfo not in image, but GPU should still work"
+kubectl exec -n immich deploy/immich-server -c immich-server -- vainfo 2>/dev/null || echo "vainfo not in image, but GPU should still work"
 ```
 
 ### Benefits
@@ -413,6 +439,7 @@ kubectl exec -n immich deploy/immich-server -- vainfo 2>/dev/null || echo "vainf
 - **~10x faster** transcoding compared to CPU
 - **Lower power consumption** - GPU is more efficient than CPU for video
 - **Reduced CPU load** - leaves CPU free for other tasks (ML, thumbnails)
+- **No privileged containers** - GPU access via device plugin is secure
 
 ## TODO
 
