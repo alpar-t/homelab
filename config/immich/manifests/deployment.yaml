@@ -29,15 +29,23 @@ spec:
         secret.reloader.stakater.com/reload: "immich-oidc"
     spec:
       initContainers:
-        # Create .immich marker files for mount verification
-        # Immich uses these to detect if volumes are properly mounted vs empty directories
-        - name: init-mount-markers
+        # Create .immich marker files in each bucket for mount verification
+        # These will be visible through the merged view
+        - name: init-bucket-markers
           image: busybox:1.36@sha256:6b219909078e3fc93b81f83cb438bd7a5457984a01a478c76fe9777a8c67c39e
           command:
             - 'sh'
             - '-c'
             - |
-              for dir in /mnt/library /mnt/upload /mnt/thumbs /mnt/encoded-video /mnt/profile /mnt/backups; do
+              # Create markers in each library bucket
+              for dir in /mnt/library-buckets/*; do
+                if [ -d "$dir" ] && [ ! -f "$dir/.immich" ]; then
+                  echo "Creating mount marker in $dir"
+                  touch "$dir/.immich"
+                fi
+              done
+              # Create markers in other volumes
+              for dir in /mnt/upload /mnt/thumbs /mnt/encoded-video /mnt/profile /mnt/backups; do
                 if [ ! -f "$dir/.immich" ]; then
                   echo "Creating mount marker in $dir"
                   touch "$dir/.immich"
@@ -45,8 +53,18 @@ spec:
               done
               echo "Mount markers ready!"
           volumeMounts:
-            - name: library
-              mountPath: /mnt/library
+            - name: library-bucket-01
+              mountPath: /mnt/library-buckets/01
+            - name: library-bucket-02
+              mountPath: /mnt/library-buckets/02
+            - name: library-bucket-03
+              mountPath: /mnt/library-buckets/03
+            - name: library-bucket-04
+              mountPath: /mnt/library-buckets/04
+            - name: library-bucket-05
+              mountPath: /mnt/library-buckets/05
+            - name: library-bucket-06
+              mountPath: /mnt/library-buckets/06
             - name: upload
               mountPath: /mnt/upload
             - name: thumbs
@@ -83,6 +101,51 @@ spec:
               echo "Redis is ready!"
       
       containers:
+        # MergerFS sidecar - combines library buckets into unified view
+        # Uses 'lfs' policy: fills buckets one-by-one (least free space first)
+        - name: mergerfs
+          image: ghcr.io/hotio/mergerfs:release-2.40.2
+          securityContext:
+            privileged: true  # Required for FUSE mount
+          command:
+            - mergerfs
+            - '-f'  # Foreground mode (required for container)
+            - '-o'
+            - 'defaults,allow_other,use_ino,cache.files=partial,dropcacheonclose=true,category.create=lfs,minfreespace=10G'
+            - '/mnt/library-buckets/01:/mnt/library-buckets/02:/mnt/library-buckets/03:/mnt/library-buckets/04:/mnt/library-buckets/05:/mnt/library-buckets/06'
+            - '/mnt/merged-library'
+          volumeMounts:
+            - name: library-bucket-01
+              mountPath: /mnt/library-buckets/01
+            - name: library-bucket-02
+              mountPath: /mnt/library-buckets/02
+            - name: library-bucket-03
+              mountPath: /mnt/library-buckets/03
+            - name: library-bucket-04
+              mountPath: /mnt/library-buckets/04
+            - name: library-bucket-05
+              mountPath: /mnt/library-buckets/05
+            - name: library-bucket-06
+              mountPath: /mnt/library-buckets/06
+            - name: merged-library
+              mountPath: /mnt/merged-library
+              mountPropagation: Bidirectional
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+          livenessProbe:
+            exec:
+              command: ['test', '-d', '/mnt/merged-library']
+            periodSeconds: 30
+          readinessProbe:
+            exec:
+              command: ['test', '-d', '/mnt/merged-library']
+            periodSeconds: 10
+
         - name: immich-server
           image: ghcr.io/immich-app/immich-server:v2.4.1
           ports:
@@ -151,9 +214,10 @@ spec:
               value: "log"
           
           volumeMounts:
-            # Main library - original photos/videos
-            - name: library
+            # Merged library - unified view of all library buckets via mergerfs
+            - name: merged-library
               mountPath: /usr/src/app/upload/library
+              mountPropagation: HostToContainer
             # Upload buffer - incoming files
             - name: upload
               mountPath: /usr/src/app/upload/upload
@@ -182,10 +246,12 @@ spec:
               memory: 2Gi
           
           # Startup probe - allows up to 10 minutes for initial startup
+          # Immich will refuse to start if library mount is missing (.immich check is built-in)
           startupProbe:
             httpGet:
               path: /api/server/ping
               port: http
+            initialDelaySeconds: 10  # Give mergerfs time to mount
             failureThreshold: 60
             periodSeconds: 10
             timeoutSeconds: 5
@@ -203,9 +269,30 @@ spec:
             timeoutSeconds: 5
       
       volumes:
-        - name: library
+        # EmptyDir for merged library mount point
+        # MergerFS mounts here, combining all library buckets
+        - name: merged-library
+          emptyDir: {}
+        # Library bucket PVCs - combined by mergerfs sidecar
+        - name: library-bucket-01
           persistentVolumeClaim:
-            claimName: immich-library
+            claimName: immich-library-01
+        - name: library-bucket-02
+          persistentVolumeClaim:
+            claimName: immich-library-02
+        - name: library-bucket-03
+          persistentVolumeClaim:
+            claimName: immich-library-03
+        - name: library-bucket-04
+          persistentVolumeClaim:
+            claimName: immich-library-04
+        - name: library-bucket-05
+          persistentVolumeClaim:
+            claimName: immich-library-05
+        - name: library-bucket-06
+          persistentVolumeClaim:
+            claimName: immich-library-06
+        # Other storage volumes
         - name: upload
           persistentVolumeClaim:
             claimName: immich-upload

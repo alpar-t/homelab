@@ -29,8 +29,8 @@ A high-performance, self-hosted alternative to Google Photos with ML-powered fea
 ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
 │  PostgreSQL     │ │     Redis       │ │   Immich ML     │ │     Storage     │
 │  (CloudNativePG)│ │  (Job Queue)    │ │  ────────────   │ │  ────────────   │
-│  ─────────────  │ │  ────────────   │ │  Face Detect    │ │  Library: 3TB   │
-│  HA: 2 replicas │ │  Replicas: 1    │ │  Face Recog     │ │  (HDD, 2 repl)  │
+│  ─────────────  │ │  ────────────   │ │  Face Detect    │ │  Library: 8     │
+│  HA: 2 replicas │ │  Replicas: 1    │ │  Face Recog     │ │  buckets (HDD)  │
 │  SSD: 10Gi      │ │  Memory: 256Mi  │ │  CLIP Search    │ │  Thumbs: 100Gi  │
 └─────────────────┘ └─────────────────┘ │  ────────────   │ │  (SSD, 2 repl)  │
                                         │  Memory: 8Gi    │ └─────────────────┘
@@ -49,9 +49,39 @@ A high-performance, self-hosted alternative to Google Photos with ML-powered fea
 
 ## Storage Layout
 
+### Library Bucket Architecture
+
+Instead of a single large library volume, we use multiple fixed-size 500Gi "bucket" PVCs.
+This allows each bucket to fit on any node (all nodes have >500Gi available) while
+providing 2-replica redundancy across different nodes.
+
+| Bucket PVC | Size |
+|------------|------|
+| `immich-library-01` | 500Gi |
+| `immich-library-02` | 500Gi |
+| `immich-library-03` | 500Gi |
+| `immich-library-04` | 500Gi |
+| `immich-library-05` | 500Gi |
+| `immich-library-06` | 500Gi |
+
+**Total: 3TB** (easily expandable by adding more buckets)
+
+**How it works:**
+- A **mergerfs sidecar** combines all buckets into a unified view at `/usr/src/app/upload/library`
+- Uses the `lfs` (least free space) policy: fills buckets one-by-one
+- When bucket-01 fills up, new files go to bucket-02, and so on
+- Immich sees a single directory, unaware of the underlying bucket structure
+
+**Benefits:**
+- **True node redundancy:** Each 500Gi bucket fits on any node (pamacs has 2.7TB)
+- **Incremental recovery:** Lose one bucket = lose 500GB, not your entire 3TB library
+- **Simple scaling:** Just add more `immich-library-XX` PVCs when needed
+- **Balanced disk usage:** Data spreads across all HDDs in the cluster
+
+### Other Storage Volumes
+
 | Volume | Size | Class | Replicas | Purpose |
 |--------|------|-------|----------|---------|
-| library | 3000Gi | HDD | 2 | Original photos/videos, RAW files |
 | thumbs | 100Gi | SSD | 2 | Generated thumbnails |
 | upload | 50Gi | SSD | 1 | Incoming upload buffer |
 | encoded-video | 500Gi | HDD | 1 | Transcoded videos (regenerable) |
@@ -59,6 +89,38 @@ A high-performance, self-hosted alternative to Google Photos with ML-powered fea
 | backups | 10Gi | SSD | 2 | Database and configuration backups |
 | import | 500Gi | HDD | 1 | Bulk import staging area |
 | model-cache | 10Gi | SSD | 2 | ML model cache |
+
+## Adding More Storage Buckets
+
+When you need more storage, add a new 500Gi bucket:
+
+1. Add a new PVC in `pvc.yaml`:
+   ```yaml
+   ---
+   apiVersion: v1
+   kind: PersistentVolumeClaim
+   metadata:
+     name: immich-library-07
+     namespace: immich
+     labels:
+       app: immich
+       immich-library-bucket: "07"
+   spec:
+     accessModes:
+       - ReadWriteOnce
+     storageClassName: longhorn-hdd
+     resources:
+       requests:
+         storage: 500Gi
+   ```
+
+2. Update `deployment.yaml` to add the new bucket to:
+   - The mergerfs sidecar's command (add `:/mnt/library-buckets/07`)
+   - The mergerfs sidecar's volumeMounts
+   - The init-bucket-markers volumeMounts
+   - The volumes section
+
+3. Sync via ArgoCD - Immich will restart and the new bucket will be available
 
 ## First Time Setup
 
@@ -119,23 +181,24 @@ Add `photos.newjoy.ro` to your Cloudflare tunnel configuration.
 
 ## Importing Existing Photos
 
-### Method 1: Bulk Import via kubectl (Recommended for Large Collections)
+### Method 1: Bulk Import via kubectl (Recommended for Photoprism Migration)
+
+Use the import volume to stage large photo collections:
 
 ```bash
-# Step 1: Copy photos to the import volume
-# (Run from a machine with your photos)
-kubectl cp ~/Photos/vacation-2023 immich/immich-server-xxx:/import/vacation-2023
+# Copy photos to the import volume (from local machine or Photoprism export)
+kubectl cp ~/Photos immich/immich-server-xxx:/import/
 
-# Or use rsync for better progress (requires kubectl exec)
-kubectl exec -n immich deploy/immich-server -- mkdir -p /import/my-photos
-# Then rsync via a port-forward or direct access
+# Or use rsync for large transfers with progress
+kubectl exec -n immich deploy/immich-server -- mkdir -p /import/photos
+rsync -avP ~/Photos/ user@node:/path/to/import/
 
-# Step 2: Use the Immich web UI to create an External Library
+# Create an External Library in Immich:
 # Go to: Administration → External Libraries → Create Library
 # Import Path: /import
-# This will scan and import all photos
+# Immich will scan and import all photos
 
-# Step 3: After import, optionally clean up the import folder
+# After import completes, clean up the staging area
 kubectl exec -n immich deploy/immich-server -- rm -rf /import/*
 ```
 
