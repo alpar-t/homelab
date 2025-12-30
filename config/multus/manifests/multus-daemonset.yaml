@@ -199,6 +199,26 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
       initContainers:
+        - name: install-cni-plugins
+          image: docker.io/rancher/hardened-cni-plugins:v1.5.1-build20241022
+          command: ["sh", "-c"]
+          args:
+            - |
+              cp /opt/cni/bin/macvlan /host/cni-bin/ 2>/dev/null || true
+              cp /opt/cni/bin/dhcp /host/cni-bin/ 2>/dev/null || true
+              cp /opt/cni/bin/static /host/cni-bin/ 2>/dev/null || true
+              cp /opt/cni/bin/host-local /host/cni-bin/ 2>/dev/null || true
+              ls -la /host/cni-bin/macvlan && echo "CNI plugins installed successfully"
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "15Mi"
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: cnibin
+              mountPath: /host/cni-bin
+              mountPropagation: Bidirectional
         - name: install-multus-binary
           image: ghcr.io/k8snetworkplumbingwg/multus-cni:snapshot-thick
           command:
