@@ -1,0 +1,29 @@
+# Home Assistant PostgreSQL Scheduled Backups
+# Managed by CloudNativePG operator
+#
+# Weekly base backups - sensor history is less critical than identity data
+# WAL archiving still provides continuous protection between base backups
+
+---
+# Weekly base backup on Sundays at 4:00 AM
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: homeassistant-db-weekly
+  namespace: homeassistant
+  labels:
+    app: homeassistant
+spec:
+  # Weekly on Sundays at 4:00 AM
+  schedule: "0 4 * * 0"
+  
+  # Which cluster to backup
+  cluster:
+    name: homeassistant-db
+  
+  # Backup ownership - if cluster is deleted, backups are retained
+  backupOwnerReference: none
+  
+  # Immediately trigger first backup when created
+  immediate: true
+
