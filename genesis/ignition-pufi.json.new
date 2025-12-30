@@ -1,0 +1,203 @@
+{
+  "ignition": {
+    "version": "3.4.0"
+  },
+  "passwd": {
+    "users": [
+      {
+        "groups": [
+          "wheel",
+          "sudo"
+        ],
+        "name": "core",
+        "sshAuthorizedKeys": [
+          "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC19mID/0WbEK9NlUryTWg/l5K1BfPF6Y5DjiA+JL1CZzJGt6g7kJO/uUm0/bA84wobll/ZOtwvmRPr24cpJYoTq0j3biGSK2qxd8Geq1hKlMw08InHD41xJidWfvNRJLPCfb5Q2XW69TDkYHMQW5D0o4bel3QB4o+4hDDjGQzfL/RO1w5hio54pGRWd0M5uK3CrRy64nYRDJGlBfChk9jrnKOmMAksE/Dl6uZmmz+GSPQy3bCLsoSisjDpKH/jA9xdm3jmNl6pb5ylh4v/MuyhssmdioyQXoz81pfUeHMb0BxJxGuMspgKN7yYvdUdSPF0LsgOp2VVMjW8UoCtSG0P alpar@modulo"
+        ]
+      }
+    ]
+  },
+  "storage": {
+    "directories": [
+      {
+        "path": "/var/mnt/disk1",
+        "mode": 493
+      },
+      {
+        "path": "/var/mnt/disk2",
+        "mode": 493
+      }
+    ],
+    "files": [
+      {
+        "path": "/etc/systemd/resolved.conf.d/no-stub.conf",
+        "contents": {
+          "compression": "",
+          "source": "data:,%5BResolve%5D%0ADNSStubListener%3Dno%0A"
+        },
+        "mode": 420
+      },
+      {
+        "path": "/usr/local/bin/install-avahi.sh",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/5RTTavbMBC8+1dM86AfENntuxYCpaXQSy/tH5Dtdby8tZRK66SG/Pgiy0lemhdKTwZ5Z2ZnNHp4VdXsqtrGvige8Lmn5gncwe5tz+AIK4FsO4FdVCtCbcEdwm6A+bUMbVC1tK/cKILHzesPH6E9uQKgpvdYfZqHbmhWaeA3K94XHSfpb/lPJl3nj1HvJa5hXQsXoxlaF9H5gFJ8YwWBopdR2bsiiy0k7LbIuml4+PL9R3WDKMtylXR/hgnG2N1OJiO8J3Qcoq5Rj4rWuzeKzrKkTDgdUExHBx+eliCMjxqITs6uuYyxIv5g2NlG00GO7Jm5i6+UHY5QIlR7Gyrx2yoPLtSl+O2L4Z5DxYG1v9ogxVwA2aZ6kLO10BxoVBsUbwfe9grns6lbhncFEKeoNDQqZ/y8V2tp8K6MFPbcEB43lyIcj9Aw0hU2C/4HdF78upILcG5mo6MVmRBG59htC6SpixxH8zz0vyU3d1p7He0iN69OLeLYNBRjN4pMc4Ml0g3mch1zhzJDCvjEYnBgEdTzZiw50U4pIFDtvSbmjouFPFN/tZwY1Z+LlsVu7msNDVN6AFGta21oT4C58HipsvdLebdo/7aQXvXywP8EAAD//5a9tJ5lBAAA"
+        },
+        "mode": 493
+      },
+      {
+        "path": "/etc/NetworkManager/system-connections/enp2s0.nmconnection",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/1SOwWpDIRBF9/MvikoJKQ+/JGQx1dsXoY7imwTe3xcli5azGw5n7i01ESQtTe5UcoT0cDhTWXhHhSjp2RGhDwyBUhHF+OYEI1zx1omf2t6hqOOJvwfTR2mj6Bm9c0S30l8fd6rQR8txepTliP4zWH+5Wm+DC5u3i+1qFxuVXdqAmbqZ+nqyWpf/Lc55mB1iasuIh/LXD+aCF6eTfgMAAP//zHxp7O0AAAA="
+        },
+        "mode": 384
+      },
+      {
+        "path": "/etc/NetworkManager/system-connections/enp1s0.nmconnection",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/1TMQWrEMAxG4b3uYkihFLrwSUIWqv0nMcSSkZWAb1/CZDGzfXy8OakIkheVhUqOkPbVp9BdjTeQj4YI32ECpyIOWzkhCFc8lvh0fS7R7cR7CM2KWvERfyeiubTre6EK3zXHm1HlEVYuR1z56HiRn0/COVvYIKFqRuzOfwfu78Vp0H8AAAD//7bU8Y/AAAAA"
+        },
+        "mode": 384
+      },
+      {
+        "path": "/etc/hostname",
+        "contents": {
+          "compression": "",
+          "source": "data:,pufi%0A"
+        },
+        "mode": 420
+      },
+      {
+        "path": "/etc/avahi/avahi-daemon.conf",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/1zQQY7qMAwG4L3vEqk8Kt7MIidBXZjEERYhruy0FXP60aS0ArqyP/9NrJyNdCYd4CpWXcE7+XFKDFHuyGWFLAEzTEaOx7n3D7KtObUGc5bFcamkCQOZpzL+sw4ilccHH6wDxUqZ71zX2YzZTUbBH7r2vcwvk1ptDnBeOJJDJRyACl4yuV3aFnAep0tmuw7wLBzGqGRG1gKbXrkkeZNF9GYVK0t58/URnqcrpUyhiu737+KL/AXa0jbAWrggSr7buogVfX/47o9dv1ky/nmJFEmcyf8/fW1iFcPt868yqgR/hN8AAAD//7YJm1O7AQAA"
+        },
+        "mode": 420
+      },
+      {
+        "path": "/etc/avahi/services/workstation.service",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/1SOwUrEMBCG732KMSB7aqNHYZo96B5FYffSUxmSwQbTJCSxtW8vrbXgaX5mvvn48fw9Opg4ZRt8Kx6bBwG5kDfkguf25MPprCq8e3l7vnXvF8icJqu5/kjhK8K1u94uryBoosHW+60xxQhV4T9UVQDoaWRIHB1prmfrjKZkcisWzkLdDyhXYCP33zUDYFkiq34O6TMXKjb4pi86otz2v0gMqagnlNtcDfJQHPGvyU8AAAD//zGT+Kn0AAAA"
+        },
+        "mode": 420
+      },
+      {
+        "path": "/usr/local/bin/install-k3s.sh",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/2TOwUrEMBDG8XufYuweJQ0liwchB5EeimUFK+JBWJLsdDskppKZrhcfXnRhL3v9/r/Dt7nRnrL2judqA31mcSlBNFyFtSRQPA0wi3zxvdZHlCYabmiBH/ioAPrd+PowDPsnM+7fupexf97Z+tQ2pm3MbTTc1lese+8ebc1YTlj+I4BSB2LnE1opDieKV/sfp4DJX8p3IUEVV49hyRMd1edyQHu33V5ESCsLFkWZ5HyDZ1DVbwAAAP//5DUFDvAAAAA="
+        },
+        "mode": 493
+      },
+      {
+        "path": "/etc/sysctl.d/99-longhorn.conf",
+        "contents": {
+          "compression": "",
+          "source": "data:,%23%20Longhorn%20requirements%0Avm.max_map_count%20%3D%20262144%0Afs.inotify.max_user_instances%20%3D%208192%0Afs.inotify.max_user_watches%20%3D%20524288%0A"
+        },
+        "mode": 420
+      },
+      {
+        "path": "/etc/modules-load.d/longhorn.conf",
+        "contents": {
+          "compression": "",
+          "source": "data:,iscsi_tcp%0A"
+        },
+        "mode": 420
+      },
+      {
+        "path": "/usr/local/bin/get-storage-ip",
+        "contents": {
+          "compression": "",
+          "source": "data:;base64,IyEvYmluL2Jhc2gKIyBHZXQgdGhlIElQdjQgYWRkcmVzcyBvZiBlbnAxczAgKHN0b3JhZ2UgbmV0d29yaykKaXAgLTQgYWRkciBzaG93IGVucDFzMCB8IGdyZXAgLW9QICcoPzw9aW5ldFxzKVxkKyhcLlxkKyl7M30nIHwgaGVhZCAtbjEK"
+        },
+        "mode": 493
+      },
+      {
+        "path": "/usr/local/bin/publish-cluster-alias",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/0zOz0rEMBDH8XueYky9xj6BB9HetIitZ5kkIxkYkpJJ/MOy774s3YU9/uAD399wN3rOo0dNZoD37oU1QZCujar75UiAwqigBVAEcomkUEm3kiO0cqUPUgKKGWBNrEAZvZxd6Tm6WjxneJkX0PYvBBgCqZrn189lnT6+5qe36dF6/GtUrcEfTOy2/Yjb2/b+cIuPe8yC3fo3X4Y5BQAA//99wH1jygAAAA=="
+        },
+        "mode": 493
+      },
+      {
+        "path": "/etc/zincati/config.d/51-cluster-updates.toml",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/2SQMWvjQBBG+/0VH1JtoztzjcGFiyuOw3chcZoYY8ba8WpAmnV2Z2P074NwlBSpFhbeex9T40W0JROUqydjZEtkHEZcYsLfcuakbJzR9iUbJ1fjz+7h/+N++2+/xpNRCJyQ+ByjZVjEQKJGojOA1xJTGZw73AP56Go8Z8aVk0Qv7Vdxgaj9+CGDL0k03H2spC3jJurjLbtPYoNq1lTOHebEcv5c3onj1Nx9E62xwnaHBX5NTx9b6mEysKvxm9oOGj0jsGUQvFwunFgNnka8CSGw8jRjIUHFJOoyd87TmLHBAdW+KxWOLhslO03WaWyzWjdN5XrWYN1pEC3TaTf48bNx7wEAAP//C8ElIooBAAA="
+        },
+        "mode": 420
+      }
+    ],
+    "filesystems": [
+      {
+        "device": "/dev/sdb",
+        "format": "ext4",
+        "label": "longhorn-disk1",
+        "wipeFilesystem": false
+      },
+      {
+        "device": "/dev/sdc",
+        "format": "ext4",
+        "label": "longhorn-disk2",
+        "wipeFilesystem": false
+      }
+    ],
+    "links": [
+      {
+        "overwrite": true,
+        "path": "/etc/resolv.conf",
+        "target": "/run/systemd/resolve/resolv.conf"
+      }
+    ]
+  },
+  "systemd": {
+    "units": [
+      {
+        "contents": "[Unit]\nDescription=Mount Longhorn Disk 1\nBefore=local-fs.target\n\n[Mount]\nWhat=/dev/disk/by-label/longhorn-disk1\nWhere=/var/mnt/disk1\nType=ext4\nOptions=defaults,noatime\n\n[Install]\nWantedBy=local-fs.target\n",
+        "enabled": true,
+        "name": "var-mnt-disk1.mount"
+      },
+      {
+        "contents": "[Unit]\nDescription=Mount Longhorn Disk 2\nBefore=local-fs.target\n\n[Mount]\nWhat=/dev/disk/by-label/longhorn-disk2\nWhere=/var/mnt/disk2\nType=ext4\nOptions=defaults,noatime\n\n[Install]\nWantedBy=local-fs.target\n",
+        "enabled": true,
+        "name": "var-mnt-disk2.mount"
+      },
+      {
+        "contents": "[Unit]\nDescription=Install Avahi for mDNS resolution\nWants=network-online.target\nAfter=network-online.target\nBefore=avahi-daemon.service publish-cluster-alias.service\nConditionPathExists=!/var/lib/avahi-installed\n\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/local/bin/install-avahi.sh\nExecStartPost=/usr/bin/touch /var/lib/avahi-installed\n# Don't mark as failed if script returns non-zero\n# The script handles errors internally\nSuccessExitStatus=0 1\n\n[Install]\nWantedBy=multi-user.target\n",
+        "enabled": true,
+        "name": "install-avahi.service"
+      },
+      {
+        "enabled": true,
+        "name": "avahi-daemon.service"
+      },
+      {
+        "contents": "[Unit]\nDescription=Publish cluster-wide mDNS alias\nAfter=avahi-daemon.service\nRequires=avahi-daemon.service\n\n[Service]\nType=simple\nExecStart=/usr/local/bin/publish-cluster-alias\nRestart=always\nRestartSec=10\n\n[Install]\nWantedBy=multi-user.target\n",
+        "enabled": true,
+        "name": "publish-cluster-alias.service"
+      },
+      {
+        "contents": "[Unit]\nDescription=Lightweight Kubernetes\nDocumentation=https://k3s.io\nWants=network-online.target avahi-daemon.service\nAfter=network-online.target avahi-daemon.service\n\n[Service]\nType=notify\nEnvironmentFile=-/etc/default/%N\nEnvironmentFile=-/etc/sysconfig/%N\nKillMode=process\nDelegate=yes\n# Having non-zero Limit*s causes performance problems due to accounting overhead\n# in the kernel. We recommend using cgroups to do container-local accounting.\nLimitNOFILE=1048576\nLimitNPROC=infinity\nLimitCORE=infinity\nTasksMax=infinity\nTimeoutStartSec=0\nRestart=always\nRestartSec=5s\n\n# Priority settings to keep k3s responsive under high load\n# Ensures kubelet stays responsive even when workloads consume all CPU\nNice=-10\nCPUWeight=10000\nIOWeight=1000\nOOMScoreAdjust=-900\n\nExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service 2\u003e/dev/null'\nExecStartPre=-/sbin/modprobe br_netfilter\nExecStartPre=-/sbin/modprobe overlay\nExecStartPre=/usr/local/bin/install-k3s.sh\nExecStart=/usr/local/bin/k3s server\n\n[Install]\nWantedBy=multi-user.target\n",
+        "enabled": true,
+        "name": "k3s.service"
+      },
+      {
+        "enabled": true,
+        "name": "systemd-modules-load.service"
+      },
+      {
+        "enabled": true,
+        "name": "systemd-sysctl.service"
+      },
+      {
+        "enabled": true,
+        "name": "zincati.service"
+      }
+    ]
+  }
+}
