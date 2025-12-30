@@ -170,10 +170,9 @@ spec:
             - name: cni
               mountPath: /host/var/lib/rancher/k3s/agent/etc/cni/net.d
             # multus-daemon expects that cnibin path must be identical between pod and container host.
-            # e.g. if the cni bin is in '/opt/cni/bin' on the container host side, then it should be mount to '/opt/cni/bin' in multus-daemon,
-            # not to any other directory, like '/opt/bin' or '/usr/bin'.
+            # K3s uses /var/lib/rancher/k3s/data/current/bin for CNI binaries
             - name: cnibin
-              mountPath: /opt/cni/bin
+              mountPath: /var/lib/rancher/k3s/data/current/bin
             - name: host-run
               mountPath: /host/run
             - name: host-var-lib-cni-multus
@@ -205,7 +204,7 @@ spec:
           command:
             - "/usr/src/multus-cni/bin/install_multus"
             - "-d"
-            - "/host/opt/cni/bin"
+            - "/host/var/lib/rancher/k3s/data/current/bin"
             - "-t"
             - "thick"
           resources:
@@ -217,7 +216,7 @@ spec:
           terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
             - name: cnibin
-              mountPath: /host/opt/cni/bin
+              mountPath: /host/var/lib/rancher/k3s/data/current/bin
               mountPropagation: Bidirectional
       terminationGracePeriodSeconds: 10
       volumes:
@@ -226,7 +225,7 @@ spec:
             path: /var/lib/rancher/k3s/agent/etc/cni/net.d
         - name: cnibin
           hostPath:
-            path: /opt/cni/bin
+            path: /var/lib/rancher/k3s/data/current/bin
         - name: hostroot
           hostPath:
             path: /
