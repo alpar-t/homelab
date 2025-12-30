@@ -1,0 +1,38 @@
+# Velero - Kubernetes Resource Backup
+# Backs up secrets, CRDs, and cluster resources to Backblaze B2
+#
+# NOTE: This does NOT backup volume data - Longhorn handles that.
+# Velero protects what ArgoCD can't recreate: imperatively-created secrets,
+# operator-generated resources, and CRD instances.
+#
+# Prerequisites:
+#   See config/velero/README.md for secret creation
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: velero
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://vmware-tanzu.github.io/helm-charts
+      chart: velero
+      targetRevision: 8.1.0
+      helm:
+        valueFiles:
+          - $values/config/velero/values.yaml
+    - repoURL: https://github.com/alpar-t/homelab
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: velero
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+

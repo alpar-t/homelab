@@ -1,0 +1,62 @@
+# Velero Helm Values
+# Resources-only backup - Longhorn handles volume data
+
+initContainers:
+  - name: velero-plugin-for-aws
+    image: velero/velero-plugin-for-aws:v1.10.1
+    imagePullPolicy: IfNotPresent
+    volumeMounts:
+      - mountPath: /target
+        name: plugins
+
+configuration:
+  backupStorageLocation:
+    - name: default
+      provider: aws
+      bucket: homelab-velero-backup
+      config:
+        region: eu-central-003
+        s3ForcePathStyle: "true"
+        s3Url: https://s3.eu-central-003.backblazeb2.com
+
+  # NO volume snapshots - Longhorn handles PVC data
+  volumeSnapshotLocation: []
+  defaultVolumesToFsBackup: false
+
+# Daily backup of all Kubernetes resources (except volume data)
+schedules:
+  daily-resources:
+    disabled: false
+    schedule: "0 4 * * *"
+    useOwnerReferencesInBackup: false
+    template:
+      ttl: "720h"  # 30 days retention
+      includedNamespaces:
+        - "*"
+      # Exclude volume-related resources - Longhorn backs these up
+      excludedResources:
+        - persistentvolumeclaims
+        - persistentvolumes
+        - volumesnapshots
+        - volumesnapshotcontents
+      includeClusterResources: true
+      snapshotVolumes: false
+
+# Use existing secret for B2 credentials
+credentials:
+  useSecret: true
+  existingSecret: velero-b2-credentials
+
+# Lightweight - only backing up YAML, not data
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# Node scheduling - can run on any node
+nodeSelector: {}
+tolerations: []
+
