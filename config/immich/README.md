@@ -304,6 +304,9 @@ kubectl top pod -n immich -l app=immich-ml
 
 ### Upload Failures
 
+**Cloudflare 100MB limit:** Cloudflare Free plan has a 100MB upload limit. For larger files,
+use the direct LAN service (see below).
+
 ```bash
 # Check ingress allows large uploads
 kubectl describe ingress immich -n immich | grep body-size
@@ -311,6 +314,27 @@ kubectl describe ingress immich -n immich | grep body-size
 # Check upload volume has space
 kubectl exec -n immich deploy/immich-server -- df -h /usr/src/app/upload/upload
 ```
+
+### Uploading Large Files (>100MB)
+
+The Cloudflare tunnel has a 100MB upload limit. For larger files, use the direct LAN service:
+
+```bash
+# Direct LAN access (bypasses Cloudflare)
+# Available at: http://192.168.1.203:2283
+
+# Configure immich CLI for LAN uploads:
+immich login http://192.168.1.203:2283 <your-api-key>
+
+# Then upload normally
+immich upload --recursive /path/to/large/videos
+```
+
+The LAN service is exposed via MetalLB at `192.168.1.201:2283`. This works from any machine
+on your local network (e.g., corvus uploading from `/srv/photoprism/originals`).
+
+**Note:** You'll need to configure the mobile app separately if you want LAN uploads there too.
+Most mobile videos stay under 100MB with default compression settings.
 
 ### Database Connection Issues
 

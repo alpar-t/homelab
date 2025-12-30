@@ -112,6 +112,7 @@ metadata:
 | Service | IP | Port | Purpose |
 |---------|-----|------|---------|
 | homeassistant-db-external | 192.168.1.200 | 5432 | PostgreSQL for HA Green |
+| immich-server-lan | 192.168.1.203 | 2283 | Immich LAN access (bypasses Cloudflare 100MB limit) |
 
 ## IP Planning
 
@@ -122,8 +123,10 @@ Suggested allocation for your homelab:
 | 192.168.1.1-199 | DHCP / Static devices |
 | 192.168.1.200-220 | MetalLB pool |
 | 192.168.1.200 | Home Assistant DB |
-| 192.168.1.201 | (reserved for future) |
-| ... | ... |
+| 192.168.1.201 | Paperless FTP |
+| 192.168.1.202 | Pi-hole DNS |
+| 192.168.1.203 | Immich LAN (large uploads) |
+| 192.168.1.204+ | (reserved for future) |
 
 **Adjust based on your network configuration!**
 
