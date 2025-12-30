@@ -72,11 +72,22 @@ Helm values are in `config/longhorn/values.yaml`. Key settings:
 
 ## Storage Network
 
-Longhorn is configured to use a dedicated storage network (`enp1s0` / 192.168.42.0/24) for replica traffic, keeping it separate from the management network (`enp2s0` / 192.168.1.0/24).
+Longhorn uses a dedicated storage network (`enp1s0` / 192.168.42.0/24) for replica traffic, keeping it separate from the management network (`enp2s0` / 192.168.1.0/24).
+
+**IP Assignment:** Uses `whereabouts` IPAM (range: 192.168.42.20-190) for cluster-wide IP coordination.
+
+### Why whereabouts?
+
+| IPAM Type | How it works | Problem |
+|-----------|--------------|---------|
+| DHCP | External server assigns IPs | Lease expiration causes pod failures |
+| host-local | Each node assigns from same range | Different nodes can assign same IP → conflict |
+| **whereabouts** | Stores allocations in K8s CRDs | ✓ Cluster-wide coordination, no conflicts |
 
 This requires:
 1. **Multus CNI** - Installed via `apps/multus.yaml`
-2. **NetworkAttachmentDefinition** - Defined in `config/longhorn/manifests/storage-network.yaml`
+2. **Whereabouts** - Installed via `apps/whereabouts.yaml`
+3. **NetworkAttachmentDefinition** - Defined in `config/longhorn/manifests/storage-network.yaml`
 
 ### How it works
 

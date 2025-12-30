@@ -1,0 +1,35 @@
+---
+# Whereabouts - Cluster-wide IPAM for CNI
+# Stores IP allocations in Kubernetes CRDs to prevent conflicts across nodes
+# Required for Longhorn storage network with reliable IP assignment
+# Reference: https://github.com/k8snetworkplumbingwg/whereabouts
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: whereabouts
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    # Install CRDs
+    - repoURL: https://github.com/k8snetworkplumbingwg/whereabouts
+      targetRevision: v0.8.0
+      path: doc/crds
+      directory:
+        recurse: true
+    # Install DaemonSet and RBAC
+    - repoURL: https://github.com/k8snetworkplumbingwg/whereabouts
+      targetRevision: v0.8.0
+      path: doc/daemonset-install
+      directory:
+        recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false
+

@@ -5,7 +5,7 @@ defaultSettings:
   storageMinimalAvailablePercentage: 10
   # Create default disk on labeled nodes only
   createDefaultDiskLabeledNodes: true
-  # Use dedicated storage network for replica traffic
+  # Use dedicated storage network for replica traffic (static IPs, not DHCP)
   # Requires Multus CNI to be installed first
   # Reference: https://longhorn.io/docs/1.10.1/advanced-resources/deploy/storage-network/
   storageNetwork: longhorn-system/longhorn-storage-network
