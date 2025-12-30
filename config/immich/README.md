@@ -342,9 +342,56 @@ Environment variables in `deployment.yaml` are primarily for:
 
 See [Immich Environment Variables](https://immich.app/docs/install/environment-variables) for full list.
 
+## Hardware Transcoding
+
+The Odroid H3+/Ultra nodes have Intel Celeron N5105 CPUs with integrated Intel UHD Graphics (Jasper Lake).
+This enables hardware-accelerated video transcoding via **Intel Quick Sync (QSV)** or **VAAPI**.
+
+### What's Enabled
+
+The deployment passes through `/dev/dri` to the Immich server container, giving it access to the Intel GPU.
+
+**Supported codecs (hardware accelerated):**
+- H.264 (encode/decode)
+- HEVC/H.265 (encode/decode)
+- VP9 (encode/decode)
+- AV1 (decode only)
+
+### Configure in Admin UI
+
+After deploying, configure hardware transcoding in the Immich web interface:
+
+1. Go to **Administration** → **Settings** → **Video Transcoding**
+2. Set **Hardware Acceleration** to: `qsv` (Quick Sync) or `vaapi`
+3. Recommended settings:
+   - **Acceleration API:** `qsv` (preferred) or `vaapi`
+   - **Video Codec:** `hevc` (better compression) or `h264` (more compatible)
+   - **Preset:** `medium` (hardware is fast, no need for ultrafast)
+   - **Target Resolution:** `1080` or `720` depending on your needs
+   - **CRF:** 23-28 (lower = better quality, larger files)
+
+### Verify GPU Access
+
+```bash
+# Check GPU is visible in the pod
+kubectl exec -n immich deploy/immich-server -- ls -la /dev/dri
+
+# Expected output:
+# crw-rw---- 1 root video 226,   0 ... card0
+# crw-rw---- 1 root video 226, 128 ... renderD128
+
+# Check Intel GPU info (if vainfo is available)
+kubectl exec -n immich deploy/immich-server -- vainfo 2>/dev/null || echo "vainfo not in image, but GPU should still work"
+```
+
+### Benefits
+
+- **~10x faster** transcoding compared to CPU
+- **Lower power consumption** - GPU is more efficient than CPU for video
+- **Reduced CPU load** - leaves CPU free for other tasks (ML, thumbnails)
+
 ## TODO
 
-- [ ] **Video Transcoding:** Review and configure hardware acceleration settings in Administration → Settings → Video Transcoding. Consider enabling VAAPI/QSV if your nodes have Intel GPUs, or configure software transcoding limits to prevent CPU overload.
 - [ ] **Import Photos:** Start importing existing photo library - see "Importing Existing Photos" section above for methods (bulk import via kubectl, Immich CLI, or web upload).
 
 ## Upgrading

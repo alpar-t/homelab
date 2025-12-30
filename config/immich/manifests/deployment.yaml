@@ -3,6 +3,9 @@
 #
 # Handles: authentication, uploads, API, background jobs
 # All persistent data is stored in PVCs
+#
+# Hardware Transcoding: Intel Quick Sync (QSV) / VAAPI enabled via /dev/dri passthrough
+# Odroid H3+/Ultra use Intel Celeron N5105 with UHD Graphics (Jasper Lake)
 
 apiVersion: apps/v1
 kind: Deployment
@@ -148,6 +151,9 @@ spec:
 
         - name: immich-server
           image: ghcr.io/immich-app/immich-server:v2.4.1
+          # GPU access for hardware transcoding (Intel QSV/VAAPI)
+          securityContext:
+            privileged: false
           ports:
             - containerPort: 2283
               name: http
@@ -236,6 +242,9 @@ spec:
             # Import staging area
             - name: import
               mountPath: /import
+            # Intel GPU for hardware transcoding (QSV/VAAPI)
+            - name: dri
+              mountPath: /dev/dri
           
           resources:
             requests:
@@ -311,6 +320,11 @@ spec:
         - name: import
           persistentVolumeClaim:
             claimName: immich-import
+        # Intel GPU device for hardware transcoding
+        - name: dri
+          hostPath:
+            path: /dev/dri
+            type: Directory
 ---
 # Immich Server Service
 apiVersion: v1
