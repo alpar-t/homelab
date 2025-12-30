@@ -205,14 +205,24 @@ spec:
           command: ["sh", "-c"]
           args:
             - |
-              # Install to both K3s CNI paths
+              # Install additional CNI plugins (macvlan, dhcp, static)
               cp /opt/cni/bin/macvlan /host/cni-bin/ 2>/dev/null || true
               cp /opt/cni/bin/dhcp /host/cni-bin/ 2>/dev/null || true
               cp /opt/cni/bin/static /host/cni-bin/ 2>/dev/null || true
+              # Copy to cni-symlinks dir, replacing symlinks with actual binaries
+              # K3s uses symlinks that don't work within Multus chroot
               cp /opt/cni/bin/macvlan /host/cni-symlinks/ 2>/dev/null || true
               cp /opt/cni/bin/dhcp /host/cni-symlinks/ 2>/dev/null || true
               cp /opt/cni/bin/static /host/cni-symlinks/ 2>/dev/null || true
-              ls -la /host/cni-symlinks/macvlan && echo "CNI plugins installed successfully"
+              # Copy K3s builtin CNI plugins as real binaries (replacing symlinks)
+              cp -f /host/cni-bin/flannel /host/cni-symlinks/ 2>/dev/null || true
+              cp -f /host/cni-bin/bridge /host/cni-symlinks/ 2>/dev/null || true
+              cp -f /host/cni-bin/portmap /host/cni-symlinks/ 2>/dev/null || true
+              cp -f /host/cni-bin/bandwidth /host/cni-symlinks/ 2>/dev/null || true
+              cp -f /host/cni-bin/host-local /host/cni-symlinks/ 2>/dev/null || true
+              cp -f /host/cni-bin/loopback /host/cni-symlinks/ 2>/dev/null || true
+              cp -f /host/cni-bin/firewall /host/cni-symlinks/ 2>/dev/null || true
+              ls -la /host/cni-symlinks/flannel && echo "CNI plugins installed successfully"
           resources:
             requests:
               cpu: "10m"
