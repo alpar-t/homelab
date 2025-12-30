@@ -1,6 +1,9 @@
 ---
 # NetworkAttachmentDefinition for Longhorn storage network
-# Uses macvlan on enp1s0 (storage interface) with DHCP
+# Uses macvlan on enp1s0 (storage interface) with static IPs via host-local
+# This ensures pods get consistent IPs from a defined range,
+# preventing stale IP issues during replica rebuilds.
+# Range: 192.168.42.32-63 (/27) - DHCP uses 200+ so no conflict
 # Reference: https://longhorn.io/docs/1.10.1/advanced-resources/deploy/storage-network/
 apiVersion: k8s.cni.cncf.io/v1
 kind: NetworkAttachmentDefinition
@@ -16,7 +19,8 @@ spec:
       "master": "enp1s0",
       "mode": "bridge",
       "ipam": {
-        "type": "dhcp"
+        "type": "host-local",
+        "ranges": [[{"subnet": "192.168.42.0/24", "rangeStart": "192.168.42.32", "rangeEnd": "192.168.42.63"}]]
       }
     }
 
