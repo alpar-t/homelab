@@ -39,14 +39,20 @@ Velero backs up Kubernetes resources (Secrets, CRDs, ConfigMaps) to Backblaze B2
 
 ## Prerequisites
 
-### 1. Create B2 Bucket
+### 1. B2 Bucket
 
-Create a new bucket in Backblaze B2 for Velero backups:
-- Bucket name: `homelab-velero-backup`
-- Region: `eu-central-003` (same as Longhorn)
-- Privacy: Private
+Velero reuses the existing Longhorn bucket with a `velero/` prefix:
+- Bucket: `homelab-longhorn-backup`
+- Prefix: `velero/`
+- Region: `eu-central-003`
 
-You can reuse the same application key as Longhorn, or create a dedicated one.
+Bucket structure:
+```
+homelab-longhorn-backup/
+├── backupstore/     # Longhorn volume backups
+├── cnpg/            # PostgreSQL backups  
+└── velero/          # Velero resource backups
+```
 
 ### 2. Create the Secret
 
@@ -165,7 +171,8 @@ aws_secret_access_key=<your-secret>"
 velero install \
   --provider aws \
   --plugins velero/velero-plugin-for-aws:v1.10.1 \
-  --bucket homelab-velero-backup \
+  --bucket homelab-longhorn-backup \
+  --prefix velero \
   --secret-file <(kubectl get secret velero-b2-credentials -n velero -o jsonpath='{.data.cloud}' | base64 -d) \
   --backup-location-config region=eu-central-003,s3ForcePathStyle=true,s3Url=https://s3.eu-central-003.backblazeb2.com \
   --use-volume-snapshots=false

@@ -23,7 +23,8 @@ configuration:
   backupStorageLocation:
     - name: default
       provider: aws
-      bucket: homelab-velero-backup
+      bucket: homelab-longhorn-backup
+      prefix: velero  # Store in velero/ subfolder alongside Longhorn backups
       config:
         region: eu-central-003
         s3ForcePathStyle: "true"
