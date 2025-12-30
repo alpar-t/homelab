@@ -5,6 +5,8 @@ metadata:
   namespace: stalwart-mail
   labels:
     app: stalwart
+    # Email attachments and blobs - irreplaceable user data
+    data-criticality: critical
 spec:
   accessModes:
     - ReadWriteOnce

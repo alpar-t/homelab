@@ -5,6 +5,8 @@ metadata:
   namespace: tandoor
   labels:
     app: tandoor
+    # Recipe images - user-uploaded content
+    data-criticality: critical
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:

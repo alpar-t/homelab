@@ -3,6 +3,10 @@ kind: PersistentVolumeClaim
 metadata:
   name: omada-data
   namespace: omada-controller
+  labels:
+    app: omada
+    # Network controller configuration - critical for network management
+    data-criticality: critical
 spec:
   accessModes:
     - ReadWriteOnce
@@ -16,6 +20,10 @@ kind: PersistentVolumeClaim
 metadata:
   name: omada-logs
   namespace: omada-controller
+  labels:
+    app: omada
+    # Logs - ephemeral, recreated automatically
+    data-criticality: rebuildable
 spec:
   accessModes:
     - ReadWriteOnce

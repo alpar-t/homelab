@@ -11,6 +11,8 @@ metadata:
     app.kubernetes.io/instance: ocis
     app.kubernetes.io/version: "7.1.4"
     app.kubernetes.io/managed-by: Helm
+    # Search index - can be rebuilt from user files
+    data-criticality: rebuildable
   finalizers:
     - kubernetes.io/pvc-protection
 spec:

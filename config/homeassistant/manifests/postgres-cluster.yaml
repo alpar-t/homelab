@@ -9,6 +9,10 @@ kind: Cluster
 metadata:
   name: homeassistant-db
   namespace: homeassistant
+  labels:
+    app: homeassistant
+    # Sensor history and automation data - historical value
+    data-criticality: critical
 spec:
   # Single instance - HA recorder doesn't need database HA
   # If database is down, Home Assistant continues (just no history recording)

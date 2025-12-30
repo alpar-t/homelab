@@ -8,6 +8,10 @@ kind: Cluster
 metadata:
   name: onlyoffice-postgresql
   namespace: owncloud
+  labels:
+    app: onlyoffice
+    # Document server session state
+    data-criticality: critical
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
 spec:

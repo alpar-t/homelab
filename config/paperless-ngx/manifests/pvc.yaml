@@ -11,6 +11,8 @@ metadata:
   namespace: paperless-ngx
   labels:
     app: paperless-ngx
+    # Search index and caches - can be rebuilt from media
+    data-criticality: rebuildable
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
@@ -29,6 +31,8 @@ metadata:
   namespace: paperless-ngx
   labels:
     app: paperless-ngx
+    # Original scanned documents - irreplaceable user data
+    data-criticality: critical
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
@@ -47,6 +51,8 @@ metadata:
   namespace: paperless-ngx
   labels:
     app: paperless-ngx
+    # Exports - can be regenerated from media
+    data-criticality: rebuildable
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
@@ -66,6 +72,8 @@ metadata:
   namespace: paperless-ngx
   labels:
     app: paperless-ngx
+    # Temporary staging area - files move to media after processing
+    data-criticality: rebuildable
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:

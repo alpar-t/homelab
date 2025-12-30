@@ -8,6 +8,10 @@ kind: Cluster
 metadata:
   name: paperless-db
   namespace: paperless-ngx
+  labels:
+    app: paperless-ngx
+    # Document metadata and OCR data - irreplaceable
+    data-criticality: critical
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:

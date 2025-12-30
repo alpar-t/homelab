@@ -9,6 +9,8 @@ metadata:
   namespace: nodered
   labels:
     app: nodered
+    # Contains flows, credentials, installed nodes - user configuration
+    data-criticality: critical
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:

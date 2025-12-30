@@ -3,6 +3,10 @@ kind: PersistentVolumeClaim
 metadata:
   name: pihole-data
   namespace: pihole
+  labels:
+    app: pihole
+    # Cache data - regenerated automatically on startup
+    data-criticality: rebuildable
 spec:
   accessModes:
     - ReadWriteOnce

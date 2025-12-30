@@ -9,6 +9,10 @@ kind: Cluster
 metadata:
   name: stalwart-db
   namespace: stalwart-mail
+  labels:
+    app: stalwart
+    # Email metadata and accounts - irreplaceable user data
+    data-criticality: critical
 spec:
   # Single instance - mail can tolerate brief DB downtime
   instances: 1

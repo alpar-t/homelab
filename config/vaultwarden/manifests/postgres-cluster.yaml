@@ -11,6 +11,10 @@ kind: Cluster
 metadata:
   name: vaultwarden-db
   namespace: vaultwarden
+  labels:
+    app: vaultwarden
+    # Password vault database - irreplaceable user data
+    data-criticality: critical
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:

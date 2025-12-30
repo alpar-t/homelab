@@ -11,6 +11,8 @@ metadata:
     app.kubernetes.io/instance: ocis
     app.kubernetes.io/version: "7.1.4"
     app.kubernetes.io/managed-by: Helm
+    # User identity and permissions - important user data
+    data-criticality: critical
   finalizers:
     - kubernetes.io/pvc-protection
 spec:

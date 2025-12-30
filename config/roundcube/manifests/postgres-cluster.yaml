@@ -5,6 +5,8 @@ metadata:
   namespace: roundcube
   labels:
     app: roundcube
+    # Webmail settings and contacts - user data
+    data-criticality: critical
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:

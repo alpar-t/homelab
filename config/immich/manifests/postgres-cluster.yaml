@@ -9,6 +9,10 @@ kind: Cluster
 metadata:
   name: immich-db
   namespace: immich
+  labels:
+    app: immich
+    # Photo library metadata - irreplaceable user data
+    data-criticality: critical
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:

@@ -8,6 +8,10 @@ kind: Cluster
 metadata:
   name: tandoor-db
   namespace: tandoor
+  labels:
+    app: tandoor
+    # Recipe database - user-curated data
+    data-criticality: critical
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:

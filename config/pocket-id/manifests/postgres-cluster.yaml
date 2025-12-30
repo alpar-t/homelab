@@ -6,6 +6,10 @@ kind: Cluster
 metadata:
   name: pocket-id-db
   namespace: pocket-id
+  labels:
+    app: pocket-id
+    # Identity provider - users, passkeys, OIDC clients
+    data-criticality: critical
 spec:
   # HA: 2 instances with automatic failover
   instances: 2
