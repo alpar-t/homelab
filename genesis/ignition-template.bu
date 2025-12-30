@@ -23,7 +23,22 @@ storage:
     - path: /var/mnt/disk2
       mode: 0755
 
+  links:
+    # Use upstream DNS directly instead of stub resolver
+    # Avoids potential systemd-resolved stub listener issues
+    - path: /etc/resolv.conf
+      target: /run/systemd/resolve/resolv.conf
+      overwrite: true
+
   files:
+    # Disable systemd-resolved stub listener, use upstream DNS directly
+    - path: /etc/systemd/resolved.conf.d/no-stub.conf
+      mode: 0644
+      contents:
+        inline: |
+          [Resolve]
+          DNSStubListener=no
+
     # Install Avahi on first boot
     - path: /usr/local/bin/install-avahi.sh
       mode: 0755
@@ -79,7 +94,7 @@ storage:
           
           [ipv4]
           method=auto
-          dns=1.1.1.1;8.8.8.8;
+          dns=192.168.1.202;1.1.1.1;8.8.8.8;
           ignore-auto-dns=true
           
           [ipv6]
