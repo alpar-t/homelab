@@ -204,11 +204,14 @@ spec:
           command: ["sh", "-c"]
           args:
             - |
+              # Install to both K3s CNI paths
               cp /opt/cni/bin/macvlan /host/cni-bin/ 2>/dev/null || true
               cp /opt/cni/bin/dhcp /host/cni-bin/ 2>/dev/null || true
               cp /opt/cni/bin/static /host/cni-bin/ 2>/dev/null || true
-              cp /opt/cni/bin/host-local /host/cni-bin/ 2>/dev/null || true
-              ls -la /host/cni-bin/macvlan && echo "CNI plugins installed successfully"
+              cp /opt/cni/bin/macvlan /host/cni-symlinks/ 2>/dev/null || true
+              cp /opt/cni/bin/dhcp /host/cni-symlinks/ 2>/dev/null || true
+              cp /opt/cni/bin/static /host/cni-symlinks/ 2>/dev/null || true
+              ls -la /host/cni-symlinks/macvlan && echo "CNI plugins installed successfully"
           resources:
             requests:
               cpu: "10m"
@@ -219,14 +222,18 @@ spec:
             - name: cnibin
               mountPath: /host/cni-bin
               mountPropagation: Bidirectional
+            - name: cni-symlinks
+              mountPath: /host/cni-symlinks
+              mountPropagation: Bidirectional
         - name: install-multus-binary
           image: ghcr.io/k8snetworkplumbingwg/multus-cni:snapshot-thick
-          command:
-            - "/usr/src/multus-cni/bin/install_multus"
-            - "-d"
-            - "/host/var/lib/rancher/k3s/data/current/bin"
-            - "-t"
-            - "thick"
+          command: ["sh", "-c"]
+          args:
+            - |
+              # Install multus-shim to both K3s CNI paths
+              /usr/src/multus-cni/bin/install_multus -d /host/cni-bin -t thick
+              cp /host/cni-bin/multus-shim /host/cni-symlinks/multus-shim
+              ls -la /host/cni-symlinks/multus-shim && echo "Multus installed successfully"
           resources:
             requests:
               cpu: "10m"
@@ -236,7 +243,10 @@ spec:
           terminationMessagePolicy: FallbackToLogsOnError
           volumeMounts:
             - name: cnibin
-              mountPath: /host/var/lib/rancher/k3s/data/current/bin
+              mountPath: /host/cni-bin
+              mountPropagation: Bidirectional
+            - name: cni-symlinks
+              mountPath: /host/cni-symlinks
               mountPropagation: Bidirectional
       terminationGracePeriodSeconds: 10
       volumes:
@@ -246,6 +256,9 @@ spec:
         - name: cnibin
           hostPath:
             path: /var/lib/rancher/k3s/data/current/bin
+        - name: cni-symlinks
+          hostPath:
+            path: /var/lib/rancher/k3s/data/cni
         - name: hostroot
           hostPath:
             path: /
