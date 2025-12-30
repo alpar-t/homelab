@@ -10,19 +10,10 @@ metadata:
   namespace: argocd
 spec:
   project: default
-  sources:
-    # Install CRDs
-    - repoURL: https://github.com/k8snetworkplumbingwg/whereabouts
-      targetRevision: v0.8.0
-      path: doc/crds
-      directory:
-        recurse: true
-    # Install DaemonSet and RBAC
-    - repoURL: https://github.com/k8snetworkplumbingwg/whereabouts
-      targetRevision: v0.8.0
-      path: doc/daemonset-install
-      directory:
-        recurse: true
+  source:
+    repoURL: https://github.com/k8snetworkplumbingwg/whereabouts
+    targetRevision: v0.8.0
+    path: doc/crds
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system
