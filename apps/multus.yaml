@@ -9,9 +9,20 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/alpar-t/homelab
-    targetRevision: main
-    path: config/multus/manifests
+    repoURL: https://rke2-charts.rancher.io
+    chart: rke2-multus
+    targetRevision: v4.2.202
+    helm:
+      values: |
+        config:
+          fullnameOverride: multus
+          cni_conf:
+            confDir: /var/lib/rancher/k3s/agent/etc/cni/net.d
+            binDir: /var/lib/rancher/k3s/data/cni/
+            kubeconfig: /var/lib/rancher/k3s/agent/etc/cni/net.d/multus.d/multus.kubeconfig
+            multusAutoconfigDir: /var/lib/rancher/k3s/agent/etc/cni/net.d
+        manifests:
+          dhcpDaemonSet: true
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system
@@ -19,4 +30,3 @@ spec:
     automated:
       prune: true
       selfHeal: true
-
