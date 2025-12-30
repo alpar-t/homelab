@@ -1,8 +1,6 @@
 defaultSettings:
   defaultDataPath: /var/mnt/disk1
-  # Backblaze B2 backup target (S3-compatible)
-  backupTarget: "s3://homelab-longhorn-backup@eu-central-003/"
-  backupTargetCredentialSecret: backblaze-backup-credentials
+  # Backup target configured via BackupTarget CRD (see manifests/backuptarget.yaml)
   replicaAutoBalance: best-effort
   storageMinimalAvailablePercentage: 10
   # Create default disk on labeled nodes only

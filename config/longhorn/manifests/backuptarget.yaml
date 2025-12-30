@@ -1,0 +1,25 @@
+# Longhorn Backup Target - Backblaze B2
+# Managed via GitOps - do not edit manually
+#
+# Prerequisites:
+# 1. Create the secret with B2 credentials:
+#    kubectl create secret generic backblaze-backup-credentials \
+#      --namespace=longhorn-system \
+#      --from-literal=AWS_ACCESS_KEY_ID=<your-key-id> \
+#      --from-literal=AWS_SECRET_ACCESS_KEY=<your-application-key> \
+#      --from-literal=AWS_ENDPOINTS=https://s3.eu-central-003.backblazeb2.com
+
+apiVersion: longhorn.io/v1beta2
+kind: BackupTarget
+metadata:
+  name: default
+  namespace: longhorn-system
+spec:
+  # Backblaze B2 S3-compatible endpoint
+  # Format: s3://bucket-name@region/
+  backupTargetURL: "s3://homelab-longhorn-backup@eu-central-003/"
+  # Secret containing AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_ENDPOINTS
+  credentialSecret: "backblaze-backup-credentials"
+  # How often to sync backup metadata
+  pollInterval: 5m0s
+

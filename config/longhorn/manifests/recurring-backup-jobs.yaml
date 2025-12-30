@@ -1,0 +1,22 @@
+# Longhorn Recurring Backup Jobs
+# Managed via GitOps
+#
+# These jobs automatically backup volumes to Backblaze B2
+# Critical volumes (data-criticality: critical) are backed up daily for 21 days
+
+---
+# Daily backup for critical volumes at 2:00 AM, keep 21 days
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: critical-daily-backup
+  namespace: longhorn-system
+spec:
+  name: critical-daily-backup
+  task: backup
+  cron: "0 2 * * *"
+  retain: 21
+  concurrency: 2
+  labels:
+    data-criticality: critical
+
