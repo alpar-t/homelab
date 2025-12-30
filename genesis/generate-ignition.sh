@@ -13,6 +13,15 @@ set -euo pipefail
 : "${NODE_HOSTNAME:?NODE_HOSTNAME must be set (e.g., odroid-1)}"
 : "${CLUSTER_NAME:=baxter}"  # Default to "baxter" if not set
 
+# Assign different update days per node to prevent simultaneous reboots
+# This staggers CoreOS updates across the cluster
+case "${NODE_HOSTNAME}" in
+    buksi)   ZINCATI_UPDATE_DAY="Tue" ;;
+    pamacs)  ZINCATI_UPDATE_DAY="Wed" ;;
+    pufi)    ZINCATI_UPDATE_DAY="Thu" ;;
+    *)       ZINCATI_UPDATE_DAY="Sat" ;;  # Default for unknown nodes
+esac
+
 # Auto-detect SSH key if not provided
 if [ -z "${SSH_KEY:-}" ]; then
     if [ -f "$HOME/.ssh/id_ed25519.pub" ]; then
@@ -34,6 +43,7 @@ echo "  Hostname: ${NODE_HOSTNAME}"
 echo "  Cluster name: ${CLUSTER_NAME}"
 echo "  Network: DHCP with IPv4 and IPv6"
 echo "  Cluster-wide .local: ${CLUSTER_NAME}.local (all nodes will respond)"
+echo "  Update window: ${ZINCATI_UPDATE_DAY} 03:00-05:00 UTC"
 echo ""
 
 # Check if butane is installed
@@ -54,6 +64,7 @@ cp ignition-template.bu "${TEMP_FILE}"
 sed -i '' "s|{{NODE_HOSTNAME}}|${NODE_HOSTNAME}|g" "${TEMP_FILE}"
 sed -i '' "s|{{CLUSTER_NAME}}|${CLUSTER_NAME}|g" "${TEMP_FILE}"
 sed -i '' "s|{{SSH_KEY}}|${SSH_KEY}|g" "${TEMP_FILE}"
+sed -i '' "s|{{ZINCATI_UPDATE_DAY}}|${ZINCATI_UPDATE_DAY}|g" "${TEMP_FILE}"
 
 # Generate ignition JSON
 OUTPUT_FILE="ignition-${NODE_HOSTNAME}.json"

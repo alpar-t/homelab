@@ -68,9 +68,24 @@ securityContext:
   runAsGroup: 1000
 
 # ===================
-# Storage Configuration
+# Resource Limits
+# ===================
+# Default limits for all oCIS services
+# Batch processing services get conservative CPU limits
+# UI-facing services (proxy, frontend) get higher priority
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 50m
+    memory: 256Mi
+
+# ===================
+# Services Configuration
 # ===================
 services:
+  # Storage users - main file storage
   storageusers:
     persistence:
       enabled: true
@@ -80,7 +95,7 @@ services:
     storageBackend:
       driver: ocis
   
-  # Search service with Tika integration
+  # Search service with Tika integration - batch indexing, can be slow
   search:
     persistence:
       enabled: true
@@ -91,14 +106,28 @@ services:
       type: tika
       tika:
         url: http://tika.paperless-ngx.svc.cluster.local:9998
+    resources:
+      limits:
+        cpu: 500m
+        memory: 1Gi
+      requests:
+        cpu: 50m
+        memory: 256Mi
   
-  # Thumbnails service
+  # Thumbnails service - batch generation, can be slow
   thumbnails:
     persistence:
       enabled: true
       chownInitContainer: true
       storageClassName: longhorn-ssd
       size: 30Gi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 50m
+        memory: 128Mi
   
   # Web frontend configuration
   web:
@@ -129,14 +158,23 @@ services:
       chownInitContainer: true
       storageClassName: longhorn-ssd
       size: 1Gi
-
-# ===================
-# Resource Limits
-# ===================
-resources:
-  limits:
-    cpu: 2000m
-    memory: 2Gi
-  requests:
-    cpu: 200m
-    memory: 512Mi
+  
+  # Proxy service - UI facing, needs to be snappy
+  proxy:
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+  
+  # Frontend service - UI facing, needs to be snappy
+  frontend:
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi

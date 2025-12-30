@@ -237,11 +237,13 @@ spec:
               mountPath: /usr/src/paperless/consume
           
           resources:
+            # Conservative CPU limits for batch OCR processing
+            # Document processing can run slowly - UI snappiness is the priority
             requests:
-              cpu: 200m
+              cpu: 100m
               memory: 512Mi
             limits:
-              cpu: 2000m
+              cpu: 1000m
               memory: 2Gi
           
           # Startup probe - allows up to 30 minutes for initial startup

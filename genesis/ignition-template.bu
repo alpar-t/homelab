@@ -232,6 +232,28 @@ storage:
           CLUSTER_NAME="{{CLUSTER_NAME}}"
           avahi-publish-alias "${CLUSTER_NAME}.local" "{{NODE_HOSTNAME}}.local"
 
+    # Zincati auto-update configuration
+    # Uses periodic strategy with per-node maintenance windows to prevent
+    # simultaneous reboots that would break the Kubernetes cluster
+    # Each node has a 2-hour window on different days to stagger updates
+    - path: /etc/zincati/config.d/51-cluster-updates.toml
+      mode: 0644
+      contents:
+        inline: |
+          # Zincati update strategy for Kubernetes cluster
+          # IMPORTANT: Stagger reboots to maintain cluster quorum
+          
+          [updates]
+          # Use periodic strategy - only reboot during maintenance windows
+          strategy = "periodic"
+          
+          [[updates.periodic.window]]
+          # Maintenance window: 3 AM - 5 AM local time
+          # Each node gets a different day via generate-ignition.sh
+          days = [ "{{ZINCATI_UPDATE_DAY}}" ]
+          start_time = "03:00"
+          length_minutes = 120
+
 systemd:
   units:
     # Mount Longhorn storage disks
