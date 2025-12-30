@@ -1,6 +1,16 @@
 # Velero Helm Values
 # Resources-only backup - Longhorn handles volume data
 
+# Fix for deprecated bitnami/kubectl image (moved to bitnamilegacy)
+# See: https://ioflair.com/blog/fix-broken-bitnami-deployments
+kubectl:
+  image:
+    repository: bitnamilegacy/kubectl
+    tag: "1.31"
+
+# Disable CRD cleanup job that also uses kubectl
+cleanUpCRDs: false
+
 initContainers:
   - name: velero-plugin-for-aws
     image: velero/velero-plugin-for-aws:v1.10.1
