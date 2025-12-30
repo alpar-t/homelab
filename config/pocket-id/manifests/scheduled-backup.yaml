@@ -1,0 +1,34 @@
+# Pocket-ID PostgreSQL Scheduled Backups
+# Managed by CloudNativePG operator
+#
+# This creates periodic base backups in addition to continuous WAL archiving.
+# Together they enable point-in-time recovery (PITR) to any moment within retention.
+#
+# Recovery options:
+# - PITR: Recover to any point in time within the last 30 days
+# - Latest: Recover to the most recent consistent state
+# - Specific backup: Recover to a specific scheduled backup
+
+---
+# Daily base backup at 3:00 AM
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: pocket-id-db-daily
+  namespace: pocket-id
+  labels:
+    app: pocket-id
+spec:
+  # Daily at 3:00 AM (after Longhorn backups at 2:00 AM)
+  schedule: "0 3 * * *"
+  
+  # Which cluster to backup
+  cluster:
+    name: pocket-id-db
+  
+  # Backup ownership - if cluster is deleted, backups are retained
+  backupOwnerReference: none
+  
+  # Immediately trigger first backup when created
+  immediate: true
+
