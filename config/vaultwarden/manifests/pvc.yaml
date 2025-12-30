@@ -1,0 +1,25 @@
+# Vaultwarden Persistent Volume Claims
+# Stores attachments, sends, and RSA keys
+#
+# Note: With PostgreSQL backend, the database is stored in the CloudNativePG cluster.
+# This PVC only stores: attachments, sends, RSA keys, icon cache, and temp files.
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vaultwarden-data
+  namespace: vaultwarden
+  labels:
+    app: vaultwarden
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      # Small storage is sufficient - main data is in PostgreSQL
+      # Stores: attachments, sends, RSA keys, icon cache
+      storage: 2Gi
+

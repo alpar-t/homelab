@@ -25,15 +25,15 @@ spec:
       labels:
         app: immich-ml
     spec:
-      # Prefer scheduling on high-memory node (32GB)
-      # Label your H3 Ultra node with: kubectl label node <node-name> immich.io/ml-node=true
+      # Prefer scheduling on nodes with high CPU capacity
+      # Label nodes with: kubectl label node <node-name> workload/cpu-intensive=true
       affinity:
         nodeAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
             - weight: 100
               preference:
                 matchExpressions:
-                  - key: immich.io/ml-node
+                  - key: workload/cpu-intensive
                     operator: In
                     values:
                       - "true"

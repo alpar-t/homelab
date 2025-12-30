@@ -1,0 +1,37 @@
+# Vaultwarden Ingress
+# Exposes the web interface at vault.newjoy.ro
+#
+# WebSocket Note: Since Vaultwarden 1.29+, WebSocket notifications are served
+# on the same port as HTTP (unified port). No separate /notifications/hub route needed.
+# Cloudflare fully supports WebSockets on the unified endpoint.
+#
+# Admin Panel: Disabled via not setting ADMIN_TOKEN environment variable.
+# All configuration is done via environment variables (GitOps-friendly).
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+  labels:
+    app: vaultwarden
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    # WebSocket support (long timeouts for persistent connections)
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # Allow attachment uploads
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: vault.newjoy.ro
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: vaultwarden
+                port:
+                  number: 80

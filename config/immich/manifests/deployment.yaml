@@ -32,6 +32,18 @@ spec:
         # Auto-restart when OIDC secret changes (requires Reloader)
         secret.reloader.stakater.com/reload: "immich-oidc"
     spec:
+      # Prefer scheduling on nodes with high CPU capacity
+      # Label nodes with: kubectl label node <node-name> workload/cpu-intensive=true
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: workload/cpu-intensive
+                    operator: In
+                    values:
+                      - "true"
       initContainers:
         # Create .immich marker files in each bucket for mount verification
         # These will be visible through the merged view

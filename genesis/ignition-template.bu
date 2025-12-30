@@ -337,6 +337,14 @@ systemd:
         TimeoutStartSec=0
         Restart=always
         RestartSec=5s
+        
+        # Priority settings to keep k3s responsive under high load
+        # Ensures kubelet stays responsive even when workloads consume all CPU
+        Nice=-10
+        CPUWeight=10000
+        IOWeight=1000
+        OOMScoreAdjust=-900
+        
         ExecStartPre=/bin/sh -xc '! /usr/bin/systemctl is-enabled --quiet nm-cloud-setup.service 2>/dev/null'
         ExecStartPre=-/sbin/modprobe br_netfilter
         ExecStartPre=-/sbin/modprobe overlay
