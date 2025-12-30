@@ -200,7 +200,7 @@ spec:
                   fieldPath: spec.nodeName
       initContainers:
         - name: install-cni-plugins
-          image: docker.io/rancher/hardened-cni-plugins:v1.5.1-build20241022
+          image: docker.io/rancher/hardened-cni-plugins:latest
           command: ["sh", "-c"]
           args:
             - |
