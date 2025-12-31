@@ -30,10 +30,16 @@ We use **single-tenant clusters** (one PostgreSQL cluster per application) rathe
 
 ### Storage
 
-All database clusters use `longhorn-ssd` storage class:
-- **SSD performance** essential for database workloads
-- **2 replicas** across nodes for redundancy
-- **dataLocality: best-effort** for performance
+**Recommended: Local SSD storage** (`local-ssd` storage class)
+- CloudNativePG handles replication at the database level
+- Local storage provides better performance (no network overhead)
+- Simpler architecture with fewer failure modes
+- See [runbooks/migrate-postgres-to-local-storage.md](../../runbooks/migrate-postgres-to-local-storage.md) for migration guide
+
+**Legacy: Longhorn SSD storage** (`longhorn-ssd` storage class)
+- Provides storage-level replication
+- **Redundant** when combined with CNPG's database replication
+- Migration to local storage recommended
 
 ## Cluster Sizing
 
@@ -155,38 +161,62 @@ CloudNativePG creates three services per cluster:
 
 ## Backup Strategy
 
-We rely on **Longhorn for all backups** — keeping things simple.
+We use **CNPG-native backups** with WAL archiving to Backblaze B2.
 
-### What Longhorn Provides
+### What CNPG Provides
 
 | Feature | How It Helps |
 |---------|--------------|
-| **Volume replicas (2x)** | Survives node/disk failure |
-| **Snapshots** | Point-in-time recovery within retention window |
-| **Backups to S3** | Disaster recovery (cluster destruction) |
+| **Continuous WAL archiving** | Point-in-time recovery to any moment |
+| **Base backups to B2** | Full database snapshots (daily/weekly) |
+| **Retention policies** | Automatic cleanup of old backups |
+| **Recovery bootstrap** | New clusters can restore from any backup |
 
-### What This Doesn't Cover
+### Why CNPG Backups Over Longhorn?
 
-| Scenario | Risk Level | Mitigation |
-|----------|------------|------------|
-| Silent data corruption | Low | Restore from older snapshot if detected |
-| Bad migration corrupts data | Low | Restore from pre-migration snapshot |
+| Approach | Pros | Cons |
+|----------|------|------|
+| **CNPG to B2** ✅ | Database-aware, PITR, cross-version restore | Requires B2 credentials |
+| **Longhorn snapshots** | Simple, works for any PVC | Not database-aware, no PITR |
 
-For a homelab, this is an acceptable tradeoff for simplicity.
+CNPG backups are **database-aware** — they understand PostgreSQL's WAL format and can restore to any point in time, not just snapshot moments.
 
-### Recommended Snapshot Schedule
+### Backup Configuration
 
-Configure in Longhorn UI or via recurring job:
+Each cluster specifies its backup policy:
 
+```yaml
+backup:
+  barmanObjectStore:
+    destinationPath: "s3://homelab-longhorn-backup/cnpg/<cluster-name>"
+    endpointURL: "https://s3.eu-central-003.backblazeb2.com"
+    # ... credentials ...
+  retentionPolicy: "14d"  # or "30d" for critical apps
 ```
-Snapshots: Every 6 hours, retain 7 days
-Backups: Daily to S3, retain 30 days
+
+### Backup Schedules by Application
+
+| App | Base Backup Frequency | Retention | Rationale |
+|-----|----------------------|-----------|-----------|
+| pocket-id-db | Weekly | 30 days | Identity data - critical |
+| vaultwarden-db | Weekly | 30 days | Passwords - critical |
+| immich-db | Daily | 14 days | Photo metadata - valuable |
+| homeassistant-db | Weekly | 14 days | Sensor history - replaceable |
+| paperless-ngx-db | Weekly | 14 days | Document metadata |
+| Others | Weekly | 14 days | Standard |
+
+### Manual Backup
+
+Trigger a backup before maintenance:
+
+```bash
+kubectl cnpg backup <cluster-name> -n <namespace>
 ```
 
 ### Critical Apps: Extra Protection
 
-For **Bitwarden/Vaultwarden**: Export your vault periodically (built-in feature).
-This protects against scenarios where corruption goes unnoticed past snapshot retention.
+For **Vaultwarden**: Export your vault periodically (built-in feature).
+This protects against scenarios where corruption goes unnoticed.
 
 ### Alternative: Logical Backups (Optional)
 
@@ -285,19 +315,48 @@ spec:
 
 ### Scenario: Single Node Failure
 
-**Automatic**: CloudNativePG promotes replica, Longhorn reconstructs volume replica on remaining nodes.
+**Automatic**: CloudNativePG promotes the replica to primary. No data loss (streaming replication is synchronous by default for 2-instance clusters).
+
+With **local storage**: The failed node's database instance is unavailable until the node recovers. The promoted replica handles all traffic.
+
+With **Longhorn**: Same behavior, but Longhorn also rebuilds volume replicas (unnecessary overhead).
 
 ### Scenario: Complete Cluster Loss
 
-1. Restore Longhorn volumes from backup
-2. Restore Kubernetes secrets
-3. Redeploy Cluster CRs — operator will adopt existing data
+1. Rebuild Kubernetes cluster (see `genesis/README.md`)
+2. Restore Kubernetes secrets (from Velero or manual backup)
+3. Deploy Cluster CRs with `bootstrap.recovery` pointing to B2 backups
+4. Clusters restore automatically from B2
+
+Example recovery bootstrap:
+```yaml
+bootstrap:
+  recovery:
+    source: backup-source
+externalClusters:
+  - name: backup-source
+    barmanObjectStore:
+      destinationPath: "s3://homelab-longhorn-backup/cnpg/<cluster-name>"
+      # ... B2 credentials ...
+```
 
 ### Scenario: Database Corruption
 
 1. Stop application (prevent further writes)
-2. Restore Longhorn snapshot to point before corruption
-3. Restart cluster
+2. Identify point-in-time before corruption
+3. Delete cluster and recreate with recovery target:
+
+```yaml
+bootstrap:
+  recovery:
+    source: backup-source
+    recoveryTarget:
+      targetTime: "2024-12-30 10:00:00"  # Before corruption
+```
+
+### Scenario: Accidental Data Deletion
+
+Same as corruption — use PITR to recover to moment before deletion.
 
 ## Troubleshooting
 

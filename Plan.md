@@ -51,7 +51,22 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [ ] Add external heartbeat / down detection 
 - [ ] Monitor mail
 - [ ] Replace Authentik with Pocket ID
-- [ ] 
+- [ ] **Migrate PostgreSQL from Longhorn to local storage** - see [runbooks/migrate-postgres-to-local-storage.md](runbooks/migrate-postgres-to-local-storage.md)
+  - Eliminates redundant replication (CNPG already handles HA)
+  - Better performance (direct SSD access)
+  - Simpler architecture (fewer moving parts)
+- [ ] **Set single-replica for rebuildable Longhorn volumes** - save ~115Gi storage
+  - `immich-thumbs` (100Gi) - regenerated from photos
+  - `immich-model-cache` (10Gi) - downloaded from internet
+  - `paperless-data` (5Gi) - search index, rebuildable from media
+  - `paperless-export` (5Gi) - generated exports
+  - Add annotation: `longhorn.io/number-of-replicas: "1"`
+- [ ] **Remove duplicate Longhorn StorageClass files** - cleanup
+  - Delete `config/longhorn/storageclass-ssd.yaml` (keep `manifests/` version)
+  - Delete `config/longhorn/storageclass-hdd.yaml` (keep `manifests/` version)
+- [ ] **Pi-hole DNS redundancy** - see [runbooks/pihole-dns-redundancy.md](runbooks/pihole-dns-redundancy.md)
+  - Single Pi-hole = DNS outage if pod fails
+  - Options: secondary Pi-hole with sync, or fallback DNS in DHCP 
 
 **Tasks:**
 - [ ] Monitoring (Prometheus + Grafana)
