@@ -73,13 +73,12 @@ spec:
               mountPath: /cache
           
           resources:
-            # Conservative CPU limits for batch ML processing
-            # ML tasks can run slowly - UI snappiness is the priority
+            # Allow ML to use more CPU for faster processing
             requests:
-              cpu: 100m
+              cpu: 200m
               memory: 2Gi
             limits:
-              cpu: 1000m
+              cpu: 2000m
               memory: 6Gi
           
           # ML service takes time to load models on startup

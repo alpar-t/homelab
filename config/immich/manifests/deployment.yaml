@@ -260,13 +260,13 @@ spec:
           
           resources:
             requests:
-              cpu: 200m
-              memory: 512Mi
+              cpu: 500m
+              memory: 1Gi
               # GPU provided by Intel GPU Device Plugin
               gpu.intel.com/i915: 1
             limits:
-              cpu: 2000m
-              memory: 2Gi
+              cpu: 4000m
+              memory: 4Gi
               gpu.intel.com/i915: 1
           
           # Startup probe - allows up to 10 minutes for initial startup
