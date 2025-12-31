@@ -61,7 +61,7 @@ spec:
                 fi
               done
               # Create markers in other volumes
-              for dir in /mnt/thumbs /mnt/encoded-video /mnt/profile /mnt/backups; do
+              for dir in /mnt/thumbs /mnt/encoded-video /mnt/profile /mnt/backups /mnt/library-empty; do
                 if [ ! -f "$dir/.immich" ]; then
                   echo "Creating mount marker in $dir"
                   touch "$dir/.immich"
@@ -83,6 +83,8 @@ spec:
               mountPath: /mnt/library-buckets/06
             - name: thumbs
               mountPath: /mnt/thumbs
+            - name: library-empty
+              mountPath: /mnt/library-empty
             - name: encoded-video
               mountPath: /mnt/encoded-video
             - name: profile
@@ -241,6 +243,9 @@ spec:
             - name: merged-library
               mountPath: /usr/src/app/upload/upload
               mountPropagation: HostToContainer
+            # Empty library path - Immich requires this for folder integrity checks
+            - name: library-empty
+              mountPath: /usr/src/app/upload/library
             # Thumbnails
             - name: thumbs
               mountPath: /usr/src/app/upload/thumbs
@@ -295,6 +300,9 @@ spec:
         # EmptyDir for merged library mount point
         # MergerFS mounts here, combining all library buckets
         - name: merged-library
+          emptyDir: {}
+        # Empty library path - Immich requires this for folder integrity checks
+        - name: library-empty
           emptyDir: {}
         # Library bucket PVCs - combined by mergerfs sidecar
         - name: library-bucket-01
