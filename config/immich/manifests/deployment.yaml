@@ -118,7 +118,7 @@ spec:
       
       containers:
         # MergerFS sidecar - combines library buckets into unified view
-        # Uses 'lfs' policy: fills buckets one-by-one (least free space first)
+        # Uses 'eplfs' policy: existing paths stay on same bucket, new paths use least free space
         - name: mergerfs
           image: ghcr.io/hotio/mergerfs:release-2.40.2
           securityContext:
@@ -126,8 +126,9 @@ spec:
           command:
             - mergerfs
             - '-f'  # Foreground mode (required for container)
+            - '-d'  # Debug mode - verbose logging to stdout
             - '-o'
-            - 'defaults,allow_other,use_ino,cache.files=partial,dropcacheonclose=true,category.create=lfs,minfreespace=10G'
+            - 'defaults,allow_other,use_ino,cache.files=partial,dropcacheonclose=true,category.create=eplfs,minfreespace=10G'
             - '/mnt/library-buckets/01:/mnt/library-buckets/02:/mnt/library-buckets/03:/mnt/library-buckets/04:/mnt/library-buckets/05:/mnt/library-buckets/06'
             - '/mnt/merged-library'
           volumeMounts:
@@ -148,19 +149,21 @@ spec:
               mountPropagation: Bidirectional
           resources:
             requests:
-              cpu: 10m
-              memory: 32Mi
-            limits:
-              cpu: 500m
+              cpu: 50m
               memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
           livenessProbe:
             exec:
               command: ['test', '-d', '/mnt/merged-library']
             periodSeconds: 30
+            failureThreshold: 3
           readinessProbe:
             exec:
               command: ['test', '-d', '/mnt/merged-library']
             periodSeconds: 10
+            failureThreshold: 3
 
         - name: immich-server
           image: ghcr.io/immich-app/immich-server:v2.4.1
