@@ -25,6 +25,7 @@ data:
       smtphost localhost/25
       smtpaddress mail.newjoy.ro
       is "${ALPAR_EMAIL}" here
+      fetchall
       nokeep
     
     # Kinga mailbox
@@ -37,6 +38,7 @@ data:
       smtphost localhost/25
       smtpaddress mail.newjoy.ro
       is "${KINGA_EMAIL}" here
+      fetchall
       nokeep
     
     # Alpar mailbox
@@ -49,4 +51,5 @@ data:
       smtphost localhost/25
       smtpaddress mail.newjoy.ro
       is "${ALPAR_EMAIL}" here
+      fetchall
       nokeep
