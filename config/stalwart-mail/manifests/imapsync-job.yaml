@@ -1,0 +1,97 @@
+# Secrets required before running this job:
+#
+# 1. Gmail credentials:
+# kubectl create secret generic imapsync-kinga-gmail \
+#   --namespace stalwart-mail \
+#   --from-literal=gmail-user="kinga@newjoy.ro" \
+#   --from-literal=gmail-password="GMAIL_APP_PASSWORD" \
+#   --from-literal=stalwart-user="kinga"
+#
+# 2. Stalwart master user (one-time setup):
+# kubectl create secret generic stalwart-master \
+#   --namespace stalwart-mail \
+#   --from-literal=password="MASTER_PASSWORD"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: imapsync-kinga-gmail
+  namespace: stalwart-mail
+  labels:
+    app: imapsync
+spec:
+  # Don't retry on failure - manual intervention needed
+  backoffLimit: 0
+  # Keep job for 1 hour after completion for log inspection
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: imapsync
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: imapsync
+          image: gilleslamiral/imapsync:latest
+          command:
+            - imapsync
+            - --host1
+            - imap.gmail.com
+            - --user1
+            - $(GMAIL_USER)
+            - --password1
+            - $(GMAIL_PASSWORD)
+            - --ssl1
+            - --host2
+            - stalwart.stalwart-mail.svc.cluster.local
+            - --port2
+            - "143"
+            # Master user syntax: targetuser%master
+            - --user2
+            - $(STALWART_USER)%master
+            - --password2
+            - $(MASTER_PASSWORD)
+            # Gmail-specific options
+            - --gmail1
+            # Map Gmail labels to folders
+            - --automap
+            # Subscribe to all folders
+            - --subscribe
+            # Skip Gmail system folders that cause issues
+            - --exclude
+            - "\\[Gmail\\]/All Mail"
+            - --exclude
+            - "\\[Gmail\\]/Important"
+            - --exclude  
+            - "\\[Gmail\\]/Starred"
+            # Show progress
+            - --nolog
+          env:
+            - name: GMAIL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: imapsync-kinga-gmail
+                  key: gmail-user
+            - name: GMAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: imapsync-kinga-gmail
+                  key: gmail-password
+            - name: STALWART_USER
+              valueFrom:
+                secretKeyRef:
+                  name: imapsync-kinga-gmail
+                  key: stalwart-user
+            - name: MASTER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: stalwart-master
+                  key: password
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
