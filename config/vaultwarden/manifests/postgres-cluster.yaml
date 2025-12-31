@@ -29,7 +29,8 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
-  instances: 1
+  # HA: 2 instances with automatic failover
+  instances: 2
   
   imageName: ghcr.io/cloudnative-pg/postgresql:16
   

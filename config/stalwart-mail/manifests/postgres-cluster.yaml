@@ -25,8 +25,8 @@ metadata:
     # Email metadata and accounts - irreplaceable user data
     data-criticality: critical
 spec:
-  # Single instance - mail can tolerate brief DB downtime
-  instances: 1
+  # HA: 2 instances with automatic failover
+  instances: 2
   
   imageName: ghcr.io/cloudnative-pg/postgresql:16
   
