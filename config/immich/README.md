@@ -271,11 +271,42 @@ Critical data to backup:
 1. **PostgreSQL database** - Contains all metadata, albums, faces, etc.
 2. **Library volume** - Your actual photos (irreplaceable!)
 
-```bash
-# Database backup (via CloudNativePG)
-kubectl cnpg backup immich-db -n immich
+#### Database Backups (Automated to Backblaze B2)
 
-# Or manual pg_dump
+The PostgreSQL database is automatically backed up to Backblaze B2:
+- **Continuous WAL archiving** - Point-in-time recovery capability
+- **Daily base backups** - Full backup at 3:00 AM
+- **14-day retention** - Old backups automatically cleaned up
+
+**Prerequisites:** Create the backup credentials secret:
+
+```bash
+kubectl create secret generic cnpg-backup-credentials \
+  --namespace=immich \
+  --from-literal=ACCESS_KEY_ID=<your-b2-key-id> \
+  --from-literal=SECRET_ACCESS_KEY=<your-b2-application-key>
+```
+
+**Monitor backups:**
+
+```bash
+# Check backup status
+kubectl get backups -n immich
+
+# Check scheduled backup
+kubectl get scheduledbackups -n immich
+
+# View backup details
+kubectl describe backup -n immich
+
+# Manual backup trigger
+kubectl cnpg backup immich-db -n immich
+```
+
+#### Manual Database Backup
+
+```bash
+# Manual pg_dump (for one-off exports)
 kubectl exec -n immich immich-db-1 -- pg_dump -U immich immich > immich-backup.sql
 ```
 
