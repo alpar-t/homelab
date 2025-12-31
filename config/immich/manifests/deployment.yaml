@@ -61,7 +61,7 @@ spec:
                 fi
               done
               # Create markers in other volumes
-              for dir in /mnt/upload /mnt/thumbs /mnt/encoded-video /mnt/profile /mnt/backups; do
+              for dir in /mnt/thumbs /mnt/encoded-video /mnt/profile /mnt/backups; do
                 if [ ! -f "$dir/.immich" ]; then
                   echo "Creating mount marker in $dir"
                   touch "$dir/.immich"
@@ -81,8 +81,6 @@ spec:
               mountPath: /mnt/library-buckets/05
             - name: library-bucket-06
               mountPath: /mnt/library-buckets/06
-            - name: upload
-              mountPath: /mnt/upload
             - name: thumbs
               mountPath: /mnt/thumbs
             - name: encoded-video
@@ -238,13 +236,11 @@ spec:
               value: "log"
           
           volumeMounts:
-            # Merged library - unified view of all library buckets via mergerfs
+            # Merged library buckets - stores originals via mergerfs
+            # In Immich v1.99+, originals are stored in "upload" path
             - name: merged-library
-              mountPath: /usr/src/app/upload/library
-              mountPropagation: HostToContainer
-            # Upload buffer - incoming files
-            - name: upload
               mountPath: /usr/src/app/upload/upload
+              mountPropagation: HostToContainer
             # Thumbnails
             - name: thumbs
               mountPath: /usr/src/app/upload/thumbs
@@ -320,6 +316,8 @@ spec:
           persistentVolumeClaim:
             claimName: immich-library-06
         # Other storage volumes
+        # Upload PVC - kept but NOT mounted (data migrated to mergerfs buckets)
+        # Can be deleted after verifying migration is complete
         - name: upload
           persistentVolumeClaim:
             claimName: immich-upload
