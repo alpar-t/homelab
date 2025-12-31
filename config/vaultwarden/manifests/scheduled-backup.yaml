@@ -1,0 +1,29 @@
+# Vaultwarden PostgreSQL Scheduled Backups
+# Managed by CloudNativePG operator
+#
+# Daily base backups - password vault is CRITICAL
+# WAL archiving provides continuous protection between base backups
+
+---
+# Daily base backup at 2:00 AM (earliest, highest priority)
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: vaultwarden-db-daily
+  namespace: vaultwarden
+  labels:
+    app: vaultwarden
+spec:
+  # Daily at 2:00 AM
+  schedule: "0 2 * * *"
+  
+  # Which cluster to backup
+  cluster:
+    name: vaultwarden-db
+  
+  # Backup ownership - if cluster is deleted, backups are retained
+  backupOwnerReference: none
+  
+  # Immediately trigger first backup when created
+  immediate: true
+

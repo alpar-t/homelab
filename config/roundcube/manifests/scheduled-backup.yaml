@@ -1,0 +1,29 @@
+# Roundcube PostgreSQL Scheduled Backups
+# Managed by CloudNativePG operator
+#
+# Weekly base backups - webmail settings, lower change frequency
+# WAL archiving provides continuous protection between base backups
+
+---
+# Weekly base backup on Sundays at 4:45 AM
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: roundcube-db-weekly
+  namespace: roundcube
+  labels:
+    app: roundcube
+spec:
+  # Weekly on Sundays at 4:45 AM
+  schedule: "45 4 * * 0"
+  
+  # Which cluster to backup
+  cluster:
+    name: roundcube-db
+  
+  # Backup ownership - if cluster is deleted, backups are retained
+  backupOwnerReference: none
+  
+  # Immediately trigger first backup when created
+  immediate: true
+

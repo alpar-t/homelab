@@ -1,0 +1,29 @@
+# Paperless-ngx PostgreSQL Scheduled Backups
+# Managed by CloudNativePG operator
+#
+# Daily base backups - document metadata is critical
+# WAL archiving provides continuous protection between base backups
+
+---
+# Daily base backup at 3:15 AM
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: paperless-db-daily
+  namespace: paperless-ngx
+  labels:
+    app: paperless-ngx
+spec:
+  # Daily at 3:15 AM
+  schedule: "15 3 * * *"
+  
+  # Which cluster to backup
+  cluster:
+    name: paperless-db
+  
+  # Backup ownership - if cluster is deleted, backups are retained
+  backupOwnerReference: none
+  
+  # Immediately trigger first backup when created
+  immediate: true
+
