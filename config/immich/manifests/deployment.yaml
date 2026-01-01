@@ -118,7 +118,8 @@ spec:
       
       containers:
         # MergerFS sidecar - combines library buckets into unified view
-        # Uses 'eplfs' policy: existing paths stay on same bucket, new paths use least free space
+        # Uses 'mfs' policy: always creates on bucket with most free space
+        # This spreads uploads evenly across all buckets
         - name: mergerfs
           image: ghcr.io/hotio/mergerfs:release-2.40.2
           securityContext:
@@ -128,7 +129,7 @@ spec:
             - '-f'  # Foreground mode (required for container)
             - '-d'  # Debug mode - verbose logging to stdout
             - '-o'
-            - 'defaults,allow_other,use_ino,cache.files=partial,dropcacheonclose=true,category.create=eplfs,minfreespace=10G'
+            - 'defaults,allow_other,use_ino,cache.files=partial,dropcacheonclose=true,category.create=mfs,minfreespace=20G'
             - '/mnt/library-buckets/01:/mnt/library-buckets/02:/mnt/library-buckets/03:/mnt/library-buckets/04:/mnt/library-buckets/05:/mnt/library-buckets/06'
             - '/mnt/merged-library'
           volumeMounts:
