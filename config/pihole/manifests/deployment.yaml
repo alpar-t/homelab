@@ -29,7 +29,7 @@ spec:
           - 8.8.8.8
       initContainers:
         - name: copy-dnsmasq-config
-          image: busybox:1.36
+          image: busybox:1.37@sha256:2383baad1860bbe9d8a7a843775048fd07d8afe292b94bd876df64a69aae7cb1
           command: ['sh', '-c', 'cp /config/* /etc/dnsmasq.d/']
           volumeMounts:
             - name: dnsmasq-config
