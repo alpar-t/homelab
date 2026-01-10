@@ -67,10 +67,11 @@ spec:
   
   resources:
     requests:
-      memory: "256Mi"
+      memory: "512Mi"
       cpu: "100m"
     limits:
-      memory: "1Gi"
+      # Increased to 2Gi to handle barman backup processes without OOM kills
+      memory: "2Gi"
       cpu: "1000m"
   
   # Continuous backup to Backblaze B2

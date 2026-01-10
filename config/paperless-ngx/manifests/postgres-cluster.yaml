@@ -49,7 +49,8 @@ spec:
       memory: "256Mi"
       cpu: "100m"
     limits:
-      memory: "512Mi"
+      # Increased to 1Gi to handle barman backup processes without OOM kills
+      memory: "1Gi"
       cpu: "500m"
   
   # Continuous backup to Backblaze B2
