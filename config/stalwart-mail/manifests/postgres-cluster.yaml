@@ -38,7 +38,7 @@ spec:
       # Password stored in: stalwart-db-app secret (created by operator)
   
   storage:
-    size: 5Gi  # Metadata only - blobs stored separately
+    size: 8Gi  # Increased from 5Gi due to WAL accumulation
     storageClass: longhorn-ssd
     pvcTemplate:
       labels:

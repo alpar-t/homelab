@@ -35,7 +35,7 @@ spec:
       # Password stored in: pocket-id-db-app secret (created by operator)
   
   storage:
-    size: 1Gi  # Small - just users, passkeys, and OIDC clients
+    size: 2Gi  # Increased from 1Gi due to WAL accumulation
     storageClass: longhorn-ssd
     # Note: Longhorn backup label removed - using CNPG-native backups instead
   

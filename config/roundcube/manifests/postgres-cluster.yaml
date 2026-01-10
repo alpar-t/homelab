@@ -34,7 +34,7 @@ spec:
       owner: roundcube
 
   storage:
-    size: 1Gi
+    size: 2Gi  # Increased from 1Gi due to WAL accumulation
     storageClass: longhorn-ssd
     pvcTemplate:
       labels:
