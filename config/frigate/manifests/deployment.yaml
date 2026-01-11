@@ -68,6 +68,9 @@ spec:
               gpu.intel.com/i915: "1"
           securityContext:
             privileged: false
+            capabilities:
+              add:
+                - PERFMON  # Required for Intel GPU stats monitoring
           livenessProbe:
             httpGet:
               path: /api/version
