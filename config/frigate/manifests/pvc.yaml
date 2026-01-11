@@ -14,7 +14,7 @@ spec:
   storageClassName: longhorn-hdd-noreplica
   resources:
     requests:
-      storage: 500Gi
+      storage: 250Gi
 ---
 # Config persistence (for Frigate database + model cache)
 apiVersion: v1
