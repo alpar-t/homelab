@@ -1,0 +1,19 @@
+# Longhorn HDD storage class with no replication
+# Use for data that doesn't need redundancy (e.g., camera recordings)
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-hdd-noreplica
+provisioner: driver.longhorn.io
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+parameters:
+  numberOfReplicas: "1"
+  staleReplicaTimeout: "30"
+  fromBackup: ""
+  fsType: "ext4"
+  # Only schedule on disks tagged as "hdd"
+  diskSelector: "hdd"
+

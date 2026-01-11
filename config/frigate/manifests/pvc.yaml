@@ -1,5 +1,5 @@
 # Frigate storage for recordings
-# Using HDD storage class - no replication, no backups needed
+# Using HDD storage class with no replication - no backups needed
 
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -8,13 +8,10 @@ metadata:
   namespace: frigate
   labels:
     app.kubernetes.io/name: frigate
-  annotations:
-    # Override default replica count - no replication needed for recordings
-    numberOfReplicas: "1"
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: longhorn-hdd
+  storageClassName: longhorn-hdd-noreplica
   resources:
     requests:
       storage: 500Gi
