@@ -132,6 +132,92 @@ References:
 - [Longhorn Storage Network docs](https://longhorn.io/docs/1.10.1/advanced-resources/deploy/storage-network/)
 - [Multus CNI](https://github.com/k8snetworkplumbingwg/multus-cni)
 
+## Backups
+
+Longhorn backs up all volumes to Backblaze B2. Backup configuration is in `config/longhorn/manifests/`.
+
+### Backup Schedule
+
+| Job | Schedule | Retention | Applies To |
+|-----|----------|-----------|------------|
+| `weekly-backup` | Sunday 3:00 AM | 8 weeks | **ALL volumes** (automatic) |
+| `critical-daily-backup` | Daily 2:00 AM | 21 days | Volumes with `critical` label |
+
+### Mark a Volume as Critical
+
+To enable daily backups for important volumes (databases, etc.):
+
+```bash
+# Find the Longhorn volume name from the PVC
+VOLUME=$(kubectl get pv -o jsonpath='{.items[?(@.spec.claimRef.name=="<pvc-name>")].spec.csi.volumeHandle}')
+
+# Add the critical label to the Longhorn volume
+kubectl -n longhorn-system label volume/$VOLUME recurring-job-group.longhorn.io/critical=enabled
+```
+
+### Exclude a Volume from Backups (GitOps)
+
+To exclude a volume from weekly backups, add it to `config/longhorn/manifests/backup-exclusions.yaml`:
+
+```yaml
+data:
+  excluded-pvcs: |
+    frigate/frigate-media
+    some-namespace/some-pvc-name
+```
+
+The Job runs as an ArgoCD PostSync hook and applies the exclusion labels to Longhorn volumes.
+
+**Currently excluded:**
+- `frigate/frigate-media` - large recordings, not critical
+
+**Note:** PVC labels don't propagate to Longhorn Volume objects, which is why we use a Job.
+
+### Verify Backups Are Running
+
+```bash
+# Check recurring jobs exist
+kubectl get recurringjobs -n longhorn-system
+
+# Check backup status for all volumes
+kubectl get backups -n longhorn-system
+
+# Check recent backup activity in Longhorn manager logs
+kubectl logs -n longhorn-system -l app=longhorn-manager --tail=100 | grep -i backup
+
+# List volumes and their recurring job labels
+kubectl get volumes -n longhorn-system -o custom-columns='NAME:.metadata.name,DEFAULT:.metadata.labels.recurring-job\.longhorn\.io/default,CRITICAL:.metadata.labels.recurring-job-group\.longhorn\.io/critical'
+```
+
+### Troubleshooting Backups
+
+If backups aren't running:
+
+1. **Check backup target is configured:**
+   ```bash
+   kubectl get backuptargets -n longhorn-system
+   kubectl describe backuptarget default -n longhorn-system
+   ```
+
+2. **Check backup credentials secret exists:**
+   ```bash
+   kubectl get secret backblaze-backup-credentials -n longhorn-system
+   ```
+
+3. **Check recurring job status:**
+   ```bash
+   kubectl describe recurringjob weekly-backup -n longhorn-system
+   kubectl describe recurringjob critical-daily-backup -n longhorn-system
+   ```
+
+4. **Force a manual backup to test:**
+   ```bash
+   # Create a one-off backup
+   kubectl -n longhorn-system create job --from=recurringjob/weekly-backup test-backup-$(date +%s)
+   ```
+
+5. **Check Longhorn UI:** Navigate to Backup → check if backups appear and their status
+
 ## Accessing the UI
 
 ### Via Pocket-ID SSO (production)

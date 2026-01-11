@@ -1,0 +1,87 @@
+# Longhorn Backup Exclusions
+# This Job labels Longhorn volumes to exclude them from weekly backups.
+# Run manually after adding new exclusions: kubectl apply -f this-file && kubectl wait --for=condition=complete job/longhorn-backup-exclusions -n longhorn-system
+#
+# Add PVC names to the EXCLUDED_PVCS list below (namespace/pvc-name format)
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-exclusions
+  namespace: longhorn-system
+data:
+  excluded-pvcs: |
+    frigate/frigate-media
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: longhorn-backup-exclusions
+  namespace: longhorn-system
+  annotations:
+    # Re-run when configmap changes
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      serviceAccountName: longhorn-service-account
+      restartPolicy: OnFailure
+      containers:
+        - name: label-volumes
+          image: bitnami/kubectl:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "Applying backup exclusions..."
+              
+              while IFS= read -r pvc_ref; do
+                # Skip empty lines and comments
+                [[ -z "$pvc_ref" || "$pvc_ref" =~ ^# ]] && continue
+                
+                NAMESPACE=$(echo "$pvc_ref" | cut -d'/' -f1)
+                PVC_NAME=$(echo "$pvc_ref" | cut -d'/' -f2)
+                
+                echo "Processing: $NAMESPACE/$PVC_NAME"
+                
+                # Get the PV name for this PVC
+                PV_NAME=$(kubectl get pvc "$PVC_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.volumeName}' 2>/dev/null || true)
+                if [[ -z "$PV_NAME" ]]; then
+                  echo "  WARNING: PVC $NAMESPACE/$PVC_NAME not found or not bound, skipping"
+                  continue
+                fi
+                
+                # Get the Longhorn volume name (CSI volume handle)
+                VOLUME_NAME=$(kubectl get pv "$PV_NAME" -o jsonpath='{.spec.csi.volumeHandle}' 2>/dev/null || true)
+                if [[ -z "$VOLUME_NAME" ]]; then
+                  echo "  WARNING: Could not get volume handle for PV $PV_NAME, skipping"
+                  continue
+                fi
+                
+                # Check if volume exists in Longhorn
+                if ! kubectl get volume "$VOLUME_NAME" -n longhorn-system &>/dev/null; then
+                  echo "  WARNING: Longhorn volume $VOLUME_NAME not found, skipping"
+                  continue
+                fi
+                
+                # Apply the exclusion label
+                kubectl label volume "$VOLUME_NAME" -n longhorn-system \
+                  recurring-job.longhorn.io/default=disabled \
+                  --overwrite
+                
+                echo "  SUCCESS: Excluded $VOLUME_NAME from default backups"
+              done < /config/excluded-pvcs
+              
+              echo "Done!"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          configMap:
+            name: backup-exclusions
+

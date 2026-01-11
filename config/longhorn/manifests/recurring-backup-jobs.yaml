@@ -3,11 +3,34 @@
 #
 # These jobs automatically backup volumes to Backblaze B2
 #
-# To enable backups on a volume, add label:
+# Job Groups:
+#   - default: Applies to ALL volumes automatically (weekly backups)
+#   - critical: For important volumes requiring daily backups
+#
+# To exclude a volume from backups, add it to backup-exclusions.yaml
+# To add daily backups for a volume, label it with:
 #   recurring-job-group.longhorn.io/critical: enabled
 
 ---
+# Weekly backup for ALL volumes (Sunday 3:00 AM), keep 8 weeks
+# The "default" group automatically applies to all volumes
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: weekly-backup
+  namespace: longhorn-system
+spec:
+  name: weekly-backup
+  task: backup
+  cron: "0 3 * * 0"
+  retain: 8
+  concurrency: 2
+  groups:
+    - default
+
+---
 # Daily backup for critical volumes at 2:00 AM, keep 21 days
+# To enable: add label recurring-job-group.longhorn.io/critical: enabled
 apiVersion: longhorn.io/v1beta2
 kind: RecurringJob
 metadata:

@@ -1,5 +1,8 @@
 # Frigate storage for recordings
-# Using HDD storage class with no replication - no backups needed
+# Using HDD storage class with no replication
+#
+# BACKUP EXCLUSION: This volume is excluded from Longhorn weekly backups.
+# See config/longhorn/manifests/backup-exclusions.yaml
 
 apiVersion: v1
 kind: PersistentVolumeClaim
