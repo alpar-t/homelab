@@ -1,5 +1,6 @@
 # Frigate configuration
 # NVR with motion detection for 3x 4K cameras
+# Gate camera has LPR enabled for license plate recognition
 
 apiVersion: v1
 kind: ConfigMap
@@ -14,11 +15,38 @@ data:
     # https://docs.frigate.video/configuration/
 
     mqtt:
-      enabled: false
+      enabled: true
+      host: "{FRIGATE_MQTT_HOST}"
+      port: 1883
+      user: "{FRIGATE_MQTT_USER}"
+      password: "{FRIGATE_MQTT_PASSWORD}"
+      client_id: frigate
+      topic_prefix: frigate
 
     # Intel VAAPI hardware acceleration
     ffmpeg:
       hwaccel_args: preset-vaapi
+
+    # License Plate Recognition (LPR)
+    # https://docs.frigate.video/configuration/license_plate_recognition/
+    lpr:
+      enabled: true
+      detection_threshold: 0.6
+      recognition_threshold: 0.85
+      min_area: 500
+      device: CPU
+      known_plates:
+        "Family":
+          - "CJ48TAK"
+          - "CJ29SGU"
+          - "CJ29UKC"
+
+    # Notifications for license plate recognition
+    # Sends all recognized plates via MQTT
+    notifications:
+      enabled: true
+      email:
+        enabled: false
 
     # Recording configuration
     record:
@@ -48,6 +76,8 @@ data:
           width: 640
           height: 360
           fps: 12
+        lpr:
+          enabled: false
         motion:
           # Disable contrast enhancement to avoid CPU-based gamma filter
           improve_contrast: false
@@ -63,10 +93,27 @@ data:
       gate:
         enabled: true
         detect:
-          enabled: false
+          # Enable detection for LPR to work
+          enabled: true
           width: 640
           height: 360
           fps: 12
+        objects:
+          track:
+            - car
+            - motorcycle
+          filters:
+            car:
+              # Lower threshold to catch cars at distance
+              min_score: 0.5
+              threshold: 0.65
+            motorcycle:
+              min_score: 0.5
+              threshold: 0.65
+        lpr:
+          enabled: true
+          # Lower min_area for long driveway (plates will be smaller)
+          min_area: 300
         motion:
           improve_contrast: false
         ffmpeg:
@@ -85,6 +132,8 @@ data:
           width: 640
           height: 360
           fps: 12
+        lpr:
+          enabled: false
         motion:
           improve_contrast: false
         ffmpeg:

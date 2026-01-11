@@ -21,6 +21,7 @@ spec:
       annotations:
         # Restart on config changes
         configmap.reloader.stakater.com/reload: "frigate-config"
+        secret.reloader.stakater.com/reload: "frigate-rtsp,frigate-mqtt"
     spec:
       containers:
         - name: frigate
@@ -42,6 +43,21 @@ spec:
                 secretKeyRef:
                   name: frigate-rtsp
                   key: FRIGATE_RTSP_PASSWORD
+            - name: FRIGATE_MQTT_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: frigate-mqtt
+                  key: host
+            - name: FRIGATE_MQTT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: frigate-mqtt
+                  key: username
+            - name: FRIGATE_MQTT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: frigate-mqtt
+                  key: password
             - name: TZ
               value: "Europe/Bucharest"
           volumeMounts:
@@ -59,12 +75,12 @@ spec:
               mountPath: /dev/dri
           resources:
             requests:
-              cpu: 100m
-              memory: 512Mi
+              cpu: 200m
+              memory: 1Gi
               gpu.intel.com/i915: "1"
             limits:
-              cpu: 2000m
-              memory: 2Gi
+              cpu: 4000m
+              memory: 4Gi
               gpu.intel.com/i915: "1"
           securityContext:
             privileged: false
@@ -104,4 +120,3 @@ spec:
           hostPath:
             path: /dev/dri
             type: Directory
-
