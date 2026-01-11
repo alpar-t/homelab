@@ -16,9 +16,9 @@ data:
     mqtt:
       enabled: false
 
-    # Intel QSV hardware acceleration
+    # Intel VAAPI hardware acceleration
     ffmpeg:
-      hwaccel_args: preset-intel-qsv-h264
+      hwaccel_args: preset-vaapi
 
     # Recording configuration
     record:
@@ -26,10 +26,12 @@ data:
       retain:
         days: 7
         mode: motion
-      events:
+      alerts:
         retain:
-          default: 14
-          mode: motion
+          days: 14
+      detections:
+        retain:
+          days: 14
 
     # Snapshots on motion
     snapshots:
@@ -37,30 +39,31 @@ data:
       retain:
         default: 14
 
-    # Detection disabled for now
-    # Substream is 640x360 @ 12fps (can enable later for AI)
-    detect:
-      enabled: false
-      width: 640
-      height: 360
-      fps: 12
-
     # Camera definitions
     cameras:
       front:
         enabled: true
+        detect:
+          enabled: false
+          width: 640
+          height: 360
+          fps: 12
         ffmpeg:
           inputs:
             - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.20:554/ch1/main/av_stream
               roles:
                 - record
-            # Sub-stream for detection (when enabled)
             - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.20:554/ch1/sub/av_stream
               roles:
                 - detect
 
       gate:
         enabled: true
+        detect:
+          enabled: false
+          width: 640
+          height: 360
+          fps: 12
         ffmpeg:
           inputs:
             - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.21:554/ch1/main/av_stream
@@ -72,6 +75,11 @@ data:
 
       back:
         enabled: true
+        detect:
+          enabled: false
+          width: 640
+          height: 360
+          fps: 12
         ffmpeg:
           inputs:
             - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.22:554/ch1/main/av_stream
@@ -80,5 +88,3 @@ data:
             - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.22:554/ch1/sub/av_stream
               roles:
                 - detect
-
-
