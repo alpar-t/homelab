@@ -20,29 +20,22 @@ data:
     ffmpeg:
       hwaccel_args: preset-intel-qsv-h264
 
-    # Recording configuration - storage-based retention
+    # Recording configuration
     record:
       enabled: true
       retain:
-        days: 0  # Keep forever, let storage management handle cleanup
+        days: 7
         mode: motion
       events:
         retain:
-          default: 30  # Keep event clips longer
+          default: 14
           mode: motion
 
     # Snapshots on motion
     snapshots:
       enabled: true
       retain:
-        default: 30
-
-    # Storage management - auto-cleanup when disk fills up
-    storage:
-      media: /media/frigate
-      retention:
-        # Start deleting oldest recordings at 90% full
-        default: 90
+        default: 14
 
     # Detection disabled for now
     # Substream is 640x360 @ 12fps (can enable later for AI)
@@ -88,8 +81,4 @@ data:
               roles:
                 - detect
 
-    # UI configuration
-    ui:
-      live_mode: mse
-      timezone: Europe/Bucharest
 
