@@ -53,7 +53,6 @@ data:
             - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.20:554/ch1/main/av_stream
               roles:
                 - record
-                - restream
             - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.20:554/ch1/sub/av_stream
               roles:
                 - detect
@@ -70,7 +69,6 @@ data:
             - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.21:554/ch1/main/av_stream
               roles:
                 - record
-                - restream
             - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.21:554/ch1/sub/av_stream
               roles:
                 - detect
@@ -87,7 +85,16 @@ data:
             - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.22:554/ch1/main/av_stream
               roles:
                 - record
-                - restream
             - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.22:554/ch1/sub/av_stream
               roles:
                 - detect
+
+    # go2rtc configuration for HD live streaming
+    go2rtc:
+      streams:
+        front:
+          - rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.20:554/ch1/main/av_stream
+        gate:
+          - rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.21:554/ch1/main/av_stream
+        back:
+          - rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.22:554/ch1/main/av_stream
