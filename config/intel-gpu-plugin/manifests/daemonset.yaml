@@ -40,6 +40,9 @@ spec:
         - name: intel-gpu-plugin
           image: intel/intel-gpu-plugin:0.34.1
           imagePullPolicy: IfNotPresent
+          args:
+            # Allow multiple pods to share each GPU
+            - -shared-dev-num=10
           env:
             - name: NODE_NAME
               valueFrom:
