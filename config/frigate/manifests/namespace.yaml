@@ -1,0 +1,12 @@
+# Frigate namespace
+# NVR with AI object detection for security cameras
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: frigate
+  labels:
+    app.kubernetes.io/name: frigate
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+

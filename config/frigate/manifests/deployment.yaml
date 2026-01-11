@@ -1,0 +1,104 @@
+# Frigate NVR deployment with Intel GPU acceleration
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frigate
+  namespace: frigate
+  labels:
+    app.kubernetes.io/name: frigate
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # Required for RWO volumes
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: frigate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: frigate
+      annotations:
+        # Restart on config changes
+        configmap.reloader.stakater.com/reload: "frigate-config"
+    spec:
+      containers:
+        - name: frigate
+          image: ghcr.io/blakeblackshear/frigate:0.14.1
+          ports:
+            - containerPort: 5000
+              name: http
+            - containerPort: 8554
+              name: rtsp
+            - containerPort: 8555
+              name: webrtc-tcp
+              protocol: TCP
+            - containerPort: 8555
+              name: webrtc-udp
+              protocol: UDP
+          env:
+            - name: FRIGATE_RTSP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: frigate-rtsp
+                  key: FRIGATE_RTSP_PASSWORD
+            - name: TZ
+              value: "Europe/Bucharest"
+          volumeMounts:
+            - name: config
+              mountPath: /config/config.yml
+              subPath: config.yml
+              readOnly: true
+            - name: config-db
+              mountPath: /config
+            - name: media
+              mountPath: /media/frigate
+            - name: shm
+              mountPath: /dev/shm
+            - name: dri
+              mountPath: /dev/dri
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+              gpu.intel.com/i915: "1"
+            limits:
+              cpu: 4000m
+              memory: 4Gi
+              gpu.intel.com/i915: "1"
+          securityContext:
+            privileged: false
+          livenessProbe:
+            httpGet:
+              path: /api/version
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/version
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: frigate-config
+        - name: config-db
+          persistentVolumeClaim:
+            claimName: frigate-config
+        - name: media
+          persistentVolumeClaim:
+            claimName: frigate-media
+        # tmpfs for frame processing (4GB)
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 4Gi
+        # Intel GPU device
+        - name: dri
+          hostPath:
+            path: /dev/dri
+            type: Directory
+

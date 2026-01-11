@@ -66,7 +66,13 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
   - Delete `config/longhorn/storageclass-hdd.yaml` (keep `manifests/` version)
 - [ ] **Pi-hole DNS redundancy** - see [runbooks/pihole-dns-redundancy.md](runbooks/pihole-dns-redundancy.md)
   - Single Pi-hole = DNS outage if pod fails
-  - Options: secondary Pi-hole with sync, or fallback DNS in DHCP 
+  - Options: secondary Pi-hole with sync, or fallback DNS in DHCP
+- [ ] **Graceful node reboots for Zincati/CoreOS updates**
+  - Zincati reboots nodes during maintenance window (Wed 3-5 AM UTC) without Kubernetes awareness
+  - No `kubectl drain` before reboot - pods killed abruptly
+  - Longhorn volumes detach mid-I/O, replicas go offline instantly
+  - PodDisruptionBudgets ignored - replicated workloads may lose quorum
+  - Multiple nodes can reboot within same 2-hour window - risk of 0 healthy Longhorn replicas
 
 **Tasks:**
 - [ ] Monitoring (Prometheus + Grafana)

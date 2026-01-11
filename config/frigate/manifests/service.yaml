@@ -1,0 +1,45 @@
+# Frigate services
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: frigate
+  namespace: frigate
+  labels:
+    app.kubernetes.io/name: frigate
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: frigate
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+      protocol: TCP
+    - name: rtsp
+      port: 8554
+      targetPort: 8554
+      protocol: TCP
+    - name: webrtc-tcp
+      port: 8555
+      targetPort: 8555
+      protocol: TCP
+---
+# WebRTC UDP service (for low-latency live view)
+apiVersion: v1
+kind: Service
+metadata:
+  name: frigate-webrtc-udp
+  namespace: frigate
+  labels:
+    app.kubernetes.io/name: frigate
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: frigate
+  ports:
+    - name: webrtc-udp
+      port: 8555
+      targetPort: 8555
+      protocol: UDP
+

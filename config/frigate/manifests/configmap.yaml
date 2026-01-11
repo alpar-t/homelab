@@ -1,0 +1,95 @@
+# Frigate configuration
+# NVR with motion detection for 3x 4K cameras
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frigate-config
+  namespace: frigate
+  labels:
+    app.kubernetes.io/name: frigate
+data:
+  config.yml: |
+    # Frigate NVR Configuration
+    # https://docs.frigate.video/configuration/
+
+    mqtt:
+      enabled: false
+
+    # Intel QSV hardware acceleration
+    ffmpeg:
+      hwaccel_args: preset-intel-qsv-h264
+
+    # Recording configuration - storage-based retention
+    record:
+      enabled: true
+      retain:
+        days: 0  # Keep forever, let storage management handle cleanup
+        mode: motion
+      events:
+        retain:
+          default: 30  # Keep event clips longer
+          mode: motion
+
+    # Snapshots on motion
+    snapshots:
+      enabled: true
+      retain:
+        default: 30
+
+    # Storage management - auto-cleanup when disk fills up
+    storage:
+      media: /media/frigate
+      retention:
+        # Start deleting oldest recordings at 90% full
+        default: 90
+
+    # Detection disabled for now
+    # Substream is 640x360 @ 12fps (can enable later for AI)
+    detect:
+      enabled: false
+      width: 640
+      height: 360
+      fps: 12
+
+    # Camera definitions
+    cameras:
+      front:
+        enabled: true
+        ffmpeg:
+          inputs:
+            - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.20:554/ch1/main/av_stream
+              roles:
+                - record
+            # Sub-stream for detection (when enabled)
+            - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.20:554/ch1/sub/av_stream
+              roles:
+                - detect
+
+      gate:
+        enabled: true
+        ffmpeg:
+          inputs:
+            - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.21:554/ch1/main/av_stream
+              roles:
+                - record
+            - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.21:554/ch1/sub/av_stream
+              roles:
+                - detect
+
+      back:
+        enabled: true
+        ffmpeg:
+          inputs:
+            - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.22:554/ch1/main/av_stream
+              roles:
+                - record
+            - path: rtsp://admin:{FRIGATE_RTSP_PASSWORD}@192.168.1.22:554/ch1/sub/av_stream
+              roles:
+                - detect
+
+    # UI configuration
+    ui:
+      live_mode: mse
+      timezone: Europe/Bucharest
+
