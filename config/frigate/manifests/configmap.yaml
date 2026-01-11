@@ -41,13 +41,6 @@ data:
           - "CJ29SGU"
           - "CJ29UKC"
 
-    # Notifications for license plate recognition
-    # Sends all recognized plates via MQTT
-    notifications:
-      enabled: true
-      email:
-        enabled: false
-
     # Recording configuration
     record:
       enabled: true
