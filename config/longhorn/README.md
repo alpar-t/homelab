@@ -166,7 +166,7 @@ data:
     some-namespace/some-pvc-name
 ```
 
-The Job runs as an ArgoCD PostSync hook and applies the exclusion labels to Longhorn volumes.
+The Job runs as an ArgoCD PostSync hook and applies the label `recurring-job.longhorn.io/weekly-backup=disabled` to the Longhorn volumes.
 
 **Currently excluded:**
 - `frigate/frigate-media` - large recordings, not critical

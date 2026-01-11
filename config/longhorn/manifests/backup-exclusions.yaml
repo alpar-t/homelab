@@ -68,9 +68,9 @@ spec:
                   continue
                 fi
                 
-                # Apply the exclusion label
+                # Apply the exclusion label - disable the weekly-backup job for this volume
                 kubectl label volume "$VOLUME_NAME" -n longhorn-system \
-                  recurring-job.longhorn.io/default=disabled \
+                  recurring-job.longhorn.io/weekly-backup=disabled \
                   --overwrite
                 
                 echo "  SUCCESS: Excluded $VOLUME_NAME from default backups"
