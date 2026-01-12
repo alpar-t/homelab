@@ -12,7 +12,7 @@
 #   recurring-job-group.longhorn.io/critical: enabled
 
 ---
-# Weekly backup for ALL volumes (Sunday 3:00 AM), keep 8 weeks
+# Weekly backup for ALL volumes (Tuesday 3:00 AM), keep 8 weeks
 # The "default" group automatically applies to all volumes
 apiVersion: longhorn.io/v1beta2
 kind: RecurringJob
@@ -22,7 +22,7 @@ metadata:
 spec:
   name: weekly-backup
   task: backup
-  cron: "0 3 * * 0"
+  cron: "0 3 * * 2"
   retain: 8
   concurrency: 2
   groups:

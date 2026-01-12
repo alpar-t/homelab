@@ -240,3 +240,4 @@ echo "  export KUBECONFIG=$(pwd)/kubeconfig"
 echo "  kubectl get nodes"
 echo ""
 
+
