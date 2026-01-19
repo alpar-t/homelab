@@ -1,0 +1,109 @@
+# oauth2-proxy for Chatwoot authentication via Pocket ID
+#
+# Prerequisites:
+#   kubectl create secret generic oauth2-proxy-chatwoot \
+#     --namespace=chatwoot \
+#     --from-literal=client-id=<pocket-id-client-id> \
+#     --from-literal=client-secret=<pocket-id-client-secret> \
+#     --from-literal=cookie-secret=$(openssl rand -hex 16)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth2-proxy-chatwoot
+  namespace: chatwoot
+  labels:
+    app: oauth2-proxy-chatwoot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oauth2-proxy-chatwoot
+  template:
+    metadata:
+      labels:
+        app: oauth2-proxy-chatwoot
+    spec:
+      containers:
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.13.0@sha256:56e3daedf765c7a1eea6e366fbe684be7d3084830ade14b6174570d3c7960954
+          args:
+            - --http-address=0.0.0.0:4180
+            - --reverse-proxy=true
+            # OIDC configuration
+            - --provider=oidc
+            - --oidc-issuer-url=https://auth.newjoy.ro
+            # Upstream (Chatwoot web service)
+            - --upstream=http://chatwoot-web.chatwoot.svc.cluster.local:3000
+            # Cookie configuration
+            - --cookie-secure=true
+            - --cookie-name=_oauth2_proxy_chatwoot
+            - --cookie-domain=chat.newjoy.ro
+            # Email/user validation
+            - --email-domain=*
+            - --insecure-oidc-allow-unverified-email=true
+            # Redirect configuration
+            - --redirect-url=https://chat.newjoy.ro/oauth2/callback
+            # Skip auth for API endpoints used by mobile apps and webhooks
+            - --skip-auth-route=^/api/v1/widget
+            - --skip-auth-route=^/webhooks
+            - --skip-auth-route=^/cable
+            # Pass auth headers to upstream
+            - --pass-user-headers=true
+            - --set-xauthrequest=true
+          env:
+            - name: OAUTH2_PROXY_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-chatwoot
+                  key: client-id
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-chatwoot
+                  key: client-secret
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-chatwoot
+                  key: cookie-secret
+          ports:
+            - containerPort: 4180
+              name: http
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oauth2-proxy-chatwoot
+  namespace: chatwoot
+  labels:
+    app: oauth2-proxy-chatwoot
+spec:
+  type: ClusterIP
+  selector:
+    app: oauth2-proxy-chatwoot
+  ports:
+    - name: http
+      port: 4180
+      targetPort: 4180
+      protocol: TCP
+

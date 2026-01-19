@@ -1,0 +1,35 @@
+# Chatwoot - Customer engagement platform
+# Deployed via Helm chart with external CloudNativePG PostgreSQL
+#
+# Prerequisites (manual secrets):
+#   See config/chatwoot/README.md for required secrets
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: chatwoot
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    # Helm chart for Chatwoot
+    - repoURL: https://chatwoot.github.io/charts
+      chart: chatwoot
+      targetRevision: 1.3.0
+      helm:
+        valueFiles:
+          - $values/config/chatwoot/helm/values.yaml
+    # Values from git repo
+    - repoURL: https://github.com/alpar-t/homelab
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: chatwoot
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+

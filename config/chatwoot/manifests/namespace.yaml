@@ -1,0 +1,8 @@
+# Chatwoot namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: chatwoot
+  labels:
+    app.kubernetes.io/name: chatwoot
+

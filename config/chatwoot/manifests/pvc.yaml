@@ -1,0 +1,21 @@
+# Persistent storage for Chatwoot file uploads/attachments
+# Uses Longhorn SSD for replicated storage
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: chatwoot-storage
+  namespace: chatwoot
+  labels:
+    app: chatwoot
+    recurring-job-group.longhorn.io/critical: enabled
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 100Gi
+

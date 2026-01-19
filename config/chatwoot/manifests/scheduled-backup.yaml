@@ -1,0 +1,18 @@
+# Scheduled backup for Chatwoot PostgreSQL
+# Daily backups in addition to continuous WAL archiving
+
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: chatwoot-db-daily
+  namespace: chatwoot
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  # Daily at 3 AM UTC
+  schedule: "0 3 * * *"
+  backupOwnerReference: self
+  cluster:
+    name: chatwoot-db
+  immediate: false
+
