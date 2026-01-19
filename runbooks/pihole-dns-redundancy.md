@@ -269,3 +269,5 @@ kubectl scale deployment pihole -n pihole --replicas=1
 - [config/metallb/README.md](../config/metallb/README.md) - LoadBalancer IPs
 
 
+
+

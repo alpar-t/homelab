@@ -164,7 +164,8 @@ spec:
             - name: PAPERLESS_OCR_MODE
               value: "redo"
             - name: PAPERLESS_OCR_USER_ARGS
-              value: '{"invalidate_digital_signatures": true}'
+              # Limit jobs to reduce concurrent OCR memory usage (was using 4 concurrent pages)
+              value: '{"invalidate_digital_signatures": true, "jobs": 2}'
             
             # Tika and Gotenberg for document conversion
             - name: PAPERLESS_TIKA_ENABLED
@@ -238,12 +239,13 @@ spec:
           
           resources:
             # Higher memory for large document/image processing (OCR on 255M pixel images)
+            # Increased from 4Gi to 6Gi due to OOMKilled during concurrent OCR
             requests:
               cpu: 100m
               memory: 1Gi
             limits:
               cpu: 2000m
-              memory: 4Gi
+              memory: 6Gi
           
           # Startup probe - allows up to 30 minutes for initial startup
           # (index rebuild after updates can take a long time)
