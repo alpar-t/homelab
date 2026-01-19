@@ -67,24 +67,25 @@ kubectl create secret generic oauth2-proxy-chatwoot \
   --from-literal=cookie-secret=$(openssl rand -hex 16)
 ```
 
-### 3. Chatwoot Config Secret
+### 3. Chatwoot Environment Secret
 
-Simple config secret for non-sensitive settings:
+**Wait for these to exist first:**
+- `chatwoot-secrets` (created by the secrets-job)
+- `chatwoot-db-app` (created by CloudNativePG)
+
+Then create the aggregated environment secret:
 
 ```bash
-kubectl create secret generic chatwoot-config \
+kubectl create secret generic chatwoot-env \
   --namespace=chatwoot \
+  --from-literal=SECRET_KEY_BASE="$(kubectl get secret chatwoot-secrets -n chatwoot -o jsonpath='{.data.SECRET_KEY_BASE}' | base64 -d)" \
+  --from-literal=DATABASE_URL="$(kubectl get secret chatwoot-db-app -n chatwoot -o jsonpath='{.data.uri}' | base64 -d)" \
   --from-literal=MAILER_SENDER_EMAIL="..."
 ```
 
-### Auto-Generated Secrets (no action needed)
-
-These are created automatically and referenced directly by the Helm chart:
-
-| Secret | Created By | Contains |
-|--------|-----------|----------|
-| `chatwoot-db-app` | CloudNativePG | `uri` (DATABASE_URL), auto-rotates |
-| `chatwoot-secrets` | secrets-job | `SECRET_KEY_BASE` |
+> **Note:** The Chatwoot Helm chart only supports a single `extraEnvVarsSecret`, so we aggregate
+> values into one secret. If CNPG rotates database credentials, re-run the command above
+> (delete the old secret first with `kubectl delete secret chatwoot-env -n chatwoot`).
 
 ## Deployment Order
 
@@ -112,7 +113,7 @@ Chatwoot uses Stalwart as local SMTP relay:
 - Host: `stalwart.stalwart-mail.svc.cluster.local`
 - Port: `25`
 - Authentication: None (trusted internal network)
-- Sender: Set via `MAILER_SENDER_EMAIL` in chatwoot-config secret
+- Sender: Set via `MAILER_SENDER_EMAIL` in chatwoot-env secret
 
 ## Initial Setup
 
