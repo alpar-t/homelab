@@ -48,7 +48,7 @@ spec:
         # Main Stalwart container
         - name: stalwart
           # Pinned version - see /CLOUD.md for update instructions
-          image: stalwartlabs/stalwart:v0.13.2@sha256:e682677f83ebb44632e41684db293fd46db8ff94487cef3b894b5c668b448716
+          image: stalwartlabs/stalwart:v0.15.4@sha256:2a25f80a42a96aaeaa6f07062eb23bcbacfcc27c38bbad163ff5126554e6744c
           args:
             - --config
             - /opt/stalwart/etc/config.toml
