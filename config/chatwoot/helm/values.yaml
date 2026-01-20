@@ -9,6 +9,9 @@
 # Use external PostgreSQL (CloudNativePG)
 postgresql:
   enabled: false
+  # Required for init container health check
+  postgresqlHost: chatwoot-db-rw.chatwoot.svc.cluster.local
+  postgresqlPort: 5432
 
 # Use chart's built-in Redis
 redis:
