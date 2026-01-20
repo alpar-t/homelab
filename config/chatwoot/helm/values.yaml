@@ -10,9 +10,10 @@
 postgresql:
   enabled: false
 
-# Use external Redis (our own deployment)
+# Use external Redis (our own deployment, no auth)
 redis:
   enabled: false
+  password: ""  # Override default "redis" password
 
 # Static environment variables
 env:
@@ -44,7 +45,8 @@ env:
   SMTP_ENABLE_STARTTLS_AUTO: "false"
   SMTP_OPENSSL_VERIFY_MODE: "none"
   
-  # Redis configuration (our own Redis)
+  # Redis configuration (our own Redis, no auth)
+  # Full URL is the single source of truth - no password component = no auth
   REDIS_URL: "redis://redis.chatwoot.svc.cluster.local:6379"
   
   # Bot avatar
