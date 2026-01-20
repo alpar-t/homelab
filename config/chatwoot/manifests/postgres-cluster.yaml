@@ -39,10 +39,11 @@ spec:
       # No secret specified - CloudNativePG auto-generates credentials
       # Password stored in: chatwoot-db-app secret (created by operator)
   
-  # Local SSD storage - PostgreSQL handles its own replication
+  # Local storage - PostgreSQL handles its own replication
+  # Uses rancher local-path provisioner (WaitForFirstConsumer)
   storage:
     size: 5Gi
-    storageClass: local-ssd
+    storageClass: local-path
   
   resources:
     requests:
