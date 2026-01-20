@@ -38,6 +38,9 @@ spec:
       owner: chatwoot
       # No secret specified - CloudNativePG auto-generates credentials
       # Password stored in: chatwoot-db-app secret (created by operator)
+      postInitSQL:
+        - CREATE EXTENSION IF NOT EXISTS pg_stat_statements
+        - CREATE EXTENSION IF NOT EXISTS vector
   
   # Local storage - PostgreSQL handles its own replication
   # Uses rancher local-path provisioner (WaitForFirstConsumer)
@@ -74,6 +77,9 @@ spec:
   
   postgresql:
     parameters:
+      # Required by Chatwoot
+      shared_preload_libraries: "pg_stat_statements"
+      
       # Logging
       log_statement: "ddl"
       log_min_duration_statement: "1000"
