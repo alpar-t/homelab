@@ -6,11 +6,6 @@
 #   2. cnpg-backup-credentials secret (for PostgreSQL backups)
 #   3. oauth2-proxy-chatwoot secret (for OAuth2 proxy)
 
-image:
-  repository: chatwoot/chatwoot
-  tag: v4.10.0
-  pullPolicy: IfNotPresent
-
 # Use external PostgreSQL (CloudNativePG)
 postgresql:
   enabled: false
