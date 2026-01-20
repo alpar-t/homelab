@@ -34,7 +34,7 @@ spec:
             - --provider=oidc
             - --oidc-issuer-url=https://auth.newjoy.ro
             # Upstream (Chatwoot web service)
-            - --upstream=http://chatwoot-web.chatwoot.svc.cluster.local:3000
+            - --upstream=http://chatwoot.chatwoot.svc.cluster.local:3000
             # Cookie configuration
             - --cookie-secure=true
             - --cookie-name=_oauth2_proxy_chatwoot
