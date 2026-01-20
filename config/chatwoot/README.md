@@ -12,12 +12,6 @@ Customer engagement platform deployed at `chat.newjoy.ro`.
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────────┐
-│               oauth2-proxy-chatwoot                         │
-│           (authenticates via Pocket ID)                     │
-└─────────────────────┬───────────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────────────┐
 │              Chatwoot (Helm Chart)                          │
 │                                                             │
 │  ┌──────────┐  ┌──────────┐                                 │
@@ -28,7 +22,7 @@ Customer engagement platform deployed at `chat.newjoy.ro`.
         ▼             ▼
 ┌───────────────┐ ┌───────────────────────────────────────────┐
 │     Redis     │ │        PostgreSQL (CloudNativePG)         │
-│  (Longhorn)   │ │           chatwoot-db (local-ssd)         │
+│  (chart's)    │ │           chatwoot-db (local-path)        │
 │               │ │           2 HA instances                  │
 └───────────────┘ │           + B2 backups                    │
                   └───────────────────────────────────────────┘
@@ -38,8 +32,8 @@ Customer engagement platform deployed at `chat.newjoy.ro`.
 
 | Component | Storage | Notes |
 |-----------|---------|-------|
-| PostgreSQL | `local-ssd` | HA with CNPG, WAL backup to B2 |
-| Redis | `longhorn-ssd` | Persistent for job queue |
+| PostgreSQL | `local-path` | HA with CNPG, WAL backup to B2 |
+| Redis | `longhorn` | Chart's built-in Redis |
 | File Storage | `longhorn-ssd` | User uploads, attachments |
 
 ## Prerequisites
@@ -55,19 +49,7 @@ kubectl get secret cnpg-backup-credentials -n immich -o yaml | \
   kubectl apply -f -
 ```
 
-### 2. OAuth2 Proxy Secret
-
-Register Chatwoot in Pocket ID first, then:
-
-```bash
-kubectl create secret generic oauth2-proxy-chatwoot \
-  --namespace=chatwoot \
-  --from-literal=client-id=<pocket-id-client-id> \
-  --from-literal=client-secret=<pocket-id-client-secret> \
-  --from-literal=cookie-secret=$(openssl rand -hex 16)
-```
-
-### 3. Chatwoot Environment Secret
+### 2. Chatwoot Environment Secret
 
 **Wait for these to exist first:**
 - `chatwoot-secrets` (created by the secrets-job)
@@ -80,7 +62,7 @@ kubectl create secret generic chatwoot-env \
   --namespace=chatwoot \
   --from-literal=SECRET_KEY_BASE="$(kubectl get secret chatwoot-secrets -n chatwoot -o jsonpath='{.data.SECRET_KEY_BASE}' | base64 -d)" \
   --from-literal=DATABASE_URL="$(kubectl get secret chatwoot-db-app -n chatwoot -o jsonpath='{.data.uri}' | base64 -d)" \
-  --from-literal=MAILER_SENDER_EMAIL="..."
+  --from-literal=MAILER_SENDER_EMAIL="service@newjoy.ro"
 ```
 
 > **Note:** The Chatwoot Helm chart only supports a single `extraEnvVarsSecret`, so we aggregate
@@ -92,19 +74,25 @@ kubectl create secret generic chatwoot-env \
 1. **chatwoot-infra** syncs first:
    - Creates namespace
    - Deploys PostgreSQL cluster (waits for ready)
-   - Deploys Redis
    - Runs secrets generation job
    - Creates storage PVC
+   - Creates ingress
 
 2. **Create manual secrets** (see Prerequisites above)
 
 3. **chatwoot** (Helm chart) syncs:
    - Deploys web and worker pods
-   - Uses external PostgreSQL and Redis
+   - Deploys Redis (chart's built-in)
+   - Runs database migrations
 
-4. **oauth2-proxy-chatwoot** syncs:
-   - Deploys OAuth2 proxy
-   - Ingress routes traffic through proxy
+## Initial Setup
+
+1. After deployment, go to `https://chat.newjoy.ro`
+2. Create your admin account (signup is enabled)
+3. **Important:** After creating admin, disable signup:
+   - Edit `config/chatwoot/helm/values.yaml`
+   - Set `ENABLE_ACCOUNT_SIGNUP: "false"`
+   - Commit and sync
 
 ## SMTP Configuration
 
@@ -115,31 +103,10 @@ Chatwoot uses Stalwart as local SMTP relay:
 - Authentication: None (trusted internal network)
 - Sender: Set via `MAILER_SENDER_EMAIL` in chatwoot-env secret
 
-## Initial Setup
+## Mobile App
 
-After deployment, create the first admin account:
-
-```bash
-# Exec into the web pod
-kubectl exec -it -n chatwoot deploy/chatwoot-web -- /bin/bash
-
-# Create super admin
-RAILS_ENV=production bundle exec rails chatwoot:setup
-```
-
-Or via Rails console:
-
-```bash
-kubectl exec -it -n chatwoot deploy/chatwoot-web -- \
-  bundle exec rails runner "
-    SuperAdmin.create!(
-      email: 'your-email@example.com',
-      password: 'your-secure-password',
-      password_confirmation: 'your-secure-password',
-      name: 'Admin'
-    )
-  "
-```
+The Chatwoot mobile app works with native email/password authentication.
+Use the same credentials you created during initial setup.
 
 ## Troubleshooting
 
@@ -161,10 +128,10 @@ kubectl exec -it -n chatwoot deploy/chatwoot-web -- \
 
 ```bash
 # Web pod
-kubectl logs -n chatwoot -l app.kubernetes.io/name=chatwoot -c chatwoot --tail=100 -f
+kubectl logs -n chatwoot deploy/chatwoot-web --tail=100 -f
 
-# Worker pod
-kubectl logs -n chatwoot -l app.kubernetes.io/component=worker --tail=100 -f
+# Worker pod  
+kubectl logs -n chatwoot deploy/chatwoot-worker --tail=100 -f
 ```
 
 ### Check job queue
@@ -176,7 +143,5 @@ kubectl exec -it -n chatwoot deploy/chatwoot-web -- \
 
 ## Related
 
-- [oauth2-proxy-chatwoot](../oauth2-proxy-chatwoot/) - Authentication proxy
-- [local-path-provisioner](../local-path-provisioner/) - Local SSD storage for PostgreSQL
-- [runbooks/migrate-postgres-to-local-storage.md](../../runbooks/migrate-postgres-to-local-storage.md) - PostgreSQL local storage setup
-
+- [CloudNativePG](../cloudnativepg/) - PostgreSQL operator
+- [Stalwart Mail](../stalwart-mail/) - SMTP relay

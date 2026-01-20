@@ -31,8 +31,8 @@ env:
   # TLS terminates at Cloudflare edge, nginx handles the rest
   FORCE_SSL: "false"
   
-  # Disable signup (single user via OAuth)
-  ENABLE_ACCOUNT_SIGNUP: "false"
+  # Enable signup to create admin account, then disable
+  ENABLE_ACCOUNT_SIGNUP: "true"
   
   # Installation identifier
   INSTALLATION_ENV: "helm"
