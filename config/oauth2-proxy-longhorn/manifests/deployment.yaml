@@ -34,6 +34,12 @@ spec:
             # OIDC configuration
             - --provider=oidc
             - --oidc-issuer-url=https://auth.newjoy.ro
+            # Skip OIDC discovery to use internal URLs for server-to-server requests
+            # This avoids rate limiting when all requests appear from same public IP via Cloudflare
+            - --skip-oidc-discovery=true
+            - --login-url=https://auth.newjoy.ro/authorize
+            - --redeem-url=http://pocket-id.pocket-id.svc.cluster.local/api/oidc/token
+            - --oidc-jwks-url=http://pocket-id.pocket-id.svc.cluster.local/.well-known/jwks.json
             # Upstream (Longhorn UI)
             - --upstream=http://longhorn-frontend.longhorn-system.svc.cluster.local:80
             # Cookie configuration (stateless sessions)
