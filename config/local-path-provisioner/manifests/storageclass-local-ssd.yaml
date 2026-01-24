@@ -1,0 +1,12 @@
+# Uses k3s built-in local-path-provisioner with default path
+# /var/lib/rancher/k3s/storage
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-ssd
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: rancher.io/local-path
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+
