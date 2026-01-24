@@ -84,7 +84,7 @@ spec:
             persistence:
               enabled: true
               size: 2Gi
-              storageClass: "local-ssd"
+              storageClass: "longhorn-ssd"
             resources:
               requests:
                 cpu: 100m
@@ -150,7 +150,7 @@ spec:
               config:
                 enabled: true
                 size: 5Gi
-                storageClass: "local-ssd"
+                storageClass: "longhorn-ssd"
                 accessMode: ReadWriteOnce
               data:
                 enabled: true

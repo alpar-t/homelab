@@ -27,7 +27,7 @@ spec:
   
   storage:
     size: 2Gi
-    storageClass: local-ssd
+    storageClass: longhorn-ssd
   
   resources:
     requests:
