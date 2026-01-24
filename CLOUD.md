@@ -101,3 +101,46 @@ kubectl get pods -n stalwart-mail -o jsonpath='{range .items[*]}{.spec.container
 
 The manifest digest (`sha256:f3f...`) automatically selects the correct architecture.
 
+---
+
+## Local Storage with k3s Local-Path Provisioner
+
+k3s includes a built-in local-path-provisioner for local storage. We create a `local-ssd` StorageClass that uses this provisioner.
+
+### Why Use Local Storage?
+
+For applications that handle their own replication (like CloudNativePG PostgreSQL):
+- **No double replication** - app manages HA, don't need Longhorn's replication too
+- **Better performance** - no network overhead for storage I/O
+- **Simpler** - fewer failure modes
+
+### StorageClasses
+
+| StorageClass | Provisioner | Use Case |
+|--------------|-------------|----------|
+| `local-path` | k3s built-in | Default k3s local storage |
+| `local-ssd` | k3s built-in | Alias for databases (PostgreSQL, Redis) |
+| `longhorn-ssd` | Longhorn | Replicated SSD storage |
+| `longhorn-hdd` | Longhorn | Replicated HDD storage (large files) |
+
+### Storage Path
+
+k3s stores local volumes at: `/var/lib/rancher/k3s/storage`
+
+### Usage
+
+```yaml
+spec:
+  storage:
+    size: 5Gi
+    storageClass: local-ssd
+```
+
+### Setup
+
+The `local-ssd` StorageClass is deployed via ArgoCD:
+- App: `apps/local-path-provisioner.yaml`
+- Manifest: `config/local-path-provisioner/manifests/storageclass-local-ssd.yaml`
+
+No additional node configuration required - k3s handles everything.
+

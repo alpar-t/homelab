@@ -69,7 +69,7 @@ spec:
             enabled: true
 
           # ===================
-          # OnlyOffice - built-in with external PostgreSQL
+          # OnlyOffice - built-in with embedded PostgreSQL
           # ===================
           onlyoffice:
             enabled: true
@@ -92,18 +92,6 @@ spec:
               limits:
                 cpu: 2000m
                 memory: 4Gi
-            # External PostgreSQL (CloudNativePG)
-            config:
-              coAuthoring:
-                sql:
-                  type: "postgres"
-                  dbHost: "onlyoffice-postgresql-rw"
-                  dbPort: "5432"
-                  dbName: "onlyoffice"
-                  dbUser: "onlyoffice"
-            db:
-              existingSecret: "onlyoffice-postgresql-app"
-              secretKeyName: "password"
             collaboration:
               enabled: true
               resources:
