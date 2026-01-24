@@ -1,9 +1,0 @@
----
-# Source: ocis/templates/graph/configmap.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: graph
-  labels:
-data:
-  application-id: "bfcb55e8-525c-43b3-b752-182efef7dca0"

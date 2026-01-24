@@ -1,0 +1,213 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: opencloud
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    # Secrets generation manifests from our repo
+    - repoURL: https://github.com/alpar-t/homelab
+      targetRevision: main
+      path: config/opencloud/manifests
+      directory:
+        recurse: true
+    # OpenCloud Helm chart
+    - repoURL: https://github.com/opencloud-eu/helm
+      targetRevision: main
+      path: charts/opencloud
+      helm:
+        valueFiles:
+          - values.yaml
+        valuesObject:
+          # ===================
+          # Global Settings
+          # ===================
+          global:
+            domain:
+              opencloud: drive.newjoy.ro
+              # Keycloak not used - we use Pocket ID
+              keycloak: ""
+              # MinIO not used - we use posixfs
+              minio: ""
+              # WOPI handled externally
+              wopi: ""
+              collabora: ""
+              onlyoffice: office.newjoy.ro
+              companion: ""
+            tls:
+              enabled: false
+            oidc:
+              # Pocket ID as external OIDC provider
+              issuer: "https://auth.newjoy.ro"
+              clientId: "b85f28eb-bf7d-4544-a311-eadcd5c09a2d"
+              accountUrl: "https://auth.newjoy.ro/settings/account"
+
+          # ===================
+          # Disable Keycloak (using Pocket ID)
+          # ===================
+          keycloak:
+            internal:
+              enabled: false
+
+          # ===================
+          # Disable PostgreSQL for Keycloak
+          # ===================
+          postgres:
+            enabled: false
+
+          # ===================
+          # Disable Tika (using external from paperless-ngx)
+          # ===================
+          tika:
+            enabled: false
+
+          # ===================
+          # Web Extensions
+          # ===================
+          webExtensions:
+            enabled: true
+
+          # ===================
+          # OnlyOffice - built-in with external PostgreSQL
+          # ===================
+          onlyoffice:
+            enabled: true
+            image:
+              registry: docker.io
+              repository: onlyoffice/documentserver
+              tag: "8.2.2"
+              pullPolicy: IfNotPresent
+            wopi:
+              enabled: true
+            useUnauthorizedStorage: false
+            persistence:
+              enabled: true
+              size: 2Gi
+              storageClass: "local-ssd"
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                cpu: 2000m
+                memory: 4Gi
+            # External PostgreSQL (CloudNativePG)
+            config:
+              coAuthoring:
+                sql:
+                  type: "postgres"
+                  dbHost: "onlyoffice-postgresql-rw"
+                  dbPort: "5432"
+                  dbName: "onlyoffice"
+                  dbUser: "onlyoffice"
+            db:
+              existingSecret: "onlyoffice-postgresql-app"
+              secretKeyName: "password"
+            collaboration:
+              enabled: true
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+
+          # ===================
+          # Collabora - disabled
+          # ===================
+          collabora:
+            enabled: false
+
+          # ===================
+          # OpenCloud Core
+          # ===================
+          image:
+            registry: docker.io
+            repository: opencloudeu/opencloud-rolling
+            tag: "4.1.0"
+            pullPolicy: IfNotPresent
+
+          opencloud:
+            enabled: true
+            replicas: 1
+            logLevel: info
+            insecure: false
+            adminPassword: ""
+            existingSecret: "opencloud-admin"
+            createDemoUsers: false
+            excludeServices:
+              - "idp"
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: 2000m
+                memory: 4Gi
+            persistence:
+              config:
+                enabled: true
+                size: 5Gi
+                storageClass: "local-ssd"
+                accessMode: ReadWriteOnce
+              data:
+                enabled: true
+                size: 1000Gi
+                storageClass: "longhorn-hdd"
+                accessMode: ReadWriteOnce
+            config:
+              theme: "owncloud"
+            # Use posixfs storage instead of S3/MinIO
+            storage:
+              mode: posixfs
+              s3:
+                internal:
+                  enabled: false
+                external:
+                  enabled: false
+              posixfs:
+                idCacheStore: nats-js-kv
+                rootPath: "/var/lib/opencloud/storage"
+                persistence:
+                  enabled: true
+                  size: 1000Gi
+                  storageClass: "longhorn-hdd"
+                  accessMode: ReadWriteOnce
+            smtp:
+              enabled: true
+              host: stalwart.stalwart-mail.svc.cluster.local
+              port: "25"
+              sender: "OpenCloud <service@newjoy.ro>"
+              authentication: "none"
+              encryption: "none"
+              insecure: "true"
+
+          # ===================
+          # Ingress
+          # ===================
+          ingress:
+            enabled: true
+            ingressClassName: nginx
+            annotationsPreset: nginx
+            annotations:
+              nginx.ingress.kubernetes.io/proxy-body-size: "0"
+              nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+              nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+
+          # ===================
+          # Gateway API (disabled)
+          # ===================
+          httpRoute:
+            enabled: false
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: opencloud
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

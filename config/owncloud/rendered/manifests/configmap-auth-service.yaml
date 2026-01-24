@@ -1,9 +1,0 @@
----
-# Source: ocis/templates/authservice/configmap.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: auth-service
-  labels:
-data:
-  service-account-id: "d7dcf324-0eb3-4f70-8cbd-782c886ac038"

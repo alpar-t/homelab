@@ -1,0 +1,44 @@
+# OnlyOffice PostgreSQL Cluster
+# Managed by CloudNativePG operator
+#
+# Credentials are auto-generated and stored in: onlyoffice-postgresql-app secret
+#
+# Using local-ssd storage - PostgreSQL manages its own replication
+
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: onlyoffice-postgresql
+  namespace: opencloud
+  labels:
+    app: onlyoffice
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  instances: 2  # 1 primary + 1 replica for HA
+  
+  imageName: ghcr.io/cloudnative-pg/postgresql:16
+  
+  bootstrap:
+    initdb:
+      database: onlyoffice
+      owner: onlyoffice
+      # Password stored in: onlyoffice-postgresql-app secret (created by operator)
+  
+  storage:
+    size: 2Gi
+    storageClass: local-ssd
+  
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "50m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  
+  postgresql:
+    parameters:
+      shared_buffers: "64MB"
+      max_connections: "50"
+

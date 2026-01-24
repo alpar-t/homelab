@@ -1,9 +1,0 @@
----
-# Source: ocis/templates/storageusers/configmap.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: storage-users
-  labels:
-data:
-  storage-uuid: "3c729f82-5d5f-4010-a6ac-2af52eccc324"
