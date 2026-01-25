@@ -154,16 +154,8 @@ spec:
             createDemoUsers: false
             excludeServices:
               - "idp"
-            # Role mapping for Pocket ID OIDC claims
-            # Pocket ID provides 'groups' claim - adjust claim name if different
-            env:
-              - name: PROXY_ROLE_ASSIGNMENT_DRIVER
-                value: "oidc"
-              - name: PROXY_ROLE_ASSIGNMENT_OIDC_CLAIM
-                value: "roles"
-              # Fallback: assign default user role if no matching role found
-              - name: GRAPH_ASSIGN_DEFAULT_USER_ROLE
-                value: "true"
+            # Role assignment uses OIDC 'roles' claim from Pocket ID (chart default)
+            # Pocket ID roles 'user' and 'admin' should map to OpenCloud roles
             resources:
               requests:
                 cpu: 100m
