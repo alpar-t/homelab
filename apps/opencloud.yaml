@@ -178,7 +178,7 @@ spec:
               port: "25"
               sender: "OpenCloud <service@newjoy.ro>"
               # Use our manual secret with empty credentials for unauthenticated relay
-              existingSecret: "opencloud-smtp"
+              existingSecret: "opencloud-opencloud-smtp"
               authentication: "none"
               encryption: "none"
               insecure: "true"
