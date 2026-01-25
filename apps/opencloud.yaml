@@ -154,6 +154,12 @@ spec:
             createDemoUsers: false
             excludeServices:
               - "idp"
+            # Override role assignment for Pocket ID (doesn't provide roles claim)
+            env:
+              - name: PROXY_ROLE_ASSIGNMENT_DRIVER
+                value: "default"
+              - name: GRAPH_ASSIGN_DEFAULT_USER_ROLE
+                value: "true"
             resources:
               requests:
                 cpu: 100m
