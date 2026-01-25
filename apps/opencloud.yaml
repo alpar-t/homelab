@@ -118,10 +118,22 @@ spec:
             enabled: false
 
           # ===================
-          # Tika - disabled (optional full-text search)
+          # Tika - full-text search and content extraction
           # ===================
           tika:
-            enabled: false
+            enabled: true
+            image:
+              registry: docker.io
+              repository: apache/tika
+              tag: "2.9.2.1-full"
+              pullPolicy: IfNotPresent
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                cpu: 1000m
+                memory: 2Gi
 
           # ===================
           # OpenCloud Core
