@@ -112,9 +112,15 @@ spec:
                   memory: 512Mi
 
           # ===================
-          # Collabora - disabled
+          # Collabora - disabled (using OnlyOffice)
           # ===================
           collabora:
+            enabled: false
+
+          # ===================
+          # Tika - disabled (optional full-text search)
+          # ===================
+          tika:
             enabled: false
 
           # ===================
