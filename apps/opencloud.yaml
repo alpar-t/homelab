@@ -174,6 +174,49 @@ spec:
                 accessMode: ReadWriteOnce
             config:
               theme: "owncloud"
+              # CSP must include OIDC issuer (Pocket ID) for auth to work
+              csp: |
+                directives:
+                  child-src:
+                    - "'self'"
+                  connect-src:
+                    - "'self'"
+                    - "blob:"
+                    - "https://auth.newjoy.ro/"
+                    - "https://raw.githubusercontent.com/opencloud-eu/awesome-apps/"
+                  default-src:
+                    - "'none'"
+                  font-src:
+                    - "'self'"
+                  frame-ancestors:
+                    - "'self'"
+                  frame-src:
+                    - "'self'"
+                    - "blob:"
+                    - "https://embed.diagrams.net/"
+                    - "https://office.newjoy.ro/"
+                    - "https://docs.opencloud.eu"
+                  img-src:
+                    - "'self'"
+                    - "data:"
+                    - "blob:"
+                    - "https://raw.githubusercontent.com/opencloud-eu/awesome-apps/"
+                    - "https://office.newjoy.ro/"
+                  manifest-src:
+                    - "'self'"
+                  media-src:
+                    - "'self'"
+                  object-src:
+                    - "'self'"
+                    - "blob:"
+                  script-src:
+                    - "'self'"
+                    - "'unsafe-inline'"
+                  style-src:
+                    - "'self'"
+                    - "'unsafe-inline'"
+                  worker-src:
+                    - "'self'"
             # Use posixfs storage instead of S3/MinIO
             storage:
               mode: posixfs
