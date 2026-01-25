@@ -177,6 +177,9 @@ spec:
               host: stalwart.stalwart-mail.svc.cluster.local
               port: "25"
               sender: "OpenCloud <service@newjoy.ro>"
+              # Empty credentials - local relay doesn't need auth
+              username: ""
+              password: ""
               authentication: "none"
               encryption: "none"
               insecure: "true"
