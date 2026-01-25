@@ -160,7 +160,7 @@ spec:
               - name: PROXY_ROLE_ASSIGNMENT_DRIVER
                 value: "oidc"
               - name: PROXY_ROLE_ASSIGNMENT_OIDC_CLAIM
-                value: "groups"
+                value: "roles"
               # Fallback: assign default user role if no matching role found
               - name: GRAPH_ASSIGN_DEFAULT_USER_ROLE
                 value: "true"
