@@ -106,7 +106,7 @@ data:
       only_start_if_oidc_is_available: true
       issuer: "https://auth.newjoy.ro"
       client_id: "a3ffe55a-f7ba-4562-b8f9-87e6e62b5a03"
-      # No client_secret_path - using public client with PKCE
+      # No client_secret - using public client with PKCE
       
       # Scope for OIDC
       scope:
@@ -114,14 +114,8 @@ data:
         - profile
         - email
       
-      # Map email to username
-      strip_email_domain: true
-      
-      # How long to wait for OIDC auth
+      # How long auth flow is valid
       expiry: 180d
-      
-      # Use email as username
-      use_expiry_from_token: false
       
       # Allowed users/domains (empty = allow all authenticated users)
       allowed_domains: []
