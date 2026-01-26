@@ -114,6 +114,32 @@ For applications that handle their own replication (like CloudNativePG PostgreSQ
 - **Better performance** - no network overhead for storage I/O
 - **Simpler** - fewer failure modes
 
+### PostgreSQL Always Uses `local-ssd`
+
+**Rule: All CloudNativePG PostgreSQL clusters MUST use `local-ssd`, never Longhorn.**
+
+CloudNativePG provides:
+- **Replication**: 2+ instances with streaming replication
+- **Backups**: Continuous WAL archiving + daily base backups to B2
+- **PITR**: Point-in-time recovery to any second within retention
+
+Using Longhorn would add:
+- ❌ Redundant replication (double the storage, no benefit)
+- ❌ Network latency on every database I/O
+- ❌ Additional failure modes
+
+```yaml
+# Correct - PostgreSQL with local-ssd
+spec:
+  storage:
+    storageClass: local-ssd
+
+# Wrong - don't use Longhorn for PostgreSQL
+spec:
+  storage:
+    storageClass: longhorn-ssd  # ❌ Never do this
+```
+
 ### StorageClasses
 
 | StorageClass | Provisioner | Use Case |

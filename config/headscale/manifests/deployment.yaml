@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: headscale
+  namespace: headscale
+  labels:
+    app: headscale
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # Required for PVC
+  selector:
+    matchLabels:
+      app: headscale
+  template:
+    metadata:
+      labels:
+        app: headscale
+      annotations:
+        # Auto-restart when config changes (requires Reloader)
+        configmap.reloader.stakater.com/reload: "headscale-config"
+    spec:
+      containers:
+        - name: headscale
+          image: headscale/headscale:0.23.0
+          args:
+            - serve
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: grpc
+              containerPort: 50443
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          env:
+            - name: TZ
+              value: "Europe/Bucharest"
+            # Database password from CloudNativePG secret
+            - name: HEADSCALE_DATABASE_POSTGRES_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: headscale-db-app
+                  key: password
+          volumeMounts:
+            - name: config
+              mountPath: /etc/headscale/config.yaml
+              subPath: config.yaml
+              readOnly: true
+            - name: config
+              mountPath: /etc/headscale/acl.json
+              subPath: acl.json
+              readOnly: true
+            - name: data
+              mountPath: /var/lib/headscale
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: headscale-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: headscale-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: headscale
+  namespace: headscale
+  labels:
+    app: headscale
+spec:
+  type: ClusterIP
+  selector:
+    app: headscale
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+    - name: grpc
+      port: 50443
+      targetPort: 50443
+      protocol: TCP
+

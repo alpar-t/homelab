@@ -1,0 +1,119 @@
+---
+# RBAC for subnet router setup job
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: subnet-router-setup
+  namespace: headscale
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: subnet-router-setup
+  namespace: headscale
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: subnet-router-setup
+  namespace: headscale
+subjects:
+  - kind: ServiceAccount
+    name: subnet-router-setup
+    namespace: headscale
+roleRef:
+  kind: Role
+  name: subnet-router-setup
+  apiGroup: rbac.authorization.k8s.io
+---
+# Job to create pre-auth key and secret for subnet router
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: subnet-router-setup
+  namespace: headscale
+  annotations:
+    # Run after main resources are deployed
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 5
+  template:
+    spec:
+      serviceAccountName: subnet-router-setup
+      restartPolicy: OnFailure
+      containers:
+        - name: setup
+          image: bitnami/kubectl:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              
+              echo "=== Subnet Router Setup ==="
+              
+              # Check if secret already exists
+              if kubectl get secret tailscale-auth -n headscale >/dev/null 2>&1; then
+                echo "Secret tailscale-auth already exists, skipping"
+                exit 0
+              fi
+              
+              # Wait for Headscale to be ready
+              echo "Waiting for Headscale to be ready..."
+              kubectl wait --for=condition=available deployment/headscale -n headscale --timeout=300s
+              
+              # Give it a few more seconds to fully initialize
+              sleep 10
+              
+              # Get headscale pod name
+              HEADSCALE_POD=$(kubectl get pods -n headscale -l app=headscale -o jsonpath='{.items[0].metadata.name}')
+              echo "Using Headscale pod: $HEADSCALE_POD"
+              
+              # Create a user if it doesn't exist (headscale requires a user for pre-auth keys)
+              echo "Ensuring default user exists..."
+              kubectl exec -n headscale "$HEADSCALE_POD" -- headscale users create default 2>/dev/null || true
+              
+              # Create pre-auth key with subnet-router tag (reusable, 1 year expiry)
+              # The tag restricts this key to only create nodes that can advertise routes
+              echo "Creating pre-auth key with tag:subnet-router..."
+              AUTHKEY=$(kubectl exec -n headscale "$HEADSCALE_POD" -- \
+                headscale preauthkeys create \
+                  --tags tag:subnet-router \
+                  --reusable \
+                  --expiration 365d \
+                  -u default \
+                  -o json | \
+                grep -o '"key":"[^"]*"' | cut -d'"' -f4)
+              
+              if [ -z "$AUTHKEY" ]; then
+                echo "Failed to create auth key"
+                exit 1
+              fi
+              
+              echo "Auth key created successfully with tag:subnet-router"
+              
+              # Create the secret
+              echo "Creating tailscale-auth secret..."
+              kubectl create secret generic tailscale-auth \
+                --namespace=headscale \
+                --from-literal=authkey="$AUTHKEY"
+              
+              echo "=== Setup complete ==="
+              echo "The subnet router will auto-connect with tag:subnet-router"
+              echo "Routes for 192.168.1.0/24 will be auto-approved via ACL autoApprovers"
+

@@ -13,6 +13,15 @@ metadata:
 data:
   custom.list: |
     # ===========================================
+    # Kubernetes Nodes (for VPN access)
+    # Add your node IPs here so they resolve over VPN
+    # ===========================================
+    
+    192.168.1.173 pamacs.local pamacs
+    192.168.1.174 buksi.local buksi
+    192.168.1.166 pufi.local pufi
+    
+    # ===========================================
     # Kubernetes LoadBalancer Services (MetalLB)
     # ===========================================
     

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opencloud-role-config
+  namespace: opencloud
+data:
+  # Override chart defaults to enable default user role assignment
+  # Pocket ID sends role names ("user"/"admin") not UUIDs, so we need fallback
+  GRAPH_ASSIGN_DEFAULT_USER_ROLE: "true"
+

@@ -1,0 +1,29 @@
+# Headscale PostgreSQL Scheduled Backups
+# Managed by CloudNativePG operator
+#
+# Creates periodic base backups in addition to continuous WAL archiving.
+# Together they enable point-in-time recovery (PITR) to any moment within retention.
+
+---
+# Daily base backup at 3:15 AM
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: headscale-db-daily
+  namespace: headscale
+  labels:
+    app: headscale
+spec:
+  # Daily at 3:15 AM (staggered from other backups)
+  schedule: "15 3 * * *"
+  
+  # Which cluster to backup
+  cluster:
+    name: headscale-db
+  
+  # Backup ownership - if cluster is deleted, backups are retained
+  backupOwnerReference: none
+  
+  # Immediately trigger first backup when created
+  immediate: true
+

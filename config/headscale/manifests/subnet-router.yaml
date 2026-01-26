@@ -1,0 +1,77 @@
+# Optional: Tailscale Subnet Router
+# This pod runs Tailscale and advertises routes to your LAN
+# Allows VPN clients to access 192.168.1.0/24 (MetalLB, nodes, etc.)
+#
+# Requires creating an auth key first - see README.md
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tailscale-subnet-router
+  namespace: headscale
+  labels:
+    app: tailscale-subnet-router
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tailscale-subnet-router
+  template:
+    metadata:
+      labels:
+        app: tailscale-subnet-router
+    spec:
+      # Must use host network to access LAN
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      serviceAccountName: tailscale-subnet-router
+      containers:
+        - name: tailscale
+          image: tailscale/tailscale:v1.76.1
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+                - NET_RAW
+          env:
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: tailscale-auth
+                  key: authkey
+            - name: TS_EXTRA_ARGS
+              value: "--login-server=https://vpn.newjoy.ro"
+            - name: TS_ROUTES
+              value: "192.168.1.0/24"
+            - name: TS_USERSPACE
+              value: "false"
+            - name: TS_STATE_DIR
+              value: "/var/lib/tailscale"
+            - name: TS_HOSTNAME
+              value: "k8s-subnet-router"
+          volumeMounts:
+            - name: state
+              mountPath: /var/lib/tailscale
+            - name: dev-net-tun
+              mountPath: /dev/net/tun
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+      volumes:
+        - name: state
+          emptyDir: {}
+        - name: dev-net-tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tailscale-subnet-router
+  namespace: headscale
+

@@ -1,0 +1,152 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: headscale-config
+  namespace: headscale
+data:
+  config.yaml: |
+    # Headscale configuration
+    # See: https://github.com/juanfont/headscale/blob/main/config-example.yaml
+
+    # Server URL (accessed via Cloudflare Tunnel)
+    server_url: https://vpn.newjoy.ro
+
+    # Listen addresses
+    listen_addr: 0.0.0.0:8080
+    metrics_listen_addr: 0.0.0.0:9090
+
+    # gRPC API (for headscale CLI)
+    grpc_listen_addr: 0.0.0.0:50443
+    grpc_allow_insecure: false
+
+    # Noise protocol (modern Tailscale protocol)
+    noise:
+      private_key_path: /var/lib/headscale/noise_private.key
+
+    # IP prefixes for VPN clients
+    # Using CGNAT range to avoid conflicts with home LAN
+    prefixes:
+      v4: 100.64.0.0/10
+      v6: fd7a:115c:a1e0::/48
+      allocation: sequential
+
+    # Database (PostgreSQL with CloudNativePG for HA)
+    database:
+      type: postgres
+      postgres:
+        host: headscale-db-rw.headscale.svc.cluster.local
+        port: 5432
+        name: headscale
+        user: headscale
+        pass: "" # Set via environment variable
+        max_open_conns: 10
+        max_idle_conns: 5
+        conn_max_idle_time_secs: 300
+
+    # DERP - Use Tailscale's public DERP servers
+    # This allows VPN to work without opening inbound ports
+    derp:
+      server:
+        enabled: false
+      urls:
+        - https://controlplane.tailscale.com/derpmap/default
+      auto_update_enabled: true
+      update_frequency: 24h
+
+    # Disable local DERP server (we use Tailscale's public ones)
+    # This is key for no-inbound-port operation
+    
+    # DNS configuration - Use Pi-hole!
+    dns:
+      # Override DNS to use Pi-hole
+      nameservers:
+        global:
+          - 192.168.1.202  # Pi-hole MetalLB IP
+      
+      # Magic DNS for *.vpn.newjoy.ro resolution
+      magic_dns: true
+      base_domain: vpn.newjoy.ro
+      
+      # Extra DNS records for local services
+      extra_records:
+        - name: pihole.vpn.newjoy.ro
+          type: A
+          value: 192.168.1.202
+        # Kubernetes nodes
+        - name: pamacs.vpn.newjoy.ro
+          type: A
+          value: 192.168.1.173
+        - name: buksi.vpn.newjoy.ro
+          type: A
+          value: 192.168.1.174
+        - name: pufi.vpn.newjoy.ro
+          type: A
+          value: 192.168.1.166
+
+    # Ephemeral node cleanup
+    ephemeral_node_inactivity_timeout: 30m
+
+    # Log level
+    log:
+      level: info
+      format: text
+
+    # Disable TLS (handled by ingress-nginx/Cloudflare)
+    tls_cert_path: ""
+    tls_key_path: ""
+
+    # Policy/ACL mode
+    policy:
+      mode: file
+      path: /etc/headscale/acl.json
+
+    # OIDC configuration - PocketID integration (public client, no secret)
+    oidc:
+      only_start_if_oidc_is_available: true
+      issuer: "https://auth.newjoy.ro"
+      client_id: "a3ffe55a-f7ba-4562-b8f9-87e6e62b5a03"
+      # No client_secret_path - using public client with PKCE
+      
+      # Scope for OIDC
+      scope:
+        - openid
+        - profile
+        - email
+      
+      # Map email to username
+      strip_email_domain: true
+      
+      # How long to wait for OIDC auth
+      expiry: 180d
+      
+      # Use email as username
+      use_expiry_from_token: false
+      
+      # Allowed users/domains (empty = allow all authenticated users)
+      allowed_domains: []
+      allowed_users: []
+      allowed_groups: []
+
+  # ACL policy - Allow access to homelab network
+  acl.json: |
+    {
+      "groups": {
+        "group:admin": []
+      },
+      "tagOwners": {
+        "tag:subnet-router": ["autogroup:member"]
+      },
+      "acls": [
+        {
+          "action": "accept",
+          "src": ["*"],
+          "dst": ["*:*"]
+        }
+      ],
+      "autoApprovers": {
+        "routes": {
+          "192.168.1.0/24": ["tag:subnet-router"]
+        }
+      }
+    }
+

@@ -1,0 +1,75 @@
+---
+# PostgreSQL cluster for Headscale using CloudNativePG
+# Provides HA replication and automated backups to B2
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: headscale-db
+  namespace: headscale
+spec:
+  instances: 2
+  imageName: ghcr.io/cloudnative-pg/postgresql:16
+
+  bootstrap:
+    initdb:
+      database: headscale
+      owner: headscale
+
+  storage:
+    size: 1Gi
+    storageClass: local-ssd
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Backup configuration to Backblaze B2
+  backup:
+    barmanObjectStore:
+      destinationPath: "s3://homelab-longhorn-backup/cnpg/headscale-db"
+      endpointURL: "https://s3.eu-central-003.backblazeb2.com"
+      s3Credentials:
+        accessKeyId:
+          name: cnpg-backup-credentials
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: cnpg-backup-credentials
+          key: SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+        maxParallel: 2
+    retentionPolicy: "30d"
+
+  # Monitoring
+  monitoring:
+    enablePodMonitor: false
+
+  # PostgreSQL configuration
+  postgresql:
+    parameters:
+      # Optimize for small workload
+      shared_buffers: "64MB"
+      effective_cache_size: "128MB"
+      maintenance_work_mem: "32MB"
+      work_mem: "4MB"
+      max_connections: "50"
+---
+# Service for app connection (points to primary)
+apiVersion: v1
+kind: Service
+metadata:
+  name: headscale-db
+  namespace: headscale
+spec:
+  type: ClusterIP
+  selector:
+    cnpg.io/cluster: headscale-db
+    role: primary
+  ports:
+    - port: 5432
+      targetPort: 5432
+

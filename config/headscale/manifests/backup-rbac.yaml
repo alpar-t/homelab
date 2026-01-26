@@ -1,0 +1,29 @@
+# RBAC for CNPG backup credentials access
+# Allows the database service account to read backup credentials for recovery operations
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cnpg-backup-credentials-reader
+  namespace: headscale
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["cnpg-backup-credentials"]
+    verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: headscale-db-backup-credentials
+  namespace: headscale
+subjects:
+  - kind: ServiceAccount
+    name: headscale-db
+    namespace: headscale
+roleRef:
+  kind: Role
+  name: cnpg-backup-credentials-reader
+  apiGroup: rbac.authorization.k8s.io
+
