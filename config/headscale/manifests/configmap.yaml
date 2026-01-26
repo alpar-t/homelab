@@ -125,12 +125,8 @@ data:
   # ACL policy - Allow access to homelab network
   acl.json: |
     {
-      "groups": {
-        "group:admin": []
-      },
-      "tagOwners": {
-        "tag:subnet-router": ["autogroup:member"]
-      },
+      "groups": {},
+      "tagOwners": {},
       "acls": [
         {
           "action": "accept",
