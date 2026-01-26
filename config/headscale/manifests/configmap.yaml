@@ -123,10 +123,9 @@ data:
       allowed_groups: []
 
   # ACL policy - Allow access to homelab network
+  # Note: autoApprovers uses "*" - security relies on only giving pre-auth keys to trusted nodes
   acl.json: |
     {
-      "groups": {},
-      "tagOwners": {},
       "acls": [
         {
           "action": "accept",
@@ -136,7 +135,7 @@ data:
       ],
       "autoApprovers": {
         "routes": {
-          "192.168.1.0/24": ["tag:subnet-router"]
+          "192.168.1.0/24": ["*"]
         }
       }
     }

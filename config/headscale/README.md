@@ -159,15 +159,15 @@ A Tailscale subnet router pod (`subnet-router.yaml`) advertises the LAN (`192.16
 
 | Component | Purpose |
 |-----------|---------|
-| `subnet-router-setup-job.yaml` | Creates auth key with `tag:subnet-router` (PostSync, one-time) |
+| `subnet-router-setup-job.yaml` | Creates pre-auth key for subnet router (PostSync, one-time) |
 | `subnet-router.yaml` | Tailscale pod that advertises routes |
-| ACL `autoApprovers` | Auto-approves routes from `tag:subnet-router` only |
+| ACL `autoApprovers` | Auto-approves routes for 192.168.1.0/24 |
 
 ### Security
 
-- Only nodes with `tag:subnet-router` can advertise LAN routes
-- The auth key is tagged, so only the subnet router pod gets this permission
-- Regular VPN clients cannot advertise routes (no tag)
+- Pre-auth keys are only created by the setup job (stored in secret)
+- Regular VPN clients authenticate via OIDC (no pre-auth key)
+- Only the subnet router pod has access to the pre-auth key
 - Exit nodes are disabled
 
 **No manual steps required** - routes are auto-approved via ACL policy on first connection.

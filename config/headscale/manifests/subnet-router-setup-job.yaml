@@ -88,12 +88,10 @@ spec:
               echo "Ensuring default user exists..."
               kubectl exec -n headscale "$HEADSCALE_POD" -- headscale users create default 2>/dev/null || true
               
-              # Create pre-auth key with subnet-router tag (reusable, 1 year expiry)
-              # The tag restricts this key to only create nodes that can advertise routes
-              echo "Creating pre-auth key with tag:subnet-router..."
+              # Create pre-auth key (reusable, 1 year expiry)
+              echo "Creating pre-auth key..."
               AUTHKEY=$(kubectl exec -n headscale "$HEADSCALE_POD" -- \
                 headscale preauthkeys create \
-                  --tags tag:subnet-router \
                   --reusable \
                   --expiration 365d \
                   -u default \
@@ -105,7 +103,7 @@ spec:
                 exit 1
               fi
               
-              echo "Auth key created successfully with tag:subnet-router"
+              echo "Auth key created successfully"
               
               # Create the secret
               echo "Creating tailscale-auth secret..."
@@ -114,6 +112,6 @@ spec:
                 --from-literal=authkey="$AUTHKEY"
               
               echo "=== Setup complete ==="
-              echo "The subnet router will auto-connect with tag:subnet-router"
+              echo "The subnet router will auto-connect when it starts"
               echo "Routes for 192.168.1.0/24 will be auto-approved via ACL autoApprovers"
 
