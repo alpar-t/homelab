@@ -63,23 +63,24 @@ data:
         global:
           - 192.168.1.202  # Pi-hole MetalLB IP
       
-      # Magic DNS for *.vpn.newjoy.ro resolution
+      # Magic DNS for *.ts.newjoy.ro resolution
+      # Note: base_domain must differ from server_url domain (vpn.newjoy.ro)
       magic_dns: true
-      base_domain: vpn.newjoy.ro
+      base_domain: ts.newjoy.ro
       
       # Extra DNS records for local services
       extra_records:
-        - name: pihole.vpn.newjoy.ro
+        - name: pihole.ts.newjoy.ro
           type: A
           value: 192.168.1.202
         # Kubernetes nodes
-        - name: pamacs.vpn.newjoy.ro
+        - name: pamacs.ts.newjoy.ro
           type: A
           value: 192.168.1.173
-        - name: buksi.vpn.newjoy.ro
+        - name: buksi.ts.newjoy.ro
           type: A
           value: 192.168.1.174
-        - name: pufi.vpn.newjoy.ro
+        - name: pufi.ts.newjoy.ro
           type: A
           value: 192.168.1.166
 
