@@ -27,7 +27,7 @@ spec:
       serviceAccountName: tailscale-subnet-router
       containers:
         - name: tailscale
-          image: tailscale/tailscale:v1.76.1
+          image: tailscale/tailscale:v1.92.5
           securityContext:
             capabilities:
               add:
