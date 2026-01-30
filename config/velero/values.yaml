@@ -6,14 +6,14 @@
 kubectl:
   image:
     repository: bitnamilegacy/kubectl
-    tag: "1.31"
+    tag: "1.31@sha256:64614ef8290f3fb27fed5164b338debeeb79a1e5e26c93eb920770b71abd7c48"
 
 # Disable CRD cleanup job that also uses kubectl
 cleanUpCRDs: false
 
 initContainers:
   - name: velero-plugin-for-aws
-    image: velero/velero-plugin-for-aws:v1.10.1
+    image: velero/velero-plugin-for-aws:v1.10.1@sha256:fdf710a65c6ead48b1018cda19360943abe17ca8c3e9ef5ab7be73a63b99a6d3
     imagePullPolicy: IfNotPresent
     volumeMounts:
       - mountPath: /target

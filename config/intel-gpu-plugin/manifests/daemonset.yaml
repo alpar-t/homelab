@@ -38,7 +38,7 @@ spec:
         kubernetes.io/arch: amd64
       containers:
         - name: intel-gpu-plugin
-          image: intel/intel-gpu-plugin:0.34.1
+          image: intel/intel-gpu-plugin:0.34.1@sha256:3fae94bca1022ca558a1f6768c34760f38f80a2e64f8a72216f10e98746c8124
           imagePullPolicy: IfNotPresent
           args:
             # Allow multiple pods to share each GPU

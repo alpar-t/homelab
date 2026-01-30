@@ -121,7 +121,7 @@ spec:
         # Uses 'mfs' policy: always creates on bucket with most free space
         # This spreads uploads evenly across all buckets
         - name: mergerfs
-          image: ghcr.io/hotio/mergerfs:release-2.40.2
+          image: ghcr.io/hotio/mergerfs:release-2.40.2@sha256:195f61fb5827b2591e729ef93d2a6dc21ccf6bc3eb38a9c2a58637c160b31ac3
           securityContext:
             privileged: true  # Required for FUSE mount
           command:
@@ -167,7 +167,7 @@ spec:
             failureThreshold: 3
 
         - name: immich-server
-          image: ghcr.io/immich-app/immich-server:v2.4.1
+          image: ghcr.io/immich-app/immich-server:v2.4.1@sha256:e6a6298e67ae077808fdb7d8d5565955f60b0708191576143fc02d30ab1389d1
           # GPU access for hardware transcoding (Intel QSV/VAAPI)
           # GPU is provided by Intel GPU Device Plugin via gpu.intel.com/i915 resource
           securityContext:
