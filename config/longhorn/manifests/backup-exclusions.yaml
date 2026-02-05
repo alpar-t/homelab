@@ -31,7 +31,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: label-volumes
-          image: bitnami/kubectl:latest
+          image: bitnami/kubectl:latest@sha256:1a87bf0f620ce8ab11e2363fc6fdf9f5fc66ec8d54008e43ea9481bf211ae06f
           command:
             - /bin/bash
             - -c
