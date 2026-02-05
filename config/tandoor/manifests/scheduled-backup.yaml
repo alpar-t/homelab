@@ -14,8 +14,8 @@ metadata:
   labels:
     app: tandoor
 spec:
-  # Weekly on Sundays at 4:30 AM
-  schedule: "30 4 * * 0"
+  # Weekly on Sundays at 4:30 AM (CNPG uses 1-7 where 7=Sunday)
+  schedule: "30 4 * * 7"
   
   # Which cluster to backup
   cluster:
