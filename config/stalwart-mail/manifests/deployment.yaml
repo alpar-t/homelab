@@ -22,7 +22,7 @@ spec:
       initContainers:
         # Init container to substitute secrets into fetchmail config
         - name: fetchmail-config-init
-          image: alpine:3.21@sha256:5405e8f36ce1878720f71217d664aa3dea32e5e5df11acbf07fc78ef5661465b
+          image: alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709
           command:
             - sh
             - -c
@@ -129,7 +129,7 @@ spec:
               mountPath: /opt/stalwart/etc
         # Fetchmail sidecar - pulls mail from Migadu
         - name: fetchmail
-          image: alpine:3.21@sha256:5405e8f36ce1878720f71217d664aa3dea32e5e5df11acbf07fc78ef5661465b
+          image: alpine:3.21@sha256:c3f8e73fdb79deaebaa2037150150191b9dcbfba68b4a46d70103204c53f4709
           command:
             - sh
             - -c
