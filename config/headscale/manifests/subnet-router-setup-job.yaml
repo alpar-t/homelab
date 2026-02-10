@@ -58,7 +58,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: setup
-          image: bitnami/kubectl:latest@sha256:1a87bf0f620ce8ab11e2363fc6fdf9f5fc66ec8d54008e43ea9481bf211ae06f
+          image: bitnami/kubectl:latest@sha256:4c5f63828f5170142d714cdf1f96bad9e223f7ad79bd67d6d6b21e59a188c514
           command:
             - /bin/bash
             - -c
