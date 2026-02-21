@@ -43,7 +43,7 @@ spec:
               echo "PostgreSQL is ready!"
       containers:
         - name: vaultwarden
-          image: vaultwarden/server:1.32.7@sha256:7a0aa23c0947be3582898deb5170ea4359493ed9a76af2badf60a7eb45ac36af
+          image: vaultwarden/server:1.35.3@sha256:1ca2e2098ba9ab9e46004f4ee61a3be6080ffee3ed41018a95c4b0fb6454a54b
           ports:
             - containerPort: 80
               name: http
