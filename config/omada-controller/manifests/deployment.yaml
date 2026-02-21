@@ -23,7 +23,7 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       containers:
         - name: omada-controller
-          image: mbentley/omada-controller:6.0@sha256:edb84acb14f6b11cf35246d003a6abe6fb0ada06e0a26b63a63f9c3c05b7d89a
+          image: mbentley/omada-controller:6.1@sha256:4bf2ec29745f289745b27bd5496ac4ea970b2dc69fea4b085971180c02bbe2a6
           env:
             - name: TZ
               value: "Europe/Bucharest"
