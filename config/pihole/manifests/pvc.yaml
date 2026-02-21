@@ -5,12 +5,32 @@ metadata:
   namespace: pihole
   labels:
     app: pihole
+    instance: primary
     # Cache data - regenerated automatically on startup
     data-criticality: rebuildable
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: longhorn-ssd
+  # Local SSD for faster pod restarts (no Longhorn attach/detach overhead)
+  # Data is rebuildable - blocklists re-download, config is in ConfigMaps
+  storageClassName: local-ssd
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pihole-2-data
+  namespace: pihole
+  labels:
+    app: pihole
+    instance: secondary
+    data-criticality: rebuildable
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-ssd
   resources:
     requests:
       storage: 1Gi

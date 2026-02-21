@@ -1,35 +1,77 @@
 # Pi-hole - Network-wide Ad Blocking
 
-Single Pi-hole instance with persistent storage for consistent configuration.
+High-availability Pi-hole with hot spare failover for DNS redundancy.
 
 ## Architecture
 
 ```
 Local Network:
-  Devices → Router DNS (pihole-node:53) → Pi-hole
+  Devices → Router DNS → MetalLB (192.168.1.202) → Active Pi-hole
 
 Mobile (VPN):
-  Phone → MikroTik L2TP/IPsec → Pi-hole DNS
+  Phone → MikroTik L2TP/IPsec → MetalLB → Active Pi-hole
 
 Web UI:
-  Browser → pihole.newjoy.ro → oauth2-proxy → Pi-hole Admin
+  Browser → pihole.newjoy.ro → oauth2-proxy → Active Pi-hole Admin
                                     ↓
                               Pocket-ID SSO
 ```
+
+### Hot Spare Failover Design
+
+```
+                    ┌─────────────────┐
+                    │    MetalLB      │
+                    │  192.168.1.202  │
+                    └────────┬────────┘
+                             │
+                             │ externalTrafficPolicy: Local
+                             │ (routes only to announcing node)
+                             │
+                             ▼
+   ┌───────────────┐                   ┌───────────────┐
+   │    pihole     │                   │   pihole-2    │
+   │   (ACTIVE)    │ ←── all traffic   │   (STANDBY)   │
+   │    Node A     │                   │    Node B     │
+   └───────────────┘                   └───────────────┘
+         │                                   │
+   ┌─────┴─────┐                       ┌─────┴─────┐
+   │ local-ssd │                       │ local-ssd │
+   │    PVC    │                       │    PVC    │
+   └───────────┘                       └───────────┘
+
+         │ Node A fails
+         ▼
+
+   ┌───────────────┐                   ┌───────────────┐
+   │    pihole     │                   │   pihole-2    │
+   │    (DOWN)     │                   │   (ACTIVE)    │ ←── all traffic
+   │    Node A     │                   │    Node B     │
+   └───────────────┘                   └───────────────┘
+```
+
+**How it works:**
+- `externalTrafficPolicy: Local` makes MetalLB route traffic only to pods on the announcing node
+- Pod anti-affinity ensures the two Pi-holes run on different nodes
+- Only one Pi-hole receives traffic at a time (the one on MetalLB's announcing node)
+- If that node/pod fails, MetalLB fails over to the other node → traffic goes to standby
+- **Bonus:** Real client IPs are preserved in Pi-hole query logs
 
 ## Components
 
 | Component | Purpose |
 |-----------|---------|
-| Pi-hole Deployment | DNS + Ad blocking (single instance) |
-| PVC (1Gi SSD) | Persistent settings and blocklists |
+| pihole Deployment | Active DNS + Ad blocking |
+| pihole-2 Deployment | Hot spare (standby) |
+| 2x PVC (1Gi local-ssd) | Independent local storage per instance |
+| LoadBalancer Service | Single IP with hot spare failover |
 | oauth2-proxy | Authentication via Pocket-ID |
 | Web UI Ingress | Admin interface via SSO |
 
 ## Access
 
+- **DNS:** `192.168.1.202` (MetalLB LoadBalancer, hot spare failover)
 - **Web UI:** https://pihole.newjoy.ro (protected by Pocket-ID SSO)
-- **Local DNS:** Any node IP on port 53 (pod can schedule anywhere)
 
 ## Setup
 
@@ -44,15 +86,13 @@ Pi-hole has no internal password - Pocket-ID handles all authentication.
 
 ### 2. Configure Local Network DNS
 
-Pi-hole can schedule on any node. Configure your router with all node IPs - MikroTik will find Pi-hole on whichever node it's running:
+Configure your router's DHCP to use the MetalLB IP:
 
 ```
-Primary DNS:   192.168.x.10  (node 1)
-Secondary DNS: 192.168.x.11  (node 2)
-Tertiary DNS:  192.168.x.12  (node 3)
+DNS Server: 192.168.1.202
 ```
 
-Only one node will have Pi-hole running at a time, but MikroTik will try each IP until it gets a response.
+This single IP routes to the active Pi-hole. If it fails, MetalLB automatically fails over to the standby.
 
 ## Mobile Access (MikroTik L2TP/IPsec VPN)
 
@@ -183,18 +223,39 @@ By default, L2TP routes everything. For DNS-only:
 ### Check Pi-hole pods
 
 ```bash
+# Both pods should be Running on different nodes
 kubectl get pods -n pihole -o wide
-kubectl logs -n pihole -l app=pihole
+
+# Check logs for both instances
+kubectl logs -n pihole -l app=pihole --prefix
 ```
 
 ### Test DNS resolution
 
 ```bash
-# From a node
-dig @localhost google.com
+# Via MetalLB IP
+dig @192.168.1.202 google.com
+```
 
-# Or using node IP from your workstation
-dig @<node-ip> google.com
+### Verify failover setup
+
+```bash
+# Check endpoints - should show both pod IPs
+kubectl get endpoints pihole-dns -n pihole
+
+# Check which node MetalLB is announcing from
+kubectl get pods -n pihole -o wide
+# The pod on the MetalLB announcing node is the active one
+```
+
+### Test failover
+
+```bash
+# Delete the active pod to trigger failover
+kubectl delete pod -n pihole <active-pod-name>
+
+# DNS should continue working (via standby)
+dig @192.168.1.202 google.com
 ```
 
 ### Check query logs
@@ -203,25 +264,46 @@ Access the web UI at https://pihole.newjoy.ro and check Query Log.
 
 ## Notes
 
-- Single Pi-hole instance for consistent configuration
-- DNS exposed on port 53 via hostNetwork (can schedule on any node)
+- Two Pi-hole instances: one active, one hot spare
+- DNS exposed via MetalLB LoadBalancer (192.168.1.202)
+- Hot spare failover via `externalTrafficPolicy: Local`
+- Only one Pi-hole receives traffic at a time; standby takes over on failure
+- Real client IPs preserved in query logs (benefit of Local policy)
+- Local SSD storage for fast restarts (data is rebuildable)
 - Web UI is SSO-protected via Pocket-ID - no separate Pi-hole password
-- Configure all node IPs in router - MikroTik will find Pi-hole wherever it runs
+- Both instances share the same ConfigMaps (custom DNS, dnsmasq config)
 
 ## Data Storage
 
-Pi-hole uses **persistent storage** (Longhorn SSD PVC, 1Gi).
+Each Pi-hole instance uses **local SSD storage** (local-ssd PVC, 1Gi per instance).
 
-**Persisted:**
-- Custom adlists (blocklists)
-- Local DNS records
-- Query logs and statistics  
-- All UI settings
+**Why local storage?**
+- Faster pod restarts (no Longhorn attach/detach overhead)
+- Data is rebuildable - blocklists re-download, config is in ConfigMaps
+- With two instances, losing one's data doesn't affect DNS availability
 
-**Configured via env vars (in deployment.yaml):**
-- Upstream DNS (1.1.1.1, 1.0.0.1)
+**Persisted (per instance):**
+- Downloaded blocklists (re-downloaded on gravity update)
+- Query logs and statistics (on active instance only; resets on failover)
+- Cached settings
+
+**Configured via ConfigMaps (shared by both instances):**
+- Custom DNS entries (`pihole-custom-dns`)
+- dnsmasq configuration (`pihole-dnsmasq`)
+
+**Configured via env vars:**
+- Upstream DNS (defaults to Cloudflare, managed by benchmark job)
 - DNSSEC enabled
 - Timezone, web port
+
+## Trade-offs
+
+| Benefit | Trade-off |
+|---------|-----------|
+| Hot spare failover | Standby sits idle until needed |
+| Single DNS IP for clients | - |
+| Real client IPs in logs | - |
+| Local SSD = fast restarts | Data lost if node dies (but rebuildable) |
 
 ## Local DNS (GitOps Managed)
 

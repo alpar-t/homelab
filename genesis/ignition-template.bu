@@ -3,6 +3,15 @@ version: 1.5.0
 # Fedora CoreOS Ignition Config (Butane format)
 # This template is processed by generate-ignition.sh
 
+# Kernel arguments for stability
+# intel_idle.max_cstate=1: Disable deep CPU C-states (C6/C8/C10) to prevent
+# system freezes on Intel Alder Lake-N (i3-N305) CPUs. Deep C-states can cause
+# complete system lockups with no kernel logs. Power savings are negligible
+# for always-on K8s nodes.
+kernel_arguments:
+  should_exist:
+    - intel_idle.max_cstate=1
+
 storage:
   # Format HDDs for Longhorn storage
   # Adjust device paths based on your hardware (check with: lsblk -o NAME,SIZE,TYPE,MODEL)
