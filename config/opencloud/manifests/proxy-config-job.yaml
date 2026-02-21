@@ -1,0 +1,60 @@
+---
+# PreSync Job to write proxy.yaml with custom role mapping to the config PVC.
+# The Helm chart forces PROXY_ROLE_ASSIGNMENT_DRIVER=oidc with a hardcoded default
+# mapping (opencloudAdmin, opencloudUser, etc.). This can only be overridden via a
+# proxy.yaml config file on the PVC -- env vars cannot change the mapping.
+# This job writes a mapping that accepts both standard Pocket ID claim values
+# (admin, user) and OpenCloud's defaults (opencloudAdmin, opencloudUser).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: opencloud-proxy-config
+  namespace: opencloud
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: write-proxy-config
+          image: docker.io/library/busybox:1.36
+          command: ["sh", "-c"]
+          args:
+            - |
+              cat > /etc/opencloud/proxy.yaml << 'PROXYEOF'
+              role_assignment:
+                driver: oidc
+                oidc_role_mapper:
+                  role_claim: roles
+                  role_mapping:
+                    - role_name: admin
+                      claim_value: opencloudAdmin
+                    - role_name: admin
+                      claim_value: admin
+                    - role_name: spaceadmin
+                      claim_value: opencloudSpaceAdmin
+                    - role_name: user
+                      claim_value: opencloudUser
+                    - role_name: user
+                      claim_value: user
+                    - role_name: guest
+                      claim_value: opencloudGuest
+                    - role_name: guest
+                      claim_value: guest
+              PROXYEOF
+              sed -i 's/^              //' /etc/opencloud/proxy.yaml
+              echo "proxy.yaml written to /etc/opencloud/"
+              cat /etc/opencloud/proxy.yaml
+          volumeMounts:
+            - name: config
+              mountPath: /etc/opencloud
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: opencloud-opencloud-config
