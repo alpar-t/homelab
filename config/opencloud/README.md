@@ -56,17 +56,45 @@ Key configuration:
 - **OnlyOffice**: Built-in (managed by the Helm chart)
 - **Collaboration**: WOPI service for document editing
 
+## External OIDC (Pocket ID) Configuration
+
+OpenCloud requires specific environment variables to work with an external IDP
+instead of the built-in Keycloak. These are set in `apps/opencloud.yaml` under
+`opencloud.env`:
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `PROXY_AUTOPROVISION_ACCOUNTS` | `true` | Auto-creates user accounts in OpenCloud's internal LDAP on first OIDC login. Without this, users get "Not logged in" after authenticating with Pocket ID. |
+| `PROXY_OIDC_REWRITE_WELLKNOWN` | `true` | Proxies Pocket ID's `.well-known/openid-configuration` through `drive.newjoy.ro` so desktop/mobile clients can discover the IDP. |
+| `GRAPH_ASSIGN_DEFAULT_USER_ROLE` | `true` | Assigns the default "user" role to new OIDC users. Acts as a fallback since Pocket ID sends role names not UUIDs. |
+| `GRAPH_USERNAME_MATCH` | `none` | Disables restrictive username character validation, required when autoprovision is enabled. |
+
+The built-in `idp` service is excluded (`excludeServices: ["idp"]`) since Pocket ID
+handles authentication. The internal `idm` (LDAP) service must remain running as the
+writable backend for auto-provisioned accounts.
+
+### Role Assignment
+
+The current setup uses `PROXY_ROLE_ASSIGNMENT_DRIVER=default` (the Helm chart default),
+which gives all users the "user" role on first login.
+
+For granular OIDC-based role assignment, set `PROXY_ROLE_ASSIGNMENT_DRIVER=oidc` and
+create groups in Pocket ID with custom claims (`roles` claim with values `ocisAdmin`,
+`ocisSpaceAdmin`, `ocisUser`, `ocisGuest`). See the
+[Pocket ID oCIS guide](https://pocket-id.org/docs/client-examples/oCIS) for full
+instructions.
+
 ## Prerequisites in Pocket ID
 
 ### 1. Create OIDC Client (Web)
 
 1. **Name**: OpenCloud
-2. **Callback URLs**: 
+2. **Callback URLs**:
    - `https://drive.newjoy.ro/`
    - `https://drive.newjoy.ro/oidc-callback.html`
    - `https://drive.newjoy.ro/oidc-silent-redirect.html`
-3. **Public Client**: Yes
-4. Copy Client ID to the ArgoCD Application values
+3. **Public Client**: Yes (OpenCloud uses authorization code flow with PKCE)
+4. Copy Client ID to the ArgoCD Application values (`global.oidc.clientId`)
 
 ### 2. Create Desktop/Mobile Clients
 
@@ -140,5 +168,8 @@ Since data is not being migrated, simply:
 
 - [OpenCloud Helm Charts](https://github.com/opencloud-eu/helm)
 - [OpenCloud Documentation](https://docs.opencloud.eu/)
+- [External IDP Configuration](https://docs.opencloud.eu/docs/admin/configuration/authentication-and-user-management/external-idp) -- required env vars and role assignment
+- [Proxy Environment Variables](https://docs.opencloud.eu/docs/dev/server/services/proxy/environment-variables) -- full list of PROXY_* settings
+- [Pocket ID oCIS Client Example](https://pocket-id.org/docs/client-examples/oCIS) -- Pocket ID groups and OIDC role mapping setup
+- [Pocket ID Documentation](https://pocket-id.org/docs/)
 - [OpenCloud Desktop Releases](https://github.com/opencloud-eu/desktop/releases)
-- [Pocket ID OIDC Integration](https://pocket-id.org/docs/)

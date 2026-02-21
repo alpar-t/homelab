@@ -160,6 +160,12 @@ spec:
             env:
               - name: GRAPH_ASSIGN_DEFAULT_USER_ROLE
                 value: "true"
+              - name: PROXY_AUTOPROVISION_ACCOUNTS
+                value: "true"
+              - name: PROXY_OIDC_REWRITE_WELLKNOWN
+                value: "true"
+              - name: GRAPH_USERNAME_MATCH
+                value: "none"
             resources:
               requests:
                 cpu: 100m
