@@ -154,18 +154,11 @@ spec:
             createDemoUsers: false
             excludeServices:
               - "idp"
-            # Enable auto-assignment of default User role for OIDC users
-            # Chart defaults PROXY_ROLE_ASSIGNMENT_OIDC_CLAIM to "roles" which matches Pocket ID
-            # Pocket ID sends role names ("user"/"admin") not UUIDs, so we need fallback to default role
-            env:
-              - name: GRAPH_ASSIGN_DEFAULT_USER_ROLE
-                value: "true"
-              - name: PROXY_AUTOPROVISION_ACCOUNTS
-                value: "true"
-              - name: PROXY_OIDC_REWRITE_WELLKNOWN
-                value: "true"
-              - name: GRAPH_USERNAME_MATCH
-                value: "none"
+            # The chart auto-sets PROXY_ROLE_ASSIGNMENT_DRIVER=oidc when global.oidc.issuer is set.
+            # This requires Pocket ID groups with "roles" custom claims matching OpenCloud's default
+            # mapping: opencloudAdmin, opencloudSpaceAdmin, opencloudUser, opencloudGuest.
+            # See config/opencloud/README.md for Pocket ID group setup instructions.
+            env: []
             resources:
               requests:
                 cpu: 100m

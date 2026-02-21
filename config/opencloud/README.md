@@ -58,35 +58,44 @@ Key configuration:
 
 ## External OIDC (Pocket ID) Configuration
 
-OpenCloud requires specific environment variables to work with an external IDP
-instead of the built-in Keycloak. These are set in `apps/opencloud.yaml` under
-`opencloud.env`:
+When `global.oidc.issuer` is set, the Helm chart automatically configures:
+- `PROXY_AUTOPROVISION_ACCOUNTS=true` (creates LDAP users on first OIDC login)
+- `PROXY_OIDC_REWRITE_WELLKNOWN=true` (exposes IDP discovery via OpenCloud URL)
+- `PROXY_ROLE_ASSIGNMENT_DRIVER=oidc` (assigns roles based on OIDC claims)
+- `GRAPH_USERNAME_MATCH=none` (allows any username characters)
+- `GRAPH_ASSIGN_DEFAULT_USER_ROLE=false` (no fallback, roles come from OIDC only)
 
-| Variable | Value | Purpose |
-|----------|-------|---------|
-| `PROXY_AUTOPROVISION_ACCOUNTS` | `true` | Auto-creates user accounts in OpenCloud's internal LDAP on first OIDC login. Without this, users get "Not logged in" after authenticating with Pocket ID. |
-| `PROXY_OIDC_REWRITE_WELLKNOWN` | `true` | Proxies Pocket ID's `.well-known/openid-configuration` through `drive.newjoy.ro` so desktop/mobile clients can discover the IDP. |
-| `GRAPH_ASSIGN_DEFAULT_USER_ROLE` | `true` | Assigns the default "user" role to new OIDC users. Acts as a fallback since Pocket ID sends role names not UUIDs. |
-| `GRAPH_USERNAME_MATCH` | `none` | Disables restrictive username character validation, required when autoprovision is enabled. |
+The `oidc` role driver requires Pocket ID to send a `roles` claim matching
+OpenCloud's default mapping. Without the correct groups, users get
+"no role in claim maps to an OpenCloud role" and see a "Not logged in" error.
 
 The built-in `idp` service is excluded (`excludeServices: ["idp"]`) since Pocket ID
 handles authentication. The internal `idm` (LDAP) service must remain running as the
 writable backend for auto-provisioned accounts.
 
-### Role Assignment
-
-The current setup uses `PROXY_ROLE_ASSIGNMENT_DRIVER=default` (the Helm chart default),
-which gives all users the "user" role on first login.
-
-For granular OIDC-based role assignment, set `PROXY_ROLE_ASSIGNMENT_DRIVER=oidc` and
-create groups in Pocket ID with custom claims (`roles` claim with values `ocisAdmin`,
-`ocisSpaceAdmin`, `ocisUser`, `ocisGuest`). See the
-[Pocket ID oCIS guide](https://pocket-id.org/docs/client-examples/oCIS) for full
-instructions.
-
 ## Prerequisites in Pocket ID
 
-### 1. Create OIDC Client (Web)
+### 1. Create Role Groups
+
+OpenCloud requires groups with a `roles` custom claim. The claim values must match
+OpenCloud's [default role mapping](https://docs.opencloud.eu/docs/admin/configuration/authentication-and-user-management/external-idp#automatic-role-assignments):
+
+| Group Name | Custom Claim Key | Custom Claim Value | OpenCloud Role |
+|---|---|---|---|
+| `opencloudAdmin` | `roles` | `opencloudAdmin` | Full admin access |
+| `opencloudSpaceAdmin` | `roles` | `opencloudSpaceAdmin` | Can create/manage spaces |
+| `opencloudUser` | `roles` | `opencloudUser` | Standard user (required) |
+| `opencloudGuest` | `roles` | `opencloudGuest` | Read-only guest |
+
+At minimum, create `opencloudAdmin` and `opencloudUser`. Then:
+1. Assign admin users to `opencloudAdmin`
+2. Assign regular users to `opencloudUser`
+3. Edit the OpenCloud OIDC client and add these groups so claims are included in tokens
+
+If a user is in multiple groups, the first matching role in the order above wins
+(admin > spaceadmin > user > guest).
+
+### 2. Create OIDC Client (Web)
 
 1. **Name**: OpenCloud
 2. **Callback URLs**:
@@ -94,7 +103,8 @@ instructions.
    - `https://drive.newjoy.ro/oidc-callback.html`
    - `https://drive.newjoy.ro/oidc-silent-redirect.html`
 3. **Public Client**: Yes (OpenCloud uses authorization code flow with PKCE)
-4. Copy Client ID to the ArgoCD Application values (`global.oidc.clientId`)
+4. **Groups**: Add the role groups created above
+5. Copy Client ID to the ArgoCD Application values (`global.oidc.clientId`)
 
 ### 2. Create Desktop/Mobile Clients
 
