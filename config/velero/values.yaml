@@ -13,7 +13,7 @@ cleanUpCRDs: false
 
 initContainers:
   - name: velero-plugin-for-aws
-    image: velero/velero-plugin-for-aws:v1.10.1@sha256:fdf710a65c6ead48b1018cda19360943abe17ca8c3e9ef5ab7be73a63b99a6d3
+    image: velero/velero-plugin-for-aws:v1.13.2@sha256:25c3a0a043fc396a0593a3da0aa16ed1f39df74883bda42c4588fc8877b72bde
     imagePullPolicy: IfNotPresent
     volumeMounts:
       - mountPath: /target
