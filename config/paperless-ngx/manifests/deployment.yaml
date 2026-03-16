@@ -114,7 +114,7 @@ spec:
         
         # Main Paperless-ngx application
         - name: paperless-ngx
-          image: ghcr.io/paperless-ngx/paperless-ngx:latest@sha256:7b937cb2fa2885ab0ecfceb8c7e8827e2312472d9d897a270097ba7f5522dcdc
+          image: ghcr.io/paperless-ngx/paperless-ngx:latest@sha256:1919ba5edec278e81d2393efc82c97c9e3e18ef9dfcb43fdcfa7359dd3adfe99
           ports:
             - containerPort: 8000
               name: http
