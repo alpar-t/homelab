@@ -27,7 +27,7 @@ spec:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: oauth2-proxy
-          image: quay.io/oauth2-proxy/oauth2-proxy:v7.14.2@sha256:121cdc6520a02d7a2ddd181af6dbdc0f11f7d0c0d9353a999a69c3998cbfe37e
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.0@sha256:d963570b1f7e399bc42caace45433aab09e7ae76de5610fde97ba32029b6150a
           args:
             - --http-address=0.0.0.0:4180
             - --reverse-proxy=true
