@@ -35,7 +35,7 @@ spec:
     spec:
       containers:
         - name: rabbitmq
-          image: rabbitmq:4.2-alpine@sha256:c8a204d5b0bba833cbff44067b482b40152e8156d811a369e92fa0f1da8cb9c0
+          image: rabbitmq:4.2-alpine@sha256:53e51f8469ef13d0a1a2b03c0d36dcf4efbf13089f552440ec5620ca07f2c64e
           ports:
             - containerPort: 5672
               name: amqp
