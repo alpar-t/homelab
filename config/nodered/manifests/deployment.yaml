@@ -27,7 +27,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: nodered
-          image: nodered/node-red:latest@sha256:7dfe40efdd7b9f21916f083802bfe60a762bc020969d95553ffa020c97a72eb9
+          image: nodered/node-red:latest@sha256:a5cb1dcdf90a7148b02b9dba4acfe6bd98c7bf3bff1e845dcdecfd7af3a95a29
           ports:
             - name: http
               containerPort: 1880
