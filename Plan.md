@@ -67,12 +67,21 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [ ] **Pi-hole DNS redundancy** - see [runbooks/pihole-dns-redundancy.md](runbooks/pihole-dns-redundancy.md)
   - Single Pi-hole = DNS outage if pod fails
   - Options: secondary Pi-hole with sync, or fallback DNS in DHCP
-- [ ] **Graceful node reboots for Zincati/CoreOS updates**
-  - Zincati reboots nodes during maintenance window (Wed 3-5 AM UTC) without Kubernetes awareness
-  - No `kubectl drain` before reboot - pods killed abruptly
-  - Longhorn volumes detach mid-I/O, replicas go offline instantly
-  - PodDisruptionBudgets ignored - replicated workloads may lose quorum
-  - Multiple nodes can reboot within same 2-hour window - risk of 0 healthy Longhorn replicas
+- [x] **Graceful node reboots for Zincati/CoreOS updates**
+  - Added `k3s-drain.service`: runs `kubectl drain` before shutdown/reboot (120s timeout)
+  - Added `k3s-uncordon.service`: runs `kubectl uncordon` after k3s starts back up
+  - Added PodDisruptionBudgets for cloudflare-tunnel and ingress-nginx (minAvailable: 1)
+  - Drain scripts baked into ignition template for new nodes
+  - Run `genesis/apply-drain-config.sh` to apply to existing nodes
+  - Reboots already staggered across Tue/Wed/Thu via Zincati config
+- [ ] **Test graceful drain/uncordon on a single node**
+  - Run `genesis/apply-drain-config.sh` to install services on all nodes
+  - SSH into one node and verify services are enabled: `systemctl is-enabled k3s-drain.service k3s-uncordon.service`
+  - Reboot one node: `sudo systemctl reboot`
+  - Watch from another node: `kubectl get nodes -w` — should see node go `SchedulingDisabled` before disappearing, then come back `Ready`
+  - Verify pods migrated gracefully: `kubectl get events --field-selector reason=Evicted -A`
+  - Verify PDBs are respected: `kubectl get pdb -A`
+  - Repeat for each node on separate days
 
 **Tasks:**
 - [ ] Monitoring (Prometheus + Grafana)

@@ -241,6 +241,70 @@ storage:
           CLUSTER_NAME="{{CLUSTER_NAME}}"
           avahi-publish-alias "${CLUSTER_NAME}.local" "{{NODE_HOSTNAME}}.local"
 
+    # Graceful node drain before reboot
+    # Ensures pods get SIGTERM + grace period instead of being killed abruptly
+    # when Zincati (or manual reboot) triggers a node restart
+    - path: /usr/local/bin/k3s-drain-node.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # Drain this node before reboot so pods migrate gracefully.
+          # Called by k3s-drain.service which runs before shutdown.
+          set -euo pipefail
+
+          KUBECTL="/usr/local/bin/k3s kubectl"
+          NODE_NAME=$($KUBECTL get node -o name --field-selector spec.unschedulable!=true 2>/dev/null | head -1 || true)
+
+          # If k3s isn't running or node not found, nothing to drain
+          if [ -z "$NODE_NAME" ]; then
+            echo "k3s not ready or node not found, skipping drain"
+            exit 0
+          fi
+
+          NODE_NAME=$(hostname)
+          echo "Draining node ${NODE_NAME}..."
+
+          $KUBECTL drain "${NODE_NAME}" \
+            --ignore-daemonsets \
+            --delete-emptydir-data \
+            --force \
+            --timeout=120s \
+            --skip-wait-for-delete-timeout=30 \
+            2>&1 || echo "Drain timed out or had errors, proceeding with reboot"
+
+          echo "Drain complete for ${NODE_NAME}"
+
+    # Uncordon node after k3s starts back up
+    - path: /usr/local/bin/k3s-uncordon-node.sh
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          # Uncordon this node after k3s is back up post-reboot.
+          # Called by k3s-uncordon.service.
+          set -euo pipefail
+
+          KUBECTL="/usr/local/bin/k3s kubectl"
+          NODE_NAME=$(hostname)
+
+          # Wait for k3s API to be ready
+          for i in $(seq 1 30); do
+            if $KUBECTL get node "${NODE_NAME}" &>/dev/null; then
+              break
+            fi
+            echo "Waiting for k3s API... (${i}/30)"
+            sleep 5
+          done
+
+          if $KUBECTL get node "${NODE_NAME}" -o jsonpath='{.spec.unschedulable}' 2>/dev/null | grep -q true; then
+            echo "Uncordoning node ${NODE_NAME}..."
+            $KUBECTL uncordon "${NODE_NAME}"
+            echo "Node ${NODE_NAME} uncordoned"
+          else
+            echo "Node ${NODE_NAME} is already schedulable"
+          fi
+
     # Zincati auto-update configuration
     # Uses periodic strategy with per-node maintenance windows to prevent
     # simultaneous reboots that would break the Kubernetes cluster
@@ -392,6 +456,45 @@ systemd:
     # Apply sysctl settings
     - name: systemd-sysctl.service
       enabled: true
+
+    # Drain node before reboot/shutdown
+    # Runs before k3s stops so pods get graceful termination
+    - name: k3s-drain.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Drain k3s node before shutdown
+        DefaultDependencies=no
+        Before=shutdown.target reboot.target halt.target
+        Requires=k3s.service
+        After=k3s.service
+
+        [Service]
+        Type=oneshot
+        ExecStart=/usr/local/bin/k3s-drain-node.sh
+        TimeoutStartSec=180
+
+        [Install]
+        WantedBy=shutdown.target reboot.target halt.target
+
+    # Uncordon node after k3s starts
+    - name: k3s-uncordon.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Uncordon k3s node after startup
+        After=k3s.service
+        Requires=k3s.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/local/bin/k3s-uncordon-node.sh
+        # Give k3s time to fully start
+        ExecStartPre=/bin/sleep 15
+
+        [Install]
+        WantedBy=multi-user.target
 
     # Auto-update configuration (Zincati)
     - name: zincati.service

@@ -25,6 +25,11 @@ controller:
   # Run on all nodes for availability
   replicaCount: 2
 
+  # Ensure at least 1 replica survives during node drain
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
   # Allow scheduling on control plane nodes
   tolerations:
     - key: node-role.kubernetes.io/control-plane
