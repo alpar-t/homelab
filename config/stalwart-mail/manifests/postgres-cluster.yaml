@@ -88,7 +88,7 @@ spec:
       
       # WAL archiving (required for CNPG backups)
       archive_mode: "on"
-      archive_timeout: "5min"
+      archive_timeout: "15min"
 
 
 
