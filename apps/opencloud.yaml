@@ -267,6 +267,13 @@ spec:
           httpRoute:
             enabled: false
 
+  ignoreDifferences:
+    - group: ""
+      kind: PersistentVolumeClaim
+      name: opencloud-opencloud-posixfs
+      namespace: opencloud
+      jsonPointers:
+        - /spec/volumeName
   destination:
     server: https://kubernetes.default.svc
     namespace: opencloud
@@ -276,3 +283,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
