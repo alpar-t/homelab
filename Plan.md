@@ -108,27 +108,21 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 
 ## Version Upgrades (audited 2026-04-12)
 
-**Critical — EOL / Security:**
-- [ ] **k3s v1.31 → v1.35** — K8s 1.31 is EOL since Oct 2025, no security patches for 6 months
-- [ ] **CloudNativePG 1.25 → 1.29** — EOL, unsupported operator managing all databases
-- [ ] **ingress-nginx → migrate away** — project archived March 2026, unpatched CVE-2026-1642. Migrate to Gateway API, NGINX Kubernetes Ingress Controller (F5), or Traefik
-- [ ] **ArgoCD v3.2.1 → v3.2.8** — CVE-2026-33186 (grpc-go vulnerability), patch-level fix
+**Critical:**
+- [ ] **k3s v1.31 → v1.33+** — upgrade k3s, then CNPG (dependency chain)
+- [x] **ArgoCD v3.2.1 → v3.2.8** — done 2026-04-12
+- [ ] **CloudNativePG 1.25 → 1.29** — requires k3s 1.33+ first
+- [ ] **ingress-nginx → migrate away** — project archived, evaluate alternatives
 
-**Important — Plan soon:**
-- [ ] **OpenCloud 4.1.0 → 6.0.0** — 2 major versions behind, review migration path through v5.x
-- [ ] **Longhorn 1.8.1 → 1.11** — 3 minors behind, EOL ~July 2026
-- [ ] **OnlyOffice 8.2.2 → 9.3** — 1 major behind
-- [ ] **Velero 1.15 → 1.18** — 3 minors behind, likely out of support
-- [ ] **Apache Tika 2.9.2.1 → 3.3** — 1 major behind, check paperless-ngx compatibility
+**Important:**
+- [ ] OpenCloud 4.1.0 → 6.0.0
+- [ ] Longhorn 1.8.1 → 1.11
+- [ ] OnlyOffice 8.2.2 → 9.3
+- [ ] Velero 1.15 → 1.18
+- [ ] Apache Tika 2.9.2.1 → 3.3
 
-**Routine — Low urgency:**
-- [ ] Immich v2.6.1 → v2.7.4 (1 minor)
-- [ ] Frigate 0.16.4 → 0.17.1 (1 minor, security fixes)
-- [ ] Dex v2.43.0 → v2.45.1 (PKCE support, security)
-- [ ] Pi-hole 2026.02 → 2026.04
-- [ ] Cloudflared 2026.2 → 2026.3
-- [ ] Reloader v1.0.121 → v1.4.14
-- [ ] Forecastle v1.0.145 → v2.0.1
+**Routine:**
+- [ ] Immich, Frigate, Dex, Pi-hole, Cloudflared, Reloader, Forecastle
 
 ## Hardware
 
