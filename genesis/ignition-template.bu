@@ -8,9 +8,13 @@ version: 1.5.0
 # system freezes on Intel Alder Lake-N (i3-N305) CPUs. Deep C-states can cause
 # complete system lockups with no kernel logs. Power savings are negligible
 # for always-on K8s nodes.
+# i915.enable_dc=0: Disable i915 Display Core power states (DC5/DC6). On
+# headless Alder Lake-N systems, the GPU aggressively enters DC states which
+# can cause complete system lockups. Does not affect VAAPI/QSV media capabilities.
 kernel_arguments:
   should_exist:
     - intel_idle.max_cstate=1
+    - i915.enable_dc=0
 
 storage:
   # Format HDDs for Longhorn storage

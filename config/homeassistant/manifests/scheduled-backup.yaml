@@ -14,8 +14,8 @@ metadata:
   labels:
     app: homeassistant
 spec:
-  # Weekly on Sundays at 4:00 AM (CNPG uses 1-7 for day of week, 7=Sunday)
-  schedule: "0 4 * * 7"
+  # Weekly on Saturdays at 4:00 AM (CNPG uses 6-field cron: sec min hour dom month dow)
+  schedule: "0 0 4 * * 6"
   
   # Which cluster to backup
   cluster:

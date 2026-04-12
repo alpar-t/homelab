@@ -38,7 +38,7 @@ spec:
       # Password stored in: homeassistant-db-app secret (created by operator)
   
   storage:
-    size: 20Gi  # History can grow; adjust based on retention
+    size: 40Gi  # History can grow; adjust based on retention
     storageClass: longhorn-ssd
     # Note: Longhorn backup label removed - using CNPG-native backups instead
   
