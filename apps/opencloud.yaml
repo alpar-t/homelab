@@ -133,7 +133,7 @@ spec:
                 memory: 512Mi
               limits:
                 cpu: 1000m
-                memory: 2Gi
+                memory: 3Gi
 
           # ===================
           # OpenCloud Core
