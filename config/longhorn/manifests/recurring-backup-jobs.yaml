@@ -29,6 +29,26 @@ spec:
     - default
 
 ---
+# Daily filesystem trim for ALL volumes at 1:00 AM
+# Reclaims unused thin-provisioned blocks from Longhorn volumes.
+# Critical for database volumes (PostgreSQL, etc.) where heavy overwrites
+# cause actualSize to grow far beyond the volume capacity.
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: filesystem-trim
+  namespace: longhorn-system
+spec:
+  name: filesystem-trim
+  task: filesystem-trim
+  cron: "0 1 * * *"
+  retain: 0
+  concurrency: 3
+  groups:
+    - default
+    - critical
+
+---
 # Daily backup for critical volumes at 2:00 AM, keep 21 days
 # To enable: add label recurring-job-group.longhorn.io/critical: enabled
 apiVersion: longhorn.io/v1beta2
