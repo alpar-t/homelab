@@ -31,6 +31,7 @@ metadata:
 spec:
   # HA: 2 instances with automatic failover
   instances: 2
+  enablePDB: false
   
   imageName: ghcr.io/cloudnative-pg/postgresql:16
   

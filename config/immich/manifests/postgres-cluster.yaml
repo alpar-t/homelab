@@ -28,6 +28,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "0"
 spec:
   instances: 2
+  enablePDB: false
   
   # Use tensorchord/cloudnative-pgvecto.rs image for vector extension support
   # Required for Immich's smart search feature
