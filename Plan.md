@@ -109,9 +109,9 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 ## Version Upgrades (audited 2026-04-12)
 
 **Critical:**
-- [ ] **k3s v1.31 → v1.33+** — upgrade k3s, then CNPG (dependency chain)
+- [x] **k3s v1.31 → v1.34.6** — done 2026-04-13, via System Upgrade Controller
 - [x] **ArgoCD v3.2.1 → v3.2.8** — done 2026-04-12
-- [ ] **CloudNativePG 1.25 → 1.29** — requires k3s 1.33+ first
+- [x] **CloudNativePG 1.25 → 1.29.0** — done 2026-04-13, sequential upgrade
 - [ ] **ingress-nginx → migrate away** — project archived, evaluate alternatives
 
 **Important:**
