@@ -200,7 +200,7 @@ storage:
           #!/bin/bash
           # Install k3s
           curl -sfL https://get.k3s.io | \
-            INSTALL_K3S_VERSION="v1.31.3+k3s1" \
+            INSTALL_K3S_VERSION="v1.34.6+k3s1" \
             INSTALL_K3S_EXEC="server \
               --disable=traefik \
               --disable=servicelb \

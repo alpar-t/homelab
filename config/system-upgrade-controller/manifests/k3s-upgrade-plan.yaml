@@ -1,0 +1,41 @@
+# k3s Server Upgrade Plan
+# Managed by System Upgrade Controller
+#
+# This automatically upgrades k3s on all server nodes, one at a time.
+# It cordons, drains, upgrades, and uncordons each node.
+#
+# To trigger an upgrade: update the `version` field and push to git.
+# To pause upgrades: delete or comment out this file.
+
+apiVersion: upgrade.cattle.io/v1
+kind: Plan
+metadata:
+  name: k3s-server
+  namespace: system-upgrade
+  labels:
+    k3s-upgrade: server
+spec:
+  # Upgrade one node at a time
+  concurrency: 1
+
+  # Target version - update this to trigger upgrades
+  version: v1.34.6+k3s1
+
+  # Select all server/control-plane nodes
+  nodeSelector:
+    matchExpressions:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+
+  serviceAccountName: system-upgrade
+
+  # Cordon and drain before upgrading
+  cordon: true
+  drain:
+    force: true
+    deleteEmptydirData: true
+    ignoreDaemonSets: true
+    timeout: 120
+
+  upgrade:
+    image: rancher/k3s-upgrade
