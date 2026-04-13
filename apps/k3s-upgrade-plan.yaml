@@ -1,8 +1,4 @@
-# System Upgrade Controller - automated k3s upgrades
-# https://github.com/rancher/system-upgrade-controller
-#
-# The controller and CRDs are in manifests/, the upgrade plan is in a
-# separate app (k3s-upgrade-plan) so the CRD exists before the Plan.
+# k3s Upgrade Plan - requires system-upgrade-controller to be synced first
 #
 # To upgrade k3s: update the version in
 # config/system-upgrade-controller/plan/k3s-upgrade-plan.yaml
@@ -10,16 +6,16 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: system-upgrade-controller
+  name: k3s-upgrade-plan
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "-15"
+    argocd.argoproj.io/sync-wave: "-14"
 spec:
   project: default
   source:
     repoURL: https://github.com/alpar-t/homelab
     targetRevision: main
-    path: config/system-upgrade-controller/manifests
+    path: config/system-upgrade-controller/plan
   destination:
     server: https://kubernetes.default.svc
   syncPolicy:
@@ -28,3 +24,4 @@ spec:
       selfHeal: true
     syncOptions:
       - ServerSideApply=true
+      - SkipDryRunOnMissingResource=true
