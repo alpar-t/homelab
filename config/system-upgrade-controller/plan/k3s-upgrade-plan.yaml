@@ -37,7 +37,7 @@ spec:
     force: true
     deleteEmptydirData: true
     ignoreDaemonSets: true
-    timeout: 120
+    timeout: 120s
 
   upgrade:
     image: rancher/k3s-upgrade
