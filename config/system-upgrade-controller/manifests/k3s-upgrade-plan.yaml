@@ -12,6 +12,8 @@ kind: Plan
 metadata:
   name: k3s-server
   namespace: system-upgrade
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
   labels:
     k3s-upgrade: server
 spec:
