@@ -76,7 +76,7 @@ spec:
             image:
               registry: docker.io
               repository: onlyoffice/documentserver
-              tag: "8.2.2"
+              tag: "8.3.2"
               pullPolicy: IfNotPresent
             wopi:
               enabled: true
@@ -125,7 +125,7 @@ spec:
             image:
               registry: docker.io
               repository: apache/tika
-              tag: "2.9.2.1-full"
+              tag: "3.2.2-full"
               pullPolicy: IfNotPresent
             resources:
               requests:
