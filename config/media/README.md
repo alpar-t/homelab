@@ -49,62 +49,154 @@ Forward port **6881 TCP+UDP** to `192.168.1.205` for incoming BitTorrent peer co
 
 ## Post-Deployment Configuration
 
-### qBittorrent (qbit.newjoy.ro)
+Configure in this order — each step depends on the previous.
 
-Default credentials: admin / check container logs for random password on first start.
+### Step 1: qBittorrent (qbit.newjoy.ro)
+
+**First login:** username `admin`, password from container logs:
+```bash
+kubectl logs -n media deployment/qbittorrent | grep "temporary password"
+```
 
 **Download paths** (Settings → Downloads):
-- Default save path: `/data/movies/downloads/complete` (overridden per category)
+- Default save path: `/data/movies/downloads/complete`
 - Enable "Keep incomplete torrents in": `/incomplete`
 
-**Categories** (right-click in transfer list → Categories):
+**Categories** (right-click in transfer list → Categories → Add category):
 - `radarr` → save path: `/data/movies/downloads/complete`
 - `sonarr` → save path: `/data/tv/downloads/complete`
 
+**Connection** (Settings → Connection):
+- Listening port: `6881` (already exposed via MetalLB at 192.168.1.205)
+- Enable UPnP: **off** (MetalLB handles this)
+
+**Speed** (Settings → Speed):
+- Set upload limit if your ISP has asymmetric bandwidth
+
+**BitTorrent** (Settings → BitTorrent):
+- Enable DHT, PeX, and Local Peer Discovery
+- Set seed ratio limit (e.g., 2.0) or seed time limit based on preference
+- When ratio is reached: Pause torrent (Sonarr/Radarr handle cleanup)
+
 **Performance tuning** (Settings → Advanced):
 - Disk cache: `512` MiB
-- Disk IO read/write mode: `Disable OS cache` (prevents mmap bloat in containers)
+- Disk IO read/write mode: `Disable OS cache` (critical — prevents mmap memory bloat)
 - File pool size: `5000`
 - Send buffer watermark: `5120` KiB
 - Send buffer low watermark: `512` KiB
 - Connections limit: `500` global, `200` per torrent
 - Upload slots: `50` global, `8` per torrent
+- Resolve peer countries: **off** (saves CPU)
 
-**Seeding** (Settings → BitTorrent):
-- Set ratio limit or seed time limit based on your preference
+**Web UI** (Settings → Web UI):
+- Change the default password
 
-### Prowlarr (prowlarr.newjoy.ro)
+### Step 2: Prowlarr (prowlarr.newjoy.ro)
 
-1. Add your indexers (torrent trackers)
-2. Add Sonarr as an app: Settings → Apps → Sonarr
+1. Add your torrent indexers: Indexers → Add Indexer
+2. Note the Prowlarr API key: Settings → General → API Key
+3. Add Sonarr: Settings → Apps → Add → Sonarr
+   - Sync Level: Full Sync
    - Prowlarr Server: `http://prowlarr.media.svc.cluster.local:9696`
    - Sonarr Server: `http://sonarr.media.svc.cluster.local:8989`
-   - API Key: from Sonarr → Settings → General
-3. Add Radarr as an app: same pattern with port 7878
+   - API Key: from Sonarr (Step 3 below)
+4. Add Radarr: Settings → Apps → Add → Radarr
+   - Sync Level: Full Sync
+   - Prowlarr Server: `http://prowlarr.media.svc.cluster.local:9696`
+   - Radarr Server: `http://radarr.media.svc.cluster.local:7878`
+   - API Key: from Radarr (Step 4 below)
 
-### Sonarr (sonarr.newjoy.ro)
+### Step 3: Sonarr (sonarr.newjoy.ro)
 
-1. Settings → Media Management → Root Folder: `/data/media/tv`
-2. Settings → Download Clients → qBittorrent:
-   - Host: `qbittorrent.media.svc.cluster.local`
-   - Port: `8080`
-   - Category: `sonarr`
+**API Key:** Settings → General → API Key (copy this for Prowlarr)
 
-### Radarr (radarr.newjoy.ro)
+**Root folder:** Settings → Media Management → Add Root Folder → `/data/media/tv`
 
-1. Settings → Media Management → Root Folder: `/data/media/movies`
-2. Settings → Download Clients → qBittorrent:
-   - Host: `qbittorrent.media.svc.cluster.local`
-   - Port: `8080`
-   - Category: `radarr`
+**Quality profile for 4K HDR:** Settings → Profiles → Edit or create:
+- Name: `4K HDR`
+- Upgrade until: Bluray-2160p Remux
+- Qualities (top = preferred): Bluray-2160p Remux > Bluray-2160p > WEB 2160p > Bluray-1080p Remux
+- Custom Formats: add `HDR10`, `DTS-HD MA`, `TrueHD Atmos`, `DTS-X` and score them positively
 
-### Emby (http://192.168.1.204:8096 — LAN only)
+**Download client:** Settings → Download Clients → Add → qBittorrent:
+- Host: `qbittorrent.media.svc.cluster.local`
+- Port: `8080`
+- Category: `sonarr`
+- Remove Completed: **on** (removes from qBit after import)
 
-1. Run through initial setup wizard
-2. Add library: Movies → `/data/movies/media/movies`
-3. Add library: TV Shows → `/data/tv/media/tv`
-4. Enable hardware transcoding: Settings → Transcoding → Hardware acceleration: VAAPI
-5. Enable subtitle downloads: Settings → Subtitles
+**Naming:** Settings → Media Management:
+- Rename Episodes: **on**
+- Standard format: `{Series TitleYear} - S{season:00}E{episode:00} - {Episode CleanTitle} [{Quality Full}]{[MediaInfo VideoDynamicRangeType]}`
+- Season folder: `Season {season:00}`
+
+### Step 4: Radarr (radarr.newjoy.ro)
+
+**API Key:** Settings → General → API Key (copy this for Prowlarr)
+
+**Root folder:** Settings → Media Management → Add Root Folder → `/data/media/movies`
+
+**Quality profile for 4K HDR:** Settings → Profiles → Edit or create:
+- Name: `4K HDR`
+- Upgrade until: Remux-2160p
+- Qualities: Remux-2160p > Bluray-2160p > WEB 2160p > Remux-1080p
+- Custom Formats: add `HDR10`, `HDR10+`, `Dolby Vision`, `DTS-HD MA`, `TrueHD Atmos`, `DTS-X`
+  and score them positively to prefer best audio/video
+
+**Download client:** Settings → Download Clients → Add → qBittorrent:
+- Host: `qbittorrent.media.svc.cluster.local`
+- Port: `8080`
+- Category: `radarr`
+- Remove Completed: **on**
+
+**Naming:** Settings → Media Management:
+- Rename Movies: **on**
+- Standard format: `{Movie CleanTitle} ({Release Year}) [{Quality Full}]{[MediaInfo VideoDynamicRangeType]}{[MediaInfo AudioCodec]}`
+
+### Step 5: Connect Prowlarr to Sonarr/Radarr
+
+Go back to Prowlarr and enter the API keys you copied in Steps 3 and 4.
+After saving, Prowlarr will sync your indexers to both apps automatically.
+Verify: check Sonarr/Radarr → Settings → Indexers — they should show up.
+
+### Step 6: Emby (http://192.168.1.204:8096 — LAN only)
+
+**Initial setup wizard:**
+1. Set language and create admin account
+2. Add libraries:
+   - Movies → `/data/movies/media/movies`
+   - TV Shows → `/data/tv/media/tv`
+
+**Emby Premiere:** Settings → Emby Premiere
+- Enter your Premiere key to unlock hardware transcoding and other features
+- Without Premiere, hardware transcoding is disabled
+
+**Hardware transcoding:** Settings → Server → Transcoding
+- Hardware acceleration: **VAAPI** (Intel QSV)
+- Hardware decoding: **enable all codecs** (H.264, HEVC, VP9, AV1)
+- Enable hardware encoding: **on**
+- Enable tone mapping: **on** (converts HDR→SDR when client doesn't support HDR)
+- Preferred tone mapping mode: **VPP** (uses Intel GPU, much faster than software)
+- Allow encoding in HEVC: **on** (smaller transcoded files)
+
+**Playback:** Settings → Server → Playback
+- Internet streaming bitrate limit: **unlimited** (or match your upload speed)
+- LAN streaming bitrate limit: **unlimited**
+
+**Subtitles:** Settings → Server → Subtitles
+- Subtitle download languages: your preferred languages
+- Open Subtitles: add your account credentials
+
+**Scheduled tasks:** Settings → Server → Scheduled Tasks
+- Library scan: set to run every few hours or daily
+- Chapter image extraction: can be CPU intensive, schedule overnight
+
+**Network:** Settings → Server → Network
+- Secure connections: **Not required** (LAN only, no TLS needed)
+
+**4K HDR direct play tips:**
+- Prefer direct play over transcoding — set clients to original quality
+- If a client doesn't support HDR, Emby will tone-map via GPU (requires Premiere)
+- For 7.1 audio passthrough, use a client that supports it (e.g., Emby Theater, Kodi, Shield TV)
 
 ## Authentication
 
