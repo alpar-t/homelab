@@ -36,7 +36,9 @@ data:
     immich/immich-import
     immich/immich-model-cache
     # Media stack — replaceable downloads and media library
-    media/media-data
+    media/movies-data
+    media/tv-data
+    media/qbit-incomplete
 
 ---
 apiVersion: batch/v1

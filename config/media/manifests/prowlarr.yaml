@@ -32,6 +32,10 @@ spec:
               value: "1000"
             - name: TZ
               value: "Europe/Bucharest"
+            - name: PROWLARR__AUTH__METHOD
+              value: "External"
+            - name: PROWLARR__AUTH__REQUIRED
+              value: "DisabledForLocalAddresses"
           volumeMounts:
             - name: config
               mountPath: /config

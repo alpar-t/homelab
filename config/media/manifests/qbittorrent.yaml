@@ -1,5 +1,6 @@
 # qBittorrent — optimized for fast downloads
-# All data on single SSD volume: incomplete → complete (instant rename), hardlinks to /media/
+# Incomplete downloads on SSD (random I/O), completed on HDD (sequential)
+# Uses categories to route: "radarr" → /data/movies/, "sonarr" → /data/tv/
 
 apiVersion: apps/v1
 kind: Deployment
@@ -44,8 +45,12 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
-            - name: media-data
-              mountPath: /data
+            - name: incomplete
+              mountPath: /incomplete
+            - name: movies-data
+              mountPath: /data/movies
+            - name: tv-data
+              mountPath: /data/tv
           resources:
             requests:
               cpu: 200m
@@ -67,9 +72,15 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: qbittorrent-config
-        - name: media-data
+        - name: incomplete
           persistentVolumeClaim:
-            claimName: media-data
+            claimName: qbit-incomplete
+        - name: movies-data
+          persistentVolumeClaim:
+            claimName: movies-data
+        - name: tv-data
+          persistentVolumeClaim:
+            claimName: tv-data
 ---
 # qBittorrent Web UI service (accessed via ingress with auth_request)
 apiVersion: v1

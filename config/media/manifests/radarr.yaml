@@ -32,10 +32,14 @@ spec:
               value: "1000"
             - name: TZ
               value: "Europe/Bucharest"
+            - name: RADARR__AUTH__METHOD
+              value: "External"
+            - name: RADARR__AUTH__REQUIRED
+              value: "DisabledForLocalAddresses"
           volumeMounts:
             - name: config
               mountPath: /config
-            - name: media-data
+            - name: movies-data
               mountPath: /data
           resources:
             requests:
@@ -60,9 +64,9 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: radarr-config
-        - name: media-data
+        - name: movies-data
           persistentVolumeClaim:
-            claimName: media-data
+            claimName: movies-data
 ---
 apiVersion: v1
 kind: Service

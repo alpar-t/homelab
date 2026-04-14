@@ -36,8 +36,11 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
-            - name: media-data
-              mountPath: /data
+            - name: movies-data
+              mountPath: /data/movies
+              readOnly: true
+            - name: tv-data
+              mountPath: /data/tv
               readOnly: true
             - name: dri
               mountPath: /dev/dri
@@ -64,9 +67,12 @@ spec:
         - name: config
           persistentVolumeClaim:
             claimName: emby-config
-        - name: media-data
+        - name: movies-data
           persistentVolumeClaim:
-            claimName: media-data
+            claimName: movies-data
+        - name: tv-data
+          persistentVolumeClaim:
+            claimName: tv-data
         - name: dri
           hostPath:
             path: /dev/dri
