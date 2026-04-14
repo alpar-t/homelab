@@ -43,7 +43,7 @@ spec:
               memory: 256Mi
             limits:
               cpu: 2000m
-              memory: 1Gi
+              memory: 2Gi
           livenessProbe:
             httpGet:
               path: /ping
