@@ -1,0 +1,102 @@
+# Ingresses for arr stack — auth via shared oauth2-proxy-media (auth_request mode)
+# nginx validates each request against oauth2-proxy, then proxies directly to backends
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sonarr
+  namespace: media
+  labels:
+    app.kubernetes.io/name: sonarr
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+    nginx.ingress.kubernetes.io/auth-url: "http://oauth2-proxy-media.media.svc.cluster.local:4180/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-signin: "https://media-auth.newjoy.ro/oauth2/start?rd=$scheme://$host$escaped_request_uri"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: sonarr.newjoy.ro
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sonarr
+                port:
+                  number: 8989
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: radarr
+  namespace: media
+  labels:
+    app.kubernetes.io/name: radarr
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+    nginx.ingress.kubernetes.io/auth-url: "http://oauth2-proxy-media.media.svc.cluster.local:4180/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-signin: "https://media-auth.newjoy.ro/oauth2/start?rd=$scheme://$host$escaped_request_uri"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: radarr.newjoy.ro
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: radarr
+                port:
+                  number: 7878
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prowlarr
+  namespace: media
+  labels:
+    app.kubernetes.io/name: prowlarr
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+    nginx.ingress.kubernetes.io/auth-url: "http://oauth2-proxy-media.media.svc.cluster.local:4180/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-signin: "https://media-auth.newjoy.ro/oauth2/start?rd=$scheme://$host$escaped_request_uri"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: prowlarr.newjoy.ro
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prowlarr
+                port:
+                  number: 9696
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: qbittorrent
+  namespace: media
+  labels:
+    app.kubernetes.io/name: qbittorrent
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+    nginx.ingress.kubernetes.io/auth-url: "http://oauth2-proxy-media.media.svc.cluster.local:4180/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-signin: "https://media-auth.newjoy.ro/oauth2/start?rd=$scheme://$host$escaped_request_uri"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: qbit.newjoy.ro
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: qbittorrent
+                port:
+                  number: 8080

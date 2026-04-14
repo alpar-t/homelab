@@ -1,0 +1,94 @@
+# Emby Media Server — LAN-only access via MetalLB
+# Hardware transcoding via Intel QSV/VAAPI
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: emby
+  namespace: media
+  labels:
+    app.kubernetes.io/name: emby
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: emby
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: emby
+    spec:
+      containers:
+        - name: emby
+          image: lscr.io/linuxserver/emby:latest
+          ports:
+            - containerPort: 8096
+              name: http
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "Europe/Bucharest"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: media-data
+              mountPath: /data
+              readOnly: true
+            - name: dri
+              mountPath: /dev/dri
+          resources:
+            requests:
+              cpu: 200m
+              memory: 1Gi
+              gpu.intel.com/i915: "1"
+            limits:
+              cpu: 4000m
+              memory: 4Gi
+              gpu.intel.com/i915: "1"
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: emby-config
+        - name: media-data
+          persistentVolumeClaim:
+            claimName: media-data
+        - name: dri
+          hostPath:
+            path: /dev/dri
+            type: Directory
+---
+# Emby LAN service via MetalLB
+# Access at: http://192.168.1.204:8096
+apiVersion: v1
+kind: Service
+metadata:
+  name: emby
+  namespace: media
+  labels:
+    app.kubernetes.io/name: emby
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: 192.168.1.204
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: emby
+  ports:
+    - name: http
+      port: 8096
+      targetPort: 8096
+      protocol: TCP

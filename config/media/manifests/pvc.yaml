@@ -1,0 +1,96 @@
+# Shared media storage — holds downloads and organized media library
+# All arr apps + Emby mount this volume (RWX on a single SSD, no replication)
+# Structure: /downloads/{incomplete,complete}/, /media/{movies,tv}/
+#
+# BACKUP EXCLUSION: This volume is excluded from Longhorn weekly backups.
+# See config/longhorn/manifests/backup-exclusions.yaml
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-data
+  namespace: media
+  labels:
+    app.kubernetes.io/part-of: media-stack
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: longhorn-ssd-noreplica
+  resources:
+    requests:
+      storage: 2500Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: emby-config
+  namespace: media
+  labels:
+    app.kubernetes.io/name: emby
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prowlarr-config
+  namespace: media
+  labels:
+    app.kubernetes.io/name: prowlarr
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sonarr-config
+  namespace: media
+  labels:
+    app.kubernetes.io/name: sonarr
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: radarr-config
+  namespace: media
+  labels:
+    app.kubernetes.io/name: radarr
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: qbittorrent-config
+  namespace: media
+  labels:
+    app.kubernetes.io/name: qbittorrent
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 1Gi

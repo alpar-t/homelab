@@ -35,6 +35,8 @@ data:
     immich/immich-encoded-video
     immich/immich-import
     immich/immich-model-cache
+    # Media stack — replaceable downloads and media library
+    media/media-data
 
 ---
 apiVersion: batch/v1

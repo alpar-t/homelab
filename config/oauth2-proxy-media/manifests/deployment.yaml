@@ -1,0 +1,127 @@
+# Unified oauth2-proxy for all media apps (auth_request mode)
+# One Pocket ID client, one cookie on .newjoy.ro — covers sonarr/radarr/prowlarr/qbit
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth2-proxy-media
+  namespace: media
+  labels:
+    app: oauth2-proxy-media
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oauth2-proxy-media
+  template:
+    metadata:
+      labels:
+        app: oauth2-proxy-media
+    spec:
+      containers:
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.1@sha256:39f08531587045a5443db43299bf8495696c99ed8d0e1fdcbe60534f7c02ce14
+          args:
+            - --http-address=0.0.0.0:4180
+            - --reverse-proxy=true
+            # auth_request mode — just validate, don't proxy
+            - --upstream=static://200
+            # OIDC configuration
+            - --provider=oidc
+            - --oidc-issuer-url=https://auth.newjoy.ro
+            - --skip-oidc-discovery=true
+            - --login-url=https://auth.newjoy.ro/authorize
+            - --redeem-url=http://pocket-id.pocket-id.svc.cluster.local/api/oidc/token
+            - --oidc-jwks-url=http://pocket-id.pocket-id.svc.cluster.local/.well-known/jwks.json
+            # Cookie on .newjoy.ro — one login covers all media subdomains
+            - --cookie-secure=true
+            - --cookie-name=_oauth2_proxy_media
+            - --cookie-domain=.newjoy.ro
+            # Allow redirects back to any *.newjoy.ro subdomain
+            - --whitelist-domain=.newjoy.ro
+            # Email/user validation
+            - --email-domain=*
+            - --insecure-oidc-allow-unverified-email=true
+            # Redirect configuration
+            - --redirect-url=https://media-auth.newjoy.ro/oauth2/callback
+            # Skip auth for health checks
+            - --skip-auth-route=^/ping$
+          env:
+            - name: OAUTH2_PROXY_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-media
+                  key: client-id
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-media
+                  key: client-secret
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: oauth2-proxy-media
+                  key: cookie-secret
+          ports:
+            - containerPort: 4180
+              name: http
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oauth2-proxy-media
+  namespace: media
+  labels:
+    app: oauth2-proxy-media
+spec:
+  type: ClusterIP
+  selector:
+    app: oauth2-proxy-media
+  ports:
+    - name: http
+      port: 4180
+      targetPort: 4180
+      protocol: TCP
+---
+# Ingress for oauth2-proxy auth callback endpoint
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oauth2-proxy-media
+  namespace: media
+  labels:
+    app: oauth2-proxy-media
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: media-auth.newjoy.ro
+      http:
+        paths:
+          - path: /oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: oauth2-proxy-media
+                port:
+                  number: 4180
