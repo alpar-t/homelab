@@ -30,8 +30,8 @@ spec:
               keycloak: ""
               # MinIO not used - we use posixfs
               minio: ""
-              # WOPI handled externally
-              wopi: ""
+              # WOPI domain for OnlyOffice collaboration service
+              wopi: wopi.newjoy.ro
               collabora: ""
               onlyoffice: office.newjoy.ro
               companion: ""

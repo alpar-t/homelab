@@ -10,6 +10,9 @@ controller:
     use-proxy-protocol: "false"
     # Enable snippets for Authelia forward auth
     allow-snippet-annotations: "true"
+    # Required since ingress-nginx v1.12+ annotation validation (IngressNightmare fix)
+    # configuration-snippet is "Critical" risk; without this, ingresses using it are silently dropped
+    annotations-risk-level: "Critical"
     # Trust X-Forwarded-Proto from Cloudflare Tunnel
     proxy-real-ip-cidr: "0.0.0.0/0"
   
