@@ -1,5 +1,6 @@
 # Emby Media Server — LAN-only access via MetalLB
 # Hardware transcoding via Intel QSV/VAAPI
+# Co-located with arr-stack via podAffinity (shares RWO volumes on same node)
 
 apiVersion: apps/v1
 kind: Deployment
@@ -20,6 +21,13 @@ spec:
       labels:
         app.kubernetes.io/name: emby
     spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: arr-stack
+              topologyKey: kubernetes.io/hostname
       containers:
         - name: emby
           image: lscr.io/linuxserver/emby:latest
@@ -38,10 +46,8 @@ spec:
               mountPath: /config
             - name: movies-data
               mountPath: /data/movies
-              readOnly: true
             - name: tv-data
               mountPath: /data/tv
-              readOnly: true
             - name: dri
               mountPath: /dev/dri
           resources:

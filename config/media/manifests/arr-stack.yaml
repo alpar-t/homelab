@@ -1,0 +1,303 @@
+# Arr stack — qBittorrent, Sonarr, Radarr, Prowlarr as sidecar containers
+# Sharing RWO volumes within the same pod (no NFS needed)
+# Hardlinks work because containers share the same filesystem mounts
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: arr-stack
+  namespace: media
+  labels:
+    app.kubernetes.io/name: arr-stack
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: arr-stack
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: arr-stack
+    spec:
+      containers:
+        - name: qbittorrent
+          image: lscr.io/linuxserver/qbittorrent:latest
+          ports:
+            - containerPort: 8080
+              name: qbit-http
+            - containerPort: 6881
+              name: bittorrent-tcp
+              protocol: TCP
+            - containerPort: 6881
+              name: bittorrent-udp
+              protocol: UDP
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "Europe/Bucharest"
+            - name: WEBUI_PORT
+              value: "8080"
+          volumeMounts:
+            - name: qbittorrent-config
+              mountPath: /config
+            - name: qbit-incomplete
+              mountPath: /incomplete
+            - name: movies-data
+              mountPath: /data/movies
+            - name: tv-data
+              mountPath: /data/tv
+          resources:
+            requests:
+              cpu: 200m
+              memory: 1Gi
+            limits:
+              cpu: 4000m
+              memory: 4Gi
+          livenessProbe:
+            tcpSocket:
+              port: qbit-http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: qbit-http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+        - name: sonarr
+          image: lscr.io/linuxserver/sonarr:latest
+          ports:
+            - containerPort: 8989
+              name: sonarr-http
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "Europe/Bucharest"
+            - name: SONARR__AUTH__METHOD
+              value: "External"
+            - name: SONARR__AUTH__REQUIRED
+              value: "DisabledForLocalAddresses"
+          volumeMounts:
+            - name: sonarr-config
+              mountPath: /config
+            - name: tv-data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: sonarr-http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: sonarr-http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+        - name: radarr
+          image: lscr.io/linuxserver/radarr:latest
+          ports:
+            - containerPort: 7878
+              name: radarr-http
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "Europe/Bucharest"
+            - name: RADARR__AUTH__METHOD
+              value: "External"
+            - name: RADARR__AUTH__REQUIRED
+              value: "DisabledForLocalAddresses"
+          volumeMounts:
+            - name: radarr-config
+              mountPath: /config
+            - name: movies-data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 3Gi
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: radarr-http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: radarr-http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+        - name: prowlarr
+          image: lscr.io/linuxserver/prowlarr:latest
+          ports:
+            - containerPort: 9696
+              name: prowlarr-http
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "Europe/Bucharest"
+            - name: PROWLARR__AUTH__METHOD
+              value: "External"
+            - name: PROWLARR__AUTH__REQUIRED
+              value: "DisabledForLocalAddresses"
+          volumeMounts:
+            - name: prowlarr-config
+              mountPath: /config
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: prowlarr-http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: prowlarr-http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: qbittorrent-config
+          persistentVolumeClaim:
+            claimName: qbittorrent-config
+        - name: qbit-incomplete
+          persistentVolumeClaim:
+            claimName: qbit-incomplete
+        - name: movies-data
+          persistentVolumeClaim:
+            claimName: movies-data
+        - name: tv-data
+          persistentVolumeClaim:
+            claimName: tv-data
+        - name: sonarr-config
+          persistentVolumeClaim:
+            claimName: sonarr-config
+        - name: radarr-config
+          persistentVolumeClaim:
+            claimName: radarr-config
+        - name: prowlarr-config
+          persistentVolumeClaim:
+            claimName: prowlarr-config
+---
+# Services — all select the arr-stack pod, route to different container ports
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: qbittorrent
+  namespace: media
+  labels:
+    app.kubernetes.io/name: qbittorrent
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: arr-stack
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qbittorrent-bt
+  namespace: media
+  labels:
+    app.kubernetes.io/name: qbittorrent
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: 192.168.1.205
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: arr-stack
+  ports:
+    - name: bittorrent-tcp
+      port: 6881
+      targetPort: 6881
+      protocol: TCP
+    - name: bittorrent-udp
+      port: 6881
+      targetPort: 6881
+      protocol: UDP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonarr
+  namespace: media
+  labels:
+    app.kubernetes.io/name: sonarr
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: arr-stack
+  ports:
+    - name: http
+      port: 8989
+      targetPort: 8989
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: radarr
+  namespace: media
+  labels:
+    app.kubernetes.io/name: radarr
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: arr-stack
+  ports:
+    - name: http
+      port: 7878
+      targetPort: 7878
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prowlarr
+  namespace: media
+  labels:
+    app.kubernetes.io/name: prowlarr
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: arr-stack
+  ports:
+    - name: http
+      port: 9696
+      targetPort: 9696
+      protocol: TCP

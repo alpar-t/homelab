@@ -1,5 +1,5 @@
-# Media storage split across SSD (downloads) and HDD (completed + library)
-# Hardlinks work within each HDD volume (same filesystem)
+# Media storage — all RWO, shared via sidecar containers in the same pod
+# Emby co-located on same node via podAffinity
 #
 # BACKUP EXCLUSION: media volumes excluded from Longhorn weekly backups.
 # See config/longhorn/manifests/backup-exclusions.yaml
@@ -30,7 +30,7 @@ metadata:
     app.kubernetes.io/part-of: media-stack
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   storageClassName: longhorn-hdd-noreplica
   resources:
     requests:
@@ -46,7 +46,7 @@ metadata:
     app.kubernetes.io/part-of: media-stack
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   storageClassName: longhorn-hdd-noreplica
   resources:
     requests:
