@@ -97,6 +97,7 @@ metadata:
     metallb.universe.tf/loadBalancerIPs: 192.168.1.204
 spec:
   type: LoadBalancer
+  externalTrafficPolicy: Local
   selector:
     app.kubernetes.io/name: emby
   ports:
