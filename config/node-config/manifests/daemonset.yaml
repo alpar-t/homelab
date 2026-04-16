@@ -1,0 +1,147 @@
+# Node Config DaemonSet
+# Copies host-level config files from the ConfigMap to the appropriate
+# paths on the host filesystem, reloads the relevant subsystems, then
+# sleeps. On ConfigMap changes, the pod rolls out and re-applies.
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-config
+  namespace: node-config
+  labels:
+    app: node-config
+spec:
+  selector:
+    matchLabels:
+      app: node-config
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: node-config
+    spec:
+      nodeSelector:
+        kubernetes.io/os: linux
+      hostPID: true
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: node-config
+          image: busybox:1.37
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              apply_configs() {
+                echo "$(date): Applying node configs..."
+                udev_changed=false
+                sysctl_changed=false
+                modules_changed=false
+
+                # --- udev rules ---
+                for rule in /config/udev/*.rules; do
+                  [ -f "$rule" ] || continue
+                  name=$(basename "$rule")
+                  if ! cmp -s "$rule" "/host/etc/udev/rules.d/$name" 2>/dev/null; then
+                    cp "$rule" "/host/etc/udev/rules.d/$name"
+                    echo "  Updated udev rule: $name"
+                    udev_changed=true
+                  fi
+                done
+
+                if [ "$udev_changed" = "true" ]; then
+                  nsenter -t 1 -m -u -i -n -- udevadm control --reload-rules
+                  nsenter -t 1 -m -u -i -n -- udevadm trigger --subsystem-match=block
+                  echo "  Reloaded udev rules"
+                fi
+
+                # --- sysctl ---
+                for conf in /config/sysctl/*.conf; do
+                  [ -f "$conf" ] || continue
+                  name=$(basename "$conf")
+                  if ! cmp -s "$conf" "/host/etc/sysctl.d/$name" 2>/dev/null; then
+                    cp "$conf" "/host/etc/sysctl.d/$name"
+                    echo "  Updated sysctl: $name"
+                    sysctl_changed=true
+                  fi
+                done
+
+                if [ "$sysctl_changed" = "true" ]; then
+                  nsenter -t 1 -m -u -i -n -- sysctl --system
+                  echo "  Reloaded sysctl"
+                fi
+
+                # --- kernel modules ---
+                for conf in /config/modules/*.conf; do
+                  [ -f "$conf" ] || continue
+                  name=$(basename "$conf")
+                  if ! cmp -s "$conf" "/host/etc/modules-load.d/$name" 2>/dev/null; then
+                    cp "$conf" "/host/etc/modules-load.d/$name"
+                    echo "  Updated modules-load: $name"
+                    modules_changed=true
+                  fi
+                  # Ensure modules are loaded now
+                  while IFS= read -r mod; do
+                    mod=$(echo "$mod" | sed 's/#.*//' | tr -d '[:space:]')
+                    [ -z "$mod" ] && continue
+                    nsenter -t 1 -m -u -i -n -- modprobe "$mod" 2>/dev/null || echo "  Warning: failed to load $mod"
+                  done < "$conf"
+                done
+
+                echo "$(date): Done."
+              }
+
+              # Apply on startup
+              apply_configs
+
+              # Re-check every 6 hours (main re-apply is via pod rollout on ConfigMap change)
+              while true; do
+                sleep 21600
+                apply_configs
+              done
+          securityContext:
+            privileged: true
+          resources:
+            requests:
+              memory: "8Mi"
+              cpu: 5m
+            limits:
+              memory: "32Mi"
+              cpu: 50m
+          volumeMounts:
+            - name: host-root
+              mountPath: /host
+            - name: udev-rules
+              mountPath: /config/udev
+            - name: sysctl
+              mountPath: /config/sysctl
+            - name: modules
+              mountPath: /config/modules
+      volumes:
+        - name: host-root
+          hostPath:
+            path: /
+        - name: udev-rules
+          configMap:
+            name: node-config
+            items:
+              - key: 99-disk-tuning.rules
+                path: 99-disk-tuning.rules
+        - name: sysctl
+          configMap:
+            name: node-config
+            items:
+              - key: 99-longhorn.conf.sysctl
+                path: 99-longhorn.conf
+        - name: modules
+          configMap:
+            name: node-config
+            items:
+              - key: longhorn.conf.modules
+                path: longhorn.conf

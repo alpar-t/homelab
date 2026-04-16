@@ -1,0 +1,30 @@
+# Host configuration files applied by the node-config DaemonSet.
+# To add new configs: add files here and update the entrypoint script
+# to copy them to the right host path and reload the relevant subsystem.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node-config
+  namespace: node-config
+data:
+  # Disk I/O tuning for Longhorn volumes on HDD
+  # - Real HDDs (ATA vendor): mq-deadline scheduler + 64MB read-ahead
+  #   mq-deadline has lower latency than BFQ for server/storage workloads
+  # - Longhorn iSCSI devices (IET vendor): same settings, reduces iSCSI
+  #   round-trips for sequential reads (e.g. 4K media streaming)
+  99-disk-tuning.rules: |
+    # HDDs: mq-deadline + 64MB read-ahead
+    ACTION=="add|change", SUBSYSTEM=="block", KERNEL=="sd[a-z]", ATTRS{vendor}=="ATA     ", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="mq-deadline", ATTR{queue/read_ahead_kb}="65536"
+    # Longhorn iSCSI volumes: mq-deadline + 64MB read-ahead
+    ACTION=="add|change", SUBSYSTEM=="block", KERNEL=="sd[a-z]", ATTRS{vendor}=="IET     ", ATTR{queue/scheduler}="mq-deadline", ATTR{queue/read_ahead_kb}="65536"
+
+  # Longhorn prerequisite: sysctl settings
+  99-longhorn.conf.sysctl: |
+    vm.max_map_count = 262144
+    fs.inotify.max_user_instances = 8192
+    fs.inotify.max_user_watches = 524288
+
+  # Longhorn prerequisite: kernel module
+  longhorn.conf.modules: |
+    iscsi_tcp

@@ -208,22 +208,8 @@ storage:
               --cluster-init" \
             sh -
 
-    # Longhorn prerequisites
-    - path: /etc/sysctl.d/99-longhorn.conf
-      mode: 0644
-      contents:
-        inline: |
-          # Longhorn requirements
-          vm.max_map_count = 262144
-          fs.inotify.max_user_instances = 8192
-          fs.inotify.max_user_watches = 524288
-
-    # Load iscsi_tcp module for Longhorn
-    - path: /etc/modules-load.d/longhorn.conf
-      mode: 0644
-      contents:
-        inline: |
-          iscsi_tcp
+    # Longhorn prerequisites (sysctl + kernel modules) are managed by the
+    # node-config DaemonSet via GitOps. See config/node-config/.
 
     # Helper script to get storage network IP (eth1)
     - path: /usr/local/bin/get-storage-ip

@@ -1,0 +1,27 @@
+# Node-level OS configuration manager
+# Privileged DaemonSet that applies host configs (udev rules, sysctl, etc.)
+# to all nodes and keeps them in sync via GitOps.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: node-config
+  namespace: argocd
+  annotations:
+    # Deploy early - other workloads benefit from tuned storage
+    argocd.argoproj.io/sync-wave: "-20"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/alpar-t/homelab.git
+    targetRevision: HEAD
+    path: config/node-config/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: node-config
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
