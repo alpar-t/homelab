@@ -21,6 +21,8 @@ spec:
       labels:
         app.kubernetes.io/name: arr-stack
     spec:
+      nodeSelector:
+        kubernetes.io/hostname: buksi
       containers:
         - name: qbittorrent
           image: lscr.io/linuxserver/qbittorrent:latest

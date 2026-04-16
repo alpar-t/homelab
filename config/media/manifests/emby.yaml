@@ -21,13 +21,8 @@ spec:
       labels:
         app.kubernetes.io/name: emby
     spec:
-      affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app.kubernetes.io/name: arr-stack
-              topologyKey: kubernetes.io/hostname
+      nodeSelector:
+        kubernetes.io/hostname: buksi
       containers:
         - name: emby
           image: lscr.io/linuxserver/emby:latest
