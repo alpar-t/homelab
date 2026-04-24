@@ -33,7 +33,7 @@ spec:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: pocket-id
-          image: ghcr.io/pocket-id/pocket-id:v2@sha256:3e790c5d4fd82ff276b1c2bc3242be9da13cff204a2b937768ea1eba1e892571
+          image: ghcr.io/pocket-id/pocket-id:v2@sha256:1cc51e5b36fa7ec31368d3efb24ba362be6dce20f3cc0a2852843527bd5110f0
           ports:
             - containerPort: 1411
               name: http
