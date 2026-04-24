@@ -34,7 +34,7 @@ spec:
   storageClassName: longhorn-hdd-noreplica
   resources:
     requests:
-      storage: 1500Gi
+      storage: 2000Gi
 ---
 # TV: completed downloads + organized library (Sonarr hardlinks within)
 apiVersion: v1
@@ -50,7 +50,7 @@ spec:
   storageClassName: longhorn-hdd-noreplica
   resources:
     requests:
-      storage: 1000Gi
+      storage: 2000Gi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

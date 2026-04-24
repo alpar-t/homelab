@@ -150,6 +150,28 @@ spec:
     requests:
       storage: 500Gi
 ---
+# Library bucket 07
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-library-07
+  namespace: immich
+  labels:
+    app: immich
+    immich-library-bucket: "07"
+    # Original photos and videos - irreplaceable user data
+    data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-hdd
+  resources:
+    requests:
+      storage: 500Gi
+---
 # Thumbnails - generated previews for fast browsing
 # SSD for fast read performance
 apiVersion: v1

@@ -81,6 +81,8 @@ spec:
               mountPath: /mnt/library-buckets/05
             - name: library-bucket-06
               mountPath: /mnt/library-buckets/06
+            - name: library-bucket-07
+              mountPath: /mnt/library-buckets/07
             - name: thumbs
               mountPath: /mnt/thumbs
             - name: library-empty
@@ -130,7 +132,7 @@ spec:
             - '-d'  # Debug mode - verbose logging to stdout
             - '-o'
             - 'defaults,allow_other,use_ino,cache.files=partial,dropcacheonclose=true,category.create=mfs,minfreespace=20G'
-            - '/mnt/library-buckets/01:/mnt/library-buckets/02:/mnt/library-buckets/03:/mnt/library-buckets/04:/mnt/library-buckets/05:/mnt/library-buckets/06'
+            - '/mnt/library-buckets/01:/mnt/library-buckets/02:/mnt/library-buckets/03:/mnt/library-buckets/04:/mnt/library-buckets/05:/mnt/library-buckets/06:/mnt/library-buckets/07'
             - '/mnt/merged-library'
           volumeMounts:
             - name: library-bucket-01
@@ -145,6 +147,8 @@ spec:
               mountPath: /mnt/library-buckets/05
             - name: library-bucket-06
               mountPath: /mnt/library-buckets/06
+            - name: library-bucket-07
+              mountPath: /mnt/library-buckets/07
             - name: merged-library
               mountPath: /mnt/merged-library
               mountPropagation: Bidirectional
@@ -324,6 +328,9 @@ spec:
         - name: library-bucket-06
           persistentVolumeClaim:
             claimName: immich-library-06
+        - name: library-bucket-07
+          persistentVolumeClaim:
+            claimName: immich-library-07
         # Other storage volumes
         # Upload PVC - kept but NOT mounted (data migrated to mergerfs buckets)
         # Can be deleted after verifying migration is complete
