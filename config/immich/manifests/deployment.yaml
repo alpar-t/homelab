@@ -48,7 +48,7 @@ spec:
         # Create .immich marker files in each bucket for mount verification
         # These will be visible through the merged view
         - name: init-bucket-markers
-          image: busybox:1.37@sha256:b3255e7dfbcd10cb367af0d409747d511aeb66dfac98cf30e97e87e4207dd76f
+          image: busybox:1.37@sha256:1487d0af5f52b4ba31c7e465126ee2123fe3f2305d638e7827681e7cf6c83d5e
           command:
             - 'sh'
             - '-c'
@@ -95,7 +95,7 @@ spec:
               mountPath: /mnt/backups
         # Wait for PostgreSQL to be ready
         - name: wait-for-postgres
-          image: busybox:1.37@sha256:b3255e7dfbcd10cb367af0d409747d511aeb66dfac98cf30e97e87e4207dd76f
+          image: busybox:1.37@sha256:1487d0af5f52b4ba31c7e465126ee2123fe3f2305d638e7827681e7cf6c83d5e
           command:
             - 'sh'
             - '-c'
@@ -107,7 +107,7 @@ spec:
               echo "PostgreSQL is ready!"
         # Wait for Redis to be ready
         - name: wait-for-redis
-          image: busybox:1.37@sha256:b3255e7dfbcd10cb367af0d409747d511aeb66dfac98cf30e97e87e4207dd76f
+          image: busybox:1.37@sha256:1487d0af5f52b4ba31c7e465126ee2123fe3f2305d638e7827681e7cf6c83d5e
           command:
             - 'sh'
             - '-c'
