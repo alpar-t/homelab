@@ -57,7 +57,7 @@ spec:
         # FTP server sidecar for scanner uploads
         # Shares the consume volume with Paperless
         - name: ftp-server
-          image: stilliard/pure-ftpd:latest@sha256:bfdfe0d725bee473b6c06ec0c39d6956dcaa2a504a1e33825ecf41242f05b436
+          image: stilliard/pure-ftpd:latest@sha256:41c9aaded1fd06053c500d28415613ca7605ecc39a3e1c2ec4f0a279bd78f253
           env:
             - name: PUBLICHOST
               value: "192.168.1.201"
