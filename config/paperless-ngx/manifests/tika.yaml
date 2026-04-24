@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: tika
-          image: docker.io/apache/tika:3.2.2.0-full
+          image: docker.io/apache/tika:3.2.2.0-full@sha256:ffab324253edc54706e8882dd28190b1e6559c344b5315ae8a74b9efda9e7291
           ports:
             - containerPort: 9998
               name: http
