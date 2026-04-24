@@ -25,7 +25,7 @@ spec:
         kubernetes.io/hostname: buksi
       containers:
         - name: emby
-          image: lscr.io/linuxserver/emby:latest
+          image: lscr.io/linuxserver/emby:latest@sha256:d96f1546caa9363459ba1534df0a894abab0340f3ed9d5f3a2463074fd5addb9
           ports:
             - containerPort: 8096
               name: http

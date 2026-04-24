@@ -40,4 +40,4 @@ spec:
     timeout: 120s
 
   upgrade:
-    image: rancher/k3s-upgrade
+    image: rancher/k3s-upgrade@sha256:be278597a6d115ec5ed900f9e6866ad51522c3ced2cf6b80def9c3abf0d774bc
