@@ -35,7 +35,7 @@ spec:
               echo "PostgreSQL is ready!"
       containers:
         - name: roundcube
-          image: roundcube/roundcubemail:1.6.13-apache@sha256:f6c97d0d2c61b42aa9fc96b8c2b6e5e09182b4c03391302f650b77f58b324399
+          image: roundcube/roundcubemail:1.6.15-apache@sha256:a6c47511d88cf6eb9afbfd5707da9a0e13dff078f84206bf0b007e7a750b7f9e
           ports:
             - containerPort: 80
               name: http
