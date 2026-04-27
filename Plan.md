@@ -45,12 +45,12 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 **Follow-ups:**
 
 - [ ] how do I monitor the disks e.g. for failure and nottify on them 
-- [ ] backups for longhorn volumes (also backup k8s secrets - needed for disaster recovery) 
+- [x] backups for longhorn volumes (also backup k8s secrets - needed for disaster recovery)
 - [ ] How do we keep everything up-to-date
 - [X] Add email relay (Stalwart → Migadu) - consolidated into stalwart-mail
 - [ ] Add external heartbeat / down detection 
 - [ ] Monitor mail
-- [ ] Replace Authentik with Pocket ID
+- [x] Replace Authentik with Pocket ID
 - [ ] **Migrate PostgreSQL from Longhorn to local storage** - see [runbooks/migrate-postgres-to-local-storage.md](runbooks/migrate-postgres-to-local-storage.md)
   - Eliminates redundant replication (CNPG already handles HA)
   - Better performance (direct SSD access)
@@ -64,9 +64,7 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [ ] **Remove duplicate Longhorn StorageClass files** - cleanup
   - Delete `config/longhorn/storageclass-ssd.yaml` (keep `manifests/` version)
   - Delete `config/longhorn/storageclass-hdd.yaml` (keep `manifests/` version)
-- [ ] **Pi-hole DNS redundancy** - see [runbooks/pihole-dns-redundancy.md](runbooks/pihole-dns-redundancy.md)
-  - Single Pi-hole = DNS outage if pod fails
-  - Options: secondary Pi-hole with sync, or fallback DNS in DHCP
+- [x] **Pi-hole DNS redundancy** - see [runbooks/pihole-dns-redundancy.md](runbooks/pihole-dns-redundancy.md)
 - [x] **Graceful node reboots for Zincati/CoreOS updates**
   - Added `k3s-drain.service`: runs `kubectl drain` before shutdown/reboot (120s timeout)
   - Added `k3s-uncordon.service`: runs `kubectl uncordon` after k3s starts back up
@@ -92,17 +90,17 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 
 - [x] Omada
 - [X] OTMonitor
-- [ ] Bitwarden
-- [X] ownCloud Infinite Scale (drive.newjoy.ro) - manifests created, needs OIDC secret
-- [ ] Immich (photos.newjoy.ro) - manifests created, needs OIDC client setup
-- [ ] Node Red
-- [x] Paperless-ngx 
+- [x] Bitwarden (Vaultwarden)
+- [x] ownCloud Infinite Scale (drive.newjoy.ro)
+- [x] Immich (photos.newjoy.ro)
+- [x] Node Red
+- [x] Paperless-ngx
 
-- [ ] Emby
-- [ ] Frigate
-- [ ] VPN ( Headscale with PokcetId ?)
-- [ ] Deploy [TREK](https://github.com/mauriceboe/TREK) — Star Trek LCARS-style dashboard
-- [ ] Configure arr stack (Sonarr/Radarr/Prowlarr) with Emby
+- [x] Emby
+- [x] Frigate
+- [ ] VPN (Headscale with Pocket ID) — manifests deployed, not yet working
+- [ ] Deploy [TREK](https://github.com/mauriceboe/TREK) — holiday / trip planner
+- [x] Configure arr stack (Sonarr/Radarr/Prowlarr) with Emby
 - [ ] Configure private network access through Headscale
 - [ ] AI agent: Claude-powered WhatsApp chatbot hooked to [alpar-t/life](https://github.com/alpar-t/life)
 
