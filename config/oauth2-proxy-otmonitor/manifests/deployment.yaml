@@ -104,14 +104,8 @@ kind: Ingress
 metadata:
   name: otmonitor
   namespace: otmonitor
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   ingressClassName: nginx
-  tls:
-    - hosts:
-        - otmonitor.newjoy.ro
-      secretName: otmonitor-tls
   rules:
     - host: otmonitor.newjoy.ro
       http:
