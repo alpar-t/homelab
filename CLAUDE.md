@@ -24,19 +24,46 @@ User `core` has sudo. Nodes: `buksi` (192.168.1.174), `pamacs` (192.168.1.173), 
 
 ## Longhorn recurring-job opt-out
 
-To exclude a volume from a recurring job, **remove** the
-`recurring-job-group.longhorn.io/<group>` label entirely. Setting it to
-`=disabled` is silently ignored — the controller only honors `=enabled`.
-This bit us in 2026-04: a `backup-exclusions` Job set
-`recurring-job.longhorn.io/weekly-backup=disabled` on `media/movies-data`,
-`media/tv-data`, etc., but Longhorn kept backing them up because
-`recurring-job-group.longhorn.io/default=enabled` (auto-applied by the CSI
-provisioner) still placed them in the group. ~5.5 TB of unwanted B2
-storage before the bug was caught.
+Per Longhorn's
+[label-driven recurring job design](https://github.com/longhorn/longhorn/blob/master/enhancements/20210624-label-driven-recurring-job.md),
+the controller "labels with `default` job-group if no other recurring job
+label exists." So:
 
-- Existing volume: `kubectl label volume <name> -n longhorn-system recurring-job-group.longhorn.io/default-`
-- New volumes: set `parameters.recurringJobSelector: '[]'` on the StorageClass — the CSI provisioner uses that instead of defaulting to the `default` group.
-- Always verify by waiting for the next scheduled run and checking `kubectl get backups.longhorn.io -n longhorn-system` for new entries — the label alone is not proof.
+- `=disabled` on a label is **not** a recognized opt-out — it has no
+  semantic meaning, but it does count as "another recurring-job label,"
+  which incidentally suppresses the default auto-add.
+- Removing the `default` group label alone does **not** work — the
+  controller re-adds it within milliseconds because the volume is now
+  unlabeled.
+
+The supported way to opt a volume out is to **give it some other
+recurring-job-group label**. We use a marker group called `excluded`
+that has no associated `RecurringJob`, so nothing fires:
+
+- Existing volumes: the `apps/longhorn-storage` PostSync hook
+  (`config/longhorn/manifests/backup-exclusions.yaml`) labels each PVC
+  in the inclusion-of-exclusions ConfigMap with
+  `recurring-job-group.longhorn.io/excluded=enabled` and removes the
+  `default` label.
+- Future noreplica volumes: the `longhorn-{ssd,hdd}-noreplica`
+  StorageClasses set
+  `recurringJobSelector: '[{"name":"excluded","isGroup":true}]'`, so
+  the CSI provisioner stamps the marker at creation.
+
+This bit us in 2026-04. The original exclusion Job set
+`recurring-job.longhorn.io/weekly-backup=disabled` on PVCs like
+`media/movies-data`, but those volumes had already been auto-stamped
+into `default` at creation time — the `=disabled` label was added on
+top and didn't change anything. `media/movies-data`, `media/tv-data`
+etc. kept being backed up to B2 weekly (~5.5 TB of waste). Then a
+"fix" attempt that removed all recurring-job labels backfired: the
+auto-add re-fired immediately because the volume was now unlabeled,
+restoring `default`. The marker-label approach above is what actually
+sticks.
+
+Always verify by waiting for the next scheduled run and checking
+`kubectl get backups.longhorn.io -n longhorn-system` for new entries —
+labels alone are not proof.
 
 ## CNPG cron schedules need 6 fields
 

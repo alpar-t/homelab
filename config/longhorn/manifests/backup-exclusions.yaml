@@ -95,18 +95,24 @@ spec:
                   continue
                 fi
                 
-                # Remove the volume from the default group entirely.
-                # Longhorn only honors `=enabled` on these labels; setting
-                # `=disabled` is a no-op (Longhorn issue #6273). The default
-                # group label is auto-applied by the CSI provisioner at volume
-                # creation, so we strip it here. Also clean up any legacy
-                # `weekly-backup=disabled` labels that previously did nothing.
+                # Per Longhorn design doc 20210624-label-driven-recurring-job:
+                # "Label with `default` job-group if no other recurring job
+                # label exists." So removing labels alone doesn't work — the
+                # controller re-adds `default` within milliseconds, because
+                # the volume now has no recurring-job label.
+                #
+                # The fix is to give the volume a marker recurring-job-group
+                # label pointing to a non-existent group ("excluded"). That
+                # counts as "another label" → suppresses the default
+                # auto-add. No RecurringJob is in the `excluded` group, so
+                # nothing actually fires on these volumes.
                 kubectl label volume "$VOLUME_NAME" -n longhorn-system \
+                  recurring-job-group.longhorn.io/excluded=enabled \
                   recurring-job-group.longhorn.io/default- \
                   recurring-job.longhorn.io/weekly-backup- \
-                  2>/dev/null || true
+                  --overwrite 2>/dev/null || true
 
-                echo "  SUCCESS: Excluded $VOLUME_NAME from default group"
+                echo "  SUCCESS: Excluded $VOLUME_NAME (marker: excluded group)"
               done < /config/excluded-pvcs
               
               echo "Done!"
