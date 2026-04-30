@@ -15,7 +15,8 @@ metadata:
     app: stalwart
 spec:
   # Daily at 3:30 AM
-  schedule: "30 3 * * *"
+  # CNPG requires 6-field cron (seconds prefix) — 5-field silently fires hourly.
+  schedule: "0 30 3 * * *"
   
   # Which cluster to backup
   cluster:

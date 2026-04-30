@@ -15,7 +15,8 @@ metadata:
     app: headscale
 spec:
   # Daily at 3:15 AM (staggered from other backups)
-  schedule: "15 3 * * *"
+  # CNPG requires 6-field cron (seconds prefix) — 5-field silently fires hourly.
+  schedule: "0 15 3 * * *"
   
   # Which cluster to backup
   cluster:

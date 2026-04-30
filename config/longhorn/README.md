@@ -140,7 +140,7 @@ Longhorn backs up all volumes to Backblaze B2. Backup configuration is in `confi
 
 | Job | Schedule | Retention | Applies To |
 |-----|----------|-----------|------------|
-| `weekly-backup` | Tuesday 3:00 AM | 8 weeks | **ALL volumes** (automatic) |
+| `weekly-backup` | Tuesday 3:00 AM | 4 weeks | All replicated volumes (single-replica `*-noreplica` SCs are excluded) |
 | `critical-daily-backup` | Daily 2:00 AM | 21 days | Volumes with `critical` label |
 
 ### Mark a Volume as Critical

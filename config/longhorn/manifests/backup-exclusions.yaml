@@ -95,12 +95,18 @@ spec:
                   continue
                 fi
                 
-                # Apply the exclusion label - disable the weekly-backup job for this volume
+                # Remove the volume from the default group entirely.
+                # Longhorn only honors `=enabled` on these labels; setting
+                # `=disabled` is a no-op (Longhorn issue #6273). The default
+                # group label is auto-applied by the CSI provisioner at volume
+                # creation, so we strip it here. Also clean up any legacy
+                # `weekly-backup=disabled` labels that previously did nothing.
                 kubectl label volume "$VOLUME_NAME" -n longhorn-system \
-                  recurring-job.longhorn.io/weekly-backup=disabled \
-                  --overwrite
-                
-                echo "  SUCCESS: Excluded $VOLUME_NAME from default backups"
+                  recurring-job-group.longhorn.io/default- \
+                  recurring-job.longhorn.io/weekly-backup- \
+                  2>/dev/null || true
+
+                echo "  SUCCESS: Excluded $VOLUME_NAME from default group"
               done < /config/excluded-pvcs
               
               echo "Done!"

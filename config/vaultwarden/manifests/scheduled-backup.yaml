@@ -15,7 +15,8 @@ metadata:
     app: vaultwarden
 spec:
   # Daily at 2:00 AM
-  schedule: "0 2 * * *"
+  # CNPG requires 6-field cron (seconds prefix) — 5-field silently fires hourly.
+  schedule: "0 0 2 * * *"
   
   # Which cluster to backup
   cluster:

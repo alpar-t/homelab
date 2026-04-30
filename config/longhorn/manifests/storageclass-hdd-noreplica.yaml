@@ -1,5 +1,10 @@
 # Longhorn HDD storage class with no replication
 # Use for data that doesn't need redundancy (e.g., camera recordings)
+#
+# Volumes from this class are NOT auto-enrolled in the `default` recurring-job
+# group — single-replica volumes hold replaceable data and shouldn't be backed
+# up to B2. The empty `recurringJobSelector` overrides Longhorn's CSI default
+# of labeling new volumes with `recurring-job-group.longhorn.io/default=enabled`.
 
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -16,4 +21,5 @@ parameters:
   fsType: "ext4"
   # Only schedule on disks tagged as "hdd"
   diskSelector: "hdd"
+  recurringJobSelector: '[]'
 

@@ -20,7 +20,8 @@ metadata:
     app: pocket-id
 spec:
   # Daily at 3:00 AM (after Longhorn backups at 2:00 AM)
-  schedule: "0 3 * * *"
+  # CNPG requires 6-field cron (seconds prefix) — 5-field silently fires hourly.
+  schedule: "0 0 3 * * *"
   
   # Which cluster to backup
   cluster:
