@@ -12,12 +12,16 @@ metadata:
 data:
   excluded-pvcs: |
     frigate/frigate-media
-    # CNPG-managed Postgres PVCs - already backed up via WAL archiving + base backups
+    # CNPG-managed Postgres PVCs - already backed up via WAL archiving + base backups.
+    # Note: CNPG cluster replicas rotate (db-1 → db-2 → db-3 over time as nodes
+    # fail over). When adding new clusters or hitting fresh replicas, append the
+    # new PVC name here.
     vaultwarden/vaultwarden-db-1
     vaultwarden/vaultwarden-db-2
     pocket-id/pocket-id-db-1
     pocket-id/pocket-id-db-2
     immich/immich-db-2
+    immich/immich-db-3
     stalwart-mail/stalwart-db-1
     stalwart-mail/stalwart-db-2
     paperless-ngx/paperless-db-1
@@ -25,6 +29,7 @@ data:
     homeassistant/homeassistant-db-1
     homeassistant/homeassistant-db-2
     tandoor/tandoor-db-2
+    tandoor/tandoor-db-3
     roundcube/roundcube-db-1
     roundcube/roundcube-db-2
     # Immich rebuildable PVCs - can be regenerated from originals
