@@ -186,6 +186,22 @@ Since data is not being migrated, simply:
 5. Configure to sync to `drive.newjoy.ro`
 6. Wait for files to re-upload
 
+## Storage state — manual posixfs PV binding
+
+The `opencloud-opencloud-posixfs` PVC is **manually bound** to the
+Longhorn volume `opencloud-posixfs-restored`, which was restored from
+B2 on 2026-03-31 after the original posixfs volume was lost. The PV
+has `reclaimPolicy: Retain` for safety. Data between 2026-03-03 and
+2026-03-19 was lost in the incident; users re-synced locally.
+
+Because the Helm chart renders the posixfs PVC without `volumeName`,
+ArgoCD's selfHeal would otherwise erase the binding on every sync.
+`apps/opencloud.yaml` therefore lists this PVC in `ignoreDifferences`
+on `/spec/volumeName` with `RespectIgnoreDifferences=true`. **Do not
+remove that block** — it's load-bearing.
+
+Full restore procedure: `runbooks/restore-opencloud-posixfs-from-backup.md`.
+
 ## References
 
 - [OpenCloud Helm Charts](https://github.com/opencloud-eu/helm)

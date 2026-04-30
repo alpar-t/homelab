@@ -43,4 +43,48 @@ storage before the bug was caught.
 `postgresql.cnpg.io/v1` `ScheduledBackup` parses crons with a leading
 seconds field. A 5-field cron is silently misread (`15 3 * * *` becomes
 hourly, not daily) — there's no validation error. Always write 6-field:
-`0 15 3 * * *` for daily at 03:15.
+`0 15 3 * * *` for daily at 03:15. First seen 2026-04-12 when weekly
+backups for homeassistant/tandoor/roundcube hadn't run for two months
+because `0 4 * * 7` was being misinterpreted.
+
+## ArgoCD selfHeal races dynamic PVC provisioning
+
+When swapping a PV for an ArgoCD-managed PVC whose Helm template has no
+`volumeName`, ArgoCD's selfHeal recreates the PVC instantly and the
+StorageClass dynamic provisioner binds a fresh empty volume before any
+manual `kubectl apply` of a `volumeName`-pinned PVC can win. Scaling
+replicas to 0 via `kubectl` doesn't help either — selfHeal reverts it.
+Removing `spec.syncPolicy.automated` via merge patch also gets
+reverted.
+
+To swap a PV under an ArgoCD-managed app:
+
+1. Pin replicas via `spec.sources[].helm.parameters` (ArgoCD respects
+   its own parameter overrides).
+2. Add the PVC to `spec.ignoreDifferences` with a JSON pointer to
+   `/spec/volumeName`, plus `RespectIgnoreDifferences=true` in
+   `syncOptions`. Persist this in the Application YAML in git.
+3. Strip PV finalizers before deleting old PVs during a restore — they
+   block deletion indefinitely otherwise.
+
+Live example: `apps/opencloud.yaml` ignores `volumeName` on
+`opencloud-opencloud-posixfs` because that PVC was manually bound to
+the restored volume on 2026-03-31. Don't remove that block.
+
+## Buksi i915 freeze fix (2026-04-12)
+
+Buksi was hard-freezing every 8–15 days (3 crashes since Jan 2026).
+Root cause: i915 GPU display core power states (DC5/DC6) on a headless
+Alder Lake-N. `intel_idle.max_cstate=1` (already in place) only covers
+CPU idle, not GPU display power. Added `i915.enable_dc=0` via
+`rpm-ostree kargs` on all 3 nodes and to `genesis/ignition-template.bu`
+for re-provisioning. Buksi rebooted with the fix on 2026-04-12;
+pufi/pamacs were staged for next Zincati reboot. If buksi crashes
+again past mid-May 2026, re-evaluate — the fix may be insufficient.
+
+## TREK app
+
+`apps/trek.yaml` and `config/trek/` deploy TREK
+(github.com/mauriceboe/TREK) — a **holiday/trip planner**, not a Star
+Trek LCARS-style dashboard. The name is misleading; mention "trip
+planner" when describing it.

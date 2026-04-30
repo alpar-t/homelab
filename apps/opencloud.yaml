@@ -267,6 +267,11 @@ spec:
           httpRoute:
             enabled: false
 
+  # Load-bearing: the posixfs PVC is manually bound to the volume
+  # restored from B2 on 2026-03-31. Helm renders the PVC without
+  # `volumeName`, so without this ignoreDifferences block ArgoCD's
+  # selfHeal would erase the binding and the dynamic provisioner
+  # would mint an empty replacement. See config/opencloud/README.md.
   ignoreDifferences:
     - group: ""
       kind: PersistentVolumeClaim
