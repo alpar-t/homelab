@@ -17,7 +17,6 @@ data:
     vaultwarden/vaultwarden-db-2
     pocket-id/pocket-id-db-1
     pocket-id/pocket-id-db-2
-    immich/immich-db-1
     immich/immich-db-2
     stalwart-mail/stalwart-db-1
     stalwart-mail/stalwart-db-2
@@ -25,7 +24,6 @@ data:
     paperless-ngx/paperless-db-2
     homeassistant/homeassistant-db-1
     homeassistant/homeassistant-db-2
-    tandoor/tandoor-db-1
     tandoor/tandoor-db-2
     roundcube/roundcube-db-1
     roundcube/roundcube-db-2

@@ -47,6 +47,10 @@ spec:
   groups:
     - default
     - critical
+    # `excluded` covers volumes opted out of B2 backup but that still need
+    # filesystem-trim to keep their actualSize from outgrowing the declared
+    # PVC size (e.g. qbit-incomplete and frigate-media were both at ~190%).
+    - excluded
 
 ---
 # Daily backup for critical volumes at 2:00 AM, keep 21 days

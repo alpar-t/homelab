@@ -41,10 +41,7 @@ spec:
   storage:
     size: 5Gi
     storageClass: longhorn-ssd
-    pvcTemplate:
-      labels:
-        recurring-job-group.longhorn.io/critical: enabled
-  
+
   resources:
     requests:
       memory: "256Mi"

@@ -37,9 +37,6 @@ spec:
   storage:
     size: 5Gi  # Increased from 2Gi due to low-disk space condition
     storageClass: longhorn-ssd
-    pvcTemplate:
-      labels:
-        recurring-job-group.longhorn.io/critical: enabled
 
   resources:
     requests:
