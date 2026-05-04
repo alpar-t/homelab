@@ -76,7 +76,19 @@ The scanner runs ~daily. If you need an immediate cleanup of
 already-accumulated hidden versions:
 
 ```bash
-# Delete all noncurrent versions and delete markers, in batches of 1000
+# Delete ONLY noncurrent versions, NOT delete markers.
+#
+# WARNING: do not delete delete markers in bulk. A delete marker is the
+# version that "hides" the previous current version from the bucket's
+# logical view. Removing the delete marker makes the noncurrent version
+# underneath visible again — i.e. it un-deletes the object. Lost ~5 TB
+# of effort to this on 2026-05-02 by deleting markers; Longhorn's
+# BackupTarget poll then re-discovered the resurrected chunks and
+# re-created BackupVolume CRs.
+#
+# Safe rule: delete noncurrent versions only. Delete markers are tiny
+# (zero bytes) and will be cleaned up over time, or you can rely on
+# the lifecycle rule.
 aws --endpoint-url=$AWS_ENDPOINT_URL s3api list-object-versions \
   --bucket homelab-longhorn-backup --output json | \
   python3 -c '
@@ -86,8 +98,7 @@ bucket = "homelab-longhorn-backup"
 data = json.load(sys.stdin)
 to_del = [{"Key": v["Key"], "VersionId": v["VersionId"]}
           for v in data.get("Versions", []) if not v["IsLatest"]]
-to_del += [{"Key": m["Key"], "VersionId": m["VersionId"]}
-           for m in data.get("DeleteMarkers", [])]
+# Intentionally NOT including data["DeleteMarkers"] — see WARNING above.
 for i in range(0, len(to_del), 1000):
     payload = {"Objects": to_del[i:i+1000], "Quiet": True}
     subprocess.run(["aws", "--endpoint-url", endpoint, "s3api",
