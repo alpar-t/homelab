@@ -305,25 +305,8 @@ spec:
   resources:
     requests:
       storage: 10Gi
----
-# ML model cache - stores downloaded ML models
-# SSD for fast loading
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: immich-model-cache
-  namespace: immich
-  labels:
-    app: immich
-    # Downloaded ML models - can be re-downloaded
-    data-criticality: rebuildable
-  annotations:
-    argocd.argoproj.io/sync-wave: "0"
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: longhorn-ssd
-  resources:
-    requests:
-      storage: 10Gi
+# Note: model-cache PVCs are now provisioned per-pod by the immich-ml
+# StatefulSet via volumeClaimTemplates (model-cache-immich-ml-{0,1,2}).
+# The previous shared `immich-model-cache` PVC was removed as part of
+# that change.
 

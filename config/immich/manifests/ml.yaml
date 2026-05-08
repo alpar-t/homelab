@@ -1,11 +1,12 @@
 # Immich Machine Learning Service
-# Handles: face detection, face recognition, CLIP smart search, object detection
+# Handles: face detection, face recognition, CLIP smart search, OCR
 #
-# Resource-intensive - scheduled preferentially on the 32GB RAM node
-# Models are cached in a PVC to avoid re-downloading
+# Horizontally scaled across nodes (StatefulSet, 1 pod per node) so each
+# replica has dedicated access to its node's Intel iGPU via the OpenVINO
+# execution provider. Each replica owns its own model cache (RWO).
 
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: immich-ml
   namespace: immich
@@ -14,9 +15,9 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
-  replicas: 1
-  strategy:
-    type: Recreate  # Required for RWO PVC
+  replicas: 3
+  serviceName: immich-ml
+  podManagementPolicy: Parallel
   selector:
     matchLabels:
       app: immich-ml
@@ -25,63 +26,50 @@ spec:
       labels:
         app: immich-ml
     spec:
-      # Prefer scheduling on nodes with high CPU capacity
-      # Label nodes with: kubectl label node <node-name> workload/cpu-intensive=true
       affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              preference:
-                matchExpressions:
-                  - key: workload/cpu-intensive
-                    operator: In
-                    values:
-                      - "true"
-      
+        # One ML pod per node so each replica gets a dedicated iGPU.
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: immich-ml
+              topologyKey: kubernetes.io/hostname
+
       containers:
         - name: immich-ml
-          image: ghcr.io/immich-app/immich-machine-learning:v2.6.1@sha256:cafc1ff51b95a931d17d69226435bbb28ea314f151598b8b087391c232d00ab6
+          # OpenVINO variant: ONNX inference runs on Intel iGPU instead of CPU.
+          image: ghcr.io/immich-app/immich-machine-learning:v2.6.1-openvino@sha256:bd5aa51a9f9a17eebf17daa7731b3bacd71a4aa542ce424d3adb06552b40e905
           ports:
             - containerPort: 3003
               name: http
           env:
-            # Cache directory for ML models
             - name: MACHINE_LEARNING_CACHE_FOLDER
               value: "/cache"
-            
-            # Model settings - using efficient defaults
-            # CLIP for smart search
             - name: MACHINE_LEARNING_CLIP_MODEL
               value: "ViT-B-32__openai"
-            
-            # Face detection and recognition
             - name: MACHINE_LEARNING_FACIAL_RECOGNITION_MODEL
               value: "buffalo_l"
-            
-            # Workers - 1 worker to conserve resources
-            # Each worker loads models (~3GB), single worker = lower memory footprint
-            # ML processing will be slower but won't impact UI responsiveness
+            # One worker per pod — inference serializes on a single iGPU,
+            # parallelism comes from horizontal scaling across nodes.
             - name: MACHINE_LEARNING_WORKERS
               value: "1"
-            
-            # Request timeout (seconds)
             - name: MACHINE_LEARNING_REQUEST_THREADS
               value: "4"
-          
+
           volumeMounts:
             - name: model-cache
               mountPath: /cache
-          
+
           resources:
-            # Allow ML to use more CPU for faster processing
             requests:
               cpu: 200m
-              memory: 2Gi
+              memory: 1Gi
+              gpu.intel.com/i915: 1
             limits:
-              cpu: 2000m
-              memory: 6Gi
-          
-          # ML service takes time to load models on startup
+              cpu: 2
+              memory: 4Gi
+              gpu.intel.com/i915: 1
+
           startupProbe:
             httpGet:
               path: /ping
@@ -101,11 +89,20 @@ spec:
               port: http
             periodSeconds: 10
             timeoutSeconds: 5
-      
-      volumes:
-        - name: model-cache
-          persistentVolumeClaim:
-            claimName: immich-model-cache
+
+  volumeClaimTemplates:
+    - metadata:
+        name: model-cache
+        labels:
+          app: immich
+          data-criticality: rebuildable
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: longhorn-ssd
+        resources:
+          requests:
+            storage: 10Gi
 ---
 # Immich ML Service
 apiVersion: v1
