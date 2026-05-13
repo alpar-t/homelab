@@ -3,6 +3,7 @@ defaultSettings:
   # Backup target configured via BackupTarget CRD (see manifests/backuptarget.yaml)
   replicaAutoBalance: best-effort
   storageMinimalAvailablePercentage: 10
+  orphanAutoDeletion: true
   # Create default disk on labeled nodes only
   createDefaultDiskLabeledNodes: true
   # Use dedicated storage network for replica traffic (static IPs, not DHCP)
