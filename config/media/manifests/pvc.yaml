@@ -18,7 +18,7 @@ spec:
   storageClassName: longhorn-ssd-noreplica
   resources:
     requests:
-      storage: 500Gi
+      storage: 600Gi
 ---
 # Movies: completed downloads + organized library (Radarr hardlinks within)
 apiVersion: v1
