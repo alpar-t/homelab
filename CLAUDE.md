@@ -2,6 +2,10 @@
 
 3-node k3s cluster on Odroid hardware. See [README.md](README.md) for the broader picture.
 
+## Container image references
+
+Always verify image references against the actual registry before writing them into manifests. Do not guess or infer from the GitHub repo name — published image names often differ (e.g. the `rhasspy/wyoming-faster-whisper` repo publishes as `rhasspy/wyoming-whisper` on Docker Hub). Verify by fetching the GitHub README or the registry page directly.
+
 ## OS
 
 Nodes run **Fedora CoreOS** (immutable, ostree-based) — *not* Talos. The top-level `README.md`, `genesis/`, and `Plan.md` still contain Talos references; those are stale and should be cleaned up when convenient. When operating the cluster, use FCOS commands (`systemctl`, `rpm-ostree`), not `talosctl`.

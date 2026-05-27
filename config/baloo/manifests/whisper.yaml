@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: whisper
-          image: ghcr.io/rhasspy/wyoming-faster-whisper:v3.1.0
+          image: rhasspy/wyoming-whisper:3.1.0
           args:
             - --model
             - large-v3
