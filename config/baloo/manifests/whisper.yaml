@@ -56,19 +56,22 @@ spec:
             limits:
               cpu: 4000m
               memory: 3Gi
+          # startupProbe disables liveness until ready — up to 20 min for first download
+          startupProbe:
+            tcpSocket:
+              port: wyoming
+            periodSeconds: 30
+            failureThreshold: 40
           readinessProbe:
             tcpSocket:
               port: wyoming
-            # large-v3 (~3 GB) downloads on first start — give it time
-            initialDelaySeconds: 120
             periodSeconds: 15
-            failureThreshold: 20
+            failureThreshold: 3
           livenessProbe:
             tcpSocket:
               port: wyoming
-            initialDelaySeconds: 120
             periodSeconds: 30
-            failureThreshold: 5
+            failureThreshold: 3
       volumes:
         - name: models
           persistentVolumeClaim:
