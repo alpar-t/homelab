@@ -14,6 +14,37 @@ ssh core@<node>.local        # e.g. core@buksi.local, core@pamacs.local, core@pu
 
 User `core` has sudo. Nodes: `buksi` (192.168.1.174), `pamacs` (192.168.1.173), `pufi`.
 
+## Home Assistant lives outside the cluster
+
+Home Assistant runs on a **dedicated Home Assistant OS device at
+`192.168.1.102`** — not in k3s. The `config/homeassistant/` manifests and
+`apps/homeassistant-db.yaml` only deploy the **Postgres recorder DB** (CNPG)
+that HA writes to; the HA app itself is on the standalone box.
+
+Access from this workstation:
+
+- **Shell / file edits**: `ssh hass` (configured in `~/.ssh/config` → port
+  22222, root, key `~/.ssh/id_ed25519_hass`). Lands in the "Terminal & SSH"
+  addon container, where `/config/*` is the HA config dir
+  (`configuration.yaml`, `automations.yaml`, `scripts.yaml`,
+  `custom_components/`, etc.). Use this for any YAML/file work.
+- **Runtime API (entities, services, history, templates)**: via the
+  `hass-mcp` MCP server (user-scope, registered with Claude Code).
+- **Web UI**: `http://192.168.1.102:8123`.
+
+When the user asks anything HA-related, default to these — do not look in
+the k3s cluster (it only has the DB).
+
+## Travel network / backup uplink
+
+Portable kit for travel and homelab failover:
+
+- **GL.iNet GL-MT3000 (Beryl AX)** — travel router/Mifi. Default admin: `192.168.8.1` (may renumber to `192.168.9.1` when Brovi is the WAN to avoid subnet conflict). Connected to homelab via Tailscale.
+- **Brovi E3372 USB Surf Stick** — LTE modem plugged into the GL's USB port as WAN uplink. HiLink web UI (SMS inbox, signal) reachable at `192.168.8.1` from the GL's WAN side. Carries a dedicated SIM with its own mobile number and data plan.
+- **WhatsApp Business** — registered on the Brovi SIM number (iPhone, separate from personal WhatsApp). Intended as the interface for an **OpenClaw** AI agent (open-source LLM agent framework, supports WhatsApp).
+
+To read SMS on the Brovi (e.g. OTP codes): connect to GL network → open `http://192.168.8.1` → Messages.
+
 ## Key paths on the nodes
 
 - k3s systemd unit: `/etc/systemd/system/k3s.service` (server args baked into `ExecStart`)

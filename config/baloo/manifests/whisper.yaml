@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: whisper-models
+  namespace: baloo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd-noreplica
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whisper
+  namespace: baloo
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: whisper
+  template:
+    metadata:
+      labels:
+        app: whisper
+    spec:
+      containers:
+        - name: whisper
+          image: rhasspy/wyoming-faster-whisper:latest
+          args:
+            - --model
+            - large-v3
+            - --language
+            - auto
+            - --uri
+            - tcp://0.0.0.0:10300
+            - --data-dir
+            - /data
+            - --download-dir
+            - /data
+          ports:
+            - name: wyoming
+              containerPort: 10300
+              protocol: TCP
+          volumeMounts:
+            - name: models
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1500Mi
+            limits:
+              cpu: 4000m
+              memory: 3Gi
+          readinessProbe:
+            tcpSocket:
+              port: wyoming
+            # large-v3 (~3 GB) downloads on first start — give it time
+            initialDelaySeconds: 120
+            periodSeconds: 15
+            failureThreshold: 20
+          livenessProbe:
+            tcpSocket:
+              port: wyoming
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            failureThreshold: 5
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: whisper-models
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: whisper
+  namespace: baloo
+  annotations:
+    # MetalLB LoadBalancer — reachable from HA at 192.168.1.102
+    metallb.universe.tf/address-pool: lan-pool
+spec:
+  type: LoadBalancer
+  selector:
+    app: whisper
+  ports:
+    - name: wyoming
+      port: 10300
+      targetPort: wyoming
+      protocol: TCP
