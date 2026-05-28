@@ -51,7 +51,7 @@ data:
     API_RESPONSE=$(curl -sf --cacert "$K8S_CA" \
       -H "Authorization: Bearer $K8S_TOKEN" \
       "$K8S_API/api/v1/namespaces/pocket-id/secrets/pocket-id-api-key")
-    API_KEY_B64=$(echo "$API_RESPONSE" | grep -o '"api_key":"[^"]*"' | sed 's/"api_key":"//;s/"$//')
+    API_KEY_B64=$(echo "$API_RESPONSE" | grep -o '"api_key": *"[^"]*"' | sed 's/"api_key": *"//;s/"$//')
     POCKET_ID_API_KEY=$(printf '%s' "$API_KEY_B64" | base64 -d)
 
     if [ -z "$POCKET_ID_API_KEY" ]; then
@@ -97,7 +97,7 @@ data:
     RESPONSE=$(curl -sf -X POST \
       -H "X-API-Key: $POCKET_ID_API_KEY" \
       "https://auth.newjoy.ro/api/oidc/clients/$APP_NAME/secret")
-    CLIENT_SECRET=$(echo "$RESPONSE" | grep -o '"secret":"[^"]*"' | sed 's/"secret":"//;s/"$//')
+    CLIENT_SECRET=$(echo "$RESPONSE" | grep -o '"secret": *"[^"]*"' | sed 's/"secret": *"//;s/"$//')
 
     if [ -z "$CLIENT_SECRET" ]; then
       echo "ERROR: empty client secret returned from Pocket ID"
