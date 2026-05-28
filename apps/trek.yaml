@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trek
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/alpar-t/homelab
+    targetRevision: main
+    path: config/trek/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: trek
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

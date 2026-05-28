@@ -1,0 +1,124 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: oidc-provisioner
+  namespace: pocket-id
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: oidc-provisioner
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: oidc-provisioner
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: oidc-provisioner
+subjects:
+  - kind: ServiceAccount
+    name: oidc-provisioner
+    namespace: pocket-id
+---
+# The provisioner script is stored here so Jobs can mount it without embedding
+# shell in the wrapper script (avoids heredoc $ escaping issues).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oidc-provisioner-script
+  namespace: pocket-id
+data:
+  provision.sh: |
+    #!/bin/sh
+    set -e
+
+    : "${APP_NAME:?APP_NAME is required}"
+    : "${APP_URL:?APP_URL is required}"
+    : "${CALLBACK_URL:?CALLBACK_URL is required}"
+    : "${TARGET_NS:?TARGET_NS is required}"
+
+    K8S_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+    K8S_CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    K8S_API=https://kubernetes.default.svc
+
+    # Read API key from pocket-id namespace (secret data values are base64-encoded)
+    API_RESPONSE=$(curl -sf --cacert "$K8S_CA" \
+      -H "Authorization: Bearer $K8S_TOKEN" \
+      "$K8S_API/api/v1/namespaces/pocket-id/secrets/pocket-id-api-key")
+    API_KEY_B64=$(echo "$API_RESPONSE" | grep -o '"api_key":"[^"]*"' | sed 's/"api_key":"//;s/"$//')
+    POCKET_ID_API_KEY=$(printf '%s' "$API_KEY_B64" | base64 -d)
+
+    if [ -z "$POCKET_ID_API_KEY" ]; then
+      echo "ERROR: could not read pocket-id-api-key from pocket-id namespace"
+      exit 1
+    fi
+
+    # Idempotency: skip if target secret already exists
+    SECRET_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+      --cacert "$K8S_CA" \
+      -H "Authorization: Bearer $K8S_TOKEN" \
+      "$K8S_API/api/v1/namespaces/$TARGET_NS/secrets/${APP_NAME}-oidc")
+    if [ "$SECRET_STATUS" = "200" ]; then
+      echo "${APP_NAME}-oidc already exists in $TARGET_NS, nothing to do"
+      exit 0
+    fi
+
+    # Create OIDC client in Pocket ID if it doesn't exist yet
+    CLIENT_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+      -H "X-API-Key: $POCKET_ID_API_KEY" \
+      "https://auth.newjoy.ro/api/oidc/clients/$APP_NAME")
+
+    if [ "$CLIENT_STATUS" != "200" ]; then
+      echo "Creating OIDC client '$APP_NAME' in Pocket ID..."
+      curl -sf -X POST \
+        -H "X-API-Key: $POCKET_ID_API_KEY" \
+        -H "Content-Type: application/json" \
+        -d "{
+          \"id\": \"$APP_NAME\",
+          \"name\": \"$APP_NAME\",
+          \"callbackURLs\": [\"$CALLBACK_URL\"],
+          \"logoutCallbackURLs\": [\"$APP_URL\"],
+          \"isPublic\": false,
+          \"pkceEnabled\": false
+        }" \
+        https://auth.newjoy.ro/api/oidc/clients
+      echo "Client created"
+    else
+      echo "Client '$APP_NAME' already exists in Pocket ID"
+    fi
+
+    # Generate client secret (only reached when the k8s secret doesn't exist)
+    RESPONSE=$(curl -sf -X POST \
+      -H "X-API-Key: $POCKET_ID_API_KEY" \
+      "https://auth.newjoy.ro/api/oidc/clients/$APP_NAME/secret")
+    CLIENT_SECRET=$(echo "$RESPONSE" | grep -o '"secret":"[^"]*"' | sed 's/"secret":"//;s/"$//')
+
+    if [ -z "$CLIENT_SECRET" ]; then
+      echo "ERROR: empty client secret returned from Pocket ID"
+      exit 1
+    fi
+
+    # Write secret into target namespace
+    curl -sf -X POST \
+      --cacert "$K8S_CA" \
+      -H "Authorization: Bearer $K8S_TOKEN" \
+      -H "Content-Type: application/json" \
+      "$K8S_API/api/v1/namespaces/$TARGET_NS/secrets" \
+      -d "{
+        \"apiVersion\": \"v1\",
+        \"kind\": \"Secret\",
+        \"metadata\": {\"name\": \"${APP_NAME}-oidc\", \"namespace\": \"$TARGET_NS\"},
+        \"type\": \"Opaque\",
+        \"stringData\": {
+          \"client_id\": \"$APP_NAME\",
+          \"client_secret\": \"$CLIENT_SECRET\"
+        }
+      }"
+
+    echo "${APP_NAME}-oidc secret created in $TARGET_NS"

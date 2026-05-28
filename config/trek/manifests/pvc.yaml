@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: trek-data
+  namespace: trek
+  labels:
+    app: trek
+    data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: trek-uploads
+  namespace: trek
+  labels:
+    app: trek
+    data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-hdd
+  resources:
+    requests:
+      storage: 10Gi

@@ -99,7 +99,7 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [x] Emby
 - [x] Frigate
 - [ ] VPN (Headscale with Pocket ID) — manifests deployed, not yet working
-- [ ] Deploy [TREK](https://github.com/mauriceboe/TREK) — holiday / trip planner
+- [x] Deploy [TREK](https://github.com/mauriceboe/TREK) — holiday / trip planner
 - [x] Configure arr stack (Sonarr/Radarr/Prowlarr) with Emby
 - [ ] Configure private network access through Headscale
 - [ ] AI agent: Claude-powered WhatsApp chatbot hooked to [alpar-t/life](https://github.com/alpar-t/life)
