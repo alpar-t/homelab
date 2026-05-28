@@ -100,6 +100,11 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [x] Frigate
 - [ ] VPN (Headscale with Pocket ID) — manifests deployed, not yet working
 - [x] Deploy [TREK](https://github.com/mauriceboe/TREK) — holiday / trip planner
+  - [x] Pocket ID OIDC SSO with group-based admin claim (`trek-admins`)
+  - [x] Reusable OIDC provisioner (`scripts/provision-oidc.sh`) for all future apps
+  - [x] TREK MCP connected to Claude Code (OAuth via browser)
+  - [ ] TREK: add Google Maps API key for place search
+  - [ ] TREK: configure Immich integration
 - [x] Configure arr stack (Sonarr/Radarr/Prowlarr) with Emby
 - [ ] Configure private network access through Headscale
 - [ ] AI agent: Claude-powered WhatsApp chatbot hooked to [alpar-t/life](https://github.com/alpar-t/life)
