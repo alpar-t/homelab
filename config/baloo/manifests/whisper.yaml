@@ -42,6 +42,8 @@ spec:
             - /data
             - --download-dir
             - /data
+            - --compute-type
+            - int8
           ports:
             - name: wyoming
               containerPort: 10300
@@ -55,7 +57,7 @@ spec:
               memory: 1500Mi
             limits:
               cpu: 4000m
-              memory: 3Gi
+              memory: 4Gi
           # startupProbe disables liveness until ready — up to 20 min for first download
           startupProbe:
             tcpSocket:
