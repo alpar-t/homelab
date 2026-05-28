@@ -80,6 +80,8 @@ spec:
               value: "groups"
             - name: OIDC_ADMIN_VALUE
               value: "trek-admins"
+            - name: OIDC_SCOPE
+              value: "openid email profile groups"
           volumeMounts:
             - name: data
               mountPath: /app/data
