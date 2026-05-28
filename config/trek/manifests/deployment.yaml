@@ -76,6 +76,10 @@ spec:
                   name: trek-oidc
                   key: client_secret
                   optional: true
+            - name: OIDC_ADMIN_CLAIM
+              value: "groups"
+            - name: OIDC_ADMIN_VALUE
+              value: "trek-admins"
           volumeMounts:
             - name: data
               mountPath: /app/data
