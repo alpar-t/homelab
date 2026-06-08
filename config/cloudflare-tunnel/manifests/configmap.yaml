@@ -12,10 +12,7 @@ data:
     no-autoupdate: true
 
     ingress:
-      # Route headscale directly - bypasses ingress-nginx so the TS2021 Upgrade header
-      # doesn't have to traverse an extra reverse proxy that might strip it
-      - hostname: vpn.newjoy.ro
-        service: http://headscale.headscale.svc.cluster.local:80
-      # Route all other traffic to ingress-nginx
+      # Route all traffic to ingress-nginx
+      # Each app defines its own Ingress resource for routing
       - service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
 
