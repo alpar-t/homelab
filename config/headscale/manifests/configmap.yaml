@@ -89,7 +89,7 @@ data:
 
     # Log level
     log:
-      level: info
+      level: debug
       format: text
 
     # Disable TLS (handled by ingress-nginx/Cloudflare)
