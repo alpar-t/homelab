@@ -11,6 +11,8 @@ metadata:
   namespace: headscale
   labels:
     app: tailscale-subnet-router
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   replicas: 1
   selector:
