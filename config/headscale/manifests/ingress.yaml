@@ -10,6 +10,7 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-buffering: "off"
     # Support HTTP upgrade for noise protocol
     nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_http_version 1.1;
       proxy_set_header Upgrade $http_upgrade;
       proxy_set_header Connection "upgrade";
 spec:
