@@ -8,23 +8,11 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-buffering: "off"
-    # Cloudflare's edge strips non-WebSocket Upgrade headers (only `Upgrade: websocket`
-    # survives the HTTP/2/QUIC tunnel to cloudflared). For requests to /ts2021 (the
-    # Tailscale TS2021 noise protocol endpoint), reconstruct the Upgrade header so the
-    # noise handshake can proceed.
+    # DIAGNOSTIC: unconditionally set Upgrade header to verify snippet applies
     nginx.ingress.kubernetes.io/configuration-snippet: |
       proxy_http_version 1.1;
-      set $hs_upgrade $http_upgrade;
-      set $hs_connection "close";
-      if ($http_upgrade != "") {
-        set $hs_connection "upgrade";
-      }
-      if ($request_uri ~ "^/ts2021") {
-        set $hs_upgrade "tailscale-control-protocol";
-        set $hs_connection "upgrade";
-      }
-      proxy_set_header Upgrade $hs_upgrade;
-      proxy_set_header Connection $hs_connection;
+      proxy_set_header Upgrade "tailscale-control-protocol";
+      proxy_set_header Connection "upgrade";
 spec:
   ingressClassName: nginx
   rules:
