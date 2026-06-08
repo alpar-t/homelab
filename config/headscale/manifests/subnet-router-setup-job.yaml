@@ -77,20 +77,26 @@ spec:
               HEADSCALE_POD=$(kubectl get pods -n headscale -l app=headscale -o jsonpath='{.items[0].metadata.name}')
               echo "Using Headscale pod: $HEADSCALE_POD"
               
-              # Create a user if it doesn't exist (headscale requires a user for pre-auth keys)
+              # Create a user if it doesn't exist (headscale v0.28+ requires numeric user ID)
               echo "Ensuring default user exists..."
               kubectl exec -n headscale "$HEADSCALE_POD" -- headscale users create default 2>/dev/null || true
-              
+
+              # Get numeric user ID (v0.28 -u flag expects uint, not name)
+              USER_ID=$(kubectl exec -n headscale "$HEADSCALE_POD" -- \
+                headscale users list -o json | \
+                tr -d ' ' | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+              echo "User ID: $USER_ID"
+
               # Create pre-auth key (reusable, 1 year expiry, tagged so autoApprovers matches)
               echo "Creating pre-auth key..."
               AUTHKEY=$(kubectl exec -n headscale "$HEADSCALE_POD" -- \
                 headscale preauthkeys create \
                   --reusable \
                   --expiration 365d \
-                  -u default \
+                  -u "$USER_ID" \
                   --tags tag:subnet-router \
                   -o json | \
-                grep -o '"key":"[^"]*"' | cut -d'"' -f4)
+                tr -d ' ' | grep -o '"key":"[^"]*"' | cut -d'"' -f4)
               
               if [ -z "$AUTHKEY" ]; then
                 echo "Failed to create auth key"
