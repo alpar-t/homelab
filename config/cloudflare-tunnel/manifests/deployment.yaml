@@ -12,6 +12,8 @@ spec:
     metadata:
       labels:
         app: cloudflared
+      annotations:
+        configmap.reloader.stakater.com/reload: "cloudflared-config"
     spec:
       containers:
         - name: cloudflared
