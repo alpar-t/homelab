@@ -15,9 +15,6 @@ rules:
   - apiGroups: [""]
     resources: ["secrets"]
     verbs: ["get", "create", "update", "patch"]
-  - apiGroups: ["apps"]
-    resources: ["deployments"]
-    verbs: ["get"]
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list"]
@@ -50,8 +47,8 @@ metadata:
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  ttlSecondsAfterFinished: 3600
-  backoffLimit: 0
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 3
   template:
     spec:
       serviceAccountName: subnet-router-setup
@@ -63,23 +60,19 @@ spec:
             - /bin/bash
             - -c
             - |
-              set -ex
-              
+              set -e
+
               echo "=== Subnet Router Setup ==="
-              
+
               # Check if secret already exists
               if kubectl get secret tailscale-auth -n headscale >/dev/null 2>&1; then
                 echo "Secret tailscale-auth already exists, skipping"
                 exit 0
               fi
-              
-              # Wait for Headscale to be ready
-              echo "Waiting for Headscale to be ready..."
-              kubectl wait --for=condition=available deployment/headscale -n headscale --timeout=300s
-              
-              # Give it a few more seconds to fully initialize
-              sleep 10
-              
+
+              # ArgoCD sync wave guarantees headscale (wave 0) is Available before this job (wave 1) runs.
+              # No kubectl wait needed - just get the pod name.
+
               # Get headscale pod name
               HEADSCALE_POD=$(kubectl get pods -n headscale -l app=headscale -o jsonpath='{.items[0].metadata.name}')
               echo "Using Headscale pod: $HEADSCALE_POD"
