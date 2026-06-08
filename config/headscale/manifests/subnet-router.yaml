@@ -51,6 +51,8 @@ spec:
               value: "/var/lib/tailscale"
             - name: TS_HOSTNAME
               value: "k8s-subnet-router"
+            - name: TS_KUBE_SECRET
+              value: ""
           volumeMounts:
             - name: state
               mountPath: /var/lib/tailscale
