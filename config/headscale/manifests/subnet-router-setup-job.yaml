@@ -50,8 +50,8 @@ metadata:
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  ttlSecondsAfterFinished: 300
-  backoffLimit: 5
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 0
   template:
     spec:
       serviceAccountName: subnet-router-setup
@@ -63,7 +63,7 @@ spec:
             - /bin/bash
             - -c
             - |
-              set -e
+              set -ex
               
               echo "=== Subnet Router Setup ==="
               
