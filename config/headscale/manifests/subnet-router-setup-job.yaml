@@ -88,13 +88,14 @@ spec:
               echo "Ensuring default user exists..."
               kubectl exec -n headscale "$HEADSCALE_POD" -- headscale users create default 2>/dev/null || true
               
-              # Create pre-auth key (reusable, 1 year expiry)
+              # Create pre-auth key (reusable, 1 year expiry, tagged so autoApprovers matches)
               echo "Creating pre-auth key..."
               AUTHKEY=$(kubectl exec -n headscale "$HEADSCALE_POD" -- \
                 headscale preauthkeys create \
                   --reusable \
                   --expiration 365d \
                   -u default \
+                  --tags tag:subnet-router \
                   -o json | \
                 grep -o '"key":"[^"]*"' | cut -d'"' -f4)
               
