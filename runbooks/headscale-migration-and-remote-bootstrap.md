@@ -68,6 +68,13 @@ VPN.
 
 ## Part 1 — Cloudflare Access SSH (bootstrap unblock)
 
+**Status: done as of 2026-06-10.** See
+[runbooks/cloudflare-access-ssh.md](cloudflare-access-ssh.md) for the
+operational runbook (how to connect, what's deployed where, gotchas).
+
+The historical notes below are kept as design context for why this
+shape was chosen.
+
 This gives us a permanent off-LAN escape hatch into the cluster,
 independent of any VPN. It also makes future bootstrap problems
 (creating any new secret, recovering a node, etc.) tractable from
@@ -107,7 +114,7 @@ data:
       # from any workstation. See runbooks/headscale-migration-and-
       # remote-bootstrap.md.
       - hostname: ssh.newjoy.ro
-        service: ssh://buksi.local:22
+        service: ssh://192.168.1.174:22  # buksi
 
       # Route all other traffic to ingress-nginx
       - service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
@@ -115,13 +122,21 @@ data:
 
 Notes:
 
-- `buksi.local` resolves via mDNS *inside the cluster* (k3s nodes can
-  resolve each other's `.local` names). If that turns out to be
-  flaky, hardcode `192.168.1.174:22` instead.
+- Hardcoded IP not `buksi.local` — `.local` is mDNS, which the
+  cloudflared pod cannot reliably resolve from inside the cluster.
+  Node IPs (per `~/.ssh/known_hosts` and CLAUDE.md):
+  buksi=192.168.1.174, pamacs=192.168.1.173, pufi=192.168.1.166.
 - We pick a single node deliberately. Round-robin across multiple
-  nodes would interact badly with SSH host-key pinning.
-- Cloudflared will reload automatically (Reloader annotation already
-  in place — added in commit `a26bef0`).
+  nodes would interact badly with SSH host-key pinning. If buksi is
+  down, swap the IP and re-sync. (Future improvement: deploy a small
+  internal `sshd` that runs as a Deployment with `service: tcp://`,
+  giving us HA SSH — out of scope for the initial unblock.)
+- The catch-all rule must remain LAST. cloudflared matches ingress
+  rules in order; the `ssh.newjoy.ro` rule has to come before the
+  unconditional ingress-nginx route, otherwise everything goes to
+  nginx and the SSH service is never matched.
+- Cloudflared reloads automatically when the configmap changes
+  (Reloader annotation, commit `a26bef0`).
 
 ### Workstation side (any device, anywhere)
 
@@ -160,7 +175,7 @@ the iPhone via Termius / Blink.
 ```bash
 ssh buksi-cf
 # should land on buksi as core
-sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl get nodes
+kubectl get nodes
 # all three nodes Ready
 ```
 
@@ -205,8 +220,8 @@ client.
 
 ```bash
 ssh buksi-cf
-sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl create namespace tailscale
-sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl create secret generic tailscale-auth \
+kubectl create namespace tailscale
+kubectl create secret generic tailscale-auth \
   --namespace=tailscale \
   --from-literal=authkey=tskey-auth-XXXXXXXXXXXXXXXXX
 ```
