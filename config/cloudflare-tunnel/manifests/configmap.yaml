@@ -12,7 +12,14 @@ data:
     no-autoupdate: true
 
     ingress:
-      # Route all traffic to ingress-nginx
+      # SSH access via Cloudflare Access (browser-rendered terminal).
+      # Auth gate is in the Cloudflare dashboard; this rule just routes
+      # ssh.newjoy.ro to buksi's sshd.
+      # See runbooks/headscale-migration-and-remote-bootstrap.md
+      - hostname: ssh.newjoy.ro
+        service: ssh://192.168.1.174:22
+
+      # Route all other traffic to ingress-nginx
       # Each app defines its own Ingress resource for routing
       - service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
 
