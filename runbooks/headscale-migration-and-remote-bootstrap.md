@@ -228,20 +228,55 @@ kubectl create secret generic tailscale-auth \
 
 ### Repo changes
 
-1. **Create `config/tailscale/manifests/`** with just the subnet
-   router (deployment + serviceaccount, similar to today's
-   `config/headscale/manifests/subnet-router.yaml`) but:
+1. **Create `config/tailscale/manifests/`** with the subnet router,
+   modeled on today's `config/headscale/manifests/subnet-router.yaml`
+   but with these specific changes:
    - Namespace: `tailscale` (new)
-   - No `TS_EXTRA_ARGS=--login-server=...` (default = stock
-     Tailscale)
-   - No `TS_KUBE_SECRET=""` (we want the default kube secret
-     behavior; in fact for stock Tailscale you want this *enabled*
-     for state, but only if RBAC permits — easier to keep
-     emptyDir + `TS_STATE_DIR=/var/lib/tailscale`)
+   - No `TS_EXTRA_ARGS=--login-server=...` (default = stock Tailscale)
    - `TS_AUTHKEY` from the new `tailscale-auth` secret in the new
      namespace
    - `TS_ROUTES=192.168.1.0/24` (same as today)
    - `TS_HOSTNAME=k8s-subnet-router`
+   - **Persist Tailscale state across pod restarts** (important —
+     this is what makes the 90-day auth key expiry not matter; after
+     first registration the node identity lives in this secret and
+     the auth key is never consulted again):
+     - Set `TS_KUBE_SECRET=tailscale-state` (a NEW secret, distinct
+       from `tailscale-auth`). Tailscale will create and maintain
+       this secret itself; don't pre-create it.
+     - Remove the `TS_STATE_DIR` / emptyDir volume we had under
+       headscale — they conflict with kube-secret-backed state.
+     - Add a Role + RoleBinding giving the pod's ServiceAccount
+       narrow permissions on just that secret:
+       ```yaml
+       apiVersion: rbac.authorization.k8s.io/v1
+       kind: Role
+       metadata:
+         name: tailscale-subnet-router-state
+         namespace: tailscale
+       rules:
+         - apiGroups: [""]
+           resources: ["secrets"]
+           resourceNames: ["tailscale-state"]
+           verbs: ["get", "create", "update", "patch"]
+       ```
+       (no `list`/`watch` because `resourceNames` doesn't permit
+       those verbs anyway, and we don't need them).
+
+### Post-deploy in Tailscale admin (one-time)
+
+After the subnet router connects successfully:
+
+1. **Admin console → Machines → `k8s-subnet-router` → ⋯ → Disable
+   key expiry.** This stops the node key from expiring (separate
+   from the auth-key clock), so the node never needs to
+   re-authenticate even if Tailscale's default key-rotation kicks
+   in.
+2. With persistent state in `tailscale-state` AND key expiry
+   disabled on the node, the `tailscale-auth` secret becomes a
+   sealed envelope: only consulted if `tailscale-state` is ever
+   wiped. The 90-day clock keeps ticking but doesn't matter for
+   normal operation.
 2. **Create `apps/tailscale.yaml`** ArgoCD Application pointing at
    `config/tailscale/manifests`.
 3. **Delete `apps/headscale.yaml`** and `apps/homeassistant-db.yaml`
