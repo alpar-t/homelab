@@ -1,0 +1,104 @@
+# Tailscale subnet router pod.
+#
+# Stock Tailscale (not headscale) — control plane is controlplane.tailscale.com.
+# Auth-key in `tailscale-auth` secret is consulted ONLY at first registration.
+# After that, the node identity lives in `tailscale-state` (managed by Tailscale
+# itself via TS_KUBE_SECRET) and survives pod restarts. Once the node is up,
+# click "Disable key expiry" on it in the Tailscale admin → Machines view, so
+# the node key never expires either.
+#
+# See: runbooks/headscale-migration-and-remote-bootstrap.md
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tailscale-subnet-router
+  namespace: tailscale
+  labels:
+    app: tailscale-subnet-router
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tailscale-subnet-router
+  template:
+    metadata:
+      labels:
+        app: tailscale-subnet-router
+    spec:
+      # hostNetwork is required for kernel-mode subnet routing back to the LAN
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      serviceAccountName: tailscale-subnet-router
+      containers:
+        - name: tailscale
+          image: tailscale/tailscale:v1.94.2@sha256:95e528798bebe75f39b10e74e7051cf51188ee615934f232ba7ad06a3390ffa1
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+                - NET_RAW
+          env:
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: tailscale-auth
+                  key: authkey
+            - name: TS_ROUTES
+              value: "192.168.1.0/24"
+            - name: TS_USERSPACE
+              value: "false"
+            - name: TS_HOSTNAME
+              value: "k8s-subnet-router"
+            # Persist Tailscale state in a kube secret so the node identity
+            # survives pod restarts. The secret is created and managed by the
+            # tailscale container itself; do not pre-create it.
+            - name: TS_KUBE_SECRET
+              value: "tailscale-state"
+          volumeMounts:
+            - name: dev-net-tun
+              mountPath: /dev/net/tun
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+      volumes:
+        - name: dev-net-tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tailscale-subnet-router
+  namespace: tailscale
+---
+# Narrowly-scoped RBAC: only the named state secret, no list/watch
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tailscale-subnet-router-state
+  namespace: tailscale
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["tailscale-state"]
+    verbs: ["get", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tailscale-subnet-router-state
+  namespace: tailscale
+subjects:
+  - kind: ServiceAccount
+    name: tailscale-subnet-router
+    namespace: tailscale
+roleRef:
+  kind: Role
+  name: tailscale-subnet-router-state
+  apiGroup: rbac.authorization.k8s.io
