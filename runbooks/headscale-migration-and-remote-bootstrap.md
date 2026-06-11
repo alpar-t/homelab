@@ -247,21 +247,21 @@ kubectl create secret generic tailscale-auth \
      - Remove the `TS_STATE_DIR` / emptyDir volume we had under
        headscale — they conflict with kube-secret-backed state.
      - Add a Role + RoleBinding giving the pod's ServiceAccount
-       narrow permissions on just that secret:
+       narrow permissions on just that secret. K8s RBAC forbids
+       `resourceNames` on the `create` verb (the resource has no
+       name at create time), so split into two rules:
        ```yaml
-       apiVersion: rbac.authorization.k8s.io/v1
-       kind: Role
-       metadata:
-         name: tailscale-subnet-router-state
-         namespace: tailscale
        rules:
          - apiGroups: [""]
            resources: ["secrets"]
+           verbs: ["create"]
+         - apiGroups: [""]
+           resources: ["secrets"]
            resourceNames: ["tailscale-state"]
-           verbs: ["get", "create", "update", "patch"]
+           verbs: ["get", "update", "patch"]
        ```
-       (no `list`/`watch` because `resourceNames` doesn't permit
-       those verbs anyway, and we don't need them).
+       In practice the pod will only ever create `tailscale-state`
+       since `TS_KUBE_SECRET` is hard-coded in the deployment.
 
 ### Post-deploy in Tailscale admin (one-time)
 
