@@ -100,6 +100,7 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [x] Frigate
 - [x] **Off-LAN SSH access via Cloudflare Access** — see [runbooks/cloudflare-access-ssh.md](runbooks/cloudflare-access-ssh.md). Unblocks bootstrap work (creating secrets, etc.) from anywhere without depending on VPN.
 - [x] **VPN: tear out Headscale, deploy stock Tailscale** — done 2026-06-11. Headscale's TS2021 noise protocol can't be proxied by free Cloudflare Tunnel (bidirectional gRPC-over-HTTP/2 after the 101 upgrade) — see [runbooks/headscale-migration-and-remote-bootstrap.md](runbooks/headscale-migration-and-remote-bootstrap.md) for the why. Replaced headscale + Pocket-ID OIDC with stock Tailscale. Subnet router persists its identity in `tailscale-state` kube secret; auth key is break-glass-only.
+- [ ] **Tailscale: push Pi-hole as DNS for tailnet devices** — Tailscale admin → DNS → add nameserver `192.168.1.202` (Pi-hole MetalLB IP), turn on "Override local DNS". Without this, the iPhone on tailnet keeps using carrier/WiFi DNS even though it can reach Pi-hole. Pi-hole already has redundancy ([pihole-dns-redundancy](runbooks/pihole-dns-redundancy.md)) so this is safe.
 - [x] Deploy [TREK](https://github.com/mauriceboe/TREK) — holiday / trip planner
   - [x] Pocket ID OIDC SSO with group-based admin claim (`trek-admins`)
   - [x] Reusable OIDC provisioner (`scripts/provision-oidc.sh`) for all future apps
