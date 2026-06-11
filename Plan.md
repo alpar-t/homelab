@@ -99,7 +99,7 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [x] Emby
 - [x] Frigate
 - [x] **Off-LAN SSH access via Cloudflare Access** — see [runbooks/cloudflare-access-ssh.md](runbooks/cloudflare-access-ssh.md). Unblocks bootstrap work (creating secrets, etc.) from anywhere without depending on VPN.
-- [ ] **VPN: tear out Headscale, deploy stock Tailscale** — see [runbooks/headscale-migration-and-remote-bootstrap.md](runbooks/headscale-migration-and-remote-bootstrap.md). Headscale's TS2021 noise protocol can't be proxied by free Cloudflare Tunnel (bidirectional gRPC-over-HTTP/2 after the 101 upgrade). Replace headscale + Pocket-ID OIDC with stock Tailscale.
+- [x] **VPN: tear out Headscale, deploy stock Tailscale** — done 2026-06-11. Headscale's TS2021 noise protocol can't be proxied by free Cloudflare Tunnel (bidirectional gRPC-over-HTTP/2 after the 101 upgrade) — see [runbooks/headscale-migration-and-remote-bootstrap.md](runbooks/headscale-migration-and-remote-bootstrap.md) for the why. Replaced headscale + Pocket-ID OIDC with stock Tailscale. Subnet router persists its identity in `tailscale-state` kube secret; auth key is break-glass-only.
 - [x] Deploy [TREK](https://github.com/mauriceboe/TREK) — holiday / trip planner
   - [x] Pocket ID OIDC SSO with group-based admin claim (`trek-admins`)
   - [x] Reusable OIDC provisioner (`scripts/provision-oidc.sh`) for all future apps
