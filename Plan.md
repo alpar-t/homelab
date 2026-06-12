@@ -99,8 +99,8 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [x] Emby
 - [x] Frigate
 - [x] **Off-LAN SSH access via Cloudflare Access** — see [runbooks/cloudflare-access-ssh.md](runbooks/cloudflare-access-ssh.md). Unblocks bootstrap work (creating secrets, etc.) from anywhere without depending on VPN.
-- [x] **VPN: tear out Headscale, deploy stock Tailscale** — done 2026-06-11. Headscale's TS2021 noise protocol can't be proxied by free Cloudflare Tunnel (bidirectional gRPC-over-HTTP/2 after the 101 upgrade) — see [runbooks/headscale-migration-and-remote-bootstrap.md](runbooks/headscale-migration-and-remote-bootstrap.md) for the why. Replaced headscale + Pocket-ID OIDC with stock Tailscale. Subnet router persists its identity in `tailscale-state` kube secret; auth key is break-glass-only.
-- [ ] **Tailscale: push Pi-hole as DNS for tailnet devices** — Tailscale admin → DNS → add nameserver `192.168.1.202` (Pi-hole MetalLB IP), turn on "Override local DNS". Without this, the iPhone on tailnet keeps using carrier/WiFi DNS even though it can reach Pi-hole. Pi-hole already has redundancy ([pihole-dns-redundancy](runbooks/pihole-dns-redundancy.md)) so this is safe.
+- [x] **VPN: tear out Headscale, deploy stock Tailscale** — done 2026-06-11. Headscale's TS2021 noise protocol can't be proxied by free Cloudflare Tunnel (bidirectional gRPC-over-HTTP/2 after the 101 upgrade). Replaced with stock Tailscale; subnet router pinned to buksi for MetalLB co-location. See [runbooks/tailscale.md](runbooks/tailscale.md).
+- [x] **Tailscale: Pi-hole as DNS for tailnet devices** — done 2026-06-12. Tailscale admin → DNS → global nameserver `192.168.1.202` (Pi-hole), "Override local DNS" on.
 - [x] Deploy [TREK](https://github.com/mauriceboe/TREK) — holiday / trip planner
   - [x] Pocket ID OIDC SSO with group-based admin claim (`trek-admins`)
   - [x] Reusable OIDC provisioner (`scripts/provision-oidc.sh`) for all future apps
@@ -108,7 +108,7 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
   - [ ] TREK: add Google Maps API key for place search
   - [ ] TREK: configure Immich integration
 - [x] Configure arr stack (Sonarr/Radarr/Prowlarr) with Emby
-- [ ] ~~Configure private network access through Headscale~~ — folded into the Tailscale migration above
+- [x] ~~Configure private network access through Headscale~~ — replaced by stock Tailscale (see above)
 - [ ] AI agent: Claude-powered WhatsApp chatbot hooked to [alpar-t/life](https://github.com/alpar-t/life)
 
 ## Version Upgrades (audited 2026-04-12)

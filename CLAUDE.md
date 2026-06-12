@@ -39,6 +39,36 @@ Access from this workstation:
 When the user asks anything HA-related, default to these — do not look in
 the k3s cluster (it only has the DB).
 
+## Tailscale remote access
+
+Stock Tailscale (controlplane.tailscale.com) provides remote access to the LAN
+(`192.168.1.0/24`) via a subnet router pod in the `tailscale` namespace.
+
+- **Subnet router is pinned to buksi** (`nodeSelector: kubernetes.io/hostname: buksi`).
+  This is not optional — see the co-location constraint below.
+- **Auth key** lives in the `tailscale-auth` secret (break-glass only; the node
+  identity persists in `tailscale-state` across pod restarts).
+- **DNS**: Tailscale admin → DNS → global nameserver `192.168.1.202` (Pi-hole),
+  "Override local DNS" on. Without this, tailnet devices use carrier/WiFi DNS.
+- **ACL**: `config/tailscale/` — allow-all with `autoApprovers` for the subnet route.
+
+### MetalLB + Tailscale co-location constraint
+
+kube-proxy drops forwarded traffic in nftables FILTER FORWARD for
+`externalTrafficPolicy: Local` services when no local pod exists on the
+forwarding node. Because Tailscale's iptables-legacy MASQUERADE only fires when
+traffic goes via the cluster overlay (cni0/flannel), cross-node MetalLB traffic
+going out the physical NIC (enp2s0) is dropped before POSTROUTING is reached.
+
+**Rule**: the subnet router must run on the same node as any MetalLB service
+with `externalTrafficPolicy: Local` that you want reachable via Tailscale.
+Emby, Immich, and arr-stack are all on buksi — hence the pin. Services with
+`externalTrafficPolicy: Cluster` (whisper, homeassistant-db, paperless-ftp)
+work from any node because kube-proxy DNAT routes them via flannel regardless.
+
+If you ever move Emby or other Local-policy services to a different node, move
+the subnet router nodeSelector with them.
+
 ## Travel network / backup uplink
 
 Portable kit for travel and homelab failover:

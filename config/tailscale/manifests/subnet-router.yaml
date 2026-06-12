@@ -1,13 +1,14 @@
 # Tailscale subnet router pod.
 #
-# Stock Tailscale (not headscale) — control plane is controlplane.tailscale.com.
+# Stock Tailscale subnet router — control plane is controlplane.tailscale.com.
 # Auth-key in `tailscale-auth` secret is consulted ONLY at first registration.
 # After that, the node identity lives in `tailscale-state` (managed by Tailscale
 # itself via TS_KUBE_SECRET) and survives pod restarts. Once the node is up,
-# click "Disable key expiry" on it in the Tailscale admin → Machines view, so
-# the node key never expires either.
+# click "Disable key expiry" on it in the Tailscale admin → Machines view.
 #
-# See: runbooks/headscale-migration-and-remote-bootstrap.md
+# Pinned to buksi: MetalLB externalTrafficPolicy:Local services must be
+# co-located with the subnet router or kube-proxy drops traffic before
+# MASQUERADE fires. See: runbooks/tailscale.md
 ---
 apiVersion: apps/v1
 kind: Deployment
