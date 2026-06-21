@@ -107,6 +107,7 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
   - [x] TREK MCP connected to Claude Code (OAuth via browser)
   - [ ] TREK: add Google Maps API key for place search
   - [ ] TREK: configure Immich integration
+  - [ ] TREK: fix OIDC auth failure showing empty trip list instead of error (filed [#1283](https://github.com/mauriceboe/TREK/issues/1283)) — frontend needs to surface the 500 from `/api/auth/oidc/login` as a user-visible error state
 - [x] Configure arr stack (Sonarr/Radarr/Prowlarr) with Emby
 - [x] ~~Configure private network access through Headscale~~ — replaced by stock Tailscale (see above)
 - [ ] AI agent: Claude-powered WhatsApp chatbot hooked to [alpar-t/life](https://github.com/alpar-t/life)
