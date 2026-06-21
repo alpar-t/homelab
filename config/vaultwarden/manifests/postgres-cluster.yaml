@@ -42,7 +42,7 @@ spec:
       # Password stored in: vaultwarden-db-app secret (created by operator)
   
   storage:
-    size: 2Gi
+    size: 5Gi
     storageClass: longhorn-ssd
     pvcTemplate:
       labels:
@@ -83,5 +83,6 @@ spec:
       max_connections: "25"
       # WAL archiving (required for CNPG backups)
       archive_mode: "on"
-      archive_timeout: "5min"
+      archive_timeout: "1h"
+      max_slot_wal_keep_size: "1GB"
 

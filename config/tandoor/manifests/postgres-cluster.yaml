@@ -77,5 +77,6 @@ spec:
       max_connections: "50"
       # WAL archiving (required for CNPG backups)
       archive_mode: "on"
-      archive_timeout: "60min"
+      archive_timeout: "1h"
+      max_slot_wal_keep_size: "1GB"
 

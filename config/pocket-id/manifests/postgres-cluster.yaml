@@ -36,7 +36,7 @@ spec:
       # Password stored in: pocket-id-db-app secret (created by operator)
   
   storage:
-    size: 2Gi  # Increased from 1Gi due to WAL accumulation
+    size: 5Gi  # Increased from 2Gi due to WAL accumulation
     storageClass: longhorn-ssd
     # Note: Longhorn backup label removed - using CNPG-native backups instead
   
@@ -84,5 +84,7 @@ spec:
       
       # WAL archiving (required for CNPG backups)
       archive_mode: "on"
-      archive_timeout: "15min"
+      archive_timeout: "1h"
+      # Cap WAL held for offline replicas; they'll resync from B2 if they fall behind
+      max_slot_wal_keep_size: "1GB"
 
