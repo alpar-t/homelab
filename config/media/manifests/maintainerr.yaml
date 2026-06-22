@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: maintainerr
-          image: ghcr.io/maintainerr/maintainerr:latest@sha256:a831070884334d24418a1c2597039dc70ee73edbc3712275ec0bd631db0eb94b
+          image: ghcr.io/maintainerr/maintainerr:latest@sha256:dcfd3f0862c31fced3a28ad2ae58c232a53d786b8c5b062cfc986570da8cb89f
           ports:
             - containerPort: 6246
               name: http
