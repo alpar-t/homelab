@@ -65,7 +65,7 @@ spec:
   storageClassName: longhorn-ssd
   resources:
     requests:
-      storage: 2Gi
+      storage: 20Gi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -119,6 +119,21 @@ metadata:
   namespace: media
   labels:
     app.kubernetes.io/name: qbittorrent
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: maintainerr-data
+  namespace: media
+  labels:
+    app.kubernetes.io/name: maintainerr
 spec:
   accessModes:
     - ReadWriteOnce

@@ -1,0 +1,101 @@
+# Maintainerr — rule-based media cleanup for Emby + Radarr + Sonarr
+# Web UI at maintainerr.newjoy.ro — configure connections there after deploy:
+#   Emby:   http://emby.media.svc.cluster.local:8096  (sign in with admin credentials)
+#   Radarr: http://radarr.media.svc.cluster.local:7878
+#   Sonarr: http://sonarr.media.svc.cluster.local:8989
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: maintainerr
+  namespace: media
+  labels:
+    app.kubernetes.io/name: maintainerr
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: maintainerr
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: maintainerr
+    spec:
+      containers:
+        - name: maintainerr
+          image: ghcr.io/maintainerr/maintainerr:latest@sha256:a831070884334d24418a1c2597039dc70ee73edbc3712275ec0bd631db0eb94b
+          ports:
+            - containerPort: 6246
+              name: http
+          env:
+            - name: TZ
+              value: "Europe/Bucharest"
+          volumeMounts:
+            - name: data
+              mountPath: /opt/data
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /api/health/ready
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: maintainerr-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: maintainerr
+  namespace: media
+  labels:
+    app.kubernetes.io/name: maintainerr
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: maintainerr
+  ports:
+    - name: http
+      port: 6246
+      targetPort: 6246
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: maintainerr
+  namespace: media
+  labels:
+    app.kubernetes.io/name: maintainerr
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+    nginx.ingress.kubernetes.io/auth-url: "http://oauth2-proxy-media.media.svc.cluster.local:4180/oauth2/auth"
+    nginx.ingress.kubernetes.io/auth-signin: "https://media-auth.newjoy.ro/oauth2/start?rd=$scheme://$host$escaped_request_uri"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: maintainerr.newjoy.ro
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: maintainerr
+                port:
+                  number: 6246
