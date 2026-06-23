@@ -1,0 +1,190 @@
+# OpenClaw gateway with git-sync sidecar.
+#
+# The homelab repo is public so git-sync uses HTTPS — no deploy key needed.
+# git-sync clones the repo into an emptyDir at /git.
+# OpenClaw reads its config and agent workspaces directly from /git/link/config/baloo/.
+# Writable state (WA session auth, credentials) lives on the Longhorn PVC at /state.
+#
+# Config changes (SOUL.md, AGENTS.md) propagate on the next conversation without restart.
+# openclaw.json changes (bindings, tool policies) require a pod restart:
+#   kubectl rollout restart deployment/openclaw -n baloo
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openclaw
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: openclaw
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: openclaw
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: openclaw
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # One-shot clone so OpenClaw starts with the repo already on disk.
+        - name: git-sync-init
+          image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
+          args:
+            - --repo=https://github.com/alpar-t/homelab.git
+            - --root=/git
+            - --link=link
+            - --depth=1
+            - --one-time
+          securityContext:
+            runAsUser: 65533
+            runAsGroup: 65533
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        # Continuous sync sidecar — keeps /git/link up to date with main.
+        - name: git-sync
+          image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
+          args:
+            - --repo=https://github.com/alpar-t/homelab.git
+            - --root=/git
+            - --link=link
+            - --depth=1
+            - --period=60s
+          securityContext:
+            runAsUser: 65533
+            runAsGroup: 65533
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+            - name: tmp
+              mountPath: /tmp
+
+        - name: openclaw
+          image: ghcr.io/openclaw/openclaw:2026.6.9@sha256:c440a75f5580acb135409068f39ca701a5ca10fb9892cd9473a60ba0669cc0dc
+          imagePullPolicy: IfNotPresent
+          command:
+            - node
+            - /app/dist/index.js
+            - gateway
+            - run
+          ports:
+            - name: gateway
+              containerPort: 18789
+              protocol: TCP
+          env:
+            - name: HOME
+              value: /state/home
+            - name: NODE_ENV
+              value: production
+            - name: OPENCLAW_CONFIG_PATH
+              value: /git/link/config/baloo/openclaw.json
+            - name: OPENCLAW_STATE_DIR
+              value: /state
+            - name: OPENCLAW_GATEWAY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: OPENCLAW_GATEWAY_TOKEN
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: ANTHROPIC_API_KEY
+          livenessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:18789/healthz', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:18789/readyz', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+              readOnly: true
+            - name: state
+              mountPath: /state
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: git-repo
+          emptyDir: {}
+        - name: state
+          persistentVolumeClaim:
+            claimName: openclaw-state
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openclaw
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: openclaw
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: openclaw
+  ports:
+    - name: gateway
+      port: 18789
+      targetPort: 18789

@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: whisper
-          image: rhasspy/wyoming-whisper:3.1.0
+          image: rhasspy/wyoming-whisper:3.1.0@sha256:9501d2659eee83b6eead98d53842193e5fed011eda6c5b1c3ad36f3146b28fed
           args:
             - --model
             - large-v3

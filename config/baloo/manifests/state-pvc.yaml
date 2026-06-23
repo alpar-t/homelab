@@ -1,0 +1,16 @@
+# OpenClaw writable state: WhatsApp session auth, credentials.
+# Losing this means re-scanning the WhatsApp QR code — acceptable.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: openclaw-state
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: openclaw
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd-noreplica
+  resources:
+    requests:
+      storage: 2Gi

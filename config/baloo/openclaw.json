@@ -1,0 +1,45 @@
+{
+  "gateway": {
+    "mode": "local",
+    "bind": "loopback",
+    "port": 18789,
+    "auth": {
+      "mode": "token"
+    },
+    "controlUi": {
+      "enabled": true
+    }
+  },
+  "agents": {
+    "defaults": {
+      "skipBootstrap": true,
+      "model": "anthropic/claude-sonnet-4-6"
+    },
+    "list": [
+      {
+        "id": "echo",
+        "name": "Baloo",
+        "workspace": "/git/link/config/baloo/agents/echo",
+        "tools": {
+          "deny": ["*"]
+        }
+      }
+    ]
+  },
+  "bindings": [
+    {
+      "agentId": "echo",
+      "match": {
+        "channel": "whatsapp",
+        "peer": { "kind": "direct", "id": "+40XXXXXXXXXX" }
+      }
+    }
+  ],
+  "channels": {
+    "whatsapp": {
+      "enabled": true,
+      "dmPolicy": "allowlist"
+    }
+  },
+  "cron": { "enabled": false }
+}
