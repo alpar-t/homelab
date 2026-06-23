@@ -12,9 +12,16 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: baloo
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      name: baloo-secrets
+      jsonPointers:
+        - /data
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
