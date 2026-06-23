@@ -64,7 +64,14 @@ spec:
         # Substitute ${BALOO_OWNER_PHONE} into openclaw.json → /rendered/openclaw.json
         - name: render-config
           image: ghcr.io/openclaw/openclaw:2026.6.9@sha256:c440a75f5580acb135409068f39ca701a5ca10fb9892cd9473a60ba0669cc0dc
-          command: [sh, -c, "envsubst < /git/link/config/baloo/openclaw.json > /rendered/openclaw.json"]
+          command:
+            - node
+            - -e
+            - |
+              const fs = require('fs');
+              const src = fs.readFileSync('/git/link/config/baloo/openclaw.json', 'utf8');
+              const out = src.replace(/\$\{([^}]+)\}/g, (_, k) => process.env[k] ?? _);
+              fs.writeFileSync('/rendered/openclaw.json', out);
           env:
             - name: BALOO_OWNER_PHONE
               valueFrom:
