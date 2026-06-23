@@ -13,7 +13,8 @@
   "agents": {
     "defaults": {
       "skipBootstrap": true,
-      "model": "anthropic/claude-sonnet-4-6"
+      "model": "anthropic/claude-sonnet-4-6",
+      "heartbeat": { "every": "1h" }
     },
     "list": [
       {
@@ -31,14 +32,15 @@
       "agentId": "echo",
       "match": {
         "channel": "whatsapp",
-        "peer": { "kind": "direct", "id": "+40XXXXXXXXXX" }
+        "peer": { "kind": "direct", "id": "${BALOO_OWNER_PHONE}" }
       }
     }
   ],
   "channels": {
     "whatsapp": {
       "enabled": true,
-      "dmPolicy": "allowlist"
+      "dmPolicy": "allowlist",
+      "allowFrom": ["${BALOO_OWNER_PHONE}"]
     }
   },
   "cron": { "enabled": false }

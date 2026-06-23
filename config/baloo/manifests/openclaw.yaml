@@ -33,6 +33,37 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       initContainers:
+        # Render openclaw.json — substitute ${BALOO_OWNER_PHONE} from secret.
+        # Runs after git-sync-init (init containers run in order).
+        - name: render-config
+          image: ghcr.io/openclaw/openclaw:2026.6.9@sha256:c440a75f5580acb135409068f39ca701a5ca10fb9892cd9473a60ba0669cc0dc
+          command: [sh, -c, "envsubst < /git/link/config/baloo/openclaw.json > /rendered/openclaw.json"]
+          env:
+            - name: BALOO_OWNER_PHONE
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: BALOO_OWNER_PHONE
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+              readOnly: true
+            - name: rendered
+              mountPath: /rendered
         # One-shot clone so OpenClaw starts with the repo already on disk.
         - name: git-sync-init
           image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
@@ -109,7 +140,7 @@ spec:
             - name: NODE_ENV
               value: production
             - name: OPENCLAW_CONFIG_PATH
-              value: /git/link/config/baloo/openclaw.json
+              value: /rendered/openclaw.json
             - name: OPENCLAW_STATE_DIR
               value: /state
             - name: OPENCLAW_GATEWAY_TOKEN
@@ -159,6 +190,9 @@ spec:
             - name: git-repo
               mountPath: /git
               readOnly: true
+            - name: rendered
+              mountPath: /rendered
+              readOnly: true
             - name: state
               mountPath: /state
             - name: tmp
@@ -166,6 +200,8 @@ spec:
 
       volumes:
         - name: git-repo
+          emptyDir: {}
+        - name: rendered
           emptyDir: {}
         - name: state
           persistentVolumeClaim:
