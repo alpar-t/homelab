@@ -198,7 +198,6 @@ spec:
               readOnly: true
             - name: rendered
               mountPath: /rendered
-              readOnly: true
             - name: state
               mountPath: /state
             - name: tmp
