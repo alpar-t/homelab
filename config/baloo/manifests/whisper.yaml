@@ -7,14 +7,14 @@ data:
   whisper-http.py: |
     #!/usr/src/.venv/bin/python3
     """
-    HTTP bridge for wyoming-faster-whisper.
+    HTTP bridge for wyoming-whisper-intel (whisper.cpp + Intel GPU).
     POST /transcribe with raw audio body (any format PyAV supports) → transcript text.
-    Runs as a sidecar alongside the wyoming server and speaks Wyoming on localhost:10300.
+    Runs as a sidecar alongside the wyoming server and speaks Wyoming on localhost:7891.
     """
     from http.server import HTTPServer, BaseHTTPRequestHandler
     import av, io, json, socket, sys
 
-    WYOMING_PORT = 10300
+    WYOMING_PORT = 7891
     HTTP_PORT = 10301
     RATE = 16000
 
@@ -35,8 +35,10 @@ data:
     class Wyoming:
         def __init__(self):
             self.sock = socket.create_connection(('127.0.0.1', WYOMING_PORT), timeout=10)
-            self.sock.settimeout(120)
+            self.sock.settimeout(300)
             self._buf = b''
+            self._send('describe')
+            self._recv()  # consume info response
 
         def close(self):
             self.sock.close()
@@ -115,7 +117,7 @@ data:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: whisper-models
+  name: whisper-models-intel
   namespace: baloo
 spec:
   accessModes:
@@ -143,40 +145,48 @@ spec:
         app: whisper
     spec:
       containers:
+        # whisper.cpp with Intel GPU acceleration via oneAPI/Level Zero.
+        # Model (ggml-large-v3.bin) is downloaded to the PVC on first start.
         - name: whisper
-          image: rhasspy/wyoming-whisper:3.1.0@sha256:9501d2659eee83b6eead98d53842193e5fed011eda6c5b1c3ad36f3146b28fed
-          args:
-            - --model
-            - large-v3
-            - --language
-            - auto
-            - --uri
-            - tcp://0.0.0.0:10300
-            - --data-dir
-            - /data
-            - --download-dir
-            - /data
-            - --compute-type
-            - int8
+          image: ghcr.io/sjtrny/wyoming-whisper-intel:release@sha256:518e804b7464856b9506e48260047aad68732cb1e19b4331067be0414e455def
+          env:
+            - name: ONEAPI_DEVICE_SELECTOR
+              value: "level_zero:gpu"
+            - name: ZE_ENABLE_PCI_ID_DEVICE_ORDER
+              value: "1"
+            - name: WHISPER_MODEL
+              value: "large-v3"
+            - name: WHISPER_LANG
+              value: "auto"
+            - name: WHISPER_BEAM_SIZE
+              value: "5"
+            - name: WHISPER_HTTP_HOST
+              value: "127.0.0.1"
+            - name: WHISPER_HTTP_PORT
+              value: "8910"
+            - name: WYOMING_URI
+              value: "tcp://0.0.0.0:7891"
           ports:
             - name: wyoming
-              containerPort: 10300
+              containerPort: 7891
               protocol: TCP
           volumeMounts:
             - name: models
-              mountPath: /data
+              mountPath: /models
           resources:
             requests:
-              cpu: 500m
-              memory: 1500Mi
+              cpu: 200m
+              memory: 1Gi
+              gpu.intel.com/i915: "1"
             limits:
-              cpu: 4000m
+              cpu: 2000m
               memory: 4Gi
+              gpu.intel.com/i915: "1"
           startupProbe:
             tcpSocket:
               port: wyoming
             periodSeconds: 30
-            failureThreshold: 40
+            failureThreshold: 60
           readinessProbe:
             tcpSocket:
               port: wyoming
@@ -189,7 +199,7 @@ spec:
             failureThreshold: 3
 
         # HTTP bridge: accepts raw audio (any PyAV-supported format), converts to
-        # PCM16, speaks Wyoming to localhost:10300, returns transcript as text.
+        # PCM16, speaks Wyoming to localhost:7891, returns transcript as text.
         - name: whisper-http
           image: rhasspy/wyoming-whisper:3.1.0@sha256:9501d2659eee83b6eead98d53842193e5fed011eda6c5b1c3ad36f3146b28fed
           command: ["/usr/src/.venv/bin/python3", "/scripts/whisper-http.py"]
@@ -216,7 +226,7 @@ spec:
       volumes:
         - name: models
           persistentVolumeClaim:
-            claimName: whisper-models
+            claimName: whisper-models-intel
         - name: scripts
           configMap:
             name: whisper-http-script
@@ -237,7 +247,7 @@ spec:
   ports:
     - name: wyoming
       port: 10300
-      targetPort: wyoming
+      targetPort: 7891
       protocol: TCP
     - name: http
       port: 10301
