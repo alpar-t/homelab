@@ -27,6 +27,8 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: openclaw
+      annotations:
+        homelab/config-rev: "2026-06-24a"
     spec:
       serviceAccountName: vault-keeper
       automountServiceAccountToken: true
