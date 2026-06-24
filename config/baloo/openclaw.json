@@ -29,7 +29,7 @@
         "id": "sovereign",
         "name": "Sovereign",
         "workspace": "/git/link/config/baloo/agents/sovereign",
-        "heartbeat": false,
+        "heartbeat": { "every": "0m" },
         "tools": {
           "allow": ["*"]
         }
@@ -68,7 +68,7 @@
             "command": "python3",
             "args": ["/git/link/config/baloo/whisper-transcribe.py", "{{MediaPath}}"],
             "capabilities": ["audio"],
-            "timeoutSeconds": 120
+            "timeoutSeconds": 300
           }
         ]
       }
