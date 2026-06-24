@@ -6,6 +6,32 @@
 
 Always verify image references against the actual registry before writing them into manifests. Do not guess or infer from the GitHub repo name — published image names often differ (e.g. the `rhasspy/wyoming-faster-whisper` repo publishes as `rhasspy/wyoming-whisper` on Docker Hub). Verify by fetching the GitHub README or the registry page directly.
 
+**Lookup workflow — always use these commands, not WebFetch to Docker Hub UI (which is unreliable):**
+
+```bash
+# 1. registry.k8s.io images (kubectl, coredns, git-sync, etc.)
+curl -s "https://europe-west10-docker.pkg.dev/v2/k8s-artifacts-prod/images/<name>/tags/list" \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); \
+    tags=[t for t in d.get('tags',[]) if not any(x in t for x in ['alpha','beta','rc','sha'])]; \
+    print('\n'.join(sorted(tags)[-10:]))"
+# Then get digest:
+docker manifest inspect --verbose registry.k8s.io/<name>:<tag> \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); \
+    print(d[0].get('Descriptor',{}).get('digest','') if isinstance(d,list) else '')"
+
+# 2. Docker Hub / ghcr.io images — use Hub REST API, not the web UI:
+curl -s "https://registry.hub.docker.com/v2/repositories/<org>/<image>/tags/?page_size=20&ordering=last_updated" \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); \
+    [print(t['name']) for t in d.get('results',[]) \
+      if not any(x in t['name'] for x in ['sha256','sig','att','metadata'])]"
+# Then get manifest-list digest:
+docker manifest inspect --verbose <image>:<tag> \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); \
+    print(d[0].get('Descriptor',{}).get('digest','') if isinstance(d,list) else '')"
+```
+
+Always write image refs as `<registry>/<image>:<tag>@<digest>` for reproducibility.
+
 ## OS
 
 Nodes run **Fedora CoreOS** (immutable, ostree-based) — *not* Talos. The top-level `README.md`, `genesis/`, and `Plan.md` still contain Talos references; those are stale and should be cleaned up when convenient. When operating the cluster, use FCOS commands (`systemctl`, `rpm-ostree`), not `talosctl`.

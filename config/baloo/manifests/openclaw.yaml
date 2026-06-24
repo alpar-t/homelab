@@ -27,12 +27,34 @@ spec:
       labels:
         app.kubernetes.io/name: openclaw
     spec:
-      automountServiceAccountToken: false
+      serviceAccountName: vault-keeper
+      automountServiceAccountToken: true
       securityContext:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       initContainers:
+        # Copies kubectl into /tools so sovereign can manage baloo-vault secrets.
+        - name: kubectl-installer
+          image: registry.k8s.io/kubectl:v1.34.6@sha256:6c0ddf316c86909847c99c16ba58585826c69c21156ce858813125ded57be4d9
+          command: ["cp", "/bin/kubectl", "/tools/kubectl"]
+          securityContext:
+            runAsUser: 65532
+            runAsGroup: 65532
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 32Mi
+          volumeMounts:
+            - name: tools
+              mountPath: /tools
         # One-shot clone so the repo is on disk before render-config runs.
         - name: git-sync-init
           image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
@@ -145,6 +167,8 @@ spec:
               value: /state/home
             - name: NODE_ENV
               value: production
+            - name: PATH
+              value: /tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
             - name: OPENCLAW_CONFIG_PATH
               value: /rendered/openclaw.json
             - name: OPENCLAW_STATE_DIR
@@ -202,6 +226,12 @@ spec:
               mountPath: /state
             - name: tmp
               mountPath: /tmp
+            - name: tools
+              mountPath: /tools
+              readOnly: true
+            - name: alpar-vault-token
+              mountPath: /var/run/secrets/alpar-vault
+              readOnly: true
 
       volumes:
         - name: git-repo
@@ -213,6 +243,14 @@ spec:
             claimName: openclaw-state
         - name: tmp
           emptyDir: {}
+        - name: tools
+          emptyDir: {}
+        - name: alpar-vault-token
+          secret:
+            secretName: alpar-vault-token
+            items:
+              - key: token
+                path: token
 ---
 apiVersion: v1
 kind: Service

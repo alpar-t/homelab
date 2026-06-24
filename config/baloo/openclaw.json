@@ -24,6 +24,15 @@
         "tools": {
           "deny": ["*"]
         }
+      },
+      {
+        "id": "sovereign",
+        "name": "Sovereign",
+        "workspace": "/git/link/config/baloo/agents/sovereign",
+        "heartbeat": false,
+        "tools": {
+          "allow": ["*"]
+        }
       }
     ]
   },

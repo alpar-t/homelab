@@ -1,0 +1,79 @@
+# Isolated namespace for agent secrets — no workloads, no other access.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: baloo-vault
+---
+# Sovereign's ServiceAccount — full CRUD on all secrets in baloo-vault.
+# automountServiceAccountToken: false here; the pod spec sets it to true to opt in.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-keeper
+  namespace: baloo
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vault-keeper
+  namespace: baloo-vault
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vault-keeper
+  namespace: baloo-vault
+subjects:
+  - kind: ServiceAccount
+    name: vault-keeper
+    namespace: baloo
+roleRef:
+  kind: Role
+  name: vault-keeper
+  apiGroup: rbac.authorization.k8s.io
+---
+# alpar agent's scoped ServiceAccount — read-only on explicitly named secrets only.
+# Long-lived token Secret so it can be mounted in the openclaw pod.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alpar-vault
+  namespace: baloo
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alpar-vault-token
+  namespace: baloo
+  annotations:
+    kubernetes.io/service-account.name: alpar-vault
+type: kubernetes.io/service-account-token
+---
+# Role starts with no rules — grants nothing until sovereign provisions credentials
+# and proposes a PR adding specific secret names to resourceNames.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alpar-vault
+  namespace: baloo-vault
+rules: []
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alpar-vault
+  namespace: baloo-vault
+subjects:
+  - kind: ServiceAccount
+    name: alpar-vault
+    namespace: baloo
+roleRef:
+  kind: Role
+  name: alpar-vault
+  apiGroup: rbac.authorization.k8s.io
