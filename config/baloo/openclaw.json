@@ -43,5 +43,23 @@
       "allowFrom": ["${BALOO_OWNER_PHONE}"]
     }
   },
-  "cron": { "enabled": false }
+  "cron": { "enabled": false },
+  "tools": {
+    "media": {
+      "audio": {
+        "enabled": true,
+        "echoTranscript": true,
+        "echoFormat": "🎙️ \"{transcript}\"",
+        "models": [
+          {
+            "type": "cli",
+            "command": "python3",
+            "args": ["/git/link/config/baloo/whisper-transcribe.py", "{{MediaPath}}"],
+            "capabilities": ["audio"],
+            "timeoutSeconds": 120
+          }
+        ]
+      }
+    }
+  }
 }

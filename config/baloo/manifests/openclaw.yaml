@@ -33,6 +33,27 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       initContainers:
+        # Copy static ffmpeg binary into /tmp for the whisper transcription script.
+        - name: ffmpeg-copy
+          image: mwader/static-ffmpeg:8.1.2@sha256:3bfa407c614a29a4535f1e3220fd9f6bc9cd7c25483036962e3c8ff711b56e01
+          command: ["cp", "/ffmpeg", "/tmp/ffmpeg"]
+          securityContext:
+            runAsUser: 65533
+            runAsGroup: 65533
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 32Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
         # One-shot clone so the repo is on disk before render-config runs.
         - name: git-sync-init
           image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
