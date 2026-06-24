@@ -70,7 +70,6 @@ data:
 
         def transcribe(self, pcm: bytes) -> str:
             fmt = {'rate': RATE, 'width': 2, 'channels': 1}
-            self._recv()  # consume describe
             self._send('audio-start', fmt)
             for i in range(0, len(pcm), 8192):
                 self._send('audio-chunk', fmt, pcm[i:i + 8192])
