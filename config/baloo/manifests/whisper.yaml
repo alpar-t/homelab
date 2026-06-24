@@ -1,4 +1,119 @@
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: whisper-http-script
+  namespace: baloo
+data:
+  whisper-http.py: |
+    #!/usr/src/.venv/bin/python3
+    """
+    HTTP bridge for wyoming-faster-whisper.
+    POST /transcribe with raw audio body (any format PyAV supports) → transcript text.
+    Runs as a sidecar alongside the wyoming server and speaks Wyoming on localhost:10300.
+    """
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    import av, io, json, socket, sys
+
+    WYOMING_PORT = 10300
+    HTTP_PORT = 10301
+    RATE = 16000
+
+
+    def to_pcm(data: bytes) -> bytes:
+        buf = b''
+        container = av.open(io.BytesIO(data))
+        resampler = av.AudioResampler(format='s16', layout='mono', rate=RATE)
+        for frame in container.decode(audio=0):
+            frame.pts = None
+            for r in resampler.resample(frame):
+                buf += bytes(r.planes[0])
+        for r in resampler.resample(None):
+            buf += bytes(r.planes[0])
+        return buf
+
+
+    class Wyoming:
+        def __init__(self):
+            self.sock = socket.create_connection(('127.0.0.1', WYOMING_PORT), timeout=10)
+            self.sock.settimeout(120)
+            self._buf = b''
+
+        def close(self):
+            self.sock.close()
+
+        def _send(self, type_, data=None, payload=b''):
+            h = {'type': type_}
+            if data:
+                h['data'] = data
+            if payload:
+                h['data_length'] = len(payload)
+            self.sock.sendall((json.dumps(h) + '\n').encode())
+            if payload:
+                self.sock.sendall(payload)
+
+        def _recv(self):
+            while b'\n' not in self._buf:
+                c = self.sock.recv(65536)
+                if not c:
+                    raise EOFError('connection closed')
+                self._buf += c
+            line, self._buf = self._buf.split(b'\n', 1)
+            ev = json.loads(line)
+            n = ev.get('data_length', 0)
+            while len(self._buf) < n:
+                c = self.sock.recv(65536)
+                if not c:
+                    raise EOFError('connection closed mid-payload')
+                self._buf += c
+            payload, self._buf = self._buf[:n], self._buf[n:]
+            return ev, payload
+
+        def transcribe(self, pcm: bytes) -> str:
+            fmt = {'rate': RATE, 'width': 2, 'channels': 1}
+            self._recv()  # consume describe
+            self._send('audio-start', fmt)
+            for i in range(0, len(pcm), 8192):
+                self._send('audio-chunk', fmt, pcm[i:i + 8192])
+            self._send('audio-stop', {})
+            while True:
+                ev, _ = self._recv()
+                if ev['type'] == 'transcript':
+                    return ev.get('data', {}).get('text', '')
+                if ev['type'] == 'error':
+                    raise RuntimeError(f"wyoming error: {ev.get('data')}")
+
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            if self.path != '/transcribe':
+                self.send_error(404)
+                return
+            try:
+                n = int(self.headers.get('Content-Length', 0))
+                audio = self.rfile.read(n)
+                pcm = to_pcm(audio)
+                w = Wyoming()
+                try:
+                    text = w.transcribe(pcm)
+                finally:
+                    w.close()
+                body = text.encode('utf-8')
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/plain; charset=utf-8')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            except Exception as e:
+                self.send_error(500, str(e))
+
+        def log_message(self, *_):
+            pass
+
+
+    print(f'whisper-http listening on :{HTTP_PORT}', flush=True)
+    HTTPServer(('', HTTP_PORT), Handler).serve_forever()
+---
+apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: whisper-models
@@ -58,7 +173,6 @@ spec:
             limits:
               cpu: 4000m
               memory: 4Gi
-          # startupProbe disables liveness until ready — up to 20 min for first download
           startupProbe:
             tcpSocket:
               port: wyoming
@@ -74,10 +188,40 @@ spec:
               port: wyoming
             periodSeconds: 30
             failureThreshold: 3
+
+        # HTTP bridge: accepts raw audio (any PyAV-supported format), converts to
+        # PCM16, speaks Wyoming to localhost:10300, returns transcript as text.
+        - name: whisper-http
+          image: rhasspy/wyoming-whisper:3.1.0@sha256:9501d2659eee83b6eead98d53842193e5fed011eda6c5b1c3ad36f3146b28fed
+          command: ["/usr/src/.venv/bin/python3", "/scripts/whisper-http.py"]
+          ports:
+            - name: http
+              containerPort: 10301
+              protocol: TCP
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
       volumes:
         - name: models
           persistentVolumeClaim:
             claimName: whisper-models
+        - name: scripts
+          configMap:
+            name: whisper-http-script
+            defaultMode: 0755
 ---
 apiVersion: v1
 kind: Service
@@ -95,4 +239,8 @@ spec:
     - name: wyoming
       port: 10300
       targetPort: wyoming
+      protocol: TCP
+    - name: http
+      port: 10301
+      targetPort: http
       protocol: TCP
