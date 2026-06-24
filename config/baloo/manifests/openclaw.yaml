@@ -6,7 +6,8 @@
 # Writable state (WA session auth, credentials) lives on the Longhorn PVC at /state.
 #
 # Config changes (SOUL.md, AGENTS.md) propagate on the next conversation without restart.
-# openclaw.json changes (bindings, tool policies) require a pod restart:
+# openclaw.json changes (bindings, tool policies) require a new pod — the render-config
+# init container bakes the config at startup and CrashLoopBackOff restarts don't re-run it.
 #   kubectl rollout restart deployment/openclaw -n baloo
 apiVersion: apps/v1
 kind: Deployment
