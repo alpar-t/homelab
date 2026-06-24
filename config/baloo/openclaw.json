@@ -45,7 +45,7 @@
   },
   "cron": { "enabled": false },
   "plugins": {
-    "allow": ["@openclaw/whatsapp"]
+    "allow": ["whatsapp"]
   },
   "tools": {
     "media": {
