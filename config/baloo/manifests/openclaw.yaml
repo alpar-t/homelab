@@ -34,15 +34,17 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       initContainers:
-        # Copies kubectl into /tools so sovereign can manage baloo-vault secrets.
+        # Downloads kubectl into /tools so sovereign can manage baloo-vault secrets.
+        # registry.k8s.io/kubectl is distroless (no cp), so we use Alpine + wget instead.
         - name: kubectl-installer
-          image: registry.k8s.io/kubectl:v1.34.6@sha256:6c0ddf316c86909847c99c16ba58585826c69c21156ce858813125ded57be4d9
-          command: ["cp", "/bin/kubectl", "/tools/kubectl"]
+          image: alpine:3.21@sha256:f27cad9117495d32d067133afff942cb2dc745dfe9163e949f6bfe8a6a245339
+          command:
+            - sh
+            - -c
+            - "wget -qO /tools/kubectl https://dl.k8s.io/release/v1.34.6/bin/linux/amd64/kubectl && chmod +x /tools/kubectl"
           securityContext:
-            runAsUser: 65532
-            runAsGroup: 65532
+            runAsUser: 0
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
             capabilities:
               drop: [ALL]
           resources:
