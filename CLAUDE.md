@@ -32,6 +32,13 @@ docker manifest inspect --verbose <image>:<tag> \
 
 Always write image refs as `<registry>/<image>:<tag>@<digest>` for reproducibility.
 
+**`registry.k8s.io/kubectl` is distroless** — no shell, no `cp`, no standard Unix tools.
+To get kubectl into a volume, use an Alpine init container that `wget`s the binary:
+```yaml
+image: alpine:3.21@sha256:...
+command: ["sh", "-c", "wget -qO /tools/kubectl https://dl.k8s.io/release/v<ver>/bin/linux/amd64/kubectl && chmod +x /tools/kubectl"]
+```
+
 ## OS
 
 Nodes run **Fedora CoreOS** (immutable, ostree-based) — *not* Talos. The top-level `README.md`, `genesis/`, and `Plan.md` still contain Talos references; those are stale and should be cleaned up when convenient. When operating the cluster, use FCOS commands (`systemctl`, `rpm-ostree`), not `talosctl`.
