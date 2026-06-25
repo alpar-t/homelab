@@ -120,7 +120,7 @@ spec:
             - name: ZE_ENABLE_PCI_ID_DEVICE_ORDER
               value: "1"
             - name: WHISPER_MODEL
-              value: "large-v3"
+              value: "small"
             - name: WHISPER_LANG
               value: "auto"
             - name: WHISPER_BEAM_SIZE
