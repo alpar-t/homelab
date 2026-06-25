@@ -9,11 +9,15 @@ data:
     """
     HTTP bridge for wyoming-whisper-intel (whisper.cpp + Intel GPU).
     POST /transcribe with raw audio body (any format PyAV supports) → transcript text.
-    Runs as a sidecar alongside the wyoming server and speaks Wyoming on localhost:7891.
+    Bridges to the wyoming server on localhost:7891 using the wyoming Python library.
     """
     from http.server import HTTPServer, BaseHTTPRequestHandler
-    import av, io, json, socket, sys
+    import asyncio, av, io, sys
 
+    from wyoming.audio import AudioChunk, AudioStart, AudioStop
+    from wyoming.client import AsyncTcpClient
+
+    WYOMING_HOST = '127.0.0.1'
     WYOMING_PORT = 7891
     HTTP_PORT = 10301
     RATE = 16000
@@ -32,56 +36,21 @@ data:
         return buf
 
 
-    class Wyoming:
-        def __init__(self):
-            self.sock = socket.create_connection(('127.0.0.1', WYOMING_PORT), timeout=10)
-            self.sock.settimeout(300)
-            self._buf = b''
-            self._send('describe')
-            self._recv()  # consume info response
-
-        def close(self):
-            self.sock.close()
-
-        def _send(self, type_, data=None, payload=b''):
-            h = {'type': type_}
-            if data:
-                h['data'] = data
-            if payload:
-                h['data_length'] = len(payload)
-            self.sock.sendall((json.dumps(h) + '\n').encode())
-            if payload:
-                self.sock.sendall(payload)
-
-        def _recv(self):
-            while b'\n' not in self._buf:
-                c = self.sock.recv(65536)
-                if not c:
-                    raise EOFError('connection closed')
-                self._buf += c
-            line, self._buf = self._buf.split(b'\n', 1)
-            ev = json.loads(line)
-            n = ev.get('data_length', 0)
-            while len(self._buf) < n:
-                c = self.sock.recv(65536)
-                if not c:
-                    raise EOFError('connection closed mid-payload')
-                self._buf += c
-            payload, self._buf = self._buf[:n], self._buf[n:]
-            return ev, payload
-
-        def transcribe(self, pcm: bytes) -> str:
-            fmt = {'rate': RATE, 'width': 2, 'channels': 1}
-            self._send('audio-start', fmt)
+    async def transcribe(pcm: bytes) -> str:
+        async with AsyncTcpClient(WYOMING_HOST, WYOMING_PORT) as client:
+            await client.write_event(AudioStart(rate=RATE, width=2, channels=1).event())
             for i in range(0, len(pcm), 8192):
-                self._send('audio-chunk', fmt, pcm[i:i + 8192])
-            self._send('audio-stop', {})
+                chunk = pcm[i:i + 8192]
+                await client.write_event(AudioChunk(rate=RATE, width=2, channels=1, audio=chunk).event())
+            await client.write_event(AudioStop().event())
             while True:
-                ev, _ = self._recv()
-                if ev['type'] == 'transcript':
-                    return ev.get('data', {}).get('text', '')
-                if ev['type'] == 'error':
-                    raise RuntimeError(f"wyoming error: {ev.get('data')}")
+                event = await asyncio.wait_for(client.read_event(), timeout=300)
+                if event is None:
+                    raise RuntimeError('wyoming connection closed')
+                if event.type == 'transcript':
+                    return (event.data or {}).get('text', '')
+                if event.type == 'error':
+                    raise RuntimeError(f'wyoming error: {event.data}')
 
 
     class Handler(BaseHTTPRequestHandler):
@@ -93,11 +62,7 @@ data:
                 n = int(self.headers.get('Content-Length', 0))
                 audio = self.rfile.read(n)
                 pcm = to_pcm(audio)
-                w = Wyoming()
-                try:
-                    text = w.transcribe(pcm)
-                finally:
-                    w.close()
+                text = asyncio.run(transcribe(pcm))
                 body = text.encode('utf-8')
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/plain; charset=utf-8')
