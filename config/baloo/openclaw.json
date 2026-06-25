@@ -68,7 +68,7 @@
             "command": "python3",
             "args": ["/git/link/config/baloo/whisper-transcribe.py", "{{MediaPath}}"],
             "capabilities": ["audio"],
-            "timeoutSeconds": 300
+            "timeoutSeconds": 600
           }
         ]
       }

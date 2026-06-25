@@ -17,7 +17,7 @@ def main():
         URL, data=audio, method='POST',
         headers={'Content-Type': 'application/octet-stream'},
     )
-    with urllib.request.urlopen(req, timeout=120) as r:
+    with urllib.request.urlopen(req, timeout=600) as r:
         print(r.read().decode())
 
 
