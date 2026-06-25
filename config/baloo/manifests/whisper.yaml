@@ -44,7 +44,7 @@ data:
                 await client.write_event(AudioChunk(rate=RATE, width=2, channels=1, audio=chunk).event())
             await client.write_event(AudioStop().event())
             while True:
-                event = await asyncio.wait_for(client.read_event(), timeout=300)
+                event = await asyncio.wait_for(client.read_event(), timeout=600)
                 if event is None:
                     raise RuntimeError('wyoming connection closed')
                 if event.type == 'transcript':
