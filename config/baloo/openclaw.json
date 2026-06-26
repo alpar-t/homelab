@@ -22,7 +22,13 @@
         "name": "Baloo",
         "workspace": "/git/link/config/baloo/agents/echo",
         "tools": {
-          "deny": ["*"]
+          "allow": [
+            "web_search",
+            "web_fetch",
+            "browser",
+            "x_search",
+            "image"
+          ]
         }
       },
       {

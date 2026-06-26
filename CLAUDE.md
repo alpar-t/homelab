@@ -2,6 +2,14 @@
 
 3-node k3s cluster on Odroid hardware. See [README.md](README.md) for the broader picture.
 
+## Writing skills or Baloo agent files
+
+When editing anything in `config/baloo/agents/*/SOUL.md` or `AGENTS.md`, or when authoring a new Claude Code skill, first load Anthropic's skill-creator guidance for review principles:
+
+- https://raw.githubusercontent.com/anthropics/skills/main/skills/skill-creator/SKILL.md
+
+Key points to apply: imperative tone with the *why*, keep files lean, avoid rigid ALL-CAPS rules, put "when to use" details in the description (for skills) or in the first paragraph (for agents), specify output formats with concrete examples where they aren't obvious.
+
 ## Container image references
 
 Always verify image references against the actual registry before writing them into manifests. Do not guess or infer from the GitHub repo name — published image names often differ (e.g. the `rhasspy/wyoming-faster-whisper` repo publishes as `rhasspy/wyoming-whisper` on Docker Hub). Verify by fetching the GitHub README or the registry page directly.
