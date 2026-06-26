@@ -29,7 +29,8 @@
             "browser",
             "x_search",
             "image",
-            "mcp__google-maps__*"
+            "mcp__google-maps__*",
+            "mcp__trek__*"
           ]
         }
       },
