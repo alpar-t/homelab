@@ -14,13 +14,14 @@
     "defaults": {
       "skipBootstrap": true,
       "model": "anthropic/claude-sonnet-4-6",
-      "heartbeat": { "every": "1h" }
+      "heartbeat": { "every": "0m" },
+      "session": { "dmScope": "per-channel-peer" }
     },
     "list": [
       {
-        "id": "echo",
+        "id": "direct-message",
         "name": "Baloo",
-        "workspace": "/git/link/config/baloo/agents/echo",
+        "workspace": "/git/link/config/baloo/agents/direct-message",
         "tools": {
           "allow": [
             "web_search",
@@ -33,17 +34,14 @@
         }
       },
       {
-        "id": "kinga",
-        "name": "Baloo",
-        "workspace": "/git/link/config/baloo/agents/kinga",
+        "id": "cooking",
+        "name": "Baloo Shef",
+        "workspace": "/git/link/config/baloo/agents/cooking",
         "tools": {
           "allow": [
             "web_search",
             "web_fetch",
-            "browser",
-            "x_search",
-            "image",
-            "mcp__google-maps__*"
+            "mcp__github-life__*"
           ]
         }
       }
@@ -51,17 +49,24 @@
   },
   "bindings": [
     {
-      "agentId": "echo",
+      "agentId": "direct-message",
       "match": {
         "channel": "whatsapp",
         "peer": { "kind": "direct", "id": "${BALOO_OWNER_PHONE}" }
       }
     },
     {
-      "agentId": "kinga",
+      "agentId": "direct-message",
       "match": {
         "channel": "whatsapp",
         "peer": { "kind": "direct", "id": "${KINGA_PHONE}" }
+      }
+    },
+    {
+      "agentId": "cooking",
+      "match": {
+        "channel": "whatsapp",
+        "peer": { "kind": "group", "id": "${BALOO_SHEF_GROUP}" }
       }
     }
   ],
@@ -83,6 +88,15 @@
         "args": ["-y", "@modelcontextprotocol/server-google-maps"],
         "env": {
           "GOOGLE_MAPS_API_KEY": "${GOOGLE_MAPS_API_KEY}"
+        }
+      },
+      "github-life": {
+        "command": "node",
+        "args": ["/git/link/config/baloo/tools/github-mcp-start.js"],
+        "env": {
+          "GITHUB_APP_ID": "${GITHUB_APP_ID}",
+          "GITHUB_APP_INSTALLATION_ID": "${GITHUB_APP_INSTALLATION_ID}",
+          "GITHUB_APP_PRIVATE_KEY_FILE": "/var/run/secrets/github-app/private-key.pem"
         }
       }
     }
