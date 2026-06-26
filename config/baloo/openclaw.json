@@ -27,10 +27,10 @@
             "web_fetch",
             "browser",
             "image",
-            "mcp__google-maps__*",
-            "mcp__trek__*",
-            "mcp__hass__*",
-            "mcp__github-life__*"
+            "google-maps__*",
+            "trek__*",
+            "hass__*",
+            "github-life__*"
           ]
         }
       },
@@ -42,8 +42,22 @@
           "allow": [
             "web_search",
             "web_fetch",
-            "mcp__github-life__*",
-            "mcp__hass__*"
+            "github-life__*",
+            "hass__*"
+          ]
+        }
+      },
+      {
+        "id": "garden",
+        "name": "Baloo Grădinar",
+        "workspace": "/git/link/config/baloo/agents/garden",
+        "tools": {
+          "allow": [
+            "web_search",
+            "web_fetch",
+            "image",
+            "github-life__*",
+            "hass__*"
           ]
         }
       }
@@ -69,6 +83,13 @@
       "match": {
         "channel": "whatsapp",
         "peer": { "kind": "group", "id": "${BALOO_SHEF_GROUP}" }
+      }
+    },
+    {
+      "agentId": "garden",
+      "match": {
+        "channel": "whatsapp",
+        "peer": { "kind": "group", "id": "${BALOO_GARDEN_GROUP}" }
       }
     }
   ],
