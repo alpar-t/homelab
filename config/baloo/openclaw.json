@@ -78,6 +78,9 @@
     }
   },
   "cron": { "enabled": false },
+  "session": {
+    "dmScope": "per-channel-peer"
+  },
   "plugins": {
     "allow": ["whatsapp"]
   },
