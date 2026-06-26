@@ -188,6 +188,11 @@ spec:
                 secretKeyRef:
                   name: baloo-secrets
                   key: ANTHROPIC_API_KEY
+            - name: GOOGLE_MAPS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: GOOGLE_MAPS_API_KEY
           livenessProbe:
             exec:
               command:

@@ -21,13 +21,15 @@
         "id": "echo",
         "name": "Baloo",
         "workspace": "/git/link/config/baloo/agents/echo",
+        "mcpServers": ["google-maps"],
         "tools": {
           "allow": [
             "web_search",
             "web_fetch",
             "browser",
             "x_search",
-            "image"
+            "image",
+            "mcp__google-maps__*"
           ]
         }
       },
@@ -61,6 +63,17 @@
   "cron": { "enabled": false },
   "plugins": {
     "allow": ["whatsapp"]
+  },
+  "mcp": {
+    "servers": {
+      "google-maps": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-google-maps"],
+        "env": {
+          "GOOGLE_MAPS_API_KEY": "${GOOGLE_MAPS_API_KEY}"
+        }
+      }
+    }
   },
   "tools": {
     "media": {
