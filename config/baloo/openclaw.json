@@ -42,7 +42,8 @@
           "allow": [
             "web_search",
             "web_fetch",
-            "mcp__github-life__*"
+            "mcp__github-life__*",
+            "mcp__hass__*"
           ]
         }
       }
