@@ -26,7 +26,6 @@
             "web_search",
             "web_fetch",
             "browser",
-            "x_search",
             "image",
             "mcp__google-maps__*",
             "mcp__trek__*"
@@ -104,6 +103,7 @@
       },
       "trek": {
         "url": "https://travel.newjoy.ro/mcp",
+        "transport": "streamable-http",
         "auth": "oauth"
       }
     }
