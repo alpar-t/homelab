@@ -28,7 +28,8 @@
             "browser",
             "image",
             "mcp__google-maps__*",
-            "mcp__trek__*"
+            "mcp__trek__*",
+            "mcp__hass__*"
           ]
         }
       },
@@ -105,6 +106,13 @@
         "url": "https://travel.newjoy.ro/mcp",
         "transport": "streamable-http",
         "auth": "oauth"
+      },
+      "hass": {
+        "url": "http://192.168.1.102:8123/mcp_server/sse",
+        "transport": "sse",
+        "headers": {
+          "Authorization": "Bearer ${HA_TOKEN_READONLY}"
+        }
       }
     }
   },
