@@ -30,36 +30,12 @@ spec:
       annotations:
         homelab/config-rev: "2026-06-24a"
     spec:
-      serviceAccountName: vault-keeper
-      automountServiceAccountToken: true
+      automountServiceAccountToken: false
       securityContext:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       initContainers:
-        # Downloads kubectl into /tools so sovereign can manage baloo-vault secrets.
-        # registry.k8s.io/kubectl is distroless (no cp), so we use Alpine + wget instead.
-        - name: kubectl-installer
-          image: alpine:3.21@sha256:f27cad9117495d32d067133afff942cb2dc745dfe9163e949f6bfe8a6a245339
-          command:
-            - sh
-            - -c
-            - "wget -qO /tools/kubectl https://dl.k8s.io/release/v1.34.6/bin/linux/amd64/kubectl && chmod +x /tools/kubectl"
-          securityContext:
-            runAsUser: 0
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop: [ALL]
-          resources:
-            requests:
-              cpu: 10m
-              memory: 16Mi
-            limits:
-              cpu: 100m
-              memory: 32Mi
-          volumeMounts:
-            - name: tools
-              mountPath: /tools
         # One-shot clone so the repo is on disk before render-config runs.
         - name: git-sync-init
           image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
@@ -178,7 +154,7 @@ spec:
             - name: NODE_ENV
               value: production
             - name: PATH
-              value: /tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+              value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
             - name: OPENCLAW_CONFIG_PATH
               value: /rendered/openclaw.json
             - name: OPENCLAW_STATE_DIR
@@ -241,12 +217,6 @@ spec:
               mountPath: /state
             - name: tmp
               mountPath: /tmp
-            - name: tools
-              mountPath: /tools
-              readOnly: true
-            - name: alpar-vault-token
-              mountPath: /var/run/secrets/alpar-vault
-              readOnly: true
 
       volumes:
         - name: git-repo
@@ -258,14 +228,6 @@ spec:
             claimName: openclaw-state
         - name: tmp
           emptyDir: {}
-        - name: tools
-          emptyDir: {}
-        - name: alpar-vault-token
-          secret:
-            secretName: alpar-vault-token
-            items:
-              - key: token
-                path: token
 ---
 apiVersion: v1
 kind: Service
