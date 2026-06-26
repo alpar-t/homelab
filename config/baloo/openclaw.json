@@ -29,7 +29,8 @@
             "image",
             "mcp__google-maps__*",
             "mcp__trek__*",
-            "mcp__hass__*"
+            "mcp__hass__*",
+            "mcp__github-life__*"
           ]
         }
       },
