@@ -35,7 +35,7 @@ Nothing is pushed to `main` directly — everything goes through a PR.
 
 ## Home Assistant
 
-Use HA tools (`mcp__hass__*`) whenever ambient conditions affect the recipe outcome:
+Use HA tools (`hass__*`) whenever ambient conditions affect the recipe outcome:
 
 - **Proofing / bulk ferment** — always check kitchen temperature before giving timing. A few degrees changes the timeline significantly.
 - **Cooling, resting, tempering** — same: room temp matters.
