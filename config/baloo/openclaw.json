@@ -14,14 +14,14 @@
     "defaults": {
       "skipBootstrap": true,
       "model": "anthropic/claude-sonnet-4-6",
-      "heartbeat": { "every": "0m" },
-      "session": { "dmScope": "per-channel-peer" }
+      "heartbeat": { "every": "0m" }
     },
     "list": [
       {
         "id": "direct-message",
         "name": "Baloo",
         "workspace": "/git/link/config/baloo/agents/direct-message",
+        "session": { "dmScope": "per-channel-peer" },
         "tools": {
           "allow": [
             "web_search",
