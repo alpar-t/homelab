@@ -105,6 +105,11 @@ spec:
                 secretKeyRef:
                   name: baloo-secrets
                   key: BALOO_OWNER_PHONE
+            - name: KINGA_PHONE
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: KINGA_PHONE
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000

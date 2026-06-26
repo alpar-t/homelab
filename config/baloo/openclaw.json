@@ -33,12 +33,18 @@
         }
       },
       {
-        "id": "sovereign",
-        "name": "Sovereign",
-        "workspace": "/git/link/config/baloo/agents/sovereign",
-        "heartbeat": { "every": "0m" },
+        "id": "kinga",
+        "name": "Baloo",
+        "workspace": "/git/link/config/baloo/agents/kinga",
         "tools": {
-          "allow": ["*"]
+          "allow": [
+            "web_search",
+            "web_fetch",
+            "browser",
+            "x_search",
+            "image",
+            "mcp__google-maps__*"
+          ]
         }
       }
     ]
@@ -50,13 +56,20 @@
         "channel": "whatsapp",
         "peer": { "kind": "direct", "id": "${BALOO_OWNER_PHONE}" }
       }
+    },
+    {
+      "agentId": "kinga",
+      "match": {
+        "channel": "whatsapp",
+        "peer": { "kind": "direct", "id": "${KINGA_PHONE}" }
+      }
     }
   ],
   "channels": {
     "whatsapp": {
       "enabled": true,
       "dmPolicy": "allowlist",
-      "allowFrom": ["${BALOO_OWNER_PHONE}"]
+      "allowFrom": ["${BALOO_OWNER_PHONE}", "${KINGA_PHONE}"]
     }
   },
   "cron": { "enabled": false },
