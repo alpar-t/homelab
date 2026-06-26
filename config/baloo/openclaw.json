@@ -98,6 +98,10 @@
           "GITHUB_APP_INSTALLATION_ID": "${GITHUB_APP_INSTALLATION_ID}",
           "GITHUB_APP_PRIVATE_KEY_FILE": "/var/run/secrets/github-app/private-key.pem"
         }
+      },
+      "trek": {
+        "url": "https://travel.newjoy.ro/mcp",
+        "auth": "oauth"
       }
     }
   },
