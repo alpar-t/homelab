@@ -21,7 +21,6 @@
         "id": "direct-message",
         "name": "Baloo",
         "workspace": "/git/link/config/baloo/agents/direct-message",
-        "session": { "dmScope": "per-channel-peer" },
         "tools": {
           "allow": [
             "web_search",
