@@ -21,7 +21,6 @@
         "id": "echo",
         "name": "Baloo",
         "workspace": "/git/link/config/baloo/agents/echo",
-        "mcpServers": ["google-maps"],
         "tools": {
           "allow": [
             "web_search",
