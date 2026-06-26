@@ -58,6 +58,74 @@ kubectl rollout restart deployment/tailscale-subnet-router -n tailscale
 # and update the tailscale-auth secret
 ```
 
+## GL-MT3000 travel router (LAN client gateway)
+
+The GL-MT3000 (Tailscale IP `100.96.142.22`) lets devices on its WiFi reach
+`192.168.1.0/24` without installing Tailscale on each device. The GL acts as a
+transparent gateway — LAN clients (192.168.80.0/24) use MASQUERADE through
+the GL's Tailscale tunnel to reach the home network via `k8s-subnet-router`.
+
+### Required setup (not provided by GL.iNet's built-in Tailscale UI)
+
+**1. Tailscale flags** — persist in `/etc/tailscale/tailscaled.state`, apply once:
+```bash
+tailscale up \
+  --accept-routes \
+  --advertise-routes=192.168.8.0/24,192.168.80.0/24 \
+  --accept-dns=false
+```
+- `--accept-routes`: pull in `192.168.1.0/24` from k8s-subnet-router
+- `--advertise-routes`: expose GL's LAN subnets to tailnet
+- `--accept-dns=false`: prevent Tailscale overwriting GL's dnsmasq config
+
+**2. MASQUERADE rule** — add to `/etc/firewall.user` (re-applied on every
+firewall reload):
+```bash
+iptables -t nat -C postrouting_tailscale0_rule -j MASQUERADE 2>/dev/null || \
+    iptables -t nat -A postrouting_tailscale0_rule -j MASQUERADE 2>/dev/null
+```
+Without this, LAN client source IPs (192.168.80.x) reach k8s-subnet-router
+with no route back, so all connections time out.
+
+**3. Route to home LAN** — GL.iNet's Tailscale 1.80.3 (OpenWrt) does not
+auto-install kernel routes even with `--accept-routes`. Add to `/etc/rc.local`
+before `exit 0`:
+```bash
+i=0; while [ $i -lt 60 ] && ! ip link show tailscale0 >/dev/null 2>&1; \
+  do sleep 1; i=$((i+1)); done
+ip route add 192.168.1.0/24 dev tailscale0 2>/dev/null || true
+```
+
+**4. DNS for LAN clients** — in GL admin → Network → DHCP → DNS server,
+set `192.168.1.202` (Pi-hole). This pushes Pi-hole to clients via DHCP
+option 6; clients reach it through the MASQUERADE path.
+
+Do **not** set GL admin → Network → DNS to Pi-hole — that changes the GL
+router's own upstream resolver, which cannot reach Pi-hole (the GL's own
+traffic bypasses MASQUERADE and the tailscale0 zone has OUTPUT restrictions).
+
+### Troubleshooting
+
+```bash
+# Verify route is installed on GL
+ip route | grep 192.168.1
+
+# Verify MASQUERADE rule is active
+iptables -t nat -L postrouting_tailscale0_rule -n -v
+
+# Test connectivity from GL itself (use TCP, not ping — MetalLB IPs don't respond to ICMP)
+curl -sv http://192.168.1.204:8096 -o /dev/null 2>&1 | grep "< HTTP\|Connected"
+
+# If route is missing after reboot, re-add manually
+ip route add 192.168.1.0/24 dev tailscale0
+```
+
+### GL.iNet Tailscale UI limitations
+
+- **Allow Remote Access LAN**: lets remote Tailscale peers reach GL's LAN — not the reverse.
+- **Allow Remote Access WAN**: lets remote peers use GL's WAN uplink as exit node.
+- Neither enables LAN clients to access remote Tailscale subnets — the MASQUERADE rule above is required for that.
+
 ## Debugging
 
 ```bash
