@@ -2,6 +2,19 @@
 
 3-node k3s cluster on Odroid hardware. See [README.md](README.md) for the broader picture.
 
+## Baloo agent tool access
+
+OpenClaw's `mcp.servers` block is **gateway-global** — there is no per-agent MCP server config. Every agent can in principle reach every registered MCP server. The only access control is per-agent `tools.allow` and `tools.deny`.
+
+**Hard rules — enforce these on every change:**
+
+- Every agent in `openclaw.json` must have an explicit `tools.allow` listing exactly the tool namespaces it needs. This is a strict allowlist: tools not listed are unavailable to that agent.
+- Every agent must also have an explicit `tools.deny` for any sensitive namespace available in `mcp.servers` that it does not need. At minimum, deny `hass__*` and `github-life__*` unless the agent explicitly requires them.
+- Never add a new MCP server to `mcp.servers` without auditing every agent's `tools.deny` list to block it where it isn't needed.
+- `openclaw.json` changes (tool policies, bindings) require a pod restart to take effect: `kubectl rollout restart deployment/openclaw -n baloo`. SOUL.md / AGENTS.md changes hot-reload without restart.
+
+The trips channel (`Palkoek es Torokek`) must never have HA access — it is a shared family group with members outside the household.
+
 ## Writing skills or Baloo agent files
 
 When editing anything in `config/baloo/agents/*/SOUL.md` or `AGENTS.md`, or when authoring a new Claude Code skill, first load Anthropic's skill-creator guidance for review principles:

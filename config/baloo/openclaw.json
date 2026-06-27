@@ -44,6 +44,10 @@
             "searxng__*",
             "github-life__*",
             "hass__*"
+          ],
+          "deny": [
+            "trek__*",
+            "google-maps__*"
           ]
         }
       },
@@ -58,6 +62,10 @@
             "searxng__*",
             "github-life__*",
             "hass__*"
+          ],
+          "deny": [
+            "trek__*",
+            "google-maps__*"
           ]
         }
       },
@@ -72,6 +80,10 @@
             "google-maps__*",
             "web_fetch",
             "image"
+          ],
+          "deny": [
+            "hass__*",
+            "github-life__*"
           ]
         }
       }
