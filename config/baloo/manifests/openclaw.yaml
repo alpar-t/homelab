@@ -28,7 +28,7 @@ spec:
       labels:
         app.kubernetes.io/name: openclaw
       annotations:
-        homelab/config-rev: "2026-06-26b"
+        homelab/config-rev: "2026-06-27a"
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -96,6 +96,12 @@ spec:
                 secretKeyRef:
                   name: baloo-secrets
                   key: BALOO_GARDEN_GROUP
+            - name: BALOO_TRIPS_PALKOEK_GROUP
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: BALOO_TRIPS_PALKOEK_GROUP
+                  optional: true
             - name: HA_TOKEN_READONLY
               valueFrom:
                 secretKeyRef:

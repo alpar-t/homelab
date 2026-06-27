@@ -60,6 +60,20 @@
             "hass__*"
           ]
         }
+      },
+      {
+        "id": "trips",
+        "name": "Baloo Trips",
+        "workspace": "/git/link/config/baloo/agents/trips",
+        "tools": {
+          "allow": [
+            "trek__*",
+            "searxng__*",
+            "google-maps__*",
+            "web_fetch",
+            "image"
+          ]
+        }
       }
     ]
   },
@@ -90,6 +104,13 @@
       "match": {
         "channel": "whatsapp",
         "peer": { "kind": "group", "id": "${BALOO_GARDEN_GROUP}" }
+      }
+    },
+    {
+      "agentId": "trips",
+      "match": {
+        "channel": "whatsapp",
+        "peer": { "kind": "group", "id": "${BALOO_TRIPS_PALKOEK_GROUP}" }
       }
     }
   ],

@@ -78,9 +78,11 @@ Two ways to make Baloo respond to plain messages in a group:
 
 - **@-mention** the bot's number (or reply-quote one of its messages) — the
   one-shot way.
-- **`/activate always`** sent in the group by the owner — flips
+- **`/activation always`** sent in the group by the owner — flips
   `groupActivation` for that conversation so every subsequent message routes
   to the agent. Stored in the session store; persists across restarts.
+  Note the spelling: the parser matches `/activation` (with the trailing
+  `-ion`), not `/activate`. Modes are `always` or `mention`.
 
 If a group ID is configured correctly but nothing happens, check
 `/tmp/openclaw/openclaw-*.log` for the "stored for context" line before
