@@ -7,6 +7,7 @@ data:
   settings.yml: |
     use_default_settings: true
     server:
+      secret_key: "026dfffbad1cb92d55c6d5155cd124f1263788175338db8da4027a9b7bf8e42c"
       limiter: false
     search:
       formats:
