@@ -111,6 +111,7 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [x] Configure arr stack (Sonarr/Radarr/Prowlarr) with Emby
 - [x] ~~Configure private network access through Headscale~~ — replaced by stock Tailscale (see above)
 - [ ] AI agent: Claude-powered WhatsApp chatbot hooked to [alpar-t/life](https://github.com/alpar-t/life)
+- [ ] **Baloo: OpenAI Pro subscription + wire into Baloo** — set up an OpenAI Pro account, add API key to `baloo-secrets`, add the OpenAI provider to `openclaw.json` (model config), evaluate for agents where it outperforms Claude (e.g. image-heavy receipt parsing)
 
 ## Version Upgrades (audited 2026-04-12)
 
