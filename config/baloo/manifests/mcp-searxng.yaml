@@ -33,6 +33,8 @@ spec:
               value: "http://searxng.baloo.svc.cluster.local:8080"
             - name: MCP_HTTP_PORT
               value: "3000"
+            - name: MCP_HTTP_HOST
+              value: "0.0.0.0"
           readinessProbe:
             httpGet:
               path: /health
