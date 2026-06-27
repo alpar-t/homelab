@@ -91,6 +91,11 @@ spec:
                 secretKeyRef:
                   name: baloo-secrets
                   key: BALOO_SHEF_GROUP
+            - name: BALOO_GARDEN_GROUP
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: BALOO_GARDEN_GROUP
             - name: HA_TOKEN_READONLY
               valueFrom:
                 secretKeyRef:
