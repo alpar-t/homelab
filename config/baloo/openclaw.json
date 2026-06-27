@@ -23,10 +23,10 @@
         "workspace": "/git/link/config/baloo/agents/direct-message",
         "tools": {
           "allow": [
-            "web_search",
             "web_fetch",
             "browser",
             "image",
+            "searxng__*",
             "google-maps__*",
             "trek__*",
             "hass__*",
@@ -40,8 +40,8 @@
         "workspace": "/git/link/config/baloo/agents/cooking",
         "tools": {
           "allow": [
-            "web_search",
             "web_fetch",
+            "searxng__*",
             "github-life__*",
             "hass__*"
           ]
@@ -53,9 +53,9 @@
         "workspace": "/git/link/config/baloo/agents/garden",
         "tools": {
           "allow": [
-            "web_search",
             "web_fetch",
             "image",
+            "searxng__*",
             "github-life__*",
             "hass__*"
           ]
@@ -109,6 +109,10 @@
   },
   "mcp": {
     "servers": {
+      "searxng": {
+        "url": "http://mcp-searxng.baloo.svc.cluster.local:3000/mcp",
+        "transport": "streamable-http"
+      },
       "google-maps": {
         "command": "npx",
         "args": ["-y", "@modelcontextprotocol/server-google-maps"],

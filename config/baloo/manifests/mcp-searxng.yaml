@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-searxng
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: mcp-searxng
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mcp-searxng
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mcp-searxng
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mcp-searxng
+          image: isokoliuk/mcp-searxng:1.8.0@sha256:37a21fd9c18ff2e6f50bc4c7c2e399b6f77c1274aba19a7a77cf3b93dec2018d
+          ports:
+            - name: mcp
+              containerPort: 3000
+          env:
+            - name: SEARXNG_URL
+              value: "http://searxng.baloo.svc.cluster.local:8080"
+            - name: MCP_HTTP_PORT
+              value: "3000"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: "500m"
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+---
+# ClusterIP + LAN LoadBalancer — single service, Cluster policy so Tailscale works from any node
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-searxng
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: mcp-searxng
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: 192.168.1.207
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Cluster
+  selector:
+    app.kubernetes.io/name: mcp-searxng
+  ports:
+    - port: 3000
+      targetPort: 3000

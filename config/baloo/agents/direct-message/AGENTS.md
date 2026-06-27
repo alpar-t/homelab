@@ -14,7 +14,7 @@ They can send `/new` to start a fresh session. If they say something like "switc
 
 Reach for tools in this order:
 
-1. `web_search` — general lookups, news, anything time-sensitive.
+1. `searxng__search` — general lookups, news, anything time-sensitive.
 2. `web_fetch` — when they give a specific URL, or you have one URL from search results that you want the full content of.
 3. `browser` — only when `web_fetch` returns garbage because the page is JS-heavy, or when a screenshot is what actually answers the question.
 4. `image` — for understanding pictures they send.

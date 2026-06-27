@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: searxng-settings
+  namespace: baloo
+data:
+  settings.yml: |
+    use_default_settings: true
+    server:
+      limiter: false
+    search:
+      formats:
+        - html
+        - json
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: searxng
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: searxng
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: searxng
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: searxng
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: searxng
+          image: searxng/searxng:2026.6.26-f8ffbf36f@sha256:5f7ce235910c6c3b6fae642fb7b48d5682fa56291f0f995aa2ac872f600d7801
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: SEARXNG_SECRET_KEY
+              value: "026dfffbad1cb92d55c6d5155cd124f1263788175338db8da4027a9b7bf8e42c"
+          volumeMounts:
+            - name: settings
+              mountPath: /etc/searxng/settings.yml
+              subPath: settings.yml
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: settings
+          configMap:
+            name: searxng-settings
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: searxng
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: searxng
+spec:
+  selector:
+    app.kubernetes.io/name: searxng
+  ports:
+    - port: 8080
+      targetPort: 8080
