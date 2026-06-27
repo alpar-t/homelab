@@ -72,14 +72,7 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
   - Drain scripts baked into ignition template for new nodes
   - Run `genesis/apply-drain-config.sh` to apply to existing nodes
   - Reboots already staggered across Tue/Wed/Thu via Zincati config
-- [ ] **Test graceful drain/uncordon on a single node**
-  - Run `genesis/apply-drain-config.sh` to install services on all nodes
-  - SSH into one node and verify services are enabled: `systemctl is-enabled k3s-drain.service k3s-uncordon.service`
-  - Reboot one node: `sudo systemctl reboot`
-  - Watch from another node: `kubectl get nodes -w` — should see node go `SchedulingDisabled` before disappearing, then come back `Ready`
-  - Verify pods migrated gracefully: `kubectl get events --field-selector reason=Evicted -A`
-  - Verify PDBs are respected: `kubectl get pdb -A`
-  - Repeat for each node on separate days
+- [x] **Test graceful drain/uncordon on a single node**
 
 **Tasks:**
 - [ ] Monitoring (Prometheus + Grafana)
@@ -105,12 +98,12 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
   - [x] Pocket ID OIDC SSO with group-based admin claim (`trek-admins`)
   - [x] Reusable OIDC provisioner (`scripts/provision-oidc.sh`) for all future apps
   - [x] TREK MCP connected to Claude Code (OAuth via browser)
-  - [ ] TREK: add Google Maps API key for place search
+  - [x] TREK: add Google Maps API key for place search
   - [ ] TREK: configure Immich integration
-  - [ ] TREK: fix OIDC auth failure showing empty trip list instead of error (filed [#1283](https://github.com/mauriceboe/TREK/issues/1283)) — frontend needs to surface the 500 from `/api/auth/oidc/login` as a user-visible error state
+  - [x] TREK: fix OIDC auth failure showing empty trip list instead of error (filed [#1283](https://github.com/mauriceboe/TREK/issues/1283))
 - [x] Configure arr stack (Sonarr/Radarr/Prowlarr) with Emby
 - [x] ~~Configure private network access through Headscale~~ — replaced by stock Tailscale (see above)
-- [ ] AI agent: Claude-powered WhatsApp chatbot hooked to [alpar-t/life](https://github.com/alpar-t/life)
+- [x] AI agent: Claude-powered WhatsApp chatbot hooked to [alpar-t/life](https://github.com/alpar-t/life) — deployed as Baloo (OpenClaw)
 - [ ] **Baloo: OpenAI Pro subscription + wire into Baloo** — set up an OpenAI Pro account, add API key to `baloo-secrets`, add the OpenAI provider to `openclaw.json` (model config), evaluate for agents where it outperforms Claude (e.g. image-heavy receipt parsing)
 
 ## Version Upgrades (audited 2026-04-12)
