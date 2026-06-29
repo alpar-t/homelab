@@ -227,10 +227,10 @@ spec:
             timeoutSeconds: 5
           resources:
             requests:
-              cpu: 100m
+              cpu: 500m
               memory: 512Mi
             limits:
-              cpu: "1"
+              cpu: "2"
               memory: 1Gi
           securityContext:
             runAsNonRoot: true
