@@ -28,7 +28,7 @@ spec:
       labels:
         app.kubernetes.io/name: openclaw
       annotations:
-        homelab/config-rev: "2026-06-27a"
+        homelab/config-rev: "2026-06-29a"
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -107,6 +107,11 @@ spec:
                 secretKeyRef:
                   name: baloo-secrets
                   key: HA_TOKEN_READONLY
+            - name: TREK_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: TREK_API_TOKEN
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
@@ -248,83 +253,6 @@ spec:
             - name: github-app-key
               mountPath: /var/run/secrets/github-app
               readOnly: true
-
-        # Refreshes the Trek MCP OAuth token every 30 min, well within the 1-hour TTL.
-        # OpenClaw does not auto-refresh tokens, so without this the access token
-        # expires and OpenClaw times out trying to re-initiate the auth-code flow
-        # (which requires a localhost callback that never arrives in a pod).
-        - name: trek-token-refresher
-          image: ghcr.io/openclaw/openclaw:2026.6.10@sha256:af7ea052cf216f581fb18fabada01552356c53717461c0399b623cba7ecad4b1
-          command:
-            - node
-            - -e
-            - |
-              const https = require('https');
-              const fs = require('fs');
-
-              const TOKEN_FILE = '/state/mcp-oauth/trek-25ef006bcef54e86.json';
-              const INTERVAL_MS = 30 * 60 * 1000;
-
-              async function refresh() {
-                if (!fs.existsSync(TOKEN_FILE)) return;
-                const data = JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
-                if (!data.tokens?.refresh_token) return;
-                const body = new URLSearchParams({
-                  grant_type: 'refresh_token',
-                  refresh_token: data.tokens.refresh_token,
-                  client_id: data.clientInformation.client_id,
-                }).toString();
-                await new Promise((resolve, reject) => {
-                  const req = https.request('https://travel.newjoy.ro/oauth/token', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                  }, (res) => {
-                    let buf = '';
-                    res.on('data', d => buf += d);
-                    res.on('end', () => {
-                      if (res.statusCode !== 200) { reject(new Error(`${res.statusCode}: ${buf}`)); return; }
-                      const tokens = JSON.parse(buf);
-                      data.tokens.access_token = tokens.access_token;
-                      data.tokens.refresh_token = tokens.refresh_token;
-                      // Remove pending auth-code state so OpenClaw doesn't wait for a callback
-                      delete data.state; delete data.codeVerifier; delete data.lastAuthorizationUrl;
-                      fs.writeFileSync(TOKEN_FILE, JSON.stringify(data, null, 2));
-                      console.log(new Date().toISOString(), 'trek token refreshed');
-                      resolve();
-                    });
-                  });
-                  req.on('error', reject);
-                  req.write(body);
-                  req.end();
-                });
-              }
-
-              (async () => {
-                while (true) {
-                  await new Promise(r => setTimeout(r, INTERVAL_MS));
-                  try { await refresh(); } catch (e) { console.error(new Date().toISOString(), 'trek refresh error:', e.message); }
-                }
-              })();
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 1000
-            runAsGroup: 1000
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: [ALL]
-          resources:
-            requests:
-              cpu: 5m
-              memory: 32Mi
-            limits:
-              cpu: 50m
-              memory: 64Mi
-          volumeMounts:
-            - name: state
-              mountPath: /state
-            - name: tmp
-              mountPath: /tmp
 
       volumes:
         - name: git-repo
