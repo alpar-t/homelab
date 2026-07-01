@@ -151,7 +151,7 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 10
         - name: prowlarr
-          image: lscr.io/linuxserver/prowlarr:latest@sha256:c5de2a8758a05594319263e7691c1dce56899442ed1720d6eca216c0958f4caf
+          image: lscr.io/linuxserver/prowlarr:latest@sha256:3e9bd62ca90c97c5df75b7012e10a29f6926e62807deeddc1dc89e6e2fd141e1
           ports:
             - containerPort: 9696
               name: prowlarr-http
