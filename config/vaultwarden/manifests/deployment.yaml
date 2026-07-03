@@ -74,9 +74,9 @@ spec:
             # ===================
             # General Settings
             # ===================
-            # Open signups - set to "false" after initial migration
+            # Signups closed — accounts exist; add new users via email invite
             - name: SIGNUPS_ALLOWED
-              value: "true"
+              value: "false"
             # Allow inviting users via email (requires SMTP)
             - name: INVITATIONS_ALLOWED
               value: "true"
@@ -102,11 +102,10 @@ spec:
                   key: from_address
             - name: SMTP_SECURITY
               value: "off"
-            # Empty values for no auth
-            - name: SMTP_USERNAME
-              value: ""
-            - name: SMTP_PASSWORD
-              value: ""
+            # No SMTP auth: Stalwart's port-25 listener advertises no AUTH
+            # mechanism. SMTP_USERNAME/PASSWORD must be UNSET (not empty) —
+            # if defined at all, Vaultwarden's client attempts auth and fails
+            # with "No compatible authentication mechanism was found".
             
             # ===================
             # Logging
