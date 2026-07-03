@@ -145,6 +145,7 @@
     "allow": ["whatsapp"]
   },
   "mcp": {
+    "sessionIdleTtlMs": 3600000,
     "servers": {
       "searxng": {
         "url": "http://mcp-searxng.baloo.svc.cluster.local:3000/mcp",
