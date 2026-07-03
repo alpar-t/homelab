@@ -190,8 +190,7 @@
         "args": ["/git/link/config/baloo/tools/trek-mcp-proxy.js"],
         "env": {
           "TREK_CLIENT_ID": "${TREK_CLIENT_ID}",
-          "TREK_CLIENT_SECRET": "${TREK_CLIENT_SECRET}",
-          "NODE_PATH": "/app/node_modules"
+          "TREK_CLIENT_SECRET": "${TREK_CLIENT_SECRET}"
         }
       },
       "hass": {

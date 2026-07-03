@@ -62,18 +62,27 @@
  *     TREK_MCP_URL, TREK_TOKEN_URL
  */
 
+// OpenClaw strips NODE_PATH from stdio MCP children for startup safety (it logs
+// `env "NODE_PATH" is blocked for stdio startup safety and was ignored`), so we
+// can't lean on it to locate the @modelcontextprotocol/sdk bundled in the
+// openclaw image. Anchor our requires at the image's module dir explicitly.
+const { createRequire } = require("module");
+const req = createRequire(
+  `${process.env.OPENCLAW_NODE_MODULES || "/app/node_modules"}/trek-mcp-proxy-anchor.js`
+);
+
 const {
   Client,
-} = require("@modelcontextprotocol/sdk/client/index.js");
+} = req("@modelcontextprotocol/sdk/client/index.js");
 const {
   StreamableHTTPClientTransport,
-} = require("@modelcontextprotocol/sdk/client/streamableHttp.js");
+} = req("@modelcontextprotocol/sdk/client/streamableHttp.js");
 const {
   Server,
-} = require("@modelcontextprotocol/sdk/server/index.js");
+} = req("@modelcontextprotocol/sdk/server/index.js");
 const {
   StdioServerTransport,
-} = require("@modelcontextprotocol/sdk/server/stdio.js");
+} = req("@modelcontextprotocol/sdk/server/stdio.js");
 const {
   CallToolRequestSchema,
   CompleteRequestSchema,
@@ -93,7 +102,7 @@ const {
   SubscribeRequestSchema,
   ToolListChangedNotificationSchema,
   UnsubscribeRequestSchema,
-} = require("@modelcontextprotocol/sdk/types.js");
+} = req("@modelcontextprotocol/sdk/types.js");
 
 const MCP_URL    = process.env.TREK_MCP_URL   || "https://travel.newjoy.ro/mcp";
 const TOKEN_URL  = process.env.TREK_TOKEN_URL || "https://travel.newjoy.ro/oauth/token";
