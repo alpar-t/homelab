@@ -107,11 +107,16 @@ spec:
                 secretKeyRef:
                   name: baloo-secrets
                   key: HA_TOKEN_READONLY
-            - name: TREK_API_TOKEN
+            - name: TREK_CLIENT_ID
               valueFrom:
                 secretKeyRef:
                   name: baloo-secrets
-                  key: TREK_API_TOKEN
+                  key: TREK_CLIENT_ID
+            - name: TREK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: TREK_CLIENT_SECRET
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
