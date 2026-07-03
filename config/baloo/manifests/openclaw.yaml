@@ -66,7 +66,7 @@ spec:
               mountPath: /tmp
         # Substitute ${BALOO_OWNER_PHONE} into openclaw.json → /rendered/openclaw.json
         - name: render-config
-          image: ghcr.io/openclaw/openclaw:2026.6.10@sha256:af7ea052cf216f581fb18fabada01552356c53717461c0399b623cba7ecad4b1
+          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
           command:
             - node
             - -e
@@ -163,7 +163,7 @@ spec:
               mountPath: /tmp
 
         - name: openclaw
-          image: ghcr.io/openclaw/openclaw:2026.6.10@sha256:af7ea052cf216f581fb18fabada01552356c53717461c0399b623cba7ecad4b1
+          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
           imagePullPolicy: IfNotPresent
           command:
             - node
