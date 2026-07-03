@@ -102,6 +102,7 @@ const {
   SubscribeRequestSchema,
   ToolListChangedNotificationSchema,
   UnsubscribeRequestSchema,
+  ResultSchema,
 } = req("@modelcontextprotocol/sdk/types.js");
 
 const MCP_URL    = process.env.TREK_MCP_URL   || "https://travel.newjoy.ro/mcp";
@@ -195,10 +196,13 @@ function forwardRequest(local, upstream, schema, method) {
   local.setRequestHandler(schema, async (req, extra) => {
     const params = req.params ?? {};
     const signal = extra?.signal;
-    // The third arg is the *result* schema; we don't validate here, the SDK
-    // already validated the request against `schema` and the upstream response
-    // shape is the same as what we'd return locally.
-    return await upstream.request({ method, params }, undefined, { signal });
+    // The third arg is the *result* schema. It must be a real zod schema — the
+    // SDK dereferences it internally (`._zod`), so passing `undefined` crashes
+    // the response parse with "Cannot read properties of undefined (reading
+    // '_zod')". `ResultSchema` is the SDK's passthrough base result, so it keeps
+    // every upstream field (tools, contents, etc.) without re-validating the
+    // full method-specific shape the request was already validated against.
+    return await upstream.request({ method, params }, ResultSchema, { signal });
   });
 }
 
