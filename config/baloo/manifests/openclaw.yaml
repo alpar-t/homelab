@@ -117,6 +117,14 @@ spec:
                 secretKeyRef:
                   name: baloo-secrets
                   key: TREK_CLIENT_SECRET
+            # CDP token for the isolated browser pod (config/baloo/manifests/browser.yaml).
+            # Optional so the pod still renders before the secret key is created.
+            - name: BROWSER_CDP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: BROWSER_CDP_TOKEN
+                  optional: true
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000

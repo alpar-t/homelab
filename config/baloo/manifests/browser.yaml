@@ -1,0 +1,172 @@
+# Isolated headless-Chromium (Browserless v2) for Baloo's browser tool.
+#
+# OpenClaw attaches to this over CDP (remote, attach-only) — see the `browser`
+# block in openclaw.json. Design intent: keep this pod as locked down as
+# possible because it renders untrusted web content.
+#
+#   - No ServiceAccount token, non-root, all caps dropped, seccomp RuntimeDefault.
+#   - The NetworkPolicy below is the real blast-radius control: ingress only from
+#     the openclaw pod, egress only to DNS + the public internet. All private
+#     ranges — cluster pods/services, the home LAN incl. Home Assistant
+#     (192.168.x), link-local, and the tailnet — are explicitly blocked, so a
+#     compromised browser cannot pivot to internal services.
+#   - readOnlyRootFilesystem is intentionally NOT set: Chromium needs several
+#     writable paths. The controls above plus a dedicated pod are the
+#     compensating isolation.
+#
+# Token auth (BROWSER_CDP_TOKEN in the baloo-secrets Secret) gates the control
+# API as defense in depth behind the NetworkPolicy. The secret key is optional
+# here so nothing crash-loops before it is created; until it exists, only the
+# NetworkPolicy protects the endpoint and CDP attach with a token will fail.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: browser
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: browser
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: browser
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: browser
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: browser
+          image: ghcr.io/browserless/chromium:v2.38.1@sha256:ac77e677f1e6532208638dbffe379e9f7b19d2249f224b7d2444a145d64fd9e6
+          ports:
+            - name: cdp
+              containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+            - name: HOST
+              value: "0.0.0.0"
+            # Advertised base so /json/version returns a ws URL the openclaw pod
+            # can actually reach (else CDP HTTP looks healthy but WS attach fails).
+            - name: EXTERNAL
+              value: "http://browser.baloo.svc.cluster.local:3000"
+            - name: TIMEOUT
+              value: "60000"
+            - name: CONCURRENT
+              value: "2"
+            - name: TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: BROWSER_CDP_TOKEN
+                  optional: true
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          readinessProbe:
+            tcpSocket:
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          volumeMounts:
+            - name: dshm
+              mountPath: /dev/shm
+      volumes:
+        # Chromium crashes with the default 64Mi /dev/shm; give it room.
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: browser
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: browser
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: browser
+  ports:
+    - name: cdp
+      port: 3000
+      targetPort: 3000
+---
+# Lock the browser pod down: only openclaw may reach it; it may reach DNS and
+# the public internet only — never internal/LAN addresses.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: browser
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: browser
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: browser
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Only the openclaw pod (CDP control) may connect.
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: openclaw
+      ports:
+        - protocol: TCP
+          port: 3000
+  egress:
+    # DNS to CoreDNS (pods in kube-system, and the service IP path).
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+        - ipBlock:
+            cidr: 10.43.0.10/32
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Public internet only. Every private range is excepted, so the browser
+    # cannot reach cluster pods/services, the home LAN (incl. HA 192.168.1.102),
+    # link-local/metadata, or the tailnet.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+              - 100.64.0.0/10
+              - 127.0.0.0/8
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443

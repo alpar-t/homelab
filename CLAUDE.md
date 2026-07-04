@@ -27,6 +27,24 @@ verbs). It is `k8s__*` allowed **only on `direct-message`** and explicitly
 **denied on every other agent** (`cooking`, `garden`, `trips`, `main`). If you
 widen the ClusterRole, keep it read-only; never add write verbs or Secret read.
 
+### Browser tool (`browser`)
+
+The `browser` tool drives an **isolated headless Chromium** (Browserless v2) in
+its own pod (`config/baloo/manifests/browser.yaml`), which OpenClaw attaches to
+over remote CDP (`browser` block in `openclaw.json`, profile `cluster`,
+`attachOnly`). The browser pod renders untrusted web content, so it is locked
+down: no ServiceAccount token, non-root, and a **NetworkPolicy** that allows
+ingress only from the openclaw pod and egress only to DNS + the public internet
+(every private range — cluster, LAN incl. HA `192.168.x`, link-local, tailnet —
+is blocked). `browser` is allowed **only on `direct-message`** and denied on
+every other agent. Attaching to the pod's private CDP address relies on
+`browser.ssrfPolicy.allowedHostnames` (do **not** enable
+`dangerouslyAllowPrivateNetwork` — that would weaken navigation SSRF).
+
+Prereq: create the `BROWSER_CDP_TOKEN` key in the `baloo-secrets` Secret (used
+by both the browser pod's `TOKEN` and the CDP URL). The key is wired as
+`optional`, so until it exists the attach will fail but nothing crash-loops.
+
 ### OpenClaw docs lookup
 
 The OpenClaw image ships its full documentation at `/app/docs/` and `/app/qa/`. Read it from the running pod instead of guessing or web-searching:
@@ -112,6 +130,11 @@ Access from this workstation:
   mirror of the live HA `/config/` directory. Edit files here, then `scp`
   or `rsync` to the device. Packages live under
   `config/homeassistant/ha/packages/` (e.g. `pool.yaml`, etc.).
+  **All automations are synced here** — `config/homeassistant/ha/automations.yaml`
+  is the source of truth for every automation on the device. To read or grep
+  an automation's config, use this file; no need to query the live HA
+  instance. Use `hass-mcp` only for *runtime* state (last_triggered, whether
+  it fired, current entity values), not to discover the automation itself.
 - **Shell / file edits**: `ssh hass` (configured in `~/.ssh/config` → port
   22222, root, key `~/.ssh/id_ed25519_hass`). Lands in the "Terminal & SSH"
   addon container, where `/config/*` is the HA config dir

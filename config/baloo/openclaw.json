@@ -39,6 +39,7 @@
         "tools": {
           "allow": [
             "web_fetch",
+            "browser",
             "image",
             "image_generate",
             "searxng__*",
@@ -66,7 +67,8 @@
             "trek__*",
             "google-maps__*",
             "image_generate",
-            "k8s__*"
+            "k8s__*",
+            "browser"
           ]
         }
       },
@@ -94,7 +96,8 @@
           "deny": [
             "trek__*",
             "google-maps__*",
-            "k8s__*"
+            "k8s__*",
+            "browser"
           ]
         }
       },
@@ -122,7 +125,8 @@
             "hass__*",
             "github-life__*",
             "image_generate",
-            "k8s__*"
+            "k8s__*",
+            "browser"
           ]
         }
       },
@@ -138,7 +142,8 @@
             "trek__*",
             "google-maps__*",
             "image_generate",
-            "k8s__*"
+            "k8s__*",
+            "browser"
           ]
         }
       }
@@ -197,7 +202,21 @@
     "dmScope": "per-channel-peer"
   },
   "plugins": {
-    "allow": ["whatsapp"]
+    "allow": ["whatsapp", "browser"]
+  },
+  "browser": {
+    "enabled": true,
+    "defaultProfile": "cluster",
+    "profiles": {
+      "cluster": {
+        "cdpUrl": "ws://browser.baloo.svc.cluster.local:3000?token=${BROWSER_CDP_TOKEN}",
+        "attachOnly": true,
+        "color": "#FF4500"
+      }
+    },
+    "ssrfPolicy": {
+      "allowedHostnames": ["browser.baloo.svc.cluster.local"]
+    }
   },
   "mcp": {
     "sessionIdleTtlMs": 3600000,
