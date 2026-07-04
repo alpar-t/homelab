@@ -228,6 +228,12 @@ for re-provisioning. Buksi rebooted with the fix on 2026-04-12;
 pufi/pamacs were staged for next Zincati reboot. If buksi crashes
 again past mid-May 2026, re-evaluate — the fix may be insufficient.
 
+The fix proved **insufficient**: pamacs froze again on 2026-07-04 with
+the karg active; the cause is now believed to be unit-specific hardware.
+All nodes now arm the iTCO watchdog so a freeze auto-reboots instead of
+needing a power-cycle. Full analysis + diagnostics:
+`runbooks/node-freeze-hardware-watchdog.md`.
+
 ## TREK app
 
 `apps/trek.yaml` and `config/trek/` deploy TREK

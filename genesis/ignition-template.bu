@@ -44,6 +44,19 @@ storage:
       overwrite: true
 
   files:
+    # Arm the iTCO hardware watchdog. Alder Lake-N nodes occasionally hard-freeze
+    # with no kernel trace (see the 2026-07-04 pamacs freeze); the kargs above
+    # reduce but do not eliminate this. Without an armed watchdog a freeze sits
+    # dead until someone physically power-cycles the box. RuntimeWatchdogSec makes
+    # PID1 feed /dev/watchdog0, so a freeze auto-reboots after ~60s instead.
+    - path: /etc/systemd/system.conf.d/watchdog.conf
+      mode: 0644
+      contents:
+        inline: |
+          [Manager]
+          RuntimeWatchdogSec=60
+          RebootWatchdogSec=5min
+
     # Disable systemd-resolved stub listener, use upstream DNS directly
     - path: /etc/systemd/resolved.conf.d/no-stub.conf
       mode: 0644
