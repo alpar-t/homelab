@@ -17,7 +17,12 @@
         "primary": "openai/gpt-5.5",
         "fallbacks": ["anthropic/claude-sonnet-4-6"]
       },
-      "heartbeat": { "every": "0m" }
+      "heartbeat": { "every": "0m" },
+      "userTimezone": "Europe/Bucharest",
+      "imageGenerationModel": {
+        "primary": "openai/gpt-image-2",
+        "timeoutMs": 180000
+      }
     },
     "list": [
       {
@@ -25,16 +30,24 @@
         "name": "Baloo",
         "default": true,
         "workspace": "/git/link/config/baloo/agents/direct-message",
+        "heartbeat": {
+          "every": "15m",
+          "target": "whatsapp",
+          "to": "${BALOO_OWNER_PHONE}",
+          "isolatedSession": true
+        },
         "tools": {
           "allow": [
             "web_fetch",
-            "browser",
             "image",
+            "image_generate",
             "searxng__*",
             "google-maps__*",
             "trek__*",
             "hass__*",
-            "github-life__*"
+            "github-life__*",
+            "cron",
+            "k8s__*"
           ]
         }
       },
@@ -51,7 +64,9 @@
           ],
           "deny": [
             "trek__*",
-            "google-maps__*"
+            "google-maps__*",
+            "image_generate",
+            "k8s__*"
           ]
         }
       },
@@ -59,17 +74,27 @@
         "id": "garden",
         "name": "Baloo Grădinar",
         "workspace": "/git/link/config/baloo/agents/garden",
+        "heartbeat": {
+          "every": "6h",
+          "target": "whatsapp",
+          "to": "${BALOO_GARDEN_GROUP}",
+          "isolatedSession": true,
+          "lightContext": true,
+          "activeHours": { "start": "08:00", "end": "20:00" }
+        },
         "tools": {
           "allow": [
             "web_fetch",
             "image",
+            "image_generate",
             "searxng__*",
             "github-life__*",
             "hass__*"
           ],
           "deny": [
             "trek__*",
-            "google-maps__*"
+            "google-maps__*",
+            "k8s__*"
           ]
         }
       },
@@ -77,6 +102,14 @@
         "id": "trips",
         "name": "Baloo Trips",
         "workspace": "/git/link/config/baloo/agents/trips",
+        "heartbeat": {
+          "every": "3h",
+          "target": "whatsapp",
+          "to": "${BALOO_TRIPS_PALKOEK_GROUP}",
+          "isolatedSession": true,
+          "lightContext": true,
+          "activeHours": { "start": "08:00", "end": "22:00" }
+        },
         "tools": {
           "allow": [
             "trek__*",
@@ -87,7 +120,9 @@
           ],
           "deny": [
             "hass__*",
-            "github-life__*"
+            "github-life__*",
+            "image_generate",
+            "k8s__*"
           ]
         }
       },
@@ -101,7 +136,9 @@
             "hass__*",
             "github-life__*",
             "trek__*",
-            "google-maps__*"
+            "google-maps__*",
+            "image_generate",
+            "k8s__*"
           ]
         }
       }
@@ -155,7 +192,7 @@
     "stuckSessionWarnMs": 60000,
     "stuckSessionAbortMs": 900000
   },
-  "cron": { "enabled": false },
+  "cron": { "enabled": true },
   "session": {
     "dmScope": "per-channel-peer"
   },
@@ -199,6 +236,10 @@
         "headers": {
           "Authorization": "Bearer ${HA_TOKEN_READONLY}"
         }
+      },
+      "k8s": {
+        "url": "http://mcp-k8s.baloo.svc.cluster.local:3000/mcp",
+        "transport": "streamable-http"
       }
     }
   },

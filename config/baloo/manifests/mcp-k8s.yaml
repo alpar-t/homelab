@@ -1,0 +1,156 @@
+# Read-only Kubernetes MCP server for Baloo's direct-message agent.
+#
+# Lets the DM agent *answer questions* about the cluster and run the heartbeat's
+# critical-health check. Two layers of read-only enforcement:
+#   1. RBAC (the real guardrail): the mcp-k8s ServiceAccount is bound to a
+#      ClusterRole with only get/list/watch — no create/update/delete/exec.
+#   2. ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS=true on the server (defense in depth).
+#
+# ClusterIP only — never a LoadBalancer. Reached in-cluster by the openclaw pod
+# at http://mcp-k8s.baloo.svc.cluster.local:3000/mcp (streamable-http).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mcp-k8s
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: mcp-k8s
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: baloo-mcp-k8s-readonly
+  labels:
+    app.kubernetes.io/name: mcp-k8s
+rules:
+  # Core workloads and cluster objects — read only. No secrets, no configmaps.
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - services
+      - endpoints
+      - events
+      - nodes
+      - namespaces
+      - persistentvolumeclaims
+      - persistentvolumes
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["events.k8s.io"]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["nodes", "pods"]
+    verbs: ["get", "list"]
+  # Storage / DB CRDs the homelab health check cares about — read only.
+  - apiGroups: ["longhorn.io"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["postgresql.cnpg.io"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: baloo-mcp-k8s-readonly
+  labels:
+    app.kubernetes.io/name: mcp-k8s
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: baloo-mcp-k8s-readonly
+subjects:
+  - kind: ServiceAccount
+    name: mcp-k8s
+    namespace: baloo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-k8s
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: mcp-k8s
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mcp-k8s
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mcp-k8s
+    spec:
+      serviceAccountName: mcp-k8s
+      # Needs the SA token mounted for in-cluster API auth.
+      automountServiceAccountToken: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mcp-k8s
+          image: flux159/mcp-server-kubernetes:v3.9.2@sha256:ef6531d5ad48faa94d81502c2072b6917cfdc7b91940c251e151cd97f265e21d
+          ports:
+            - name: mcp
+              containerPort: 3000
+          env:
+            - name: ENABLE_UNSAFE_STREAMABLE_HTTP_TRANSPORT
+              value: "1"
+            - name: PORT
+              value: "3000"
+            - name: HOST
+              value: "0.0.0.0"
+            - name: ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS
+              value: "true"
+            # node/npm scratch space on the read-only rootfs
+            - name: HOME
+              value: /tmp
+            - name: TMPDIR
+              value: /tmp
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: "500m"
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-k8s
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: mcp-k8s
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: mcp-k8s
+  ports:
+    - name: mcp
+      port: 3000
+      targetPort: 3000
