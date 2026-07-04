@@ -1,5 +1,8 @@
-# OpenClaw writable state: WhatsApp session auth, credentials.
-# Losing this means re-scanning the WhatsApp QR code — acceptable.
+# OpenClaw writable state: WhatsApp session auth, credentials, agent workspaces.
+# Replicated (longhorn-ssd, 2 replicas) + weekly B2 backup: a single-replica
+# volume pinned Baloo to one node — a node freeze took it fully offline until
+# that exact node returned (2026-07-04). Losing this also means re-scanning the
+# WhatsApp QR and losing agent state, so it is not treated as replaceable.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -10,7 +13,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: longhorn-ssd-noreplica
+  storageClassName: longhorn-ssd
   resources:
     requests:
-      storage: 2Gi
+      storage: 5Gi
