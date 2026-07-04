@@ -15,6 +15,33 @@ OpenClaw's `mcp.servers` block is **gateway-global** — there is no per-agent M
 
 The trips channel (`Palkoek es Torokek`) must never have HA access — it is a shared family group with members outside the household.
 
+### Read-only k8s access (`k8s__*`)
+
+The `k8s` MCP server (`config/baloo/manifests/mcp-k8s.yaml`) gives the
+`direct-message` agent **read-only** cluster access so Alpar can ask about the
+homelab and the DM heartbeat can page on critical outages. It is
+`flux159/mcp-server-kubernetes` in `ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS` mode, but
+the real guardrail is RBAC: the `mcp-k8s` ServiceAccount is bound to a
+ClusterRole with only `get/list/watch` (no secrets, no configmaps, no write
+verbs). It is `k8s__*` allowed **only on `direct-message`** and explicitly
+**denied on every other agent** (`cooking`, `garden`, `trips`, `main`). If you
+widen the ClusterRole, keep it read-only; never add write verbs or Secret read.
+
+### OpenClaw docs lookup
+
+The OpenClaw image ships its full documentation at `/app/docs/` and `/app/qa/`. Read it from the running pod instead of guessing or web-searching:
+
+```bash
+# List doc topics
+kubectl -n baloo exec deployment/openclaw -c openclaw -- ls /app/docs
+# Read a specific page (MCP config, channels, gateway, etc.)
+kubectl -n baloo exec deployment/openclaw -c openclaw -- cat /app/docs/cli/mcp.md
+# Find anything across docs
+kubectl -n baloo exec deployment/openclaw -c openclaw -- grep -rln '<term>' /app/docs
+```
+
+These are authoritative for the deployed version — version-correct, no drift from upstream docs sites.
+
 ## Writing skills or Baloo agent files
 
 When editing anything in `config/baloo/agents/*/SOUL.md` or `AGENTS.md`, or when authoring a new Claude Code skill, first load Anthropic's skill-creator guidance for review principles:
@@ -81,6 +108,10 @@ that HA writes to; the HA app itself is on the standalone box.
 
 Access from this workstation:
 
+- **Local config mirror**: `config/homeassistant/ha/` in this repo is a
+  mirror of the live HA `/config/` directory. Edit files here, then `scp`
+  or `rsync` to the device. Packages live under
+  `config/homeassistant/ha/packages/` (e.g. `pool.yaml`, etc.).
 - **Shell / file edits**: `ssh hass` (configured in `~/.ssh/config` → port
   22222, root, key `~/.ssh/id_ed25519_hass`). Lands in the "Terminal & SSH"
   addon container, where `/config/*` is the HA config dir
