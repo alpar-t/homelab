@@ -36,10 +36,14 @@ over remote CDP (`browser` block in `openclaw.json`, profile `cluster`,
 down: no ServiceAccount token, non-root, and a **NetworkPolicy** that allows
 ingress only from the openclaw pod and egress only to DNS + the public internet
 (every private range — cluster, LAN incl. HA `192.168.x`, link-local, tailnet —
-is blocked). `browser` is allowed **only on `direct-message`** and denied on
-every other agent. Attaching to the pod's private CDP address relies on
-`browser.ssrfPolicy.allowedHostnames` (do **not** enable
-`dangerouslyAllowPrivateNetwork` — that would weaken navigation SSRF).
+is blocked). Because that NetworkPolicy caps the blast radius to the public
+internet regardless of caller, `browser` is allowed **wherever `web_fetch` +
+`searxng__*` are** (the conversational agents: `direct-message`, `cooking`,
+`garden`, `trips`) — it is just a JS-capable fetch with the same reach. It is
+denied only on `main` (the auth root, which has no web tools). Attaching to the
+pod's private CDP address relies on `browser.ssrfPolicy.allowedHostnames` (do
+**not** enable `dangerouslyAllowPrivateNetwork` — that would weaken navigation
+SSRF).
 
 Prereq: create the `BROWSER_CDP_TOKEN` key in the `baloo-secrets` Secret (used
 by both the browser pod's `TOKEN` and the CDP URL). The key is wired as
