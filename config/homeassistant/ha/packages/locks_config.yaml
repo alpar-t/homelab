@@ -1,0 +1,68 @@
+# Locks Package
+# Convert switches to proper lock entities with English names
+
+template:
+  - lock:
+      - name: Basement Door
+        unique_id: pince_ajto_lock
+        state: "{{ is_state('switch.pia_mester_pince_ajto', 'off') }}"
+        availability: "{{ not is_state('switch.pia_mester_pince_ajto', 'unavailable') }}"
+        optimistic: false
+        lock:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.pia_mester_pince_ajto
+        unlock:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.pia_mester_pince_ajto
+
+      - name: Den Door
+        unique_id: kucko_ajto_lock
+        state: "{{ is_state('switch.kucko_mester_kucko_ajto', 'off') }}"
+        availability: "{{ not is_state('switch.kucko_mester_kucko_ajto', 'unavailable') }}"
+        optimistic: false
+        lock:
+          - action: switch.turn_off
+            target:
+              entity_id: switch.kucko_mester_kucko_ajto
+        unlock:
+          - action: switch.turn_on
+            target:
+              entity_id: switch.kucko_mester_kucko_ajto
+
+# Sync locks with Terraforma (with corrected logic)
+automation:
+  - alias: "Locks - Lock All When Terraforma Locks"
+    id: autlockslock
+    trigger:
+      - platform: state
+        entity_id: lock.front_door
+        to: "locked"
+    action:
+      - action: switch.turn_off
+        target:
+          entity_id:
+            - switch.pia_mester_pince_ajto
+            - switch.kucko_mester_kucko_ajto
+
+  - alias: "Locks - Unlock All When Terraforma Unlocks"
+    id: autlocksunlock
+    trigger:
+      - platform: state
+        entity_id: lock.front_door
+        to: "unlocked"
+    action:
+      - action: switch.turn_on
+        target:
+          entity_id:
+            - switch.pia_mester_pince_ajto
+            - switch.kucko_mester_kucko_ajto
+
+# Customize icons
+homeassistant:
+  customize:
+    lock.basement_door:
+      icon: mdi:door
+    lock.den_door:
+      icon: mdi:door-closed

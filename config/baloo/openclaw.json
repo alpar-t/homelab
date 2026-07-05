@@ -39,6 +39,7 @@
         "tools": {
           "allow": [
             "web_fetch",
+            "browser",
             "image",
             "image_generate",
             "searxng__*",
@@ -58,6 +59,7 @@
         "tools": {
           "allow": [
             "web_fetch",
+            "browser",
             "searxng__*",
             "github-life__*",
             "hass__*"
@@ -75,18 +77,18 @@
         "name": "Baloo Grădinar",
         "workspace": "/git/link/config/baloo/agents/garden",
         "heartbeat": {
-          "every": "6h",
+          "every": "1h",
           "target": "whatsapp",
           "to": "${BALOO_GARDEN_GROUP}",
           "isolatedSession": true,
           "lightContext": true,
-          "activeHours": { "start": "08:00", "end": "20:00" }
+          "activeHours": { "start": "08:00", "end": "10:00" }
         },
         "tools": {
           "allow": [
             "web_fetch",
+            "browser",
             "image",
-            "image_generate",
             "searxng__*",
             "github-life__*",
             "hass__*"
@@ -94,6 +96,7 @@
           "deny": [
             "trek__*",
             "google-maps__*",
+            "image_generate",
             "k8s__*"
           ]
         }
@@ -103,12 +106,12 @@
         "name": "Baloo Trips",
         "workspace": "/git/link/config/baloo/agents/trips",
         "heartbeat": {
-          "every": "3h",
+          "every": "1h",
           "target": "whatsapp",
           "to": "${BALOO_TRIPS_PALKOEK_GROUP}",
           "isolatedSession": true,
           "lightContext": true,
-          "activeHours": { "start": "08:00", "end": "22:00" }
+          "activeHours": { "start": "08:00", "end": "10:00" }
         },
         "tools": {
           "allow": [
@@ -116,6 +119,7 @@
             "searxng__*",
             "google-maps__*",
             "web_fetch",
+            "browser",
             "image"
           ],
           "deny": [
@@ -138,7 +142,8 @@
             "trek__*",
             "google-maps__*",
             "image_generate",
-            "k8s__*"
+            "k8s__*",
+            "browser"
           ]
         }
       }
@@ -197,7 +202,21 @@
     "dmScope": "per-channel-peer"
   },
   "plugins": {
-    "allow": ["whatsapp"]
+    "allow": ["whatsapp", "browser"]
+  },
+  "browser": {
+    "enabled": true,
+    "defaultProfile": "cluster",
+    "profiles": {
+      "cluster": {
+        "cdpUrl": "ws://browser.baloo.svc.cluster.local:3000?token=${BROWSER_CDP_TOKEN}",
+        "attachOnly": true,
+        "color": "#FF4500"
+      }
+    },
+    "ssrfPolicy": {
+      "allowedHostnames": ["browser.baloo.svc.cluster.local"]
+    }
   },
   "mcp": {
     "sessionIdleTtlMs": 3600000,

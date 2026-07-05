@@ -1,0 +1,186 @@
+# Pool Pump / Heater Automation Package
+#
+# Pool: 10 m³, pump rated 6 m³/h, realistic flow ~3 m³/h through filter+heater
+# Load: ~1 kW
+#
+# Tunable parameters (search for the values below):
+#   Solar on threshold:    grid export ≥ 1200 W  OR  battery charging > 2000 W
+#   Solar off threshold:   grid export < 1000 W  AND battery charging < 1800 W (200 W hysteresis)
+#   Hot weather threshold:   outdoor temp ≥ 30 °C  (pump runs to blow cool air for the dog)
+#   Minimum session time:   1200 s  (20 min — prevents short cycling)
+#   Anti-short-cycle off:    180 s  (3 min minimum off before re-start)
+#   Daily minimum runtime:     4 h  (≈ 1.3× pool volume turnover)
+#   Fallback trigger time:  18:00   (start daily-min run if not yet met)
+#   Hard cutoff time:       22:00
+
+# Daily runtime counter — resets at midnight automatically.
+# Returns hours (float), e.g. 3.5 = 3 h 30 min.
+sensor:
+  - platform: history_stats
+    name: Pool Pump Daily Runtime
+    entity_id: switch.pool_heater_socket
+    state: "on"
+    type: time
+    start: "{{ now().replace(hour=0, minute=0, second=0, microsecond=0) }}"
+    end: "{{ now() }}"
+
+automation:
+  # ── 1. Solar surplus → turn ON ─────────────────────────────────────────────
+  - id: pool_solar_surplus_on
+    alias: "Pool: Solar surplus or hot weather → turn on pump"
+    description: >
+      Turns on pool pump when grid exports ≥ 1.2 kW OR battery charges > 2 kW
+      (sustained 5 min), OR when outdoor temperature ≥ 30 °C so the heater
+      blows cool air for the dog. Anti-short-cycle: pump must have been off
+      for ≥ 3 minutes.
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.grid_power
+        below: -1200
+        for:
+          minutes: 5
+      - trigger: numeric_state
+        entity_id: sensor.victron_system_battery_power
+        above: 2000
+        for:
+          minutes: 5
+      - trigger: numeric_state
+        entity_id: sensor.gw1100a_outdoor_temperature
+        above: 30
+        for:
+          minutes: 5
+      # Periodic re-check catches cases where the sensor crossed the threshold
+      # before the trigger was registered (e.g. after HA restart).
+      - trigger: time_pattern
+        minutes: "/5"
+    conditions:
+      - condition: time
+        after: "08:00:00"
+        before: "21:00:00"
+      - condition: state
+        entity_id: switch.pool_heater_socket
+        state: "off"
+      # Anti-short-cycle: must have been off for at least 3 minutes
+      - condition: template
+        value_template: >
+          {{ (now() - states['switch.pool_heater_socket'].last_changed).total_seconds() > 180 }}
+      # Grid export ≥ 1.2 kW, battery charging > 2 kW, OR outdoor temp ≥ 30 °C
+      - condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: sensor.grid_power
+            below: -1200
+          - condition: numeric_state
+            entity_id: sensor.victron_system_battery_power
+            above: 2000
+          - condition: numeric_state
+            entity_id: sensor.gw1100a_outdoor_temperature
+            above: 30
+    actions:
+      - action: switch.turn_on
+        target:
+          entity_id: switch.pool_heater_socket
+    mode: single
+
+  # ── 2. Solar surplus gone → turn OFF ───────────────────────────────────────
+  - id: pool_no_surplus_off
+    alias: "Pool: No solar surplus or cool enough → turn off pump"
+    description: >
+      Turns off pump when BOTH grid export < 1 kW AND battery charging < 1.8 kW
+      for 10 minutes (200 W hysteresis on both) AND outdoor temp < 30 °C.
+      20-minute minimum session time is always enforced. After 18:00 the pump
+      will NOT be turned off until the daily minimum of 4 hours has been reached.
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.grid_power
+        above: -1000
+        for:
+          minutes: 10
+      - trigger: numeric_state
+        entity_id: sensor.victron_system_battery_power
+        below: 1800
+        for:
+          minutes: 10
+      - trigger: numeric_state
+        entity_id: sensor.gw1100a_outdoor_temperature
+        below: 30
+        for:
+          minutes: 10
+      - trigger: time_pattern
+        minutes: "/5"
+    conditions:
+      - condition: state
+        entity_id: switch.pool_heater_socket
+        state: "on"
+      # Minimum session time: 20 minutes
+      - condition: template
+        value_template: >
+          {{ (now() - states['switch.pool_heater_socket'].last_changed).total_seconds() > 1200 }}
+      # No solar surplus: both conditions must fail
+      - condition: numeric_state
+        entity_id: sensor.grid_power
+        above: -1000
+      - condition: numeric_state
+        entity_id: sensor.victron_system_battery_power
+        below: 1800
+      # Not hot enough to keep running for the dog
+      - condition: numeric_state
+        entity_id: sensor.gw1100a_outdoor_temperature
+        below: 30
+      # Before 18:00: always allow turn-off (daily-minimum fallback handles the rest).
+      # After 18:00: only allow turn-off once daily minimum (4 h) is met.
+      - condition: or
+        conditions:
+          - condition: time
+            before: "18:00:00"
+          - condition: template
+            value_template: >
+              {{ states('sensor.pool_pump_daily_runtime') | float(0) >= 4 }}
+    actions:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.pool_heater_socket
+    mode: single
+
+  # ── 3. Daily minimum fallback ───────────────────────────────────────────────
+  - id: pool_daily_fallback_on
+    alias: "Pool: Daily minimum → fallback run from 18:00"
+    description: >
+      At 18:00, if the pump has run for less than 4 hours today, turn it on so
+      the water completes its minimum daily circulation. The pump will be turned
+      off by automation #2 once 4 hours are reached, or by the hard cutoff at
+      22:00 (whichever comes first).
+    triggers:
+      - trigger: time
+        at: "18:00:00"
+    conditions:
+      - condition: template
+        value_template: >
+          {{ states('sensor.pool_pump_daily_runtime') | float(0) < 4 }}
+      - condition: state
+        entity_id: switch.pool_heater_socket
+        state: "off"
+    actions:
+      - action: switch.turn_on
+        target:
+          entity_id: switch.pool_heater_socket
+    mode: single
+
+  # ── 4. Hard cutoff ──────────────────────────────────────────────────────────
+  - id: pool_hard_cutoff_off
+    alias: "Pool: Hard cutoff at 22:00"
+    description: >
+      Unconditionally turns off the pool pump at 22:00 regardless of solar
+      export or daily runtime — prevents overnight running.
+    triggers:
+      - trigger: time
+        at: "22:00:00"
+    conditions:
+      - condition: state
+        entity_id: switch.pool_heater_socket
+        state: "on"
+    actions:
+      - action: switch.turn_off
+        target:
+          entity_id: switch.pool_heater_socket
+    mode: single

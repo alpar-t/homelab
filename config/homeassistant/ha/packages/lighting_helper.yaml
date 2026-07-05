@@ -1,0 +1,15 @@
+# Lighting Helper Package
+# Central sensor for determining if artificial light is needed
+
+template:
+  - binary_sensor:
+      - name: Is Dark Mode
+        unique_id: is_dark_mode_sensor
+        device_class: light
+        state: "{{ state_attr('sun.sun', 'elevation') < 3 }}"
+        icon: >-
+          {% if state_attr('sun.sun', 'elevation') < 3 %}
+            mdi:weather-night
+          {% else %}
+            mdi:weather-sunny
+          {% endif %}
