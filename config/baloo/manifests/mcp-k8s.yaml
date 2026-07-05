@@ -115,6 +115,10 @@ spec:
               value: "0.0.0.0"
             - name: ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS
               value: "true"
+            # DNS-rebinding protection stays ON; allow the in-cluster service
+            # hostname OpenClaw connects with (else the Host header is rejected).
+            - name: DNS_REBINDING_ALLOWED_HOST
+              value: "mcp-k8s.baloo.svc.cluster.local:3000,mcp-k8s.baloo.svc.cluster.local"
             # node/npm scratch space on the read-only rootfs
             - name: HOME
               value: /tmp
