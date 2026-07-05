@@ -1,0 +1,158 @@
+title: Solar
+views:
+  - title: Overview
+    path: solar-overview
+    icon: mdi:solar-power-variant
+    cards:
+
+      # ── TOP ROW: main power numbers ───────────────────────────────────────
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.pv_power_total
+            name: Solar
+            icon: mdi:solar-power
+          - type: entity
+            entity: sensor.grid_power
+            name: Grid
+            icon: mdi:transmission-tower
+          - type: entity
+            entity: sensor.victron_system_battery_power
+            name: Battery
+            icon: mdi:battery-charging
+          - type: entity
+            entity: sensor.essential_load
+            name: Essential
+            icon: mdi:home-battery
+          - type: entity
+            entity: sensor.non_essential_load
+            name: Non-Essential
+            icon: mdi:home-outline
+
+      # ── BATTERY DETAIL ────────────────────────────────────────────────────
+      - type: horizontal-stack
+        cards:
+          - type: gauge
+            entity: sensor.victron_battery_soc
+            name: Battery SOC
+            min: 0
+            max: 100
+            needle: true
+            severity:
+              green: 50
+              yellow: 25
+              red: 0
+          - type: entities
+            title: Battery
+            entities:
+              - entity: sensor.victron_battery_soc
+                name: SOC
+              - entity: sensor.victron_system_battery_power
+                name: Power (W)
+              - entity: sensor.victron_system_battery_state
+                name: State
+              - entity: sensor.victron_battery_voltage
+                name: Voltage
+              - entity: sensor.victron_battery_current
+                name: Current
+              - entity: sensor.victron_battery_temperature
+                name: Temperature
+
+      # ── PHASE BREAKDOWN ───────────────────────────────────────────────────
+      - type: horizontal-stack
+        cards:
+          - type: entities
+            title: "⚡ Grid per Phase"
+            entities:
+              - entity: sensor.victron_system_grid_l1
+                name: L1
+              - entity: sensor.victron_system_grid_l2
+                name: L2
+              - entity: sensor.victron_system_grid_l3
+                name: L3
+              - entity: sensor.grid_power
+                name: Total
+          - type: entities
+            title: "☀️ PV per Phase"
+            entities:
+              - entity: sensor.victron_pvinverter_l1_power_20
+                name: L1
+              - entity: sensor.victron_pvinverter_l2_power_20
+                name: L2
+              - entity: sensor.victron_pvinverter_l3_power_20
+                name: L3
+              - entity: sensor.pv_power_total
+                name: Total
+          - type: entities
+            title: "🏠 Essential Load per Phase"
+            entities:
+              - entity: sensor.victron_vebus_out_l1_power_227
+                name: L1
+              - entity: sensor.victron_vebus_out_l2_power_227
+                name: L2
+              - entity: sensor.victron_vebus_out_l3_power_227
+                name: L3
+              - entity: sensor.essential_load
+                name: Total
+          - type: entities
+            title: "📊 Total Consumption per Phase"
+            entities:
+              - entity: sensor.victron_system_consumption_l1
+                name: L1
+              - entity: sensor.victron_system_consumption_l2
+                name: L2
+              - entity: sensor.victron_system_consumption_l3
+                name: L3
+              - entity: sensor.total_consumption
+                name: Total
+
+      # ── VEBus AC In (what the inverter sees from grid) ────────────────────
+      - type: entities
+        title: VEBus AC Input (Grid → Inverter)
+        entities:
+          - entity: sensor.victron_vebus_activein_l1_power_227
+            name: L1
+          - entity: sensor.victron_vebus_activein_l2_power_227
+            name: L2
+          - entity: sensor.victron_vebus_activein_l3_power_227
+            name: L3
+          - entity: sensor.victron_vebus_state_227
+            name: Inverter State
+          - entity: sensor.victron_vebus_activein_currentlimit_227
+            name: AC Input Limit
+
+      # ── HISTORY GRAPH ─────────────────────────────────────────────────────
+      - type: history-graph
+        title: Power Flow (24 h)
+        hours_to_show: 24
+        entities:
+          - entity: sensor.pv_power_total
+            name: Solar
+          - entity: sensor.grid_power
+            name: Grid
+          - entity: sensor.victron_system_battery_power
+            name: Battery
+          - entity: sensor.total_consumption
+            name: Consumption
+
+      - type: history-graph
+        title: Per-Phase Grid (24 h)
+        hours_to_show: 24
+        entities:
+          - entity: sensor.victron_system_grid_l1
+            name: Grid L1
+          - entity: sensor.victron_system_grid_l2
+            name: Grid L2
+          - entity: sensor.victron_system_grid_l3
+            name: Grid L3
+
+      - type: history-graph
+        title: Per-Phase Load (24 h)
+        hours_to_show: 24
+        entities:
+          - entity: sensor.victron_vebus_out_l1_power_227
+            name: Essential L1
+          - entity: sensor.victron_vebus_out_l2_power_227
+            name: Essential L2
+          - entity: sensor.victron_vebus_out_l3_power_227
+            name: Essential L3

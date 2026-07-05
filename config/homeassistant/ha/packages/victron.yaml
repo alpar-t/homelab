@@ -1,0 +1,55 @@
+template:
+  - sensor:
+      - name: "Grid Power"
+        unique_id: victron_grid_power_total
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >
+          {{ (states('sensor.victron_system_grid_l1') | float(0)
+            + states('sensor.victron_system_grid_l2') | float(0)
+            + states('sensor.victron_system_grid_l3') | float(0)) | round(0) }}
+
+      - name: "PV Power Total"
+        unique_id: victron_pv_power_total
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >
+          {{ (states('sensor.victron_pvinverter_l1_power_20') | float(0)
+            + states('sensor.victron_pvinverter_l2_power_20') | float(0)
+            + states('sensor.victron_pvinverter_l3_power_20') | float(0)) | round(0) }}
+
+      - name: "Essential Load"
+        unique_id: victron_essential_load
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >
+          {{ (states('sensor.victron_vebus_out_l1_power_227') | float(0)
+            + states('sensor.victron_vebus_out_l2_power_227') | float(0)
+            + states('sensor.victron_vebus_out_l3_power_227') | float(0)) | round(0) }}
+
+      - name: "Non-Essential Load"
+        unique_id: victron_nonessential_load
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >
+          {% set consumption = states('sensor.victron_system_consumption_l1') | float(0)
+            + states('sensor.victron_system_consumption_l2') | float(0)
+            + states('sensor.victron_system_consumption_l3') | float(0) %}
+          {% set essential = states('sensor.victron_vebus_out_l1_power_227') | float(0)
+            + states('sensor.victron_vebus_out_l2_power_227') | float(0)
+            + states('sensor.victron_vebus_out_l3_power_227') | float(0) %}
+          {{ [0, consumption - essential] | max | round(0) }}
+
+      - name: "Total Consumption"
+        unique_id: victron_total_consumption
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+        state: >
+          {{ (states('sensor.victron_system_consumption_l1') | float(0)
+            + states('sensor.victron_system_consumption_l2') | float(0)
+            + states('sensor.victron_system_consumption_l3') | float(0)) | round(0) }}

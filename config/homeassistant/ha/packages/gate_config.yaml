@@ -1,0 +1,144 @@
+# Gate Control Package - Simplified
+#
+# Retry logic: open/close commands are sent 3 times at 5 s intervals (15 s total)
+# to survive WiFi hiccups. Safe because the gate has dedicated open/close
+# switches (not a toggle), so repeated signals while moving are harmless.
+# Note: repeat is not supported in template cover actions — use inline duplication.
+
+# Just track position (0=closed, 30=pedestrian, 100=open)
+input_number:
+  gate_position:
+    name: Gate Position
+    min: 0
+    max: 100
+    step: 1
+    unit_of_measurement: "%"
+    icon: mdi:gate
+
+template:
+  - cover:
+      - name: Gate
+        unique_id: main_gate_cover
+        device_class: garage
+        state: "{{ states('input_number.gate_position') | int > 0 }}"
+        position: "{{ states('input_number.gate_position') | int }}"
+
+        open_cover:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.gate_position
+            data:
+              value: 50
+          - action: switch.turn_on
+            target:
+              entity_id: switch.kucko_mester_gate_open
+          - delay: "0:00:05"
+          - action: switch.turn_on
+            target:
+              entity_id: switch.kucko_mester_gate_open
+          - delay: "0:00:05"
+          - action: switch.turn_on
+            target:
+              entity_id: switch.kucko_mester_gate_open
+          - delay: "0:00:05"
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.gate_position
+            data:
+              value: 100
+
+        close_cover:
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.gate_position
+            data:
+              value: 50
+          - action: switch.turn_on
+            target:
+              entity_id: switch.kucko_mester_gate_close
+          - delay: "0:00:05"
+          - action: switch.turn_on
+            target:
+              entity_id: switch.kucko_mester_gate_close
+          - delay: "0:00:05"
+          - action: switch.turn_on
+            target:
+              entity_id: switch.kucko_mester_gate_close
+          - delay: "0:00:05"
+          - action: input_number.set_value
+            target:
+              entity_id: input_number.gate_position
+            data:
+              value: 0
+
+        set_cover_position:
+          - choose:
+              # Pedestrian (20-40%)
+              - conditions:
+                  - condition: template
+                    value_template: "{{ position >= 20 and position <= 40 }}"
+                sequence:
+                  - action: switch.turn_on
+                    target:
+                      entity_id: switch.kucko_mester_gate_pedestrian
+                  - action: input_number.set_value
+                    target:
+                      entity_id: input_number.gate_position
+                    data:
+                      value: 30
+
+              # Full open (>40%)
+              - conditions:
+                  - condition: template
+                    value_template: "{{ position > 40 }}"
+                sequence:
+                  - action: input_number.set_value
+                    target:
+                      entity_id: input_number.gate_position
+                    data:
+                      value: 50
+                  - action: switch.turn_on
+                    target:
+                      entity_id: switch.kucko_mester_gate_open
+                  - delay: "0:00:05"
+                  - action: switch.turn_on
+                    target:
+                      entity_id: switch.kucko_mester_gate_open
+                  - delay: "0:00:05"
+                  - action: switch.turn_on
+                    target:
+                      entity_id: switch.kucko_mester_gate_open
+                  - delay: "0:00:05"
+                  - action: input_number.set_value
+                    target:
+                      entity_id: input_number.gate_position
+                    data:
+                      value: 100
+
+              # Close (<=20%)
+              - conditions:
+                  - condition: template
+                    value_template: "{{ position <= 20 }}"
+                sequence:
+                  - action: input_number.set_value
+                    target:
+                      entity_id: input_number.gate_position
+                    data:
+                      value: 50
+                  - action: switch.turn_on
+                    target:
+                      entity_id: switch.kucko_mester_gate_close
+                  - delay: "0:00:05"
+                  - action: switch.turn_on
+                    target:
+                      entity_id: switch.kucko_mester_gate_close
+                  - delay: "0:00:05"
+                  - action: switch.turn_on
+                    target:
+                      entity_id: switch.kucko_mester_gate_close
+                  - delay: "0:00:05"
+                  - action: input_number.set_value
+                    target:
+                      entity_id: input_number.gate_position
+                    data:
+                      value: 0
