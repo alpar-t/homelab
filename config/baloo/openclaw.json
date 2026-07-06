@@ -195,7 +195,7 @@
   },
   "diagnostics": {
     "stuckSessionWarnMs": 60000,
-    "stuckSessionAbortMs": 900000
+    "stuckSessionAbortMs": 300000
   },
   "cron": { "enabled": true },
   "session": {

@@ -145,6 +145,43 @@ spec:
               readOnly: true
             - name: rendered
               mountPath: /rendered
+        # Keep state-installed plugins (whatsapp, browser) in lockstep with the
+        # pinned core image. Plugins live in the /state PVC and are installed
+        # once, so a core image bump leaves them stale — that drift shipped a
+        # whatsapp plugin without inbound location parsing (2026-07-06). This
+        # resolves each tracked plugin to the ClawHub version compatible with
+        # the running core. Non-fatal: if ClawHub is unreachable at boot we keep
+        # the last-good plugin already on the PVC rather than crash-looping.
+        - name: plugin-sync
+          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
+          command:
+            - sh
+            - -c
+            - node /app/dist/index.js plugins update --all || true
+          env:
+            - name: HOME
+              value: /state/home
+            - name: OPENCLAW_STATE_DIR
+              value: /state
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: state
+              mountPath: /state
+            - name: tmp
+              mountPath: /tmp
       containers:
         # Continuous sync sidecar — keeps /git/link up to date with main.
         - name: git-sync
