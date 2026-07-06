@@ -234,7 +234,7 @@
       },
       "github-life": {
         "command": "node",
-        "args": ["/git/link/config/baloo/tools/github-mcp-start.js"],
+        "args": ["/git/link/config/baloo/tools/github-mcp-proxy.js"],
         "env": {
           "GITHUB_APP_ID": "${GITHUB_APP_ID}",
           "GITHUB_APP_INSTALLATION_ID": "${GITHUB_APP_INSTALLATION_ID}",
