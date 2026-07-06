@@ -109,6 +109,18 @@ spec:
       labels:
         app: whisper
     spec:
+      # Prefer the high-memory node (pamacs) to keep heavy movable
+      # workloads off the 15Gi nodes. See CLAUDE.md workload/cpu-intensive.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: workload/cpu-intensive
+                    operator: In
+                    values:
+                      - "true"
       containers:
         # whisper.cpp with Intel GPU acceleration via oneAPI/Level Zero.
         # Model (ggml-large-v3.bin) is downloaded to the PVC on first start.

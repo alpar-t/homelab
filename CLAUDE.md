@@ -181,6 +181,32 @@ work from any node because kube-proxy DNAT routes them via flannel regardless.
 If you ever move Emby or other Local-policy services to a different node, move
 the subnet router nodeSelector with them.
 
+## Node workload placement (`workload/cpu-intensive`)
+
+The three nodes are unequal: **pamacs has 32Gi RAM, buksi and pufi have 16Gi
+each.** To keep memory-heavy but *movable* workloads off the small nodes (so a
+memory spike can't OOM them and fault single-replica Longhorn volumes — see the
+2026-07-06 OnlyOffice incident), pamacs carries the label
+`workload/cpu-intensive=true`, and heavy movable Deployments set a **soft**
+`preferredDuringSchedulingIgnoredDuringExecution` nodeAffinity toward it
+(weight 100). This is a preference, not a hard pin — if pamacs is down they
+schedule anywhere.
+
+- Apps using it: `immich`, `tandoor`, `paperless-ngx`, `baloo/whisper`.
+- **Do not** use hard `nodeSelector`/hostname pins for this — the default
+  scheduler never migrates pods back after a node outage >~6min (freeze →
+  watchdog reboot), so the soft affinity is what pulls them back to the big
+  node on reschedule. A descheduler was considered and rejected (most heavy
+  pods are hard-pinned anyway, and evicting Longhorn RWO pods causes
+  detach/reattach churn).
+- The label was applied imperatively (`kubectl label node pamacs
+  workload/cpu-intensive=true`); it survives reboots/k3s restarts but not a node
+  re-provision — re-apply it if pamacs is rebuilt.
+- **Genuinely pinned, do not add this to them:** arr-stack/emby (MetalLB
+  `Local` + Tailscale, buksi), opencloud core (local-ssd PVC on pufi),
+  omada-controller (`hostNetwork` — moving it changes the controller IP and
+  disrupts AP/switch adoption).
+
 ## Travel network / backup uplink
 
 Portable kit for travel and homelab failover:

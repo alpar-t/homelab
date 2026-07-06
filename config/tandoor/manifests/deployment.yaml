@@ -22,6 +22,18 @@ spec:
         # Auto-restart when OIDC config changes (requires Reloader)
         secret.reloader.stakater.com/reload: "tandoor-oidc"
     spec:
+      # Prefer the high-memory node (pamacs) to keep heavy movable
+      # workloads off the 15Gi nodes. See CLAUDE.md workload/cpu-intensive.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: workload/cpu-intensive
+                    operator: In
+                    values:
+                      - "true"
       initContainers:
         # Wait for PostgreSQL to be ready
         - name: wait-for-postgres
