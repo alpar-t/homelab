@@ -2,18 +2,12 @@
 
 tasks:
 
-- name: cluster-health
-  interval: 15m
-  prompt: >
-    Check homelab cluster health with the read-only `k8s__*` tools and page only
-    on genuinely critical conditions (see the "Cluster / infrastructure" section
-    of AGENTS.md for the exact set): a node NotReady; a core workload's pods not
-    Ready past a short grace window; a Longhorn volume Degraded or Faulted, or a
-    PVC stuck Pending; a CNPG cluster with no primary. If any hold, send Alpar
-    one terse alert naming the resource and the symptom. If everything is clear,
-    reply HEARTBEAT_OK and send nothing. Never alert on transient or
-    self-healing states, ordinary restarts, or deliberate scale-downs. This
-    check runs day and night — a real outage should page at 3am.
+# NOTE: cluster-health is no longer a heartbeat task. It runs as an isolated
+# cron job ("cluster-health", every 15m) so it can use thinking=low, a scoped
+# k8s-only tool allow-list, and light context — cutting its per-run token cost
+# ~3x versus a full-context heartbeat, without lowering interactive reasoning.
+# The cron job lives in the /state PVC (SQLite), not in git. See CLAUDE.md
+# "Baloo cluster-health cron". This heartbeat now only handles due-reminders.
 
 - name: due-reminders
   interval: 1h
@@ -29,5 +23,6 @@ tasks:
 
 # Notes
 
-- Two independent jobs: outages page 24/7; reminders stay quiet at night.
+- Outage paging (24/7) is handled by the `cluster-health` cron job, not here.
+- This heartbeat only runs the reminders check, which stays quiet at night.
 - Keep any alert to one or two concrete lines.

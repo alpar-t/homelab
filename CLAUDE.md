@@ -2,6 +2,14 @@
 
 3-node k3s cluster on Odroid hardware. See [README.md](README.md) for the broader picture.
 
+## Runbooks
+
+Detailed operational knowledge — incident post-mortems, recovery procedures, and
+non-obvious subsystem details — lives in `runbooks/`, not in this file. When
+something is too long or too incident-specific to belong in CLAUDE.md, write a
+runbook and keep only a one-line pointer here. Check `runbooks/` before operating
+or debugging a subsystem.
+
 ## Baloo agent tool access
 
 OpenClaw's `mcp.servers` block is **gateway-global** — there is no per-agent MCP server config. Every agent can in principle reach every registered MCP server. The only access control is per-agent `tools.allow` and `tools.deny`.
@@ -19,7 +27,7 @@ The trips channel (`Palkoek es Torokek`) must never have HA access — it is a s
 
 The `k8s` MCP server (`config/baloo/manifests/mcp-k8s.yaml`) gives the
 `direct-message` agent **read-only** cluster access so Alpar can ask about the
-homelab and the DM heartbeat can page on critical outages. It is
+homelab and the `cluster-health` cron job can page on critical outages. It is
 `flux159/mcp-server-kubernetes` in `ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS` mode, but
 the real guardrail is RBAC: the `mcp-k8s` ServiceAccount is bound to a
 ClusterRole with only `get/list/watch` (no secrets, no configmaps, no write

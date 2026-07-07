@@ -10,6 +10,19 @@
       "enabled": true
     }
   },
+  "models": {
+    "providers": {
+      "anthropic": {
+        "models": [
+          {
+            "id": "claude-sonnet-4-6",
+            "name": "Claude Sonnet 4.6",
+            "cost": { "input": 3, "output": 15, "cacheRead": 0.3, "cacheWrite": 3.75 }
+          }
+        ]
+      }
+    }
+  },
   "agents": {
     "defaults": {
       "skipBootstrap": true,
@@ -31,7 +44,7 @@
         "default": true,
         "workspace": "/git/link/config/baloo/agents/direct-message",
         "heartbeat": {
-          "every": "15m",
+          "every": "1h",
           "target": "whatsapp",
           "to": "${BALOO_OWNER_PHONE}",
           "isolatedSession": true
