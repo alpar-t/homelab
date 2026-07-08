@@ -38,7 +38,7 @@ spec:
       containers:
         - name: immich-ml
           # OpenVINO variant: ONNX inference runs on Intel iGPU instead of CPU.
-          image: ghcr.io/immich-app/immich-machine-learning:v2.6.1-openvino@sha256:bd5aa51a9f9a17eebf17daa7731b3bacd71a4aa542ce424d3adb06552b40e905
+          image: ghcr.io/immich-app/immich-machine-learning:v2.7.5-openvino@sha256:71cd5a681823c4b818f4b24b3f05816eccc3d085559e7615f695bde77e64f1f2
           ports:
             - containerPort: 3003
               name: http
