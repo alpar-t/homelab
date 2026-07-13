@@ -295,7 +295,7 @@
       below: -3000
     - condition: numeric_state
       entity_id: sensor.gw1100a_outdoor_temperature
-      above: 19.5
+      above: 21
     - condition: or
       conditions:
         - condition: numeric_state
@@ -337,7 +337,7 @@
       before: "21:00:00"
     - condition: numeric_state
       entity_id: sensor.gw1100a_outdoor_temperature
-      above: 19.5
+      above: 21
     - condition: state
       entity_id: climate.152832116398499_climate
       state: "off"
