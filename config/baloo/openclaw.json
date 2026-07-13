@@ -133,7 +133,7 @@
           "to": "${BALOO_TRIPS_PALKOEK_GROUP}",
           "isolatedSession": true,
           "lightContext": true,
-          "activeHours": { "start": "08:00", "end": "10:00" }
+          "activeHours": { "start": "08:00", "end": "20:00" }
         },
         "tools": {
           "allow": [
