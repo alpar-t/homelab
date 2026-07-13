@@ -139,9 +139,10 @@ that HA writes to; the HA app itself is on the standalone box.
 Access from this workstation:
 
 - **Local config mirror**: `config/homeassistant/ha/` in this repo is a
-  mirror of the live HA `/config/` directory. Edit files here, then `scp`
-  or `rsync` to the device. Packages live under
-  `config/homeassistant/ha/packages/` (e.g. `pool.yaml`, etc.).
+  mirror of the live HA `/config/` directory. Edit files here, then deploy
+  with `scripts/deploy-ha.sh` (copies automations/scripts/scenes/packages/
+  dashboards and reloads HA — do not use raw `scp`/`rsync` directly).
+  Packages live under `config/homeassistant/ha/packages/` (e.g. `pool.yaml`, etc.).
   **All automations are synced here** — `config/homeassistant/ha/automations.yaml`
   is the source of truth for every automation on the device. To read or grep
   an automation's config, use this file; no need to query the live HA
