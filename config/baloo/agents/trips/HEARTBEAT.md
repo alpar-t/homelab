@@ -16,14 +16,19 @@ tasks:
     participants include Lenny (this group must never see any other trip;
     never name or hint at one). If no such trip is active, or you already sent
     this briefing for it today, reply HEARTBEAT_OK and stop. When one is
-    active, reply with a short morning briefing covering:
+    active, reply with a short morning briefing in Hungarian covering:
     (1) Today's plan from Trek's itinerary — rough time-of-day blocks (morning
     / midday / afternoon / evening) with where they'll be, any drive (distance
     + time, where to drive to, and a Google Maps directions link), and parking
     notes at the destination if Trek has them. Pull this only from what's
     actually in Trek — don't invent stops or times that aren't there; if a day
     is thin, say so in one line instead of padding it.
-    (2) Today's logged expenses so far and the current who-owes-whom balance.
+    (2) Today's weather where they'll be, from Trek's own weather tools
+    (`get_weather` / `get_detailed_weather`) — one line. If the weather
+    clashes with the plan (rain over an outdoor stop, a midday heat spike on
+    a hike), flag the clash and suggest the obvious reshuffle in one more
+    line — point it out, don't rewrite the itinerary.
+    (3) Today's logged expenses so far and the current who-owes-whom balance.
     Keep it tight and skimmable on a phone — a handful of lines, not a full
     itinerary dump. Your reply is delivered to the group automatically — do
     not call any send or message tool. No Home Assistant, no web lookups
@@ -39,8 +44,14 @@ tasks:
     today, end on or after today, participants include Lenny, never name or
     hint at any other trip. If no such trip is active, or you already sent
     this check-in for it today, reply HEARTBEAT_OK and stop. When one is
-    active, look at Trek's itinerary for tomorrow (or, if the trip ends today,
-    reply HEARTBEAT_OK — no next day to prep for). Work out roughly when they
+    active and the trip ends today, close out the books instead of prepping
+    tomorrow: pull Trek's settlement summary and send a short Hungarian
+    wrap-up in the voice of Baloo from The Jungle Book — one line per
+    settlement naming who pays whom how much (in the currencies TREK
+    reports), or that the books are square if nothing is owed, plus one warm
+    send-off line. Otherwise look at Trek's itinerary for tomorrow and write
+    the check-in below in Hungarian (the examples here show the shape, not
+    the language). Work out roughly when they
     need to be up and moving: the time of the first booked activity, drive
     leg, or checkout, minus a sensible buffer — and when tomorrow's breakfast
     is self-catered (lodging has a kitchen, no breakfast place pinned in
@@ -66,7 +77,8 @@ tasks:
     include Lenny — never mention or hint at any other trip. Compute whole days
     from today (Europe/Bucharest) to each trip's start; if none is exactly 7, 3,
     or 1 day away, reply HEARTBEAT_OK and stop. When one hits a milestone, reply
-    with a single cheerful line in the voice of Baloo from The Jungle Book —
+    with a single cheerful Hungarian line in the voice of Baloo from The
+    Jungle Book —
     warm, playful, bear-of-few-worries humour — that names how long until the
     trip ("a whole week", "just three sleeps", "tomorrow!"). Keep it to one line,
     no packing checklists. Your reply is delivered to the group automatically —
@@ -80,4 +92,6 @@ tasks:
   task self-gates to its own time slice on top of that.
 - Silence is the default. Each task fires at most once per active trip per
   day; countdowns only at the 7/3/1-day marks.
-- Match the group's language (Romanian, Hungarian, or English).
+- Write in Hungarian. Heartbeat runs are isolated with light context and
+  cannot see the chat history to match its language, so it is fixed here
+  rather than guessed per run.
