@@ -111,7 +111,7 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 10
         - name: radarr
-          image: lscr.io/linuxserver/radarr:latest@sha256:b01097ad2d948c9f5eca39eb60bb529e2e55b0738c4bf7db09383bef0abab59d
+          image: lscr.io/linuxserver/radarr:latest@sha256:e35056574cdc695a9ee745aa1ecda9eab3842450bf4b7b8471b023790fa3861d
           ports:
             - containerPort: 7878
               name: radarr-http
