@@ -23,6 +23,9 @@ tasks:
     notes at the destination if Trek has them. Pull this only from what's
     actually in Trek — don't invent stops or times that aren't there; if a day
     is thin, say so in one line instead of padding it.
+    Trek's stored times are local to the destination, not Europe/Bucharest —
+    if the two differ, quote times as they'll read on the traveller's own
+    clock there, don't convert to home time.
     (2) Today's weather where they'll be, from Trek's own weather tools
     (`get_weather` / `get_detailed_weather`) — one line. If the weather
     clashes with the plan (rain over an outdoor stop, a midday heat spike on
@@ -56,7 +59,10 @@ tasks:
     leg, or checkout, minus a sensible buffer — and when tomorrow's breakfast
     is self-catered (lodging has a kitchen, no breakfast place pinned in
     Trek), pad that buffer to cover cooking/eating before departure, not just
-    getting dressed. Reply with one short line naming when to start tomorrow
+    getting dressed. Times in Trek are local to the destination — if that
+    isn't Europe/Bucharest, give the wake-up time in destination-local time
+    (what their phone alarm will actually show), not converted to home time.
+    Reply with one short line naming when to start tomorrow
     and whether that means setting an alarm — e.g. "Early one tomorrow — first
     stop is at 8, breakfast's at the villa, so set an alarm for ~6:30." or
     "Nothing pinned early tomorrow, sleep in." Also check tomorrow's three
