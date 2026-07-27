@@ -310,6 +310,17 @@ Live example: `apps/opencloud.yaml` ignores `volumeName` on
 `opencloud-opencloud-posixfs` because that PVC was manually bound to
 the restored volume on 2026-03-31. Don't remove that block.
 
+**Why patching `syncPolicy.automated` off a child app doesn't stick:** the
+root **app-of-apps `homelab`** (path `apps/`) manages every child Application
+and has its own selfHeal, so it re-adds `automated` to the child within
+seconds and the child re-syncs to git. For a **controlled manual staged
+change** (scale down → SQL → swap image → SQL → scale up, as in a DB
+migration), suspend `homelab` *first*, then the child, do the work, push the
+end-state to `main`, then re-enable (child then root). Exact procedure:
+`runbooks/argocd-staged-changes.md`. Motivating example (Immich
+pgvecto.rs→VectorChord, incl. the 10Gi-PVC-full and startup-probe-crashloop
+gotchas): `runbooks/immich-vectorchord-migration.md`.
+
 ## Buksi i915 freeze fix (2026-04-12)
 
 Buksi was hard-freezing every 8–15 days (3 crashes since Jan 2026).

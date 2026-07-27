@@ -2,7 +2,9 @@
 # Managed by CloudNativePG operator
 #
 # Credentials are auto-generated and stored in: immich-db-app secret
-# Immich requires the pgvecto.rs extension for vector search
+# Immich requires the VectorChord (vchord) extension for vector search.
+# Migrated from pgvecto.rs (`vectors`) to VectorChord on 2026-07-27 for Immich v3,
+# which dropped pgvecto.rs support.
 #
 # Backup Strategy:
 # - CNPG continuous WAL archiving to Backblaze B2 (point-in-time recovery)
@@ -30,10 +32,11 @@ spec:
   instances: 2
   enablePDB: false
   
-  # Use tensorchord/cloudnative-pgvecto.rs image for vector extension support
-  # Required for Immich's smart search feature
-  imageName: ghcr.io/tensorchord/cloudnative-pgvecto.rs:16-v0.3.0
-  
+  # Use tensorchord/cloudnative-vectorchord image for vector extension support.
+  # VectorChord (vchord) is Immich v3's required vector extension; it CASCADE-installs
+  # pgvector, whose `vector` type lives in the public schema.
+  imageName: docker.io/tensorchord/cloudnative-vectorchord:16.14-1.1.1@sha256:6ae813d01fc0592ae3b949fb4a678fa0023a4adb5459194db617d8ec468de9c2
+
   bootstrap:
     initdb:
       database: immich
@@ -41,26 +44,21 @@ spec:
       # postInitTemplateSQL runs as postgres superuser on template1
       # Extensions installed here are copied to new databases
       postInitTemplateSQL:
-        - CREATE EXTENSION IF NOT EXISTS vectors;
+        - CREATE EXTENSION IF NOT EXISTS vchord CASCADE;
         - CREATE EXTENSION IF NOT EXISTS cube;
         - CREATE EXTENSION IF NOT EXISTS earthdistance;
       # postInitApplicationSQL runs as superuser in the application database AFTER it's created
       postInitApplicationSQL:
-        - CREATE EXTENSION IF NOT EXISTS vectors;
+        - CREATE EXTENSION IF NOT EXISTS vchord CASCADE;
         - CREATE EXTENSION IF NOT EXISTS cube;
         - CREATE EXTENSION IF NOT EXISTS earthdistance;
-        - GRANT ALL ON SCHEMA vectors TO immich;
-        - GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA vectors TO immich;
-        - GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA vectors TO immich;
-        - GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA vectors TO immich;
-        - GRANT USAGE ON SCHEMA vectors TO immich;
-        - ALTER DEFAULT PRIVILEGES IN SCHEMA vectors GRANT ALL ON TABLES TO immich;
-        - ALTER DEFAULT PRIVILEGES IN SCHEMA vectors GRANT ALL ON SEQUENCES TO immich;
-        - ALTER DEFAULT PRIVILEGES IN SCHEMA vectors GRANT ALL ON FUNCTIONS TO immich;
-        - ALTER DATABASE immich SET search_path TO "$user", public, vectors;
+        - ALTER DATABASE immich SET search_path TO "$user", public;
   
   storage:
-    size: 10Gi
+    # Grown from 10Gi → 20Gi on 2026-07-27: the pgvecto.rs→VectorChord migration's
+    # table rewrites (WAL) plus vchord index rebuilds filled the 10Gi volume and
+    # tripped CNPG's low-disk-space shutdown on the primary.
+    size: 20Gi
     storageClass: longhorn-ssd
 
   resources:
@@ -94,7 +92,7 @@ spec:
   postgresql:
     # shared_preload_libraries must be set via dedicated field, not parameters
     shared_preload_libraries:
-      - "vectors.so"
+      - "vchord.so"
     parameters:
       log_statement: "ddl"
       shared_buffers: "256MB"

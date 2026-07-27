@@ -171,7 +171,7 @@ spec:
             failureThreshold: 3
 
         - name: immich-server
-          image: ghcr.io/immich-app/immich-server:v2.6.1@sha256:aa7fe8eec3130742d07498dac7e02baa2d32a903573810ba95ed11f155c7eac1
+          image: ghcr.io/immich-app/immich-server:v3.0.3@sha256:118946756b2274f741be9d301428401be8716024c407b019cd424fa1e6f518e6
           # GPU access for hardware transcoding (Intel QSV/VAAPI)
           # GPU is provided by Intel GPU Device Plugin via gpu.intel.com/i915 resource
           securityContext:
@@ -190,6 +190,9 @@ spec:
               value: "5432"
             - name: DB_DATABASE_NAME
               value: "immich"
+            # Immich v3 dropped pgvecto.rs; the DB was migrated to VectorChord.
+            - name: DB_VECTOR_EXTENSION
+              value: "vectorchord"
             - name: DB_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -278,14 +281,17 @@ spec:
               memory: 4Gi
               gpu.intel.com/i915: 1
           
-          # Startup probe - allows up to 10 minutes for initial startup
-          # Immich will refuse to start if library mount is missing (.immich check is built-in)
+          # Startup probe - allows up to 30 minutes for initial startup.
+          # Immich blocks readiness while it rebuilds vector indexes (vchord
+          # reindex on a large library can take many minutes); too short a budget
+          # kills the container mid-build and crash-loops. Immich will also refuse
+          # to start if the library mount is missing (.immich check is built-in).
           startupProbe:
             httpGet:
               path: /api/server/ping
               port: http
             initialDelaySeconds: 10  # Give mergerfs time to mount
-            failureThreshold: 60
+            failureThreshold: 180
             periodSeconds: 10
             timeoutSeconds: 5
           livenessProbe:
