@@ -100,6 +100,11 @@ spec:
                 secretKeyRef:
                   name: interior-designer-secrets
                   key: OPENAI_API_KEY
+            - name: BROWSER_CDP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: interior-designer-secrets
+                  key: BROWSER_CDP_TOKEN
           livenessProbe:
             httpGet:
               path: /healthz

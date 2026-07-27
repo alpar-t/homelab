@@ -45,9 +45,8 @@
         "default": true,
         "workspace": "/git/link/config/interior-designer/agents/interior-designer",
         "tools": {
-          "allow": ["web_fetch", "image", "image_generate", "searxng__*"],
+          "allow": ["web_fetch", "browser", "image", "image_generate", "searxng__*"],
           "deny": [
-            "browser",
             "hass__*",
             "github-life__*",
             "trek__*",
@@ -65,6 +64,23 @@
         "url": "http://mcp-searxng.baloo.svc.cluster.local:3000/mcp",
         "transport": "streamable-http"
       }
+    }
+  },
+  "plugins": {
+    "allow": ["browser"]
+  },
+  "browser": {
+    "enabled": true,
+    "defaultProfile": "cluster",
+    "profiles": {
+      "cluster": {
+        "cdpUrl": "ws://browser.baloo.svc.cluster.local:3000?token=${BROWSER_CDP_TOKEN}",
+        "attachOnly": true,
+        "color": "#FF4500"
+      }
+    },
+    "ssrfPolicy": {
+      "allowedHostnames": ["browser.baloo.svc.cluster.local"]
     }
   }
 }
