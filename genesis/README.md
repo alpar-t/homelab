@@ -682,7 +682,7 @@ Argo CD will now automatically deploy any Applications defined in the `apps/` di
 
 ## Why CoreOS + k3s?
 
-**vs Talos:**
+**Fedora CoreOS benefits:**
 - ✅ Better hardware compatibility (works with HC4)
 - ✅ Familiar tooling (SSH, systemd)
 - ✅ Easier to troubleshoot

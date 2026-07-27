@@ -93,6 +93,7 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [x] Frigate
 - [x] **Off-LAN SSH access via Cloudflare Access** — see [runbooks/cloudflare-access-ssh.md](runbooks/cloudflare-access-ssh.md). Unblocks bootstrap work (creating secrets, etc.) from anywhere without depending on VPN.
 - [x] **VPN: tear out Headscale, deploy stock Tailscale** — done 2026-06-11. Headscale's TS2021 noise protocol can't be proxied by free Cloudflare Tunnel (bidirectional gRPC-over-HTTP/2 after the 101 upgrade). Replaced with stock Tailscale; subnet router pinned to buksi for MetalLB co-location. See [runbooks/tailscale.md](runbooks/tailscale.md).
+- [ ] **VPN: HA subnet router** — single point of failure today: `tailscale-subnet-router` is `replicas: 1` pinned to buksi, so if buksi is down, remote access to `192.168.1.0/24` (and the GL-MT3000's gateway back home) is lost entirely. Tailscale supports advertising the same subnet from multiple nodes for automatic failover — add a second subnet router on pamacs or pufi. Note: this won't help for MetalLB `externalTrafficPolicy: Local` services (Emby, Immich, arr-stack), which are still only reachable via buksi's path regardless — see co-location constraint in [runbooks/tailscale.md](runbooks/tailscale.md).
 - [x] **Tailscale: Pi-hole as DNS for tailnet devices** — done 2026-06-12. Tailscale admin → DNS → global nameserver `192.168.1.202` (Pi-hole), "Override local DNS" on.
 - [x] Deploy [TREK](https://github.com/mauriceboe/TREK) — holiday / trip planner
   - [x] Pocket ID OIDC SSO with group-based admin claim (`trek-admins`)
@@ -154,7 +155,7 @@ HDD2 (2TB): Longhorn storage
 - Simpler daily operation
 - No TFTP server dependency
 - Faster boot
-- Still easy upgrades via `talosctl`
+- Automatic OS updates via Zincati
 - Can reinstall from USB if needed
 
 **3 Control Planes vs 1+2:**
@@ -162,4 +163,3 @@ HDD2 (2TB): Longhorn storage
 - Can lose 1 node
 - No single point of failure
 - Minimal resource overhead
-

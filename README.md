@@ -5,7 +5,7 @@ Self-hosting infrastructure using 3 Odroid nodes running Kubernetes.
 ## What This Is
 
 A 3-node highly-available Kubernetes cluster on low-power ARM hardware:
-- **Talos Linux** - Immutable OS designed for Kubernetes
+- **Fedora CoreOS** - Immutable, ostree-based operating system
 - **Installed to SSD** - Fast boot, independent operation
 - **Longhorn storage** - HDDs provide persistent volumes
 - **HA cluster** - Can lose 1 node and stay operational
@@ -24,7 +24,7 @@ cd genesis
 ```
 3x Odroid Nodes
 Each with:
-├── SSD: Talos OS + Kubernetes
+├── SSD: Fedora CoreOS + Kubernetes
 ├── HDD1: Longhorn storage
 └── HDD2: Longhorn storage
 
@@ -43,7 +43,7 @@ Total: ~12TB storage across cluster
 
 - ✅ High availability (can lose 1 node)
 - ✅ Immutable OS (no configuration drift)
-- ✅ Easy upgrades (`talosctl upgrade`)
+- ✅ Automatic OS updates via Zincati; managed k3s upgrades
 - ✅ Low power (~15W total)
 - ✅ Enterprise-grade practices
 
@@ -60,4 +60,4 @@ See [genesis/README.md](genesis/README.md) for complete step-by-step instruction
 - Self-sustaining, resilient infrastructure
 - Low maintenance (immutable OS)
 - Enterprise-grade practices for home lab
-- Learn Kubernetes, Talos, infrastructure-as-code
+- Learn Kubernetes, Fedora CoreOS, infrastructure-as-code
