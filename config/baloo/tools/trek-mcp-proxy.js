@@ -192,7 +192,11 @@ class ClientCredentialsProvider {
  * Client's `request()` accepts a full JSON-RPC request object including
  * `method`, so we pass `{ method, params }`.
  */
-function forwardRequest(local, upstream, schema, method) {
+function isStaleSessionError(error) {
+  return error?.code === 404 && /session not found/i.test(error?.message || "");
+}
+
+function forwardRequest(local, upstreamManager, schema, method) {
   local.setRequestHandler(schema, async (req, extra) => {
     const params = req.params ?? {};
     const signal = extra?.signal;
@@ -202,7 +206,7 @@ function forwardRequest(local, upstream, schema, method) {
     // '_zod')". `ResultSchema` is the SDK's passthrough base result, so it keeps
     // every upstream field (tools, contents, etc.) without re-validating the
     // full method-specific shape the request was already validated against.
-    return await upstream.request({ method, params }, ResultSchema, { signal });
+    return await upstreamManager.request({ method, params }, ResultSchema, { signal });
   });
 }
 
@@ -212,6 +216,153 @@ function forwardNotification(from, to, schema) {
   });
 }
 
+/*
+ * Own the upstream Client/transport pair so a Trek restart does not poison the
+ * long-lived stdio bridge. A missing server-side session is safe to retry: Trek
+ * rejects it before executing the JSON-RPC request. Concurrent failures share
+ * one reconnect, and each request is retried at most once.
+ */
+class UpstreamManager {
+  constructor(authProvider) {
+    this._authProvider = authProvider;
+    this._client = undefined;
+    this._transport = undefined;
+    this._connectPromise = undefined;
+    this._reconnectPromise = undefined;
+    this._local = undefined;
+    this._caps = undefined;
+    this._closing = false;
+  }
+
+  async _connect() {
+    const client = new Client(
+      { name: "trek-mcp-proxy", version: "1.1.0" },
+      { capabilities: {} }
+    );
+    const transport = new StreamableHTTPClientTransport(
+      new URL(MCP_URL),
+      { authProvider: this._authProvider }
+    );
+
+    client.onerror = (err) => log(`upstream error: ${err?.message || err}`);
+    client.onclose = () => {
+      if (this._client === client) {
+        this._client = undefined;
+        this._transport = undefined;
+        if (!this._closing) log("upstream closed; next request will reconnect");
+      }
+    };
+
+    log(`connecting to ${MCP_URL}`);
+    await client.connect(transport);
+
+    this._client = client;
+    this._transport = transport;
+    this._bindNotifications(client);
+    log(`connected; session=${transport.sessionId || "(none)"}`);
+    return client;
+  }
+
+  async getClient() {
+    if (this._client) return this._client;
+    if (!this._connectPromise) {
+      this._connectPromise = this._connect().finally(() => {
+        this._connectPromise = undefined;
+      });
+    }
+    return await this._connectPromise;
+  }
+
+  bindLocal(local, caps) {
+    this._local = local;
+    this._caps = caps;
+    if (this._client) this._bindNotifications(this._client);
+  }
+
+  _bindNotifications(client) {
+    if (!this._local || !this._caps) return;
+    const local = this._local;
+    const caps = this._caps;
+
+    forwardNotification(client, local, ProgressNotificationSchema);
+    if (caps.tools?.listChanged) {
+      forwardNotification(client, local, ToolListChangedNotificationSchema);
+    }
+    if (caps.resources?.listChanged) {
+      forwardNotification(client, local, ResourceListChangedNotificationSchema);
+    }
+    if (caps.resources?.subscribe) {
+      forwardNotification(client, local, ResourceUpdatedNotificationSchema);
+    }
+    if (caps.prompts?.listChanged) {
+      forwardNotification(client, local, PromptListChangedNotificationSchema);
+    }
+    if (caps.logging) {
+      forwardNotification(client, local, LoggingMessageNotificationSchema);
+    }
+  }
+
+  async reconnect(reason, failedClient) {
+    if (this._reconnectPromise) return await this._reconnectPromise;
+    if (this._client && this._client !== failedClient) return this._client;
+
+    this._reconnectPromise = (async () => {
+      log(`${reason}; recreating upstream MCP session`);
+      const oldClient = this._client;
+      this._client = undefined;
+      this._transport = undefined;
+      if (oldClient) {
+        try {
+          await oldClient.close();
+        } catch (error) {
+          log(`old upstream close failed: ${error?.message || error}`);
+        }
+      }
+      return await this.getClient();
+    })().finally(() => {
+      this._reconnectPromise = undefined;
+    });
+
+    return await this._reconnectPromise;
+  }
+
+  async request(message, resultSchema, options) {
+    const client = await this.getClient();
+    try {
+      return await client.request(message, resultSchema, options);
+    } catch (error) {
+      if (!isStaleSessionError(error)) throw error;
+      const replacement = await this.reconnect("Trek rejected stale session", client);
+      return await replacement.request(message, resultSchema, options);
+    }
+  }
+
+  async shutdown() {
+    if (this._closing) return;
+    this._closing = true;
+    const client = this._client;
+    const transport = this._transport;
+    this._client = undefined;
+    this._transport = undefined;
+
+    if (transport?.sessionId) {
+      try {
+        await transport.terminateSession();
+        log("upstream session terminated");
+      } catch (error) {
+        log(`upstream session termination failed: ${error?.message || error}`);
+      }
+    }
+    if (client) {
+      try {
+        await client.close();
+      } catch (error) {
+        log(`upstream close failed: ${error?.message || error}`);
+      }
+    }
+  }
+}
+
 (async () => {
   const authProvider = new ClientCredentialsProvider({
     clientId:     CLIENT_ID,
@@ -219,21 +370,8 @@ function forwardNotification(from, to, schema) {
     tokenUrl:     TOKEN_URL,
   });
 
-  // Note: we declare client capabilities matching what we'll proxy back to
-  // OpenClaw. Trek only consults the *server* capabilities it advertises;
-  // these client caps mostly affect notification routing.
-  const upstream = new Client(
-    { name: "trek-mcp-proxy", version: "1.0.0" },
-    { capabilities: { } }
-  );
-
-  const upstreamTransport = new StreamableHTTPClientTransport(
-    new URL(MCP_URL),
-    { authProvider }
-  );
-
-  log(`connecting to ${MCP_URL}`);
-  await upstream.connect(upstreamTransport);
+  const upstreamManager = new UpstreamManager(authProvider);
+  const upstream = await upstreamManager.getClient();
 
   const caps         = upstream.getServerCapabilities() ?? {};
   const serverInfo   = upstream.getServerVersion()      ?? { name: "trek", version: "1.0.0" };
@@ -247,55 +385,48 @@ function forwardNotification(from, to, schema) {
 
   // Request handlers — forward what the upstream advertises.
   // Always-on: ping. The MCP spec mandates ping support.
-  forwardRequest(local, upstream, PingRequestSchema, "ping");
+  forwardRequest(local, upstreamManager, PingRequestSchema, "ping");
 
   if (caps.tools) {
-    forwardRequest(local, upstream, ListToolsRequestSchema, "tools/list");
-    forwardRequest(local, upstream, CallToolRequestSchema,  "tools/call");
+    forwardRequest(local, upstreamManager, ListToolsRequestSchema, "tools/list");
+    forwardRequest(local, upstreamManager, CallToolRequestSchema,  "tools/call");
   }
   if (caps.resources) {
-    forwardRequest(local, upstream, ListResourcesRequestSchema,        "resources/list");
-    forwardRequest(local, upstream, ListResourceTemplatesRequestSchema,"resources/templates/list");
-    forwardRequest(local, upstream, ReadResourceRequestSchema,         "resources/read");
+    forwardRequest(local, upstreamManager, ListResourcesRequestSchema,         "resources/list");
+    forwardRequest(local, upstreamManager, ListResourceTemplatesRequestSchema, "resources/templates/list");
+    forwardRequest(local, upstreamManager, ReadResourceRequestSchema,          "resources/read");
     if (caps.resources.subscribe) {
-      forwardRequest(local, upstream, SubscribeRequestSchema,   "resources/subscribe");
-      forwardRequest(local, upstream, UnsubscribeRequestSchema, "resources/unsubscribe");
+      forwardRequest(local, upstreamManager, SubscribeRequestSchema,   "resources/subscribe");
+      forwardRequest(local, upstreamManager, UnsubscribeRequestSchema, "resources/unsubscribe");
     }
   }
   if (caps.prompts) {
-    forwardRequest(local, upstream, ListPromptsRequestSchema, "prompts/list");
-    forwardRequest(local, upstream, GetPromptRequestSchema,   "prompts/get");
+    forwardRequest(local, upstreamManager, ListPromptsRequestSchema, "prompts/list");
+    forwardRequest(local, upstreamManager, GetPromptRequestSchema,   "prompts/get");
   }
   if (caps.completions) {
-    forwardRequest(local, upstream, CompleteRequestSchema, "completion/complete");
+    forwardRequest(local, upstreamManager, CompleteRequestSchema, "completion/complete");
   }
   if (caps.logging) {
-    forwardRequest(local, upstream, SetLevelRequestSchema, "logging/setLevel");
+    forwardRequest(local, upstreamManager, SetLevelRequestSchema, "logging/setLevel");
   }
 
-  // Notifications — server→client only (these are the ones Trek may emit).
-  forwardNotification(upstream, local, ProgressNotificationSchema);
-  if (caps.tools?.listChanged) {
-    forwardNotification(upstream, local, ToolListChangedNotificationSchema);
-  }
-  if (caps.resources?.listChanged) {
-    forwardNotification(upstream, local, ResourceListChangedNotificationSchema);
-  }
-  if (caps.resources?.subscribe) {
-    forwardNotification(upstream, local, ResourceUpdatedNotificationSchema);
-  }
-  if (caps.prompts?.listChanged) {
-    forwardNotification(upstream, local, PromptListChangedNotificationSchema);
-  }
-  if (caps.logging) {
-    forwardNotification(upstream, local, LoggingMessageNotificationSchema);
-  }
+  upstreamManager.bindLocal(local, caps);
 
-  // Connection lifecycle — if upstream drops, exit so OpenClaw respawns us.
-  upstream.onclose = () => { log("upstream closed; exiting"); process.exit(0); };
-  upstream.onerror = (err) => log(`upstream error: ${err?.message || err}`);
+  const localTransport = new StdioServerTransport();
+  let stopping = false;
+  const stop = async (reason, exitCode) => {
+    if (stopping) return;
+    stopping = true;
+    log(`${reason}; shutting down`);
+    await upstreamManager.shutdown();
+    process.exit(exitCode);
+  };
+  local.onclose = () => { void stop("stdio closed", 0); };
+  process.once("SIGTERM", () => { void stop("SIGTERM", 0); });
+  process.once("SIGINT",  () => { void stop("SIGINT",  0); });
 
-  await local.connect(new StdioServerTransport());
+  await local.connect(localTransport);
   log("stdio bridge ready");
 })().catch((err) => {
   log(`fatal: ${err?.stack || err?.message || err}`);

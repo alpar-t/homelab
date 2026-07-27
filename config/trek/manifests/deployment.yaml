@@ -40,7 +40,7 @@ spec:
     spec:
       containers:
         - name: trek
-          image: mauriceboe/trek:latest
+          image: docker.io/mauriceboe/trek:3.4.1@sha256:ce7fab639b89a6f62d484d1175a7d489a536a8c77291f56c03fec20608d4a3eb
           ports:
             - containerPort: 3000
               name: http
@@ -49,6 +49,10 @@ spec:
               value: "3000"
             - name: NODE_ENV
               value: "production"
+            # TREK has repeatedly exhausted Node's ~256MiB default heap. Keep
+            # V8 below the pod limit while giving long-lived MCP sessions room.
+            - name: NODE_OPTIONS
+              value: "--max-old-space-size=768"
             - name: APP_URL
               value: "https://travel.newjoy.ro"
             - name: TZ
@@ -90,10 +94,10 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 256Mi
+              memory: 512Mi
             limits:
               cpu: 500m
-              memory: 512Mi
+              memory: 1Gi
           startupProbe:
             httpGet:
               path: /
