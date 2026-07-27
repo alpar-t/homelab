@@ -1,0 +1,70 @@
+{
+  "gateway": {
+    "mode": "local",
+    "bind": "lan",
+    "port": 18789,
+    "auth": { "mode": "token" },
+    "controlUi": { "enabled": false },
+    "http": {
+      "endpoints": {
+        "chatCompletions": { "enabled": true }
+      }
+    }
+  },
+  "models": {
+    "providers": {
+      "anthropic": {
+        "models": [
+          {
+            "id": "claude-sonnet-4-6",
+            "name": "Claude Sonnet 4.6",
+            "cost": { "input": 3, "output": 15, "cacheRead": 0.3, "cacheWrite": 3.75 }
+          }
+        ]
+      },
+      "openai": {
+        "models": [{ "id": "gpt-image-2", "name": "GPT Image 2" }]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "skipBootstrap": true,
+      "model": { "primary": "anthropic/claude-sonnet-4-6" },
+      "imageGenerationModel": {
+        "primary": "openai/gpt-image-2",
+        "timeoutMs": 180000
+      },
+      "heartbeat": { "every": "0m" },
+      "userTimezone": "Europe/Bucharest"
+    },
+    "list": [
+      {
+        "id": "interior-designer",
+        "name": "Baloo Interior Designer",
+        "default": true,
+        "workspace": "/git/link/config/interior-designer/agents/interior-designer",
+        "tools": {
+          "allow": ["web_fetch", "image", "image_generate", "searxng__*"],
+          "deny": [
+            "browser",
+            "hass__*",
+            "github-life__*",
+            "trek__*",
+            "google-maps__*",
+            "k8s__*",
+            "cron"
+          ]
+        }
+      }
+    ]
+  },
+  "mcp": {
+    "servers": {
+      "searxng": {
+        "url": "http://mcp-searxng.baloo.svc.cluster.local:3000/mcp",
+        "transport": "streamable-http"
+      }
+    }
+  }
+}
