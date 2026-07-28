@@ -118,6 +118,13 @@ spec:
             # default model ACL hides every agent from non-admin users.
             - name: BYPASS_MODEL_ACCESS_CONTROL
               value: "true"
+            # OpenClaw agents are discovered dynamically, so they have no Open
+            # WebUI model record carrying feature metadata. Mark image
+            # generation as supported and enabled by default; users can still
+            # turn it off per chat from the normal feature controls.
+            - name: DEFAULT_MODEL_METADATA
+              value: >-
+                {"capabilities":{"image_generation":true},"defaultFeatureIds":["image_generation"],"builtinTools":{"image_generation":true}}
             - name: OPENAI_API_BASE_URLS
               value: http://openclaw.baloo.svc.cluster.local:18789/v1
             - name: OPENAI_API_KEYS
