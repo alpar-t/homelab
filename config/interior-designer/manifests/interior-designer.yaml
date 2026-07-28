@@ -110,9 +110,14 @@ spec:
             - name: OAUTH_ROLES_CLAIM
               value: groups
             - name: OAUTH_ALLOWED_ROLES
-              value: interior-designer,interior-designer-admin
+              value: family_users
             - name: OAUTH_ADMIN_ROLES
-              value: interior-designer-admin
+              value: advanced_apps
+            # OpenClaw exposes agents as upstream OpenAI models. They have no
+            # Open WebUI model records to attach per-group grants to, so the
+            # default model ACL hides every agent from non-admin users.
+            - name: BYPASS_MODEL_ACCESS_CONTROL
+              value: "true"
             - name: OPENAI_API_BASE_URLS
               value: http://openclaw.baloo.svc.cluster.local:18789/v1
             - name: OPENAI_API_KEYS
