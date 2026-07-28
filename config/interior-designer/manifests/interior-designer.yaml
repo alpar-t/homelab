@@ -115,7 +115,7 @@ spec:
               memory: 512Mi
             limits:
               cpu: "1"
-              memory: 1Gi
+              memory: 2Gi
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
