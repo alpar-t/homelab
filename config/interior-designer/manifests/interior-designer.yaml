@@ -48,6 +48,22 @@ spec:
                 secretKeyRef:
                   name: interior-designer-webui
                   key: webui-secret-key
+            # Keep this deployment as a UI. Do not load or download Open
+            # WebUI's local SentenceTransformer/RAG models: all model work is
+            # delegated to the existing OpenClaw gateway below.
+            - name: ENABLE_PERSISTENT_CONFIG
+              value: "false"
+            - name: RAG_EMBEDDING_ENGINE
+              value: openai
+            - name: RAG_EMBEDDING_MODEL
+              value: text-embedding-3-small
+            - name: RAG_OPENAI_API_BASE_URL
+              value: http://openclaw.baloo.svc.cluster.local:18789/v1
+            - name: RAG_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: OPENCLAW_GATEWAY_TOKEN
             - name: ENABLE_SIGNUP
               value: "false"
             - name: ENABLE_LOGIN_FORM
@@ -99,9 +115,7 @@ spec:
             httpGet:
               path: /health
               port: http
-            # First start downloads the bundled embedding model; do not kill it
-            # while that one-time initialization is still in progress.
-            initialDelaySeconds: 180
+            initialDelaySeconds: 60
             periodSeconds: 30
           readinessProbe:
             httpGet:
@@ -115,7 +129,7 @@ spec:
               memory: 512Mi
             limits:
               cpu: "1"
-              memory: 2Gi
+              memory: 1Gi
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
