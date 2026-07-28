@@ -1,6 +1,7 @@
 # HomePBP
 
-3-node k3s cluster on Odroid hardware. See [README.md](README.md) for the broader picture.
+3-node k3s cluster on Intel x86_64 Odroid hardware (`amd64` in Kubernetes).
+See [README.md](README.md) for the broader picture.
 
 ## Runbooks
 

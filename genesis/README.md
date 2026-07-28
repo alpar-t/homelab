@@ -1,11 +1,12 @@
-# Genesis - Kubernetes Cluster on Odroid HC4
+# Genesis - Kubernetes Cluster on Intel x86_64 Odroid Hardware
 
-Install and manage a 3-node highly-available Kubernetes cluster on Odroid HC4 nodes using Fedora CoreOS and k3s.
+Install and manage a 3-node highly-available Kubernetes cluster on Intel
+x86_64 Odroid nodes using Fedora CoreOS and k3s.
 
 ## Overview
 
 This setup creates a production-grade Kubernetes cluster on low-power x86_64 hardware:
-- **3 Odroid HC4 nodes** - Each runs control plane + workloads
+- **3 Intel x86_64 Odroid nodes** - Each runs control plane + workloads
 - **Fedora CoreOS** - Immutable, container-focused OS
 - **k3s** - Lightweight Kubernetes distribution
 - **Installed to NVMe** - Fast boot, independent operation
@@ -14,7 +15,7 @@ This setup creates a production-grade Kubernetes cluster on low-power x86_64 har
 ## Architecture
 
 ```
-3x Odroid HC4 Nodes
+3x Intel x86_64 Odroid Nodes
 ├── NVMe SSD: CoreOS + k3s + etcd
 ├── HDD1: Longhorn storage
 └── HDD2: Longhorn storage
@@ -31,8 +32,8 @@ Dedicated storage network for optimal I/O performance
 ## What You Need
 
 ### Hardware
-- 3x Odroid HC4 Plus/Ultra
-- Each with: 4GB RAM, 1 NVMe SSD (boot), 2 SATA HDDs (storage)
+- 3x Intel x86_64 Odroid nodes
+- Each with: 16-32 GiB RAM, 1 NVMe SSD (boot), 2 SATA HDDs (storage)
 - USB drive (4GB+) for installation
 - Keyboard + HDMI monitor (for initial setup)
 
@@ -146,7 +147,7 @@ Note this IP - you'll need it during installation (e.g., `192.168.1.100`).
 
 ### Step 4: Install First Node
 
-1. **Insert USB** into Odroid HC4
+1. **Insert USB** into the Odroid
 2. **Connect keyboard + HDMI monitor**
 3. **Power on** and boot from USB
 4. **Login as `core`** at the prompt (no password required on live ISO)
@@ -334,7 +335,7 @@ See "GitOps Setup Guide" section below for configuring your Git repository in Ar
 
 ## Storage Configuration
 
-Each Odroid HC4 has:
+Each Odroid node has:
 
 ```
 /dev/nvme0n1 (NVMe SSD 2TB)
@@ -353,7 +354,7 @@ Each Odroid HC4 has:
 
 ## Network Configuration
 
-Each HC4 has two Gigabit Ethernet ports configured for different VLANs:
+Each node has two Gigabit Ethernet ports configured for different VLANs:
 
 ### Dual-Network Architecture
 
@@ -683,7 +684,7 @@ Argo CD will now automatically deploy any Applications defined in the `apps/` di
 ## Why CoreOS + k3s?
 
 **Fedora CoreOS benefits:**
-- ✅ Better hardware compatibility (works with HC4)
+- ✅ Better hardware compatibility with the Intel x86_64 Odroid nodes
 - ✅ Familiar tooling (SSH, systemd)
 - ✅ Easier to troubleshoot
 - ✅ Still immutable and container-focused
@@ -720,7 +721,7 @@ Argo CD will now automatically deploy any Applications defined in the `apps/` di
 ### Platform Documentation
 - [Fedora CoreOS Documentation](https://docs.fedoraproject.org/en-US/fedora-coreos/)
 - [k3s Documentation](https://docs.k3s.io/)
-- [Odroid HC4 Wiki](https://wiki.odroid.com/odroid-hc4/odroid-hc4)
+- [Odroid Wiki](https://wiki.odroid.com/)
 
 ### GitOps
 - [Argo CD Documentation](https://argo-cd.readthedocs.io/)

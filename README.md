@@ -1,10 +1,11 @@
 # HomePBP - Home Personal Build Platform
 
-Self-hosting infrastructure using 3 Odroid nodes running Kubernetes.
+Self-hosting infrastructure using 3 Intel x86_64 Odroid nodes running Kubernetes.
 
 ## What This Is
 
-A 3-node highly-available Kubernetes cluster on low-power ARM hardware:
+A 3-node highly-available Kubernetes cluster on low-power Intel x86_64
+hardware (`amd64` in Kubernetes):
 - **Fedora CoreOS** - Immutable, ostree-based operating system
 - **Installed to SSD** - Fast boot, independent operation
 - **Longhorn storage** - HDDs provide persistent volumes
@@ -22,7 +23,7 @@ cd genesis
 ## Architecture
 
 ```
-3x Odroid Nodes
+3x Intel x86_64 Odroid Nodes
 Each with:
 ├── SSD: Fedora CoreOS + Kubernetes
 ├── HDD1: Longhorn storage
