@@ -25,7 +25,7 @@ spec:
         kubernetes.io/hostname: buksi
       containers:
         - name: qbittorrent
-          image: lscr.io/linuxserver/qbittorrent:latest@sha256:8f7a1da9644340c737e3211ecc910a416d4295076e6b2824a4afcd1f4e3576e2
+          image: lscr.io/linuxserver/qbittorrent:5.1.4-r3-ls451@sha256:8f7a1da9644340c737e3211ecc910a416d4295076e6b2824a4afcd1f4e3576e2
           ports:
             - containerPort: 8080
               name: qbit-http
@@ -71,7 +71,7 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 10
         - name: sonarr
-          image: lscr.io/linuxserver/sonarr:latest@sha256:bed3afb5d46fde809290997760f2e19d41e57d1eb34f507c485d5a8979c7cd8d
+          image: lscr.io/linuxserver/sonarr:4.0.17.2952-ls310@sha256:bed3afb5d46fde809290997760f2e19d41e57d1eb34f507c485d5a8979c7cd8d
           ports:
             - containerPort: 8989
               name: sonarr-http
@@ -111,7 +111,7 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 10
         - name: radarr
-          image: lscr.io/linuxserver/radarr:latest@sha256:b01097ad2d948c9f5eca39eb60bb529e2e55b0738c4bf7db09383bef0abab59d
+          image: lscr.io/linuxserver/radarr:6.1.1.10360-ls300@sha256:b01097ad2d948c9f5eca39eb60bb529e2e55b0738c4bf7db09383bef0abab59d
           ports:
             - containerPort: 7878
               name: radarr-http
@@ -151,7 +151,7 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 10
         - name: prowlarr
-          image: lscr.io/linuxserver/prowlarr:latest@sha256:c5de2a8758a05594319263e7691c1dce56899442ed1720d6eca216c0958f4caf
+          image: lscr.io/linuxserver/prowlarr:2.3.5.5327-ls143@sha256:c5de2a8758a05594319263e7691c1dce56899442ed1720d6eca216c0958f4caf
           ports:
             - containerPort: 9696
               name: prowlarr-http

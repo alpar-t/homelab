@@ -317,7 +317,7 @@ Install Argo CD to manage the cluster via GitOps:
 # Install Argo CD
 kubectl create namespace argocd
 # Pin to a specific version — check https://github.com/argoproj/argo-cd/releases for latest
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/v3.2.8/manifests/install.yaml
+kubectl apply --server-side --force-conflicts -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/v3.4.4/manifests/install.yaml
 
 # Wait for Argo CD to be ready
 kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd

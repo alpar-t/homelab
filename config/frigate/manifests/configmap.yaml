@@ -44,15 +44,18 @@ data:
     # Recording configuration
     record:
       enabled: true
-      retain:
+      continuous:
+        days: 0
+      motion:
         days: 7
-        mode: motion
       alerts:
         retain:
           days: 14
+          mode: motion
       detections:
         retain:
           days: 14
+          mode: motion
 
     # Snapshots on motion
     snapshots:
