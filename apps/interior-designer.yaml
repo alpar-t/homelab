@@ -11,7 +11,7 @@ spec:
     path: config/interior-designer/manifests
   destination:
     server: https://kubernetes.default.svc
-    namespace: interior-designer
+    namespace: baloo
   syncPolicy:
     automated:
       prune: true

@@ -1,10 +1,17 @@
 {
   "gateway": {
     "mode": "local",
-    "bind": "loopback",
+    "bind": "lan",
     "port": 18789,
     "auth": {
       "mode": "token"
+    },
+    "http": {
+      "endpoints": {
+        "chatCompletions": {
+          "enabled": true
+        }
+      }
     },
     "controlUi": {
       "enabled": true
@@ -104,6 +111,29 @@
             "k8s__port_forward",
             "k8s__stop_port_forward",
             "k8s__upgrade_helm_chart"
+          ]
+        }
+      },
+      {
+        "id": "interior-designer",
+        "name": "Baloo Interior Designer",
+        "workspace": "/git/link/config/baloo/agents/interior-designer",
+        "tools": {
+          "allow": [
+            "web_fetch",
+            "browser",
+            "image_generate",
+            "session_status",
+            "searxng__searxng_web_search"
+          ],
+          "deny": [
+            "hass__*",
+            "github-life__*",
+            "trek__*",
+            "google-maps__*",
+            "google-timezone__*",
+            "k8s__*",
+            "cron"
           ]
         }
       },

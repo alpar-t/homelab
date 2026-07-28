@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: interior-designer-data
-  namespace: interior-designer
+  namespace: baloo
 spec:
   accessModes: [ReadWriteOnce]
   storageClassName: longhorn-ssd
@@ -10,187 +10,11 @@ spec:
     requests:
       storage: 5Gi
 ---
-# A separate state volume and gateway token keep this agent outside
-# the owner Baloo gateway's credentials, sessions, and tool surface.
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: interior-designer-state
-  namespace: interior-designer
-spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: longhorn-ssd
-  resources:
-    requests:
-      storage: 2Gi
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: interior-designer-gateway
-  namespace: interior-designer
-  labels:
-    app.kubernetes.io/name: interior-designer-gateway
-spec:
-  replicas: 1
-  strategy:
-    type: Recreate
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: interior-designer-gateway
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: interior-designer-gateway
-    spec:
-      automountServiceAccountToken: false
-      securityContext:
-        fsGroup: 1000
-        seccompProfile:
-          type: RuntimeDefault
-      initContainers:
-        - name: git-sync-init
-          image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
-          args:
-            - --repo=https://github.com/alpar-t/homelab.git
-            - --root=/git
-            - --link=link
-            - --depth=1
-            - --one-time
-          securityContext:
-            runAsUser: 65533
-            runAsGroup: 65533
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: [ALL]
-          volumeMounts:
-            - name: git-repo
-              mountPath: /git
-            - name: tmp
-              mountPath: /tmp
-      containers:
-        - name: gateway
-          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
-          command: ["node", "/app/dist/index.js", "gateway", "run"]
-          ports:
-            - name: http
-              containerPort: 18789
-          env:
-            - name: HOME
-              value: /state/home
-            - name: NODE_ENV
-              value: production
-            - name: OPENCLAW_CONFIG_PATH
-              value: /git/link/config/interior-designer/openclaw.json
-            - name: OPENCLAW_STATE_DIR
-              value: /state
-            - name: OPENCLAW_GATEWAY_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: interior-designer-gateway
-                  key: gateway-token
-            - name: ANTHROPIC_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: interior-designer-secrets
-                  key: ANTHROPIC_API_KEY
-            - name: OPENAI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: interior-designer-secrets
-                  key: OPENAI_API_KEY
-            - name: BROWSER_CDP_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: interior-designer-secrets
-                  key: BROWSER_CDP_TOKEN
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: http
-            initialDelaySeconds: 30
-            periodSeconds: 30
-          readinessProbe:
-            httpGet:
-              path: /readyz
-              port: http
-            initialDelaySeconds: 10
-            periodSeconds: 10
-          resources:
-            requests:
-              cpu: 250m
-              memory: 512Mi
-            limits:
-              cpu: "1"
-              memory: 1Gi
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 1000
-            runAsGroup: 1000
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: [ALL]
-          volumeMounts:
-            - name: git-repo
-              mountPath: /git
-              readOnly: true
-            - name: state
-              mountPath: /state
-            - name: tmp
-              mountPath: /tmp
-        - name: git-sync
-          image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
-          args:
-            - --repo=https://github.com/alpar-t/homelab.git
-            - --root=/git
-            - --link=link
-            - --depth=1
-            - --period=60s
-          securityContext:
-            runAsUser: 65533
-            runAsGroup: 65533
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: [ALL]
-          volumeMounts:
-            - name: git-repo
-              mountPath: /git
-            - name: tmp
-              mountPath: /tmp
-      volumes:
-        - name: git-repo
-          emptyDir: {}
-        - name: state
-          persistentVolumeClaim:
-            claimName: interior-designer-state
-        - name: tmp
-          emptyDir: {}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-apiVersion: v1
-kind: Service
-metadata:
-  name: interior-designer-gateway
-  namespace: interior-designer
-spec:
-  type: ClusterIP
-  selector:
-    app.kubernetes.io/name: interior-designer-gateway
-  ports:
-    - name: http
-      port: 18789
-      targetPort: http
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: interior-designer
-  namespace: interior-designer
+  namespace: baloo
   labels:
     app.kubernetes.io/name: interior-designer
 spec:
@@ -219,6 +43,11 @@ spec:
           env:
             - name: WEBUI_URL
               value: https://baloo.newjoy.ro
+            - name: WEBUI_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: interior-designer-webui
+                  key: webui-secret-key
             - name: ENABLE_SIGNUP
               value: "false"
             - name: ENABLE_LOGIN_FORM
@@ -260,12 +89,12 @@ spec:
             - name: OAUTH_ADMIN_ROLES
               value: interior-designer-admin
             - name: OPENAI_API_BASE_URLS
-              value: http://interior-designer-gateway.interior-designer.svc.cluster.local:18789/v1
+              value: http://openclaw.baloo.svc.cluster.local:18789/v1
             - name: OPENAI_API_KEYS
               valueFrom:
                 secretKeyRef:
-                  name: interior-designer-gateway
-                  key: gateway-token
+                  name: baloo-secrets
+                  key: OPENCLAW_GATEWAY_TOKEN
           livenessProbe:
             httpGet:
               path: /health
@@ -305,7 +134,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: interior-designer
-  namespace: interior-designer
+  namespace: baloo
 spec:
   type: ClusterIP
   selector:
@@ -319,7 +148,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: interior-designer
-  namespace: interior-designer
+  namespace: baloo
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "25m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"

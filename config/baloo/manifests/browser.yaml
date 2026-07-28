@@ -131,19 +131,12 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Only the owner gateway and the isolated Interior Designer gateway may
-    # connect. Both are agent gateways; the browser itself remains unable to
-    # reach private networks.
+    # Only the OpenClaw gateway may connect; the browser itself remains unable
+    # to reach private networks.
     - from:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: openclaw
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: interior-designer
-          podSelector:
-            matchLabels:
-              app.kubernetes.io/name: interior-designer-gateway
       ports:
         - protocol: TCP
           port: 3000

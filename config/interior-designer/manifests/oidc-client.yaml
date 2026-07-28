@@ -29,7 +29,7 @@ spec:
             - name: CALLBACK_URL
               value: https://baloo.newjoy.ro/oauth/oidc/callback
             - name: TARGET_NS
-              value: interior-designer
+              value: baloo
           securityContext:
             runAsNonRoot: true
             runAsUser: 65534
