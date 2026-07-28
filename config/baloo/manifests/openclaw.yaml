@@ -283,7 +283,7 @@ spec:
               memory: 1Gi
             limits:
               cpu: "2"
-              memory: 2Gi
+              memory: 4Gi
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
@@ -305,6 +305,79 @@ spec:
             - name: github-app-key
               mountPath: /var/run/secrets/github-app
               readOnly: true
+
+        # OpenAI-compatible synchronous image API for clients such as Open
+        # WebUI. The agent still decides when to call generate_image/edit_image;
+        # this sidecar only adapts those client tool calls to OpenClaw's image
+        # provider CLI so results return to the originating HTTP chat.
+        - name: image-api
+          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
+          imagePullPolicy: IfNotPresent
+          command:
+            - node
+            - /git/link/config/baloo/tools/openclaw-image-api.js
+          ports:
+            - name: image-api
+              containerPort: 18801
+              protocol: TCP
+          env:
+            - name: HOME
+              value: /state/home
+            - name: NODE_ENV
+              value: production
+            - name: OPENCLAW_CONFIG_PATH
+              value: /rendered/openclaw.json
+            - name: OPENCLAW_STATE_DIR
+              value: /state
+            - name: OPENCLAW_IMAGE_MODEL
+              value: openai/gpt-image-2
+            - name: OPENCLAW_IMAGE_TIMEOUT_MS
+              value: "180000"
+            - name: IMAGE_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: OPENCLAW_GATEWAY_TOKEN
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: image-api
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: image-api
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+              readOnly: true
+            - name: rendered
+              mountPath: /rendered
+              readOnly: true
+            - name: state
+              mountPath: /state
+            - name: tmp
+              mountPath: /tmp
 
         # Reconcile recurring OpenClaw cron jobs from git without touching
         # one-shot reminders created by users in chat.
@@ -392,3 +465,20 @@ spec:
     - name: gateway
       port: 18789
       targetPort: 18789
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openclaw-image-api
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/component: image-api
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: openclaw
+  ports:
+    - name: image-api
+      port: 18801
+      targetPort: image-api

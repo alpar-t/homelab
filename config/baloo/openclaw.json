@@ -122,7 +122,6 @@
           "allow": [
             "web_fetch",
             "browser",
-            "image_generate",
             "session_status",
             "searxng__searxng_web_search"
           ],
@@ -133,7 +132,8 @@
             "google-maps__*",
             "google-timezone__*",
             "k8s__*",
-            "cron"
+            "cron",
+            "image_generate"
           ]
         }
       },

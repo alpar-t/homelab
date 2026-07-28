@@ -125,6 +125,35 @@ spec:
                 secretKeyRef:
                   name: baloo-secrets
                   key: OPENCLAW_GATEWAY_TOKEN
+            # Open WebUI exposes generate_image/edit_image as client-side
+            # tools. OpenClaw chooses the tool; WebUI calls the synchronous
+            # adapter and owns persistence of the resulting chat attachment.
+            - name: ENABLE_IMAGE_GENERATION
+              value: "true"
+            - name: IMAGE_GENERATION_ENGINE
+              value: openai
+            - name: IMAGE_GENERATION_MODEL
+              value: gpt-image-2
+            - name: IMAGES_OPENAI_API_BASE_URL
+              value: http://openclaw-image-api.baloo.svc.cluster.local:18801/v1
+            - name: IMAGES_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: OPENCLAW_GATEWAY_TOKEN
+            - name: ENABLE_IMAGE_EDIT
+              value: "true"
+            - name: IMAGE_EDIT_ENGINE
+              value: openai
+            - name: IMAGE_EDIT_MODEL
+              value: gpt-image-2
+            - name: IMAGES_EDIT_OPENAI_API_BASE_URL
+              value: http://openclaw-image-api.baloo.svc.cluster.local:18801/v1
+            - name: IMAGES_EDIT_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: OPENCLAW_GATEWAY_TOKEN
           livenessProbe:
             httpGet:
               path: /health
