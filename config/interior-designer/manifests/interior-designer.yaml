@@ -99,7 +99,9 @@ spec:
             httpGet:
               path: /health
               port: http
-            initialDelaySeconds: 30
+            # First start downloads the bundled embedding model; do not kill it
+            # while that one-time initialization is still in progress.
+            initialDelaySeconds: 180
             periodSeconds: 30
           readinessProbe:
             httpGet:
