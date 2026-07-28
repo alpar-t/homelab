@@ -90,7 +90,8 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [x] Paperless-ngx
 
 - [x] Emby
-- [x] Frigate
+- [x] Frigate NVR
+  - [ ] Finish the Home Assistant integration: create/confirm the Mosquitto user, update the `frigate-mqtt` Secret, and verify Frigate events arrive in HA. The broker currently rejects the January 2026 credentials as unauthorized.
 - [x] **Off-LAN SSH access via Cloudflare Access** — see [runbooks/cloudflare-access-ssh.md](runbooks/cloudflare-access-ssh.md). Unblocks bootstrap work (creating secrets, etc.) from anywhere without depending on VPN.
 - [x] **VPN: tear out Headscale, deploy stock Tailscale** — done 2026-06-11. Headscale's TS2021 noise protocol can't be proxied by free Cloudflare Tunnel (bidirectional gRPC-over-HTTP/2 after the 101 upgrade). Replaced with stock Tailscale; subnet router pinned to buksi for MetalLB co-location. See [runbooks/tailscale.md](runbooks/tailscale.md).
 - [ ] **VPN: HA subnet router** — single point of failure today: `tailscale-subnet-router` is `replicas: 1` pinned to buksi, so if buksi is down, remote access to `192.168.1.0/24` (and the GL-MT3000's gateway back home) is lost entirely. Tailscale supports advertising the same subnet from multiple nodes for automatic failover — add a second subnet router on pamacs or pufi. Note: this won't help for MetalLB `externalTrafficPolicy: Local` services (Emby, Immich, arr-stack), which are still only reachable via buksi's path regardless — see co-location constraint in [runbooks/tailscale.md](runbooks/tailscale.md).
