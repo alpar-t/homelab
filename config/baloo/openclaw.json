@@ -52,26 +52,58 @@
         "name": "Baloo",
         "default": true,
         "workspace": "/git/link/config/baloo/agents/direct-message",
-        "heartbeat": {
-          "every": "1h",
-          "target": "whatsapp",
-          "to": "${BALOO_OWNER_PHONE}",
-          "isolatedSession": true,
-          "activeHours": { "start": "08:00", "end": "22:00" }
-        },
         "tools": {
           "allow": [
             "web_fetch",
             "browser",
-            "image",
             "image_generate",
-            "searxng__*",
+            "session_status",
+            "searxng__searxng_web_search",
             "google-maps__*",
+            "google-timezone__lookup",
             "trek__*",
             "hass__*",
-            "github-life__*",
+            "github-life__add_issue_comment",
+            "github-life__create_branch",
+            "github-life__create_issue",
+            "github-life__create_or_update_file",
+            "github-life__create_pull_request",
+            "github-life__get_file_contents",
+            "github-life__get_issue",
+            "github-life__get_pull_request",
+            "github-life__get_pull_request_comments",
+            "github-life__get_pull_request_files",
+            "github-life__get_pull_request_reviews",
+            "github-life__get_pull_request_status",
+            "github-life__list_commits",
+            "github-life__list_issues",
+            "github-life__list_pull_requests",
+            "github-life__search_code",
+            "github-life__search_issues",
+            "github-life__search_repositories",
+            "github-life__search_users",
+            "github-life__update_issue",
+            "github-life__update_pull_request_branch",
             "cron",
-            "k8s__*"
+            "k8s__kubectl_describe",
+            "k8s__kubectl_get",
+            "k8s__kubectl_logs"
+          ],
+          "deny": [
+            "github-life__create_repository",
+            "github-life__fork_repository",
+            "github-life__merge_pull_request",
+            "github-life__push_files",
+            "k8s__exec_in_pod",
+            "k8s__install_helm_chart",
+            "k8s__kubectl_apply",
+            "k8s__kubectl_create",
+            "k8s__kubectl_patch",
+            "k8s__kubectl_rollout",
+            "k8s__kubectl_scale",
+            "k8s__port_forward",
+            "k8s__stop_port_forward",
+            "k8s__upgrade_helm_chart"
           ]
         }
       },
@@ -83,14 +115,18 @@
           "allow": [
             "web_fetch",
             "browser",
-            "image",
-            "searxng__*",
-            "github-life__*",
-            "hass__*"
+            "searxng__searxng_web_search",
+            "github-life__create_branch",
+            "github-life__create_or_update_file",
+            "github-life__create_pull_request",
+            "github-life__get_file_contents",
+            "hass__GetDateTime",
+            "hass__GetLiveContext"
           ],
           "deny": [
             "trek__*",
             "google-maps__*",
+            "google-timezone__*",
             "image_generate",
             "k8s__*"
           ]
@@ -112,14 +148,19 @@
           "allow": [
             "web_fetch",
             "browser",
-            "image",
-            "searxng__*",
-            "github-life__*",
-            "hass__*"
+            "session_status",
+            "searxng__searxng_web_search",
+            "github-life__create_branch",
+            "github-life__create_or_update_file",
+            "github-life__create_pull_request",
+            "github-life__get_file_contents",
+            "hass__GetDateTime",
+            "hass__GetLiveContext"
           ],
           "deny": [
             "trek__*",
             "google-maps__*",
+            "google-timezone__*",
             "image_generate",
             "k8s__*"
           ]
@@ -129,28 +170,23 @@
         "id": "trips",
         "name": "Baloo Trips",
         "workspace": "/git/link/config/baloo/agents/trips",
-        "heartbeat": {
-          "every": "1h",
-          "target": "whatsapp",
-          "to": "${BALOO_TRIPS_PALKOEK_GROUP}",
-          "isolatedSession": true,
-          "lightContext": true,
-          "activeHours": { "start": "08:00", "end": "20:00" }
-        },
         "tools": {
           "allow": [
             "trek__*",
-            "searxng__*",
+            "session_status",
+            "searxng__searxng_web_search",
             "google-maps__*",
+            "google-timezone__lookup",
             "web_fetch",
-            "browser",
-            "image"
+            "browser"
           ],
           "deny": [
             "hass__*",
             "github-life__*",
             "image_generate",
-            "k8s__*"
+            "k8s__*",
+            "trek__create_trip",
+            "trek__delete_trip"
           ]
         }
       },
@@ -165,6 +201,7 @@
             "github-life__*",
             "trek__*",
             "google-maps__*",
+            "google-timezone__*",
             "image_generate",
             "k8s__*",
             "browser"
@@ -256,6 +293,18 @@
           "GOOGLE_MAPS_API_KEY": "${GOOGLE_MAPS_API_KEY}"
         }
       },
+      "google-timezone": {
+        "command": "node",
+        "args": ["/git/link/config/baloo/tools/google-timezone-mcp.js"],
+        "env": {
+          "GOOGLE_MAPS_API_KEY": "${GOOGLE_MAPS_API_KEY}"
+        },
+        "timeout": 10,
+        "supportsParallelToolCalls": true,
+        "toolFilter": {
+          "include": ["lookup"]
+        }
+      },
       "github-life": {
         "command": "node",
         "args": ["/git/link/config/baloo/tools/github-mcp-proxy.js"],
@@ -277,7 +326,7 @@
         "url": "http://192.168.1.102:8123/mcp_server/sse",
         "transport": "sse",
         "headers": {
-          "Authorization": "Bearer ${HA_TOKEN_READONLY}"
+          "Authorization": "Bearer ${HA_TOKEN}"
         }
       },
       "k8s": {

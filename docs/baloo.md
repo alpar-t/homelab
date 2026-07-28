@@ -1,241 +1,153 @@
-# Baloo — Personal AI Assistant
+# Baloo — household WhatsApp assistant
 
-Named after the bear in The Jungle Book. A self-hosted AI assistant accessible over WhatsApp (and potentially other channels), deployed on the homelab k3s cluster.
+Baloo is an OpenClaw-based assistant deployed in the `baloo` namespace. Static
+WhatsApp bindings route each DM or group to an agent with its own prompt
+workspace and explicit tool policy.
 
-## Goals
+## Current agents
 
-- Conversational AI over WhatsApp using a dedicated phone number
-- Understands Romanian, Hungarian, English (auto-detects language per message)
-- Handles images, voice memos, group chats
-- No autonomous memory — improvements are directed explicitly by the owner via Claude Code, outside of Baloo's context
-- All configuration lives in this repo, synced via ArgoCD
-- Life repo (`alpar-t/life`) is additional context, loaded on demand per scenario — not always injected
-- Scenario-based routing: different groups/senders get different agents with different tool sets
-- Security: tool isolation enforced at the agent level; prompt injection from external content cannot escape scenario boundaries
+| Agent | Audience | Main capabilities |
+| --- | --- | --- |
+| `direct-message` | Alpar and Kinga DMs | Web, native image understanding, image generation, Maps/timezones, TREK, HA control, GitHub, read-only k8s, reminders |
+| `cooking` | Baloo Shef group | Cookbook reads/PRs, web research, native image understanding, read-only HA context |
+| `garden` | Garden group | Garden journal reads/PRs, web research, native image understanding, read-only HA context, morning heartbeat |
+| `trips` | Palkoek es Torokek group | Shared-trip editing, expenses, Maps/timezones, web research, native image understanding |
+| `main` | No channel binding | Reserved model-auth root; no tools |
 
-## Design principles
+There is currently no kids agent or binding.
 
-### No autonomous memory or self-improvement
+## Prompt layout
 
-Baloo holds no persistent memory and cannot improve itself. There are no `MEMORY.md` or `memory/` files in any agent workspace. Each `AGENTS.md` explicitly states this. `skipBootstrap: true` prevents OpenClaw from auto-creating memory files.
+Each configured workspace under `config/baloo/agents/` contains:
 
-When Baloo has something worth recording (e.g. a recipe to save, a trip note), it proposes a GitHub PR to the `life` repo. The user reviews and merges — nothing is written autonomously.
+- `SOUL.md` — identity, voice, and conversational boundaries.
+- `AGENTS.md` — operational rules and tool workflows.
+- `HEARTBEAT.md` — only where an actual heartbeat remains enabled.
 
-Improvements to Baloo's behaviour (updating SOUL.md, AGENTS.md, adding tools, changing bindings) are made via Claude Code in a separate session with full repo context, then merged and deployed via ArgoCD.
+OpenClaw reads these files from `/git/link/config/baloo/agents/<id>`. Git-sync
+updates the checkout every 60 seconds; prompt changes apply on a new session
+without restarting the pod.
 
-### Scenario-based routing
+`agents.defaults.skipBootstrap: true` prevents OpenClaw from creating memory or
+bootstrap files in these read-only workspaces. Baloo does not autonomously edit
+its own prompts.
 
-Inbound messages are routed to a named agent based on sender identity (phone number or group JID). Each agent has its own workspace (SOUL.md, AGENTS.md), tool allow-list, and optionally a context plugin. No content-based routing at the LLM level — routing is determined before the LLM is called, by the binding config.
+## Images and voice
 
-Examples:
-- Personal DM from owner → `alpar` agent (full tool access: HA, Trak, web, etc.)
-- Trip group JID → `trips` agent (Trak tools only)
-- Cooking group JID → `cooking` agent (life repo cooking section loaded, PR tool for saving recipes)
-- Kids' phone numbers → `kids` agent (no tools, restricted SOUL.md)
+The primary conversational model understands inbound WhatsApp image
+attachments directly. The prompts therefore tell agents to inspect attached
+images without calling a separate `image` tool. Only the DM agent has
+`image_generate`, and only for explicit image creation/editing requests.
 
-This means tool isolation is structural: the `trips` agent literally does not have HA tool definitions — a prompt injection telling it to "control the lights" hits a dead end.
+Voice messages are transcribed locally by
+`config/baloo/whisper-transcribe.py`; the transcript is echoed and interpreted
+by the receiving agent.
 
-### Life repo as on-demand context
+## Tool policy
 
-The life repo is not loaded on every turn. Each agent's `AGENTS.md` specifies what (if anything) to load. The cooking agent loads the cooking section of the life repo at conversation start. The trips agent loads nothing. The alpar agent may load a broader personal context section.
+`config/baloo/openclaw.json` is the enforcement layer. Every agent has explicit
+`tools.allow` and `tools.deny` lists.
 
-A custom `before_prompt_build` plugin reads a per-agent config to know what section to fetch via GitHub API and inject as a system prompt addendum.
+- The trips group never receives HA, GitHub, image-generation, or k8s tools.
+- The trips agent keeps broad TREK editing and expense support, but cannot
+  create or delete a trip. Participant and itinerary edits remain available;
+  trip creation is a DM workflow.
+- Cooking and garden receive only `hass__GetDateTime` and
+  `hass__GetLiveContext`; DM receives the full HA surface for state and control.
+- `google-timezone__lookup` is available only to DM and trips; all other agents
+  explicitly deny the namespace.
+- K8s is limited to three read tools on DM. The MCP server's read-only RBAC is
+  the independent hard guardrail.
+- GitHub write access in cooking/garden is limited to branch, file, and PR
+  creation in support of their review workflows.
 
-### Configuration-as-code
+Validate prompt references and policy consistency with:
 
-All config lives in `config/baloo/` in this repo:
-- `openclaw.json` — bindings, agent list, tool policies, channel config
-- Per-agent workspace files — SOUL.md, AGENTS.md (the persona and operating rules)
-
-ArgoCD applies these as Kubernetes resources. Workspace files (SOUL.md, AGENTS.md) are delivered as ConfigMaps generated by Kustomize's `configMapGenerator` from the files in `config/baloo/agents/`. These are mounted as read-only directory volumes in the OpenClaw pod.
-
-**How config files reach the pod — git-sync sidecar:** ArgoCD syncs Kubernetes resources, not file contents to volumes. A PVC is just a storage claim — ArgoCD can create it but cannot write files into it. Instead, a `git-sync` sidecar (`registry.k8s.io/git-sync/git-sync`) runs alongside OpenClaw, continuously pulling this repo into a shared `emptyDir` volume. OpenClaw's workspace paths point directly into the synced tree. New agents are added by creating a directory — no manifest changes needed.
-
-git-sync writes to `<root>/<rev>/` and keeps a `<root>/link` symlink pointing at the latest revision. Agent workspace paths are therefore stable: `/git/link/config/baloo/agents/alpar/` etc.
-
-The sidecar needs read access to the homelab repo — a GitHub read-only deploy key stored as an External Secret.
-
-**Separation of read-only config vs writable state:**
-- `OPENCLAW_CONFIG_PATH` → `/git/link/config/baloo/openclaw.json` (read-only, via git-sync)
-- Agent workspaces → `/git/link/config/baloo/agents/<name>/` (read-only, via git-sync)
-- `OPENCLAW_STATE_DIR` → Longhorn PVC (WhatsApp session auth, credentials — the only truly stateful part)
-
-## Technology decisions
-
-### OpenClaw as the base
-
-OpenClaw (https://github.com/openclaw/openclaw) is the foundation. Source reviewed at v2026.6.9 (380k stars, released 2026-06-21, actively maintained).
-
-Key capabilities confirmed from source:
-- **WhatsApp**: Baileys (unofficial WA Web protocol). No Business API needed.
-- **Multi-agent routing**: static binding by `(channel, peer.kind, peer.id)`. Groups by `@g.us` JID, DMs by E.164 phone number. Most-specific binding wins.
-- **Per-agent isolation**: each agent has its own workspace (SOUL.md, AGENTS.md), tool allow/deny list, and session store. No cross-talk.
-- **Images, voice, groups**: all handled natively.
-- **Multi-provider**: real provider abstraction. Models referenced as `anthropic/claude-sonnet-4-6`. Switching is a config change.
-- **Plugin hooks**: `before_prompt_build` allows injecting system prompt addenda per turn. `before_tool_call` allows gating tool execution.
-- **Docker**: multi-stage Dockerfile, `/healthz` + `/readyz` endpoints, non-root user.
-- **12-factor**: `OPENCLAW_CONFIG_PATH`, `OPENCLAW_STATE_DIR` are env vars.
-- `skipBootstrap: true` prevents auto-creation of workspace files.
-
-**Dynamic tool loading limitation**: tools are statically registered at startup; you cannot inject new tool definitions per message. The workaround is to register all tools across all agents at startup and use factory-pattern gating (tool returns `null` for sessions where it should be inactive). For the planned scenarios, agent-level allow/deny lists in config are sufficient — each agent only declares the tools it's allowed to use.
-
-### Model and API
-
-- **Model**: `anthropic/claude-sonnet-4-6` — best balance of quality, latency, and cost for conversational + tool-use workloads. Multi-provider abstraction means this is a one-line config change if needed.
-- **API**: separate `api.anthropic.com` account with pay-as-you-go billing. Claude.ai Pro subscription does not cover OpenClaw's SDK calls (the June 2026 programmatic budget only covers Claude Code SDK / `claude -p` CLI).
-- **Cost estimate**: ~$15–18/month light use (20 msg/day), ~$40–55/month moderate use (60 msg/day). Prompt caching cuts the bill roughly in half because the per-agent system prompt (SOUL.md + AGENTS.md + tool definitions) is cached across turns within a session window.
-
-### Whisper STT
-
-Self-hosted **`wyoming-faster-whisper`** (Rhasspy project):
-- `large-v3` model, INT8 quantization on Intel Alder Lake-N CPU (~2–4s per 30s clip)
-- Implements Wyoming protocol → HA Assist uses it as voice STT backend
-- Also exposes HTTP API → custom OpenClaw transcription provider plugin calls it
-- One instance, two consumers (Baloo + Home Assistant)
-
-Resource estimate: ~1.5GB RAM for loaded model. OpenVINO iGPU backend (`gpu.intel.com/i915`) is optional — CPU-only first.
-
-### Security model
-
-**Tool isolation**: each agent's tool allow/deny list is set in `openclaw.json`. A prompt injection in the `trips` agent cannot invoke HA tools because they are not in that agent's tool definitions — the LLM never sees them.
-
-**Web content sandboxing**: when the `alpar` agent fetches a webpage, content is injected with a clear delimiter and a system instruction not to follow instructions within it. The `before_tool_call` hook validates tool call parameters structurally before execution.
-
-**Prompt injection from external sources**: the API key is never in LLM context (it's an env var consumed by the SDK layer only). A prompt injection from a fetched page cannot read the key. Abuse of allowed tools (e.g. WhatsApp reply with exfiltrated data) is mitigated by output scanning in `before_agent_reply`.
-
-**WhatsApp session auth** (Longhorn PVC): losing it means re-scanning the QR code. Acceptable.
-
-## Deployment
-
-Namespace: `baloo`
-
-```
-apps/baloo.yaml                   # ArgoCD Application
-config/baloo/
-  manifests/
-    namespace.yaml
-    whisper.yaml                  # wyoming-faster-whisper Deployment + Service + PVC (model cache)
-    openclaw.yaml                 # OpenClaw Deployment + Service + git-sync sidecar
-    secrets.yaml                  # External Secrets: ANTHROPIC_API_KEY, WA session auth, GitHub deploy key
-    state-pvc.yaml                # Longhorn PVC for OPENCLAW_STATE_DIR (WA session, credentials)
-  openclaw.json                   # bindings, agent list, tool policies (read by OpenClaw via git-sync path)
-  agents/
-    alpar/
-      SOUL.md                     # personal agent voice and tone
-      AGENTS.md                   # operating rules: no memory, load life repo context section
-    trips/
-      SOUL.md
-      AGENTS.md                   # Trak tools only; process receipt images
-    cooking/
-      SOUL.md
-      AGENTS.md                   # load life/cooking from life repo; PR tool for saving recipes
-    kids/
-      SOUL.md
-      AGENTS.md                   # no tools; restricted tone
+```bash
+python3 scripts/audit-baloo-prompts.py
 ```
 
-### Binding config shape (in openclaw.json)
+## Scheduled work
 
-```json5
-{
-  agents: {
-    defaults: { skipBootstrap: true },
-    list: [
-      { id: "alpar",   workspace: "/config/agents/alpar",   tools: { allow: ["ha", "trak", "web", "exec"] } },
-      { id: "trips",   workspace: "/config/agents/trips",   tools: { allow: ["trak"] } },
-      { id: "cooking", workspace: "/config/agents/cooking", tools: { allow: ["web", "github-pr"] } },
-      { id: "kids",    workspace: "/config/agents/kids",    tools: { deny: ["*"] } },
-    ],
-  },
-  bindings: [
-    { agentId: "alpar",   match: { channel: "whatsapp", peer: { kind: "direct", id: "+40..." } } },
-    { agentId: "kids",    match: { channel: "whatsapp", peer: { kind: "direct", id: "+40..." } } },
-    { agentId: "trips",   match: { channel: "whatsapp", peer: { kind: "group",  id: "1203...@g.us" } } },
-    { agentId: "cooking", match: { channel: "whatsapp", peer: { kind: "group",  id: "1203...@g.us" } } },
-  ],
-}
+Operator-managed recurring jobs live in `config/baloo/cron-jobs.json` and are
+reconciled by the `cron-sync` sidecar. This includes cluster health, DM
+`@remind` tags, and scheduled trips briefings.
+
+Fixed-time work uses cron expressions rather than 24-hour heartbeat tasks, so a
+morning or evening task cannot become anchored to the wrong part of the day.
+User-created one-shot reminders remain unmanaged and are never touched by the
+reconciler.
+
+See `runbooks/baloo-recurring-jobs.md`.
+
+The garden agent retains one light-context heartbeat because its checks share a
+short 08:00–10:00 window.
+
+## Configuration delivery
+
+- Source config: `config/baloo/openclaw.json`
+- Rendered config: `/rendered/openclaw.json`
+- Workspaces and cron declarations: `/git/link/config/baloo/`
+- Writable state: `/state` Longhorn PVC
+- Deployment: `config/baloo/manifests/openclaw.yaml`
+
+The `render-config` init container substitutes secret-backed environment
+variables into `openclaw.json`. Changes to bindings, tools, models, MCP servers,
+or the Deployment require:
+
+```bash
+kubectl rollout restart deployment/openclaw -n baloo
 ```
 
-### git-sync sidecar (in openclaw.yaml)
+Prompt and managed-cron payload changes are picked up from git without a
+restart. Cron synchronization status is visible with:
 
-```yaml
-volumes:
-  - name: git-repo
-    emptyDir: {}
-  - name: state
-    persistentVolumeClaim:
-      claimName: openclaw-state
-
-initContainers:
-  - name: git-sync-init          # initial clone before OpenClaw starts
-    image: registry.k8s.io/git-sync/git-sync:v4
-    args: [--one-time, --repo=..., --root=/git, --link=link, --depth=1]
-    volumeMounts:
-      - name: git-repo
-        mountPath: /git
-      - name: git-deploy-key
-        mountPath: /etc/git-secret
-
-containers:
-  - name: git-sync               # continuous sync sidecar
-    image: registry.k8s.io/git-sync/git-sync:v4
-    args: [--repo=..., --root=/git, --link=link, --depth=1, --period=60s]
-    volumeMounts:
-      - name: git-repo
-        mountPath: /git
-      - name: git-deploy-key
-        mountPath: /etc/git-secret
-
-  - name: openclaw
-    env:
-      - name: OPENCLAW_CONFIG_PATH
-        value: /git/link/config/baloo/openclaw.json
-      - name: OPENCLAW_STATE_DIR
-        value: /state
-    volumeMounts:
-      - name: git-repo
-        mountPath: /git
-        readOnly: true
-      - name: state
-        mountPath: /state
+```bash
+kubectl -n baloo logs deployment/openclaw -c cron-sync --tail=100
 ```
 
-`openclaw.json` changes (bindings, tool policies) require a gateway restart. Since git-sync updates the file on disk but OpenClaw only reads it at startup, annotate the Deployment for Stakater Reloader watching the `openclaw-config` Secret/ConfigMap, or accept that a config change needs a manual rollout. Workspace files (SOUL.md, AGENTS.md) are re-read at session start, so they pick up on the next conversation without a restart.
+## Trip group model
 
-## Open questions / next steps
+The current shared group uses a simple prompt mapping:
 
-- [ ] Write wyoming-faster-whisper k8s manifests (`whisper.yaml`); test with HA voice first
-- [ ] Write custom `before_prompt_build` plugin: reads per-agent context spec, fetches relevant life repo section via GitHub API, injects as system prompt addendum
-- [ ] Write custom Whisper transcription provider plugin for OpenClaw → wyoming HTTP API
-- [ ] Write `github-pr` tool plugin for recipe/note saves to life repo
-- [ ] Write `before_agent_reply` output scanner (prompt injection exfiltration defence)
-- [ ] Decide: upstream OpenClaw Docker image vs custom build with plugins baked in
-- [ ] wyoming-faster-whisper: CPU-only first, evaluate OpenVINO iGPU if HA latency is poor
-- [ ] Scaffold `config/baloo/` directory structure and agent workspace files
-- [ ] Identify WhatsApp group JIDs and phone numbers for bindings
+- Visible trips contain Lenny.
+- Alpar/Kinga senders map to payer Alpar.
+- Other current group senders map to payer Lenny.
+- Expenses split between Alpar and Lenny.
 
-## Framework comparison (research 2026-05-19)
+This intentionally favors household simplicity over server-side trip ACLs.
+Before adding several friend groups, move the per-group participant and payer
+mapping into one declarative configuration consumed by the TREK proxy or a
+binding-context hook. That will let multiple WhatsApp groups reuse the trips
+agent without duplicating prompts or manually maintaining TREK access rules.
 
-Evaluated four frameworks before settling on OpenClaw. Notes preserved for future reference.
+## Timezone lookup
 
-| | **OpenClaw** | **ElizaOS** | **Letta** | **Wechaty** |
-|---|---|---|---|---|
-| **WhatsApp** | Baileys (unofficial) ✅ | Cloud API only ❌ | None ❌ | Unified SDK ✅ |
-| **Images/audio/groups** | All native ✅ | Cloud API caps ⚠️ | N/A | Messages only |
-| **Claude + tool use** | Full tool use, streaming, prompt caching ✅ | Tool use unconfirmed ⚠️ | ✅ | Custom |
-| **Multi-agent routing** | Static binding by sender/group ✅ | No ❌ | No ❌ | No ❌ |
-| **Stateless design** | Designed for it, skipBootstrap ✅ | Persistent shared DB with security vuln ❌ | DB required ❌ | Stateless ✅ |
-| **Health endpoints** | `/healthz` + `/readyz` ✅ | None ❌ | N/A | N/A |
-| **k8s readiness** | Docker + health endpoints ✅ | No health endpoints ❌ | Docker ⚠️ | Docker ⚠️ |
-| **12-factor config** | Fully env-var driven ✅ | Mostly ✅ | Mostly ✅ | Code-first |
-| **Activity (2026-06)** | 380k stars, v2026.6.9, pushed daily ✅ | Very active ✅ | Active ✅ | Moderate |
+`config/baloo/tools/google-timezone-mcp.js` exposes one read-only MCP tool
+backed by the Google Maps Time Zone API:
 
-**Why not ElizaOS**: Requires WhatsApp Business Cloud API (Meta verification headache). No confirmed Claude tool use. No health endpoints. Memory has documented security vulnerabilities. Not designed for stateless operation.
+```text
+google-timezone__lookup(latitude, longitude, timestamp)
+→ { timeZoneId, timeZoneName, rawOffset, dstOffset }
+```
 
-**Why not Letta**: Requires PostgreSQL, no WhatsApp, built around persistent memory — the opposite of the design goal.
+It reuses `GOOGLE_MAPS_API_KEY`. Enable **Time Zone API** in the key's Google
+Cloud project and include it in the key's API restrictions; otherwise calls
+return `REQUEST_DENIED`. The trips agent prefers a timezone already stored in
+TREK and uses this tool after geocoding when one is absent.
 
-**Why not Wechaty**: Just a messaging abstraction layer, no LLM integration. Would still need everything else.
+Google Cloud setup:
 
-## Status
+1. Enable the
+   [Time Zone API](https://console.cloud.google.com/apis/library/timezone-backend.googleapis.com)
+   in the project that owns `GOOGLE_MAPS_API_KEY`; Maps Platform billing must
+   be active.
+2. If the key has API restrictions, add **Time Zone API** to its allowed APIs.
+3. After deploying and restarting OpenClaw, verify discovery with
+   `openclaw mcp probe google-timezone`.
 
-Architecture finalised (2026-06-23). OpenClaw source reviewed at v2026.6.9. Starting with wyoming-faster-whisper (unblocks HA voice + Baloo voice memos). Config scaffolding next.
+Run the deterministic wrapper tests with:
+
+```bash
+node --test config/baloo/tools/google-timezone-mcp.test.js
+```

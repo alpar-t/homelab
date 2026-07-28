@@ -10,6 +10,9 @@ something is too long or too incident-specific to belong in AGENTS.md, write a
 runbook and keep only a one-line pointer here. Check `runbooks/` before operating
 or debugging a subsystem.
 
+Baloo's source-controlled recurring jobs and reconciliation procedure:
+`runbooks/baloo-recurring-jobs.md`.
+
 ## Baloo agent tool access
 
 OpenClaw's `mcp.servers` block is **gateway-global** — there is no per-agent MCP server config. Every agent can in principle reach every registered MCP server. The only access control is per-agent `tools.allow` and `tools.deny`.
