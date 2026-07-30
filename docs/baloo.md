@@ -8,7 +8,8 @@ workspace and explicit tool policy.
 
 | Agent | Audience | Main capabilities |
 | --- | --- | --- |
-| `direct-message` | Alpar and Kinga DMs | Web, native image understanding, image generation, Maps/timezones, TREK, HA control, GitHub, read-only k8s, reminders |
+| `alpar` | Alpar DM | Web, images, Maps/timezones, TREK, HA control, GitHub, read-only k8s, reminders |
+| `kinga` | Kinga DM | Web, images, Maps/timezones, TREK, HA control, GitHub, reminders |
 | `cooking` | Baloo Shef group | Cookbook reads/PRs, web research, native image understanding, read-only HA context |
 | `garden` | Garden group | Garden journal reads/PRs, web research, native image understanding, read-only HA context, morning heartbeat |
 | `trips` | Palkoek es Torokek group | Shared-trip editing, expenses, Maps/timezones, web research, native image understanding |
@@ -18,19 +19,24 @@ There is currently no kids agent or binding.
 
 ## Prompt layout
 
-Each configured workspace under `config/baloo/agents/` contains:
+Each configured workspace under the private `alpar-t/baloo` repository's
+`openclaw/agents/` directory contains:
 
 - `SOUL.md` — identity, voice, and conversational boundaries.
 - `AGENTS.md` — operational rules and tool workflows.
 - `HEARTBEAT.md` — only where an actual heartbeat remains enabled.
 
-OpenClaw reads these files from `/git/link/config/baloo/agents/<id>`. Git-sync
+OpenClaw reads these files from `/git/link/openclaw/agents/<id>`. Git-sync
 updates the checkout every 60 seconds; prompt changes apply on a new session
 without restarting the pod.
 
 `agents.defaults.skipBootstrap: true` prevents OpenClaw from creating memory or
 bootstrap files in these read-only workspaces. Baloo does not autonomously edit
 its own prompts.
+
+Alpar and Kinga have separate workspaces and `USER.md` context. Both can load
+the shared `trips` skill on demand from `openclaw/skills/trips/`; other agents
+explicitly receive no shared skills.
 
 ## Images and voice
 
@@ -40,12 +46,12 @@ images without calling a separate `image` tool. Only the DM agent has
 `image_generate`, and only for explicit image creation/editing requests.
 
 Voice messages are transcribed locally by
-`config/baloo/whisper-transcribe.py`; the transcript is echoed and interpreted
+`openclaw/whisper-transcribe.py` in the private repo; the transcript is echoed and interpreted
 by the receiving agent.
 
 ## Tool policy
 
-`config/baloo/openclaw.json` is the enforcement layer. Every agent has explicit
+`openclaw/openclaw.json` in the private repo is the enforcement layer. Every agent has explicit
 `tools.allow` and `tools.deny` lists.
 
 - The trips group never receives HA, GitHub, image-generation, or k8s tools.
@@ -69,7 +75,8 @@ python3 scripts/audit-baloo-prompts.py
 
 ## Scheduled work
 
-Operator-managed recurring jobs live in `config/baloo/cron-jobs.json` and are
+Operator-managed recurring jobs live in the private repo's
+`openclaw/cron-jobs.json` and are
 reconciled by the `cron-sync` sidecar. This includes cluster health, DM
 `@remind` tags, and scheduled trips briefings.
 
@@ -85,9 +92,9 @@ short 08:00–10:00 window.
 
 ## Configuration delivery
 
-- Source config: `config/baloo/openclaw.json`
+- Source config: `alpar-t/baloo:openclaw/openclaw.json`
 - Rendered config: `/rendered/openclaw.json`
-- Workspaces and cron declarations: `/git/link/config/baloo/`
+- Workspaces and cron declarations: `/git/link/openclaw/`
 - Writable state: `/state` Longhorn PVC
 - Deployment: `config/baloo/manifests/openclaw.yaml`
 
@@ -123,7 +130,7 @@ agent without duplicating prompts or manually maintaining TREK access rules.
 
 ## Timezone lookup
 
-`config/baloo/tools/google-timezone-mcp.js` exposes one read-only MCP tool
+`openclaw/tools/google-timezone-mcp.js` in the private repo exposes one read-only MCP tool
 backed by the Google Maps Time Zone API:
 
 ```text
@@ -149,5 +156,5 @@ Google Cloud setup:
 Run the deterministic wrapper tests with:
 
 ```bash
-node --test config/baloo/tools/google-timezone-mcp.test.js
+node --test openclaw/tools/google-timezone-mcp.test.js
 ```

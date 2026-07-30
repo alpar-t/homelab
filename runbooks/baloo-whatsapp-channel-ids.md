@@ -1,6 +1,7 @@
 # Finding WhatsApp channel IDs for Baloo bindings
 
-`config/baloo/openclaw.json` binds each Baloo agent (direct-message, cooking,
+`openclaw/openclaw.json` in the private `alpar-t/baloo` repository binds each
+Baloo agent (`alpar`, `kinga`, cooking,
 garden, …) to a WhatsApp peer via `bindings[].match.peer`:
 
 - `kind: direct` + an E.164 number (e.g. `+40744931029`) for DMs
@@ -46,7 +47,7 @@ inside the pod when chasing group IDs.
 
 ## Wire the ID into a binding
 
-1. Pick the env-var slot in `config/baloo/openclaw.json`
+1. Pick the env-var slot in the private repo's `openclaw/openclaw.json`
    (e.g. `${BALOO_GARDEN_GROUP}`) — or add a new one.
 2. Put the value in the `baloo-secrets` secret. The secret is rendered into
    the openclaw container by the `render-config` init container; ArgoCD

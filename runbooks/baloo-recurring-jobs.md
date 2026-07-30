@@ -1,7 +1,8 @@
 # Baloo recurring jobs
 
 Baloo's operator-managed recurring jobs are declared in
-`config/baloo/cron-jobs.json`. The `cron-sync` sidecar in
+`openclaw/cron-jobs.json` in the private `alpar-t/baloo` repository. The
+`cron-sync` sidecar in
 `config/baloo/manifests/openclaw.yaml` reconciles them into OpenClaw's
 SQLite-backed cron store after the gateway becomes ready.
 
@@ -25,7 +26,7 @@ last-run timestamp, and remains an 08:00 task.
 
 ## Reconciliation behavior
 
-`config/baloo/tools/sync-cron-jobs.js`:
+`openclaw/tools/sync-cron-jobs.js` in the private repository:
 
 1. Waits for the local OpenClaw gateway readiness endpoint.
 2. Reads the source-controlled job file.
@@ -44,10 +45,10 @@ disabled instead of sending to a stale destination.
 ## Validate before deploying
 
 ```bash
-python3 scripts/audit-baloo-prompts.py
-node --check config/baloo/tools/sync-cron-jobs.js
-node config/baloo/tools/sync-cron-jobs.js \
-  --validate config/baloo/cron-jobs.json
+python3 openclaw/scripts/audit-baloo-prompts.py
+node --check openclaw/tools/sync-cron-jobs.js
+node openclaw/tools/sync-cron-jobs.js \
+  --validate openclaw/cron-jobs.json
 ```
 
 The audit checks that every cron tool is allowed by its target agent.

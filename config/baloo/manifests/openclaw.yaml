@@ -1,8 +1,8 @@
-# OpenClaw gateway with git-sync sidecar.
+# OpenClaw gateway with a private configuration repo supplied by git-sync.
 #
-# The homelab repo is public so git-sync uses HTTPS — no deploy key needed.
-# git-sync clones the repo into an emptyDir at /git.
-# OpenClaw reads its config and agent workspaces directly from /git/link/config/baloo/.
+# git-sync authenticates to the private alpar-t/baloo repo with the same
+# GitHub App Baloo uses for reviewed repository changes. It clones into an
+# emptyDir at /git; OpenClaw reads config and workspaces from /git/link/openclaw/.
 # Writable state (WA session auth, credentials) lives on the Longhorn PVC at /state.
 #
 # Config changes (SOUL.md, AGENTS.md) propagate on the next conversation without restart.
@@ -40,10 +40,13 @@ spec:
         - name: git-sync-init
           image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
           args:
-            - --repo=https://github.com/alpar-t/homelab.git
+            - --repo=https://github.com/alpar-t/baloo.git
             - --root=/git
             - --link=link
             - --depth=1
+            - --github-app-application-id=4150403
+            - --github-app-installation-id=142711366
+            - --github-app-private-key-file=/var/run/secrets/github-app/private-key.pem
             - --one-time
           securityContext:
             runAsUser: 65533
@@ -64,6 +67,9 @@ spec:
               mountPath: /git
             - name: tmp
               mountPath: /tmp
+            - name: github-app-key
+              mountPath: /var/run/secrets/github-app
+              readOnly: true
         # Substitute ${BALOO_OWNER_PHONE} into openclaw.json → /rendered/openclaw.json
         - name: render-config
           image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
@@ -72,7 +78,7 @@ spec:
             - -e
             - |
               const fs = require('fs');
-              const src = fs.readFileSync('/git/link/config/baloo/openclaw.json', 'utf8');
+              const src = fs.readFileSync('/git/link/openclaw/openclaw.json', 'utf8');
               const out = src.replace(/\$\{([^}]+)\}/g, (_, k) => process.env[k] ?? _);
               fs.writeFileSync('/rendered/openclaw.json', out);
           env:
@@ -189,11 +195,14 @@ spec:
         - name: git-sync
           image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
           args:
-            - --repo=https://github.com/alpar-t/homelab.git
+            - --repo=https://github.com/alpar-t/baloo.git
             - --root=/git
             - --link=link
             - --depth=1
             - --period=60s
+            - --github-app-application-id=4150403
+            - --github-app-installation-id=142711366
+            - --github-app-private-key-file=/var/run/secrets/github-app/private-key.pem
           securityContext:
             runAsUser: 65533
             runAsGroup: 65533
@@ -213,6 +222,9 @@ spec:
               mountPath: /git
             - name: tmp
               mountPath: /tmp
+            - name: github-app-key
+              mountPath: /var/run/secrets/github-app
+              readOnly: true
 
         - name: openclaw
           image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
@@ -315,7 +327,7 @@ spec:
           imagePullPolicy: IfNotPresent
           command:
             - node
-            - /git/link/config/baloo/tools/openclaw-image-api.js
+            - /git/link/openclaw/tools/openclaw-image-api.js
           ports:
             - name: image-api
               containerPort: 18801
@@ -385,8 +397,8 @@ spec:
           image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
           command:
             - node
-            - /git/link/config/baloo/tools/sync-cron-jobs.js
-            - /git/link/config/baloo/cron-jobs.json
+            - /git/link/openclaw/tools/sync-cron-jobs.js
+            - /git/link/openclaw/cron-jobs.json
           env:
             - name: HOME
               value: /tmp/cron-sync-home

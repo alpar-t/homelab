@@ -1,12 +1,12 @@
 # Baloo cluster-health cron (outage pager)
 
 The 24/7 homelab outage check is an **isolated cron job** named `cluster-health`
-on the `direct-message` agent — *not* a heartbeat task.
+on the `alpar` agent — *not* a heartbeat task.
 
 ## Why it's a cron job, not a heartbeat
 
 Heartbeats have no per-run reasoning or tool override: the check was firing every
-15m on the full `direct-message` context (~316K input tokens, `thinking=medium`)
+15m on the full DM context (~316K input tokens, `thinking=medium`)
 and dominated OpenAI usage (the ChatGPT-plan / Codex auth, which has a multi-day
 usage window rather than per-token billing). Cron jobs *do* support per-job
 overrides, so moving the check there lets it run cheap without lowering the
@@ -33,7 +33,8 @@ to go lower.
 
 ## Source-controlled reconciliation
 
-The job payload now lives in `config/baloo/cron-jobs.json`. The `cron-sync`
+The job payload now lives in `openclaw/cron-jobs.json` in the private
+`alpar-t/baloo` repository. The `cron-sync`
 sidecar creates or updates it in OpenClaw's SQLite-backed cron store after the
 gateway becomes ready. A state-PVC rebuild therefore recreates the health check
 automatically.

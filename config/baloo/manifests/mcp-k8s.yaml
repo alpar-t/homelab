@@ -1,4 +1,4 @@
-# Read-only Kubernetes MCP server for Baloo's direct-message agent.
+# Read-only Kubernetes MCP server for Baloo's Alpar DM agent.
 #
 # Lets the DM agent *answer questions* about the cluster and run the heartbeat's
 # critical-health check. Two layers of read-only enforcement:

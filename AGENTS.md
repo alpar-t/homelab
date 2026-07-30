@@ -21,7 +21,7 @@ OpenClaw's `mcp.servers` block is **gateway-global** — there is no per-agent M
 **Hard rules — enforce these on every change:**
 
 - Every agent in `openclaw.json` must have an explicit `tools.allow` listing exactly the tool namespaces it needs. This is a strict allowlist: tools not listed are unavailable to that agent.
-- Every agent must also have an explicit `tools.deny` for any sensitive namespace available in `mcp.servers` that it does not need. At minimum, deny `hass__*` and `github-life__*` unless the agent explicitly requires them.
+- Every agent must also have an explicit `tools.deny` for any sensitive namespace available in `mcp.servers` that it does not need. At minimum, deny `hass__*` and `github-baloo__*` unless the agent explicitly requires them.
 - Never add a new MCP server to `mcp.servers` without auditing every agent's `tools.deny` list to block it where it isn't needed.
 - `openclaw.json` changes (tool policies, bindings) require a pod restart to take effect: `kubectl rollout restart deployment/openclaw -n baloo`. SOUL.md / AGENTS.md changes hot-reload without restart.
 
@@ -30,13 +30,14 @@ The trips channel (`Palkoek es Torokek`) must never have HA access — it is a s
 ### Read-only k8s access (`k8s__*`)
 
 The `k8s` MCP server (`config/baloo/manifests/mcp-k8s.yaml`) gives the
-`direct-message` agent **read-only** cluster access so Alpar can ask about the
+`alpar` agent **read-only** cluster access so Alpar can ask about the
 homelab and the `cluster-health` cron job can page on critical outages. It is
 `flux159/mcp-server-kubernetes` in `ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS` mode, but
 the real guardrail is RBAC: the `mcp-k8s` ServiceAccount is bound to a
 ClusterRole with only `get/list/watch` (no secrets, no configmaps, no write
-verbs). It is `k8s__*` allowed **only on `direct-message`** and explicitly
-**denied on every other agent** (`cooking`, `garden`, `trips`, `main`). If you
+verbs). It is `k8s__*` allowed **only on `alpar`** and explicitly
+**denied on every other agent** (`kinga`, `cooking`, `garden`, `trips`,
+`interior-designer`, `main`). If you
 widen the ClusterRole, keep it read-only; never add write verbs or Secret read.
 
 ### Browser tool (`browser`)
@@ -50,7 +51,7 @@ ingress only from the openclaw pod and egress only to DNS + the public internet
 (every private range — cluster, LAN incl. HA `192.168.x`, link-local, tailnet —
 is blocked). Because that NetworkPolicy caps the blast radius to the public
 internet regardless of caller, `browser` is allowed **wherever `web_fetch` +
-`searxng__*` are** (the conversational agents: `direct-message`, `cooking`,
+`searxng__*` are** (the conversational agents: `alpar`, `kinga`, `cooking`,
 `garden`, `trips`) — it is just a JS-capable fetch with the same reach. It is
 denied only on `main` (the auth root, which has no web tools). Attaching to the
 pod's private CDP address relies on `browser.ssrfPolicy.allowedHostnames` (do
@@ -78,7 +79,11 @@ These are authoritative for the deployed version — version-correct, no drift f
 
 ## Writing skills or Baloo agent files
 
-When editing anything in `config/baloo/agents/*/SOUL.md` or `AGENTS.md`, or when authoring a new Claude Code skill, first load Anthropic's skill-creator guidance for review principles:
+Baloo's OpenClaw configuration, agent workspaces, and shared skills live in the
+private `alpar-t/baloo` repository under `openclaw/`; only its Kubernetes
+manifests remain under `config/baloo/manifests/` here. When editing anything in
+`openclaw/agents/*/SOUL.md` or `AGENTS.md`, or when authoring a new skill, first
+load Anthropic's skill-creator guidance for review principles:
 
 - https://raw.githubusercontent.com/anthropics/skills/main/skills/skill-creator/SKILL.md
 
