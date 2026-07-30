@@ -401,7 +401,9 @@ spec:
             - /git/link/openclaw/cron-jobs.json
           env:
             - name: HOME
-              value: /tmp/cron-sync-home
+              # The CLI device identity must survive pod restarts; otherwise
+              # every cron reconciliation requests a fresh operator pairing.
+              value: /state/cron-sync-home
             - name: OPENCLAW_CONFIG_PATH
               value: /rendered/openclaw.json
             - name: OPENCLAW_GATEWAY_TOKEN
@@ -444,6 +446,8 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
+            - name: state
+              mountPath: /state
 
       volumes:
         - name: git-repo
