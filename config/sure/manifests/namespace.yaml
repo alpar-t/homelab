@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sure
+  labels:
+    app.kubernetes.io/name: sure
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"

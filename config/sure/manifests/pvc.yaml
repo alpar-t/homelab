@@ -1,0 +1,46 @@
+# Sure's default Active Storage backend writes statement uploads, transaction
+# attachments, exports, and family files to /rails/storage.
+#
+# The FCOS nodes do not have nfs-utils, so Longhorn RWX cannot be mounted.
+# Web and Sidekiq therefore run as two containers in one Pod and safely share
+# this RWO volume. Keep the Deployment at one replica while using this layout.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sure-storage
+  namespace: sure
+  labels:
+    app.kubernetes.io/name: sure
+    data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Redis contains rebuildable cache and Sidekiq queue state. Persistence avoids
+# losing queued work on ordinary Pod restarts, but this volume is excluded from
+# Longhorn backups.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sure-redis-data
+  namespace: sure
+  labels:
+    app.kubernetes.io/name: sure
+    app.kubernetes.io/component: redis
+    data-criticality: rebuildable
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 1Gi

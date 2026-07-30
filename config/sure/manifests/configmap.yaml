@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sure-config
+  namespace: sure
+  labels:
+    app.kubernetes.io/name: sure
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+data:
+  SELF_HOSTED: "true"
+  ONBOARDING_STATE: "open"
+  APP_URL: "https://finance.newjoy.ro"
+  APP_DOMAIN: "finance.newjoy.ro"
+  RAILS_FORCE_SSL: "true"
+  RAILS_ASSUME_SSL: "true"
+  RAILS_LOG_LEVEL: "info"
+  ACTIVE_STORAGE_SERVICE: "local"
+  TZ: "Europe/Bucharest"
+
+  # Pocket ID is the primary and required login path. The local form remains
+  # available only to super-admins as a break-glass path during IdP outages.
+  OIDC_ISSUER: "https://auth.newjoy.ro"
+  OIDC_REDIRECT_URI: "https://finance.newjoy.ro/auth/openid_connect/callback"
+  OIDC_BUTTON_LABEL: "Sign in with Pocket ID"
+  AUTH_LOCAL_LOGIN_ENABLED: "false"
+  AUTH_LOCAL_ADMIN_OVERRIDE_ENABLED: "true"
+  AUTH_JIT_MODE: "create_and_link"
+
+  EXCHANGE_RATE_PROVIDER: "yahoo_finance"
+  SECURITIES_PROVIDER: "yahoo_finance"
+
+  # Stalwart is the unauthenticated in-cluster relay.
+  SMTP_ADDRESS: "stalwart.stalwart-mail.svc.cluster.local"
+  SMTP_PORT: "25"
+  SMTP_TLS_ENABLED: "false"
+  SMTP_TLS_SKIP_VERIFY: "false"
+  EMAIL_SENDER: "Sure <sure@newjoy.ro>"

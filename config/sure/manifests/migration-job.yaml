@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sure-migrate
+  namespace: sure
+  labels:
+    app.kubernetes.io/name: sure
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: ghcr.io/we-promise/sure:0.7.2@sha256:96155b20c0b71f8e2ab960ab5aba8fba9df64c6a40ec581eca20af2b20ab089c
+          command: ["/bin/bash", "-lc"]
+          args:
+            - |
+              until pg_isready -h sure-db-rw.sure.svc.cluster.local -p 5432; do
+                echo "Waiting for PostgreSQL..."
+                sleep 5
+              done
+              bundle exec rails db:prepare
+          envFrom:
+            - configMapRef:
+                name: sure-config
+            - secretRef:
+                name: sure-secrets
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sure-db-app
+                  key: uri
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]

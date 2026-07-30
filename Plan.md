@@ -51,6 +51,10 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [ ] Add external heartbeat / down detection 
 - [ ] Monitor mail
 - [x] Replace Authentik with Pocket ID
+- [ ] **Evaluate standardizing on the OT-CONTAINER-KIT Redis Operator**
+  - Inventory the standalone Redis deployments currently used by applications
+  - Compare operator-managed replication/Sentinel with simple Deployments for this 3-node cluster
+  - Define when Redis needs persistence, HA, backups, and resource limits before migrating anything
 - [ ] **Migrate PostgreSQL from Longhorn to local storage** - see [runbooks/migrate-postgres-to-local-storage.md](runbooks/migrate-postgres-to-local-storage.md)
   - Eliminates redundant replication (CNPG already handles HA)
   - Better performance (direct SSD access)

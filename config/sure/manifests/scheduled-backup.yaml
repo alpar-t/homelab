@@ -1,0 +1,17 @@
+# Daily base backup at 03:45. CNPG cron expressions have a leading seconds
+# field, so this intentionally contains six fields.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: sure-db-daily
+  namespace: sure
+  labels:
+    app.kubernetes.io/name: sure
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  schedule: "0 45 3 * * *"
+  cluster:
+    name: sure-db
+  backupOwnerReference: none
+  immediate: true

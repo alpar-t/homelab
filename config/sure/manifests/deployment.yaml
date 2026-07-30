@@ -1,0 +1,157 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sure
+  namespace: sure
+  labels:
+    app.kubernetes.io/name: sure
+    app.kubernetes.io/component: application
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sure
+      app.kubernetes.io/component: application
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sure
+        app.kubernetes.io/component: application
+      annotations:
+        secret.reloader.stakater.com/reload: "sure-secrets,sure-oidc,sure-db-app"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: web
+          image: ghcr.io/we-promise/sure:0.7.2@sha256:96155b20c0b71f8e2ab960ab5aba8fba9df64c6a40ec581eca20af2b20ab089c
+          envFrom:
+            - configMapRef:
+                name: sure-config
+            - secretRef:
+                name: sure-secrets
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sure-db-app
+                  key: uri
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: sure-oidc
+                  key: client_id
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: sure-oidc
+                  key: client_secret
+          ports:
+            - name: http
+              containerPort: 3000
+          volumeMounts:
+            - name: storage
+              mountPath: /rails/storage
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          startupProbe:
+            httpGet:
+              path: /up
+              port: http
+            failureThreshold: 60
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /up
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /up
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+
+        # Sidekiq shares the Pod so it can use the same Longhorn RWO Active
+        # Storage volume as Rails without requiring NFS/RWX support.
+        - name: worker
+          image: ghcr.io/we-promise/sure:0.7.2@sha256:96155b20c0b71f8e2ab960ab5aba8fba9df64c6a40ec581eca20af2b20ab089c
+          args: ["bundle", "exec", "sidekiq"]
+          envFrom:
+            - configMapRef:
+                name: sure-config
+            - secretRef:
+                name: sure-secrets
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sure-db-app
+                  key: uri
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: sure-oidc
+                  key: client_id
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: sure-oidc
+                  key: client_secret
+          volumeMounts:
+            - name: storage
+              mountPath: /rails/storage
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: sure-storage
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sure
+  namespace: sure
+  labels:
+    app.kubernetes.io/name: sure
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: sure
+    app.kubernetes.io/component: application
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
