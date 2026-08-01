@@ -14,6 +14,9 @@ or debugging a subsystem.
 Baloo's source-controlled recurring jobs and reconciliation procedure:
 `runbooks/baloo-recurring-jobs.md`.
 
+Whole-cluster shutdown and startup for planned power maintenance:
+`runbooks/cluster-power-maintenance.md`.
+
 ## Baloo agent tool access
 
 OpenClaw's `mcp.servers` block is **gateway-global** — there is no per-agent MCP server config. Every agent can in principle reach every registered MCP server. The only access control is per-agent `tools.allow` and `tools.deny`.
