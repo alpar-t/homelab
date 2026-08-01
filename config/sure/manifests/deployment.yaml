@@ -23,6 +23,7 @@ spec:
         app.kubernetes.io/component: application
       annotations:
         secret.reloader.stakater.com/reload: "sure-secrets,sure-oidc,sure-db-app"
+        configmap.reloader.stakater.com/reload: "sure-config"
     spec:
       securityContext:
         runAsNonRoot: true
