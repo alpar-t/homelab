@@ -35,10 +35,11 @@ Prerequisites:
 
 Sure is configured as OIDC-first:
 
-- Local login is disabled for ordinary users.
+- Local login and password-based registration are disabled.
+- Pocket ID is the only login method shown.
 - JIT creation and linking is enabled for verified Pocket ID email addresses.
-- A local password remains available only to `super_admin` users as an
-  emergency IdP-outage path.
+- `ONBOARDING_STATE=closed` is persisted by the migration hook so Sure cannot
+  reopen local registration from a previously stored setting.
 
 After the first Pocket ID login, promote the owner once:
 

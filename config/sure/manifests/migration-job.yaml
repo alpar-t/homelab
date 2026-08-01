@@ -33,6 +33,8 @@ spec:
                 sleep 5
               done
               bundle exec rails db:prepare
+              bundle exec rails runner \
+                'Setting.onboarding_state = ENV.fetch("ONBOARDING_STATE")'
           envFrom:
             - configMapRef:
                 name: sure-config

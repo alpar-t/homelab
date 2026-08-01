@@ -9,7 +9,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "0"
 data:
   SELF_HOSTED: "true"
-  ONBOARDING_STATE: "open"
+  ONBOARDING_STATE: "closed"
   APP_URL: "https://finance.newjoy.ro"
   APP_DOMAIN: "finance.newjoy.ro"
   RAILS_FORCE_SSL: "true"
@@ -18,13 +18,12 @@ data:
   ACTIVE_STORAGE_SERVICE: "local"
   TZ: "Europe/Bucharest"
 
-  # Pocket ID is the primary and required login path. The local form remains
-  # available only to super-admins as a break-glass path during IdP outages.
+  # Pocket ID is the required login path; local password login is disabled.
   OIDC_ISSUER: "https://auth.newjoy.ro"
   OIDC_REDIRECT_URI: "https://finance.newjoy.ro/auth/openid_connect/callback"
   OIDC_BUTTON_LABEL: "Sign in with Pocket ID"
   AUTH_LOCAL_LOGIN_ENABLED: "false"
-  AUTH_LOCAL_ADMIN_OVERRIDE_ENABLED: "true"
+  AUTH_LOCAL_ADMIN_OVERRIDE_ENABLED: "false"
   AUTH_JIT_MODE: "create_and_link"
 
   EXCHANGE_RATE_PROVIDER: "yahoo_finance"
