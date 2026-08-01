@@ -37,7 +37,9 @@ Sure is configured as OIDC-first:
 
 - Local login and password-based registration are disabled.
 - Pocket ID is the only login method shown.
-- JIT creation and linking is enabled for verified Pocket ID email addresses.
+- Uninvited OIDC account and family creation is disabled (`link_only`). A new
+  user must have a pending Sure invitation matching their Pocket ID email; the
+  invitation places them in the inviter's family with its selected role.
 - `ONBOARDING_STATE=closed` is persisted by the migration hook so Sure cannot
   reopen local registration from a previously stored setting.
 

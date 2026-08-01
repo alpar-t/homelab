@@ -24,7 +24,9 @@ data:
   OIDC_BUTTON_LABEL: "Sign in with Pocket ID"
   AUTH_LOCAL_LOGIN_ENABLED: "false"
   AUTH_LOCAL_ADMIN_OVERRIDE_ENABLED: "false"
-  AUTH_JIT_MODE: "create_and_link"
+  # Block uninvited OIDC users from creating accounts/new families. Sure still
+  # permits JIT creation when a pending invitation matches the OIDC email.
+  AUTH_JIT_MODE: "link_only"
 
   EXCHANGE_RATE_PROVIDER: "yahoo_finance"
   SECURITIES_PROVIDER: "yahoo_finance"
