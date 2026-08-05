@@ -24,7 +24,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: mcp-searxng
-          image: isokoliuk/mcp-searxng:1.8.0@sha256:37a21fd9c18ff2e6f50bc4c7c2e399b6f77c1274aba19a7a77cf3b93dec2018d
+          image: isokoliuk/mcp-searxng:1.14.0@sha256:4e781345057a80a945da242111f9da0b1d60f40d6f892c90a43dc82f1ceeb633
           ports:
             - name: mcp
               containerPort: 3000
