@@ -3,15 +3,24 @@ defaultSettings:
   # Backup target configured via BackupTarget CRD (see manifests/backuptarget.yaml)
   replicaAutoBalance: best-effort
   storageMinimalAvailablePercentage: 10
-  orphanAutoDeletion: true
+  # Clean up stale replica data without automatically deleting orphan instances.
+  orphanResourceAutoDeletion: "replica-data"
+  # Upgrade no more than three attached V1 engines concurrently on each node.
+  concurrentAutomaticEngineUpgradePerNodeLimit: 3
   # Create default disk on labeled nodes only
   createDefaultDiskLabeledNodes: true
   # Use dedicated storage network for replica traffic (static IPs, not DHCP)
   # Requires Multus CNI to be installed first
-  # Reference: https://longhorn.io/docs/1.10.1/advanced-resources/deploy/storage-network/
+  # Reference: https://longhorn.io/docs/1.9.2/advanced-resources/deploy/storage-network/
   storageNetwork: longhorn-system/longhorn-storage-network
+
+# The Helm pre-upgrade Job is incompatible with Argo CD's hook lifecycle and
+# repeatedly reruns when unrelated CRD normalization keeps the app OutOfSync.
+# Keep the manager's post-start version compatibility check enabled.
+preUpgradeChecker:
+  jobEnabled: false
+  upgradeVersionCheck: true
 
 persistence:
   defaultClass: true
   defaultClassReplicaCount: 3
-
