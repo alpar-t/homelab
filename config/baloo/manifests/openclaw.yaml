@@ -29,6 +29,7 @@ spec:
         app.kubernetes.io/name: openclaw
       annotations:
         homelab/config-rev: "2026-06-29a"
+        secret.reloader.stakater.com/reload: "vikunja-baloo-token"
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -317,6 +318,70 @@ spec:
             - name: github-app-key
               mountPath: /var/run/secrets/github-app
               readOnly: true
+
+        # Agent-facing task tools. The bot token exists only in this sidecar;
+        # the OpenClaw gateway reaches its curated MCP surface over localhost.
+        - name: vikunja-mcp
+          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
+          imagePullPolicy: IfNotPresent
+          command:
+            - node
+            - /git/link/openclaw/tools/vikunja-mcp.js
+          ports:
+            - name: tasks-mcp
+              containerPort: 18802
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: VIKUNJA_API_URL
+              value: http://vikunja.vikunja.svc.cluster.local/api/v2
+            - name: VIKUNJA_DEFAULT_PROJECT
+              value: Household Inbox
+            - name: VIKUNJA_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: vikunja-baloo-token
+                  key: token
+          livenessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:18802/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:18802/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
 
         # OpenAI-compatible synchronous image API for clients such as Open
         # WebUI. The agent still decides when to call generate_image/edit_image;
