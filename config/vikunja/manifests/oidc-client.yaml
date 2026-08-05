@@ -1,0 +1,56 @@
+# Provision the Pocket ID confidential client and write vikunja-oidc into the
+# Vikunja namespace without putting the client secret in Git.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vikunja-oidc-client
+  namespace: pocket-id
+  labels:
+    app.kubernetes.io/name: vikunja
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      serviceAccountName: oidc-provisioner
+      restartPolicy: OnFailure
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: provision
+          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
+          command: ["/bin/sh", "/scripts/provision.sh"]
+          env:
+            - name: APP_NAME
+              value: vikunja
+            - name: APP_URL
+              value: https://tasks.newjoy.ro
+            - name: CALLBACK_URL
+              value: https://tasks.newjoy.ro/auth/openid/pocketid
+            - name: TARGET_NS
+              value: vikunja
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: script
+          configMap:
+            name: oidc-provisioner-script
+            defaultMode: 0555
+        - name: tmp
+          emptyDir: {}

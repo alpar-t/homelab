@@ -1,0 +1,158 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vikunja
+  namespace: vikunja
+  labels:
+    app.kubernetes.io/name: vikunja
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vikunja
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vikunja
+      annotations:
+        secret.reloader.stakater.com/reload: "vikunja-db-app,vikunja-oidc,vikunja-secrets"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: vikunja
+          image: docker.io/vikunja/vikunja:2.5.0@sha256:22df4c1bc8843c28d383bc5f52b59e7b601bf5f6560b36b29c0a500833c77fa3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3456
+              protocol: TCP
+          env:
+            - name: VIKUNJA_SERVICE_PUBLICURL
+              value: https://tasks.newjoy.ro
+            - name: VIKUNJA_SERVICE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: vikunja-secrets
+                  key: service_secret
+            - name: VIKUNJA_SERVICE_ENABLEREGISTRATION
+              value: "false"
+            - name: VIKUNJA_SERVICE_ENABLELINKSHARING
+              value: "false"
+            - name: VIKUNJA_SERVICE_ENABLECALDAV
+              value: "false"
+            - name: VIKUNJA_SERVICE_TIMEZONE
+              value: Europe/Bucharest
+            - name: VIKUNJA_DEFAULTSETTINGS_TIMEZONE
+              value: Europe/Bucharest
+            - name: VIKUNJA_DATABASE_TYPE
+              value: postgres
+            - name: VIKUNJA_DATABASE_HOST
+              value: vikunja-db-rw.vikunja.svc.cluster.local
+            - name: VIKUNJA_DATABASE_DATABASE
+              value: vikunja
+            - name: VIKUNJA_DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: vikunja-db-app
+                  key: username
+            - name: VIKUNJA_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: vikunja-db-app
+                  key: password
+            - name: VIKUNJA_DATABASE_SSLMODE
+              value: disable
+            - name: VIKUNJA_FILES_BASEPATH
+              value: /app/vikunja/files
+            - name: VIKUNJA_AUTH_LOCAL_ENABLED
+              value: "false"
+            - name: VIKUNJA_AUTH_OPENID_ENABLED
+              value: "true"
+            - name: VIKUNJA_AUTH_OPENID_PROVIDERS_POCKETID_NAME
+              value: Pocket ID
+            - name: VIKUNJA_AUTH_OPENID_PROVIDERS_POCKETID_AUTHURL
+              value: https://auth.newjoy.ro
+            - name: VIKUNJA_AUTH_OPENID_PROVIDERS_POCKETID_CLIENTID
+              valueFrom:
+                secretKeyRef:
+                  name: vikunja-oidc
+                  key: client_id
+            - name: VIKUNJA_AUTH_OPENID_PROVIDERS_POCKETID_CLIENTSECRET
+              valueFrom:
+                secretKeyRef:
+                  name: vikunja-oidc
+                  key: client_secret
+            - name: VIKUNJA_AUTH_OPENID_PROVIDERS_POCKETID_SCOPE
+              value: "openid profile email"
+          startupProbe:
+            httpGet:
+              path: /api/v2/health
+              port: http
+            failureThreshold: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /api/v2/health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/v2/health
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: files
+              mountPath: /app/vikunja/files
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: files
+          persistentVolumeClaim:
+            claimName: vikunja-files
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vikunja
+  namespace: vikunja
+  labels:
+    app.kubernetes.io/name: vikunja
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: vikunja
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

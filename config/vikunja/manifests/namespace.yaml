@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vikunja
+  labels:
+    app.kubernetes.io/name: vikunja
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"

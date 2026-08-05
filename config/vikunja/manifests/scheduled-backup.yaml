@@ -1,0 +1,17 @@
+# Daily base backup at 03:20. CNPG cron expressions have a leading seconds
+# field, so this intentionally contains six fields.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: vikunja-db-daily
+  namespace: vikunja
+  labels:
+    app.kubernetes.io/name: vikunja
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  schedule: "0 20 3 * * *"
+  cluster:
+    name: vikunja-db
+  backupOwnerReference: none
+  immediate: true

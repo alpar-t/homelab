@@ -1,0 +1,20 @@
+# Task attachments are the only application data outside PostgreSQL. Mark the
+# volume critical so Longhorn's daily recurring backup covers it.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vikunja-files
+  namespace: vikunja
+  labels:
+    app.kubernetes.io/name: vikunja
+    data-criticality: critical
+    recurring-job-group.longhorn.io/critical: enabled
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 5Gi
