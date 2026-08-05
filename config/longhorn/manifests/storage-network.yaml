@@ -3,7 +3,7 @@
 # Uses macvlan on enp1s0 (storage interface) with whereabouts IPAM
 # whereabouts provides cluster-wide IP coordination (prevents conflicts across nodes)
 # Range: 192.168.42.20-192.168.42.190 (avoids conflicts with node IPs)
-# Reference: https://longhorn.io/docs/1.10.1/advanced-resources/deploy/storage-network/
+# Reference: https://longhorn.io/docs/1.11.2/advanced-resources/deploy/storage-network/
 apiVersion: k8s.cni.cncf.io/v1
 kind: NetworkAttachmentDefinition
 metadata:
@@ -23,4 +23,3 @@ spec:
         "gateway": "192.168.42.1"
       }
     }
-

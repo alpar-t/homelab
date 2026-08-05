@@ -129,7 +129,7 @@ kubectl get net-attach-def -n longhorn-system
 ```
 
 References:
-- [Longhorn Storage Network docs](https://longhorn.io/docs/1.10.1/advanced-resources/deploy/storage-network/)
+- [Longhorn Storage Network docs](https://longhorn.io/docs/1.11.2/advanced-resources/deploy/storage-network/)
 - [Multus CNI](https://github.com/k8snetworkplumbingwg/multus-cni)
 
 ## Backups
