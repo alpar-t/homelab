@@ -11,7 +11,7 @@ defaultSettings:
   createDefaultDiskLabeledNodes: true
   # Use dedicated storage network for replica traffic (static IPs, not DHCP)
   # Requires Multus CNI to be installed first
-  # Reference: https://longhorn.io/docs/1.9.2/advanced-resources/deploy/storage-network/
+  # Reference: https://longhorn.io/docs/1.10.2/advanced-resources/deploy/storage-network/
   storageNetwork: longhorn-system/longhorn-storage-network
 
 # The Helm pre-upgrade Job is incompatible with Argo CD's hook lifecycle and
@@ -20,6 +20,13 @@ defaultSettings:
 preUpgradeChecker:
   jobEnabled: false
   upgradeVersionCheck: true
+
+# Longhorn 1.10.2 backing-image-manager hotfix. Remove this override when
+# upgrading to 1.11.x so that the chart's native image is used again.
+image:
+  longhorn:
+    backingImageManager:
+      tag: v1.10.2-hotfix-1@sha256:e56fcc01c6e60b380d83dc13bb15174d1d21d06491721bc9e83b0f50863a6388
 
 persistence:
   defaultClass: true
