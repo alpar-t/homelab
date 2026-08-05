@@ -21,9 +21,12 @@ spec:
       # APs broadcast on the network to find the controller
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
+      # Keep the host-network controller on a stable LAN IP for device adoption.
+      nodeSelector:
+        kubernetes.io/hostname: pufi
       containers:
         - name: omada-controller
-          image: mbentley/omada-controller:6.1@sha256:f7fd88848f9fceb4a2b005cfc128cd32aecc5139efbcfcaaa8ba0fd07a998f44
+          image: docker.io/mbentley/omada-controller:6.1@sha256:c1ccad7e3278875cddcb41dc284759f966f43239790d894bf4d5739ecb2dc2e1
           env:
             - name: TZ
               value: "Europe/Bucharest"
@@ -142,5 +145,4 @@ spec:
       port: 8043
       targetPort: 8043
       protocol: TCP
-
 
