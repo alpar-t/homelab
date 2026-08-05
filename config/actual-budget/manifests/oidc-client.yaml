@@ -1,14 +1,14 @@
-# Provision the required Pocket ID client and write sure-oidc into the Sure
-# namespace without putting the client secret in Git.
+# Provision Actual's Pocket ID client and write actual-oidc into the
+# actual-budget namespace without putting the client secret in Git.
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: sure-oidc-client
+  name: actual-oidc-client
   namespace: pocket-id
   labels:
-    app.kubernetes.io/name: sure
+    app.kubernetes.io/name: actual-budget
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "0"
     argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
 spec:
@@ -26,13 +26,13 @@ spec:
           command: ["/bin/sh", "/scripts/provision.sh"]
           env:
             - name: APP_NAME
-              value: sure
+              value: actual
             - name: APP_URL
               value: https://finance.newjoy.ro
             - name: CALLBACK_URL
-              value: https://finance.newjoy.ro/auth/openid_connect/callback
+              value: https://finance.newjoy.ro/openid/callback
             - name: TARGET_NS
-              value: sure
+              value: actual-budget
           securityContext:
             runAsNonRoot: true
             runAsUser: 65534

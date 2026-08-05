@@ -32,10 +32,6 @@ data:
     tandoor/tandoor-db-3
     roundcube/roundcube-db-1
     roundcube/roundcube-db-2
-    sure/sure-db-1
-    sure/sure-db-2
-    # Sure Redis is durable across restarts but contains rebuildable cache/queue state.
-    sure/sure-redis-data
     # Immich rebuildable PVCs - can be regenerated from originals
     immich/immich-thumbs
     immich/immich-upload

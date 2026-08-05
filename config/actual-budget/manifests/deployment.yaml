@@ -1,0 +1,221 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: actual-budget
+  namespace: actual-budget
+  labels:
+    app.kubernetes.io/name: actual-budget
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: actual-budget
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: actual-budget
+      annotations:
+        secret.reloader.stakater.com/reload: "actual-oidc"
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: actual-budget
+          image: docker.io/actualbudget/actual-server:26.8.0@sha256:0b300f370dba85a74998a953736a831bd931cc8cb76c0d8ceac3d3fd288dfd4d
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5006
+              protocol: TCP
+          env:
+            - name: ACTUAL_DATA_DIR
+              value: /data
+            - name: ACTUAL_PORT
+              value: "5006"
+            - name: ACTUAL_HOSTNAME
+              value: "::"
+            - name: ACTUAL_ALLOWED_LOGIN_METHODS
+              value: password,openid
+            - name: ACTUAL_OPENID_DISCOVERY_URL
+              value: https://auth.newjoy.ro/.well-known/openid-configuration
+            - name: ACTUAL_OPENID_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: actual-oidc
+                  key: client_id
+            - name: ACTUAL_OPENID_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: actual-oidc
+                  key: client_secret
+            - name: ACTUAL_OPENID_SERVER_HOSTNAME
+              value: https://finance.newjoy.ro
+            - name: ACTUAL_OPENID_AUTH_METHOD
+              value: openid
+            - name: ACTUAL_OPENID_ENFORCE
+              value: "false"
+            - name: ACTUAL_USER_CREATION_MODE
+              value: login
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            failureThreshold: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            runAsGroup: 1001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: actual-budget-data
+        - name: tmp
+          emptyDir: {}
+---
+# The community MCP needs the budget Sync ID created by Actual's first-run
+# setup. Keep it dormant until actual-mcp-credentials has budget_sync_id and
+# Baloo's MCP registry/tool policies are committed in the private baloo repo.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: actual-budget-mcp
+  namespace: actual-budget
+  labels:
+    app.kubernetes.io/name: actual-budget-mcp
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: actual-budget-mcp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: actual-budget-mcp
+      annotations:
+        secret.reloader.stakater.com/reload: "actual-mcp-credentials"
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: actual-budget-mcp
+          image: ghcr.io/kazefreeze/actual-budget-mcp:v3.2.4@sha256:1bede82b4799e3a4a0c60f1023c1233db82fb4588e4019299259d1f59e3f1f62
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: mcp
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: ACTUAL_SERVER_URL
+              value: http://actual-budget.actual-budget.svc.cluster.local:5006
+            - name: ACTUAL_SERVER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: actual-mcp-credentials
+                  key: server_password
+            - name: ACTUAL_BUDGET_SYNC_ID
+              valueFrom:
+                secretKeyRef:
+                  name: actual-mcp-credentials
+                  key: budget_sync_id
+            - name: MCP_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: actual-mcp-credentials
+                  key: mcp_api_key
+            - name: MCP_TRANSPORT
+              value: http
+            - name: MCP_PORT
+              value: "3000"
+            - name: MCP_STRICT_VERSION_CHECK
+              value: "true"
+            - name: LOG_LEVEL
+              value: info
+          startupProbe:
+            httpGet:
+              path: /health
+              port: mcp
+            failureThreshold: 36
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: mcp
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: mcp
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: cache
+              mountPath: /var/lib/actual-mcp
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: cache
+          persistentVolumeClaim:
+            claimName: actual-budget-mcp-cache
+        - name: tmp
+          emptyDir: {}

@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: actual-budget
+  namespace: argocd
+  annotations:
+    # Wait for the transitional Sure cleanup application to release
+    # finance.newjoy.ro before creating Actual's Ingress.
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/alpar-t/homelab
+    targetRevision: main
+    path: config/actual-budget/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: actual-budget
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

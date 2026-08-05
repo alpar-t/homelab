@@ -1,0 +1,171 @@
+# Generate the shared Actual server/MCP credentials once, then bootstrap a
+# fresh Actual server with the generated password. The budget Sync ID is added
+# after the first budget is created; until then the MCP Deployment stays at 0.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: actual-bootstrap
+  namespace: actual-budget
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: actual-bootstrap
+  namespace: actual-budget
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: actual-bootstrap
+  namespace: actual-budget
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: actual-bootstrap
+subjects:
+  - kind: ServiceAccount
+    name: actual-bootstrap
+    namespace: actual-budget
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: actual-credentials
+  namespace: actual-budget
+  labels:
+    app.kubernetes.io/name: actual-budget
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      serviceAccountName: actual-bootstrap
+      restartPolicy: OnFailure
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: generate
+          image: docker.io/bitnami/kubectl:latest@sha256:3220dcc839f55be732a29548043a1ddf635a0dd6c8781b0f2a0bcdc19029c7d3
+          command: ["/bin/sh", "-c"]
+          env:
+            - name: HOME
+              value: /tmp
+          args:
+            - |
+              set -eu
+
+              if kubectl get secret actual-mcp-credentials -n actual-budget >/dev/null 2>&1; then
+                echo "actual-mcp-credentials already exists, nothing to do"
+                exit 0
+              fi
+
+              random_value() {
+                head -c 96 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c "$1"
+              }
+
+              SERVER_PASSWORD=$(random_value 48)
+              MCP_API_KEY=$(random_value 64)
+
+              kubectl create secret generic actual-mcp-credentials \
+                --namespace=actual-budget \
+                --from-literal=server_password="$SERVER_PASSWORD" \
+                --from-literal=mcp_api_key="$MCP_API_KEY"
+
+              echo "actual-mcp-credentials created; budget_sync_id awaits first-run setup"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: actual-server-bootstrap
+  namespace: actual-budget
+  labels:
+    app.kubernetes.io/name: actual-budget
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      serviceAccountName: actual-bootstrap
+      restartPolicy: OnFailure
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: bootstrap
+          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+
+              K8S_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+              K8S_CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+              K8S_API=https://kubernetes.default.svc
+              SECRET_RESPONSE=$(curl -sf --cacert "$K8S_CA" \
+                -H "Authorization: Bearer $K8S_TOKEN" \
+                "$K8S_API/api/v1/namespaces/actual-budget/secrets/actual-mcp-credentials")
+              PASSWORD_B64=$(echo "$SECRET_RESPONSE" | grep -o '"server_password": *"[^"]*"' | sed 's/"server_password": *"//;s/"$//')
+              SERVER_PASSWORD=$(printf '%s' "$PASSWORD_B64" | base64 -d)
+
+              if [ -z "$SERVER_PASSWORD" ]; then
+                echo "ERROR: could not read generated Actual server password"
+                exit 1
+              fi
+
+              until STATUS=$(curl -sf http://actual-budget.actual-budget.svc.cluster.local:5006/account/needs-bootstrap); do
+                echo "Waiting for Actual server..."
+                sleep 3
+              done
+
+              if echo "$STATUS" | grep -q '"bootstrapped":true'; then
+                echo "Actual server is already bootstrapped"
+                exit 0
+              fi
+
+              curl -sf -X POST \
+                -H "Content-Type: application/json" \
+                -d "{\"password\":\"$SERVER_PASSWORD\"}" \
+                http://actual-budget.actual-budget.svc.cluster.local:5006/account/bootstrap >/dev/null
+              echo "Actual server bootstrapped"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

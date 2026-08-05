@@ -1,12 +1,12 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: sure
-  namespace: sure
+  name: actual-budget
+  namespace: actual-budget
   labels:
-    app.kubernetes.io/name: sure
+    app.kubernetes.io/name: actual-budget
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-wave: "3"
     nginx.ingress.kubernetes.io/proxy-body-size: "128m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
@@ -20,6 +20,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: sure
+                name: actual-budget
                 port:
-                  number: 80
+                  number: 5006
