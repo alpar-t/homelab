@@ -25,6 +25,9 @@ have dropped those too).
 - **Delivery:** `announce` on WhatsApp to `${BALOO_OWNER_PHONE}`.
 - **All-clear token:** the run replies the cron silent token `NO_REPLY` (not
   `HEARTBEAT_OK`) so nothing is delivered; a real problem returns one terse line.
+- **No progress prose:** tool-call turns must contain tools only. OpenClaw
+  2026.6.11 can suppress a final `NO_REPLY` yet still choose earlier assistant
+  text (for example, "now checking Longhorn") as the announce summary.
 
 Per-run cost after these changes: ~95K input / ~650 output tokens (~3× cheaper
 than the old heartbeat). The remaining ~95K is mostly verbose `kubectl get`

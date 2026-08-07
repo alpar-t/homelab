@@ -20,6 +20,9 @@ Whole-cluster shutdown and startup for planned power maintenance:
 Vaultwarden client compatibility monitoring and safe upgrade procedure:
 `runbooks/vaultwarden-maintenance.md`.
 
+Baloo's read-only OpenCloud/Newjoy MCP credential setup and validation:
+`runbooks/baloo-opencloud-mcp.md`.
+
 Longhorn minor-version upgrade procedure and validation gates:
 `runbooks/longhorn-upgrade.md`.
 

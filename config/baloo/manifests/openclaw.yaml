@@ -29,7 +29,7 @@ spec:
         app.kubernetes.io/name: openclaw
       annotations:
         homelab/config-rev: "2026-06-29a"
-        secret.reloader.stakater.com/reload: "vikunja-baloo-token"
+        secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo"
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -138,6 +138,27 @@ spec:
                 secretKeyRef:
                   name: baloo-secrets
                   key: BROWSER_CDP_TOKEN
+                  optional: true
+            # Dedicated, non-admin OpenCloud account. Keep these optional while
+            # staging: creating the Secret triggers Reloader and makes the
+            # read-only Newjoy WebDAV MCP available without a broken rollout.
+            - name: OPENCLOUD_WEBDAV_URL
+              valueFrom:
+                secretKeyRef:
+                  name: opencloud-baloo
+                  key: webdav-url
+                  optional: true
+            - name: OPENCLOUD_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: opencloud-baloo
+                  key: username
+                  optional: true
+            - name: OPENCLOUD_APP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: opencloud-baloo
+                  key: app-token
                   optional: true
           securityContext:
             runAsUser: 1000
