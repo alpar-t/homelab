@@ -146,16 +146,16 @@ spec:
           type: RuntimeDefault
       containers:
         - name: actual-budget-mcp
-          image: ghcr.io/kazefreeze/actual-budget-mcp:v3.2.4@sha256:1bede82b4799e3a4a0c60f1023c1233db82fb4588e4019299259d1f59e3f1f62
+          image: ghcr.io/agigante80/actual-mcp-server:0.9.6@sha256:8402acfc052a4e7a2f8ed2dbcfea8f0f2f823f4251be6cfe172da3b3cf74a398
           imagePullPolicy: IfNotPresent
           ports:
             - name: mcp
-              containerPort: 3000
+              containerPort: 3600
               protocol: TCP
           env:
             - name: ACTUAL_SERVER_URL
               value: http://actual-budget.actual-budget.svc.cluster.local:5006
-            - name: ACTUAL_SERVER_PASSWORD
+            - name: ACTUAL_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: actual-mcp-credentials
@@ -165,17 +165,17 @@ spec:
                 secretKeyRef:
                   name: actual-mcp-credentials
                   key: budget_sync_id
-            - name: MCP_API_KEYS
+            - name: MCP_SSE_AUTHORIZATION
               valueFrom:
                 secretKeyRef:
                   name: actual-mcp-credentials
                   key: mcp_api_key
-            - name: MCP_TRANSPORT
-              value: http
-            - name: MCP_PORT
-              value: "3000"
-            - name: MCP_STRICT_VERSION_CHECK
-              value: "true"
+            - name: MCP_TRANSPORT_MODE
+              value: --http
+            - name: MCP_BRIDGE_PORT
+              value: "3600"
+            - name: MCP_BRIDGE_DATA_DIR
+              value: /app/data
             - name: LOG_LEVEL
               value: info
           startupProbe:
@@ -214,7 +214,9 @@ spec:
               drop: [ALL]
           volumeMounts:
             - name: cache
-              mountPath: /var/lib/actual-mcp
+              mountPath: /app/data
+            - name: logs
+              mountPath: /app/logs
             - name: tmp
               mountPath: /tmp
       volumes:
@@ -222,4 +224,6 @@ spec:
           persistentVolumeClaim:
             claimName: actual-budget-mcp-cache
         - name: tmp
+          emptyDir: {}
+        - name: logs
           emptyDir: {}

@@ -10,11 +10,15 @@ ledger; trip-level expenses remain in TREK and are rolled up separately.
 - `actual-budget-data` contains the server files and is in Longhorn's
   `critical` recurring backup group.
 - `actual-budget-mcp` is the unmodified community
-  `KazeFreeze/actual-budget-mcp` v3.2.4 image.
+  `agigante80/actual-mcp-server` v0.9.6 image. It tracks Actual 26.8's API,
+  exposes split-transaction writes, and supports authenticated HTTP transport.
 - The MCP has no Ingress. It is reachable only inside the cluster.
-- The MCP starts at zero replicas until the first budget supplies a Sync ID.
+- The MCP is activated after the first budget supplies a Sync ID.
 - Password is the primary server login method so headless API clients can
   authenticate; Pocket ID remains an allowed web login method.
+- Baloo uses Actual's local password identity, not the Pocket ID user. The
+  identity is named `Baloo`, has the `BASIC` role, is not an owner, and is
+  granted access only to the configured household budget.
 
 ## First-run setup
 
