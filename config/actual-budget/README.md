@@ -13,6 +13,8 @@ ledger; trip-level expenses remain in TREK and are rolled up separately.
   `KazeFreeze/actual-budget-mcp` v3.2.4 image.
 - The MCP has no Ingress. It is reachable only inside the cluster.
 - The MCP starts at zero replicas until the first budget supplies a Sync ID.
+- Password is the primary server login method so headless API clients can
+  authenticate; Pocket ID remains an allowed web login method.
 
 ## First-run setup
 

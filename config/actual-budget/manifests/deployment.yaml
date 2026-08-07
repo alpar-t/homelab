@@ -41,6 +41,10 @@ spec:
               value: "5006"
             - name: ACTUAL_HOSTNAME
               value: "::"
+            # Keep password as the primary method for headless API clients such
+            # as the community MCP; OpenID remains available to web users.
+            - name: ACTUAL_LOGIN_METHOD
+              value: password
             - name: ACTUAL_ALLOWED_LOGIN_METHODS
               value: password,openid
             - name: ACTUAL_OPENID_DISCOVERY_URL
