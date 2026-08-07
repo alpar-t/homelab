@@ -1,5 +1,13 @@
 # Vikunja's task database. Two instances provide automatic failover; continuous
 # WAL archiving and daily base backups provide point-in-time recovery in B2.
+# Native barmanObjectStore requires the deprecated system image because it
+# contains barman-cloud binaries. Migrate this cluster to the Barman Cloud
+# plugin before CNPG 1.31 removes native support.
+#
+# Bootstrap the namespace-local credential copy with renamed CNPG keys:
+#   kubectl create secret generic cnpg-backup-credentials -n vikunja \
+#     --from-literal=ACCESS_KEY_ID="$(kubectl get secret backblaze-backup-credentials -n longhorn-system -o jsonpath='{.data.AWS_ACCESS_KEY_ID}' | base64 -d)" \
+#     --from-literal=SECRET_ACCESS_KEY="$(kubectl get secret backblaze-backup-credentials -n longhorn-system -o jsonpath='{.data.AWS_SECRET_ACCESS_KEY}' | base64 -d)"
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
@@ -13,7 +21,7 @@ metadata:
 spec:
   instances: 2
   enablePDB: false
-  imageName: ghcr.io/cloudnative-pg/postgresql:17.10-202608030910-standard-bookworm@sha256:eaf7f17fb4004f3c9e18b0cfd9a6b0257b3adc0d610b4593165603b173fb1426
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.10-202608030910-system-bookworm@sha256:8561d04754c2caf8ed203b52e96163a24ff045782ca726d01b01bbcb0649222c
 
   bootstrap:
     initdb:
