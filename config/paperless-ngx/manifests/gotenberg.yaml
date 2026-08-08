@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: gotenberg
-          image: docker.io/gotenberg/gotenberg:8@sha256:a40c5a46b79d812ce2f5e139278163142a054050bfd1e5f162da36d3d11c7138
+          image: docker.io/gotenberg/gotenberg:8@sha256:a16a14e1f18a71405624bc028e90d4ef50ea774c352b303639c10bf7b141f760
           args:
             - "gotenberg"
             # Security: disable JavaScript and restrict file access
