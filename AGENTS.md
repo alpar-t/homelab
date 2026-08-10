@@ -93,7 +93,9 @@ These are authoritative for the deployed version — version-correct, no drift f
 
 Baloo's OpenClaw configuration, agent workspaces, and shared skills live in the
 private `alpar-t/baloo` repository under `openclaw/`; only its Kubernetes
-manifests remain under `config/baloo/manifests/` here. When editing anything in
+manifests remain under `config/baloo/manifests/` here. Expect that repository to
+be checked out at the sibling path `../baloo`, and operate there for Baloo source
+changes instead of searching for those files here. When editing anything in
 `openclaw/agents/*/SOUL.md` or `AGENTS.md`, or when authoring a new skill, first
 load Anthropic's skill-creator guidance for review principles:
 

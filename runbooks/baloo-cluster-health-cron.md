@@ -17,6 +17,7 @@ have dropped those too).
 
 - **Schedule:** every 15m (isolated session, fresh each run)
 - **Model:** default `openai/gpt-5.6-sol` (in-plan) → fallback
+  `openai/gpt-5.6-terra` (in-plan) → fallback
   `anthropic/claude-sonnet-4-6` (pay-per-use, only on spillover)
 - **`thinking: low`**, **`lightContext: true`**
 - **Scoped tools:** `k8s__kubectl_get,k8s__kubectl_describe` only — this is the
