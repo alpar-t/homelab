@@ -58,7 +58,12 @@ template:
         volumeMounts:
           - name: work
             mountPath: /home/runner/_work
+          - name: tool-cache
+            mountPath: /opt/hostedtoolcache
     volumes:
       - name: work
         emptyDir:
           sizeLimit: 2Gi
+      - name: tool-cache
+        emptyDir:
+          sizeLimit: 1Gi
