@@ -28,7 +28,7 @@ spec:
       labels:
         app.kubernetes.io/name: openclaw
       annotations:
-        homelab/config-rev: "2026-06-29a"
+        homelab/config-rev: "2026-08-10a"
         secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo"
     spec:
       automountServiceAccountToken: false
@@ -73,7 +73,7 @@ spec:
               readOnly: true
         # Substitute ${BALOO_OWNER_PHONE} into openclaw.json → /rendered/openclaw.json
         - name: render-config
-          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
+          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
           command:
             - node
             - -e
@@ -188,7 +188,7 @@ spec:
         # the running core. Non-fatal: if ClawHub is unreachable at boot we keep
         # the last-good plugin already on the PVC rather than crash-looping.
         - name: plugin-sync
-          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
+          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
           command:
             - sh
             - -c
@@ -254,7 +254,7 @@ spec:
               readOnly: true
 
         - name: openclaw
-          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
+          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
           imagePullPolicy: IfNotPresent
           command:
             - node
@@ -348,7 +348,7 @@ spec:
         # Agent-facing task tools. The bot token exists only in this sidecar;
         # the OpenClaw gateway reaches its curated MCP surface over localhost.
         - name: vikunja-mcp
-          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
+          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
           imagePullPolicy: IfNotPresent
           command:
             - node
@@ -414,7 +414,7 @@ spec:
         # this sidecar only adapts those client tool calls to OpenClaw's image
         # provider CLI so results return to the originating HTTP chat.
         - name: image-api
-          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
+          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
           imagePullPolicy: IfNotPresent
           command:
             - node
@@ -485,7 +485,7 @@ spec:
         # Reconcile recurring OpenClaw cron jobs from git without touching
         # one-shot reminders created by users in chat.
         - name: cron-sync
-          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
+          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
           command:
             - node
             - /git/link/openclaw/tools/sync-cron-jobs.js
