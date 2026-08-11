@@ -1,0 +1,4 @@
+self-hosted-runner:
+  labels:
+    - baloo-export-runners
+    - homelab-runners

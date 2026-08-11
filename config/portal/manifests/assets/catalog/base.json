@@ -1,0 +1,33 @@
+{
+  "label": "Signed-in workspace",
+  "intro": "Your Pocket ID account is working, but no portal access group is attached yet. Account tools remain available below.",
+  "sections": [
+    {
+      "id": "account",
+      "title": "Account",
+      "description": "Identity and access for Newjoy services.",
+      "services": [
+        {
+          "name": "Account & sign-in",
+          "product": "Pocket ID",
+          "description": "Manage your passkeys, profile, sessions, and sign-in activity.",
+          "url": "https://auth.newjoy.ro/settings/account",
+          "icon": "identity",
+          "accent": "#8da6ff",
+          "network": "anywhere",
+          "tags": ["identity", "passkeys"]
+        },
+        {
+          "name": "Newjoy website",
+          "product": "newjoy.ro",
+          "description": "Return to the public Newjoy landing page.",
+          "url": "https://newjoy.ro",
+          "icon": "website",
+          "accent": "#ff774a",
+          "network": "anywhere",
+          "tags": ["website"]
+        }
+      ]
+    }
+  ]
+}

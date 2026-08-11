@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark light">
+    <meta name="theme-color" content="#0b0f16">
+    <title>Newjoy Portal</title>
+    <script src="/theme.js"></script>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <div class="ambient ambient-one" aria-hidden="true"></div>
+    <div class="ambient ambient-two" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Newjoy Portal home">
+        <span class="brand-mark" aria-hidden="true">N</span>
+        <span>
+          <strong>newjoy</strong>
+          <small>portal</small>
+        </span>
+      </a>
+      <nav class="account-nav" aria-label="Account">
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to light mode">
+          <span class="theme-icon theme-icon-sun" aria-hidden="true">☀</span>
+          <span class="theme-icon theme-icon-moon" aria-hidden="true">☾</span>
+          <span id="theme-label">Dark</span>
+        </button>
+        <a href="https://auth.newjoy.ro/settings/account" target="_blank" rel="noopener noreferrer">Account</a>
+        <a href="/oauth2/sign_out?rd=https%3A%2F%2Fportal.newjoy.ro">Sign out</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow" id="access-label">Loading your workspace</p>
+          <h1 id="page-title">Everything, in its place.</h1>
+          <p class="hero-copy" id="intro">Finding the services available to you.</p>
+        </div>
+        <div class="identity" title="Authenticated by Pocket ID">
+          <span class="identity-dot" aria-hidden="true"></span>
+          <span id="identity-name">Signed in</span>
+        </div>
+      </section>
+
+      <section class="toolbar" aria-label="Filter capabilities">
+        <label class="search">
+          <span aria-hidden="true">⌕</span>
+          <span class="sr-only">Find a capability or app</span>
+          <input id="search" type="search" placeholder="What do you want to do?" autocomplete="off">
+          <kbd>/</kbd>
+        </label>
+        <div class="toolbar-meta">
+          <label class="view-picker" id="view-picker" hidden>
+            <span>View as</span>
+            <select id="view-select" aria-label="Preview another portal view"></select>
+          </label>
+          <p id="service-count" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <div id="catalog" aria-live="polite">
+        <div class="loading-card">
+          <span class="loader" aria-hidden="true"></span>
+          Building your portal…
+        </div>
+      </div>
+
+      <div class="empty" id="empty" hidden>
+        <strong>No capabilities match that search.</strong>
+        <span>Try a task such as “back up photos”, “store passwords”, or “plan a trip”.</span>
+      </div>
+    </main>
+
+    <footer>
+      <span>Newjoy household capabilities</span>
+      <span>Availability depends on each service and your network.</span>
+    </footer>
+  </body>
+</html>

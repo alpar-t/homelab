@@ -1,0 +1,216 @@
+{
+  "label": "Baloo access map",
+  "intro": "A human-readable snapshot of the explicit tool policy in ../baloo/openclaw/openclaw.json. The main section describes Baloo — Alpar; every other agent has its own narrower allowlist.",
+  "sections": [
+    {
+      "id": "alpar-capabilities",
+      "title": "Baloo — Alpar can work with",
+      "description": "Access is granted per tool namespace. A connection is not permission to reach unrelated data behind that service.",
+      "services": [
+        {
+          "name": "Web research",
+          "product": "SearXNG · isolated browser",
+          "description": "Search with SearXNG, fetch public pages, and render JavaScript sites in an isolated browser that cannot reach the LAN or cluster.",
+          "icon": "website",
+          "accent": "#62a8ef",
+          "scope": "Public only",
+          "tags": ["search", "browser", "web fetch"]
+        },
+        {
+          "name": "Places, routes & local time",
+          "product": "Google Maps · Timezone",
+          "description": "Look up places, routes, directions, travel distances, coordinates, and destination-local timezone offsets.",
+          "icon": "map",
+          "accent": "#59c7aa",
+          "scope": "Read",
+          "tags": ["Google Maps", "directions", "timezone"]
+        },
+        {
+          "name": "Create & edit pictures",
+          "product": "Image generation",
+          "description": "Create or edit images when explicitly requested, using the configured image-generation model.",
+          "icon": "ai",
+          "accent": "#b28cff",
+          "scope": "Generate",
+          "tags": ["images", "editing", "generation"]
+        },
+        {
+          "name": "Read & control the smart home",
+          "product": "Home Assistant",
+          "description": "Read live household state and invoke only the controls exposed by the Home Assistant MCP tools.",
+          "icon": "home",
+          "accent": "#50b9e9",
+          "scope": "Read / control",
+          "tags": ["lights", "sensors", "media", "smart home"]
+        },
+        {
+          "name": "Manage household tasks",
+          "product": "Vikunja",
+          "description": "Find, create, assign, move, update, complete, and reopen Vikunja tasks. There is intentionally no delete tool.",
+          "icon": "tasks",
+          "accent": "#e989a8",
+          "scope": "Read / write",
+          "tags": ["Vikunja", "tasks", "projects"]
+        },
+        {
+          "name": "Plan trips & itineraries",
+          "product": "TREK",
+          "description": "Use the full exposed TREK tool surface for itineraries, packing, trip budgets, dates, members, and travel planning.",
+          "icon": "travel",
+          "accent": "#58c6c1",
+          "scope": "MCP surface",
+          "tags": ["travel", "itinerary", "packing"]
+        },
+        {
+          "name": "Work with the household budget",
+          "product": "Actual Budget",
+          "description": "Use the enabled Actual MCP connection for the single configured household budget; other Baloo agents are explicitly denied this namespace.",
+          "icon": "budget",
+          "accent": "#65c5a2",
+          "scope": "MCP surface",
+          "tags": ["finance", "budget", "Alpar only"]
+        },
+        {
+          "name": "Find & read project files",
+          "product": "OpenCloud",
+          "description": "List, search, inspect metadata, read bounded text files, and inspect images below Baloo's configured WebDAV root.",
+          "icon": "files",
+          "accent": "#4e9cff",
+          "scope": "Read only",
+          "tags": ["files", "scoped root", "no traversal"]
+        },
+        {
+          "name": "Review & propose code changes",
+          "product": "GitHub",
+          "description": "Read repositories and review state; create issues, comments, branches, file updates, and pull requests through the GitHub App.",
+          "icon": "github",
+          "accent": "#a8b4c7",
+          "scope": "Guarded write",
+          "tags": ["issues", "pull requests", "code"]
+        },
+        {
+          "name": "Inspect cluster health",
+          "product": "Kubernetes",
+          "description": "Get and describe cluster resources and read logs. RBAC excludes Secrets and ConfigMaps and grants no write verbs.",
+          "icon": "kubernetes",
+          "accent": "#6b9cff",
+          "scope": "Read only",
+          "tags": ["k3s", "logs", "health"]
+        },
+        {
+          "name": "Schedule reminders",
+          "product": "OpenClaw cron",
+          "description": "Create source-controlled scheduled reminders only when Alpar explicitly asks for one at a specific time.",
+          "icon": "reminder",
+          "accent": "#e4aa67",
+          "scope": "Explicit write",
+          "tags": ["cron", "schedule", "time"]
+        }
+      ]
+    },
+    {
+      "id": "hard-limits",
+      "title": "Hard limits",
+      "description": "These are enforced by tool deny lists, network policy, RBAC, or the available tool surface—not just prompt wording.",
+      "services": [
+        {
+          "name": "No cluster changes",
+          "description": "Baloo cannot apply, create, patch, scale, restart, upgrade, exec into pods, or open Kubernetes port-forwards.",
+          "icon": "denied",
+          "accent": "#ef7d72",
+          "scope": "Denied",
+          "tags": ["Kubernetes", "write", "exec"]
+        },
+        {
+          "name": "No privileged GitHub actions",
+          "description": "It cannot merge pull requests, push arbitrary file sets, fork repositories, or create repositories.",
+          "icon": "denied",
+          "accent": "#ef7d72",
+          "scope": "Denied",
+          "tags": ["merge", "push", "repository"]
+        },
+        {
+          "name": "No OpenCloud writes",
+          "description": "The Alpar agent has only list, search, metadata, text-read, and image-read tools for the scoped Newjoy root.",
+          "icon": "denied",
+          "accent": "#ef7d72",
+          "scope": "Denied",
+          "tags": ["upload", "move", "delete", "share"]
+        },
+        {
+          "name": "No private browser reach",
+          "description": "The browser pod cannot navigate to cluster, LAN, link-local, or tailnet addresses and cannot bypass logins, 2FA, or captchas.",
+          "icon": "denied",
+          "accent": "#ef7d72",
+          "scope": "Network policy",
+          "tags": ["LAN", "cluster", "Tailscale"]
+        },
+        {
+          "name": "No self-modification",
+          "description": "Baloo cannot change its own prompts, tool policy, configuration, or agent workspace; those changes go through source control and ArgoCD.",
+          "icon": "denied",
+          "accent": "#ef7d72",
+          "scope": "Process boundary",
+          "tags": ["configuration", "prompts", "ArgoCD"]
+        }
+      ]
+    },
+    {
+      "id": "other-agents",
+      "title": "Other Baloo agents differ",
+      "description": "The gateway registers tools globally, but each agent receives its own strict allowlist and explicit denials.",
+      "services": [
+        {
+          "name": "Baloo — Kinga",
+          "description": "Household web, maps, trips, OpenCloud reading, Home Assistant, tasks, GitHub workflows, images, and reminders; no Actual Budget or Kubernetes.",
+          "icon": "person",
+          "accent": "#e38bb1",
+          "scope": "Personal agent",
+          "tags": ["no budget", "no cluster"]
+        },
+        {
+          "name": "Cooking and Garden",
+          "description": "Public web, the relevant life-repository workflow through branches and pull requests, plus live Home Assistant context only.",
+          "icon": "garden",
+          "accent": "#79c695",
+          "scope": "Specialist",
+          "tags": ["GitHub PR", "HA context", "no cluster"]
+        },
+        {
+          "name": "Trips",
+          "description": "TREK, maps, timezones, and public web. It has no HA, GitHub, OpenCloud, Actual, tasks, images, or Kubernetes access and cannot create or delete trips.",
+          "icon": "travel",
+          "accent": "#58c6c1",
+          "scope": "Specialist",
+          "tags": ["travel", "restricted"]
+        },
+        {
+          "name": "Newjoy Studio",
+          "description": "Public web plus a scoped Newjoy OpenCloud workflow that can organize folders and conditionally write YAML catalogs; no household or infrastructure tools.",
+          "icon": "files",
+          "accent": "#c59a73",
+          "scope": "Specialist",
+          "tags": ["OpenCloud", "catalog", "scoped write"]
+        },
+        {
+          "name": "Interior Designer",
+          "description": "Public search, fetch, and isolated browser only. Every household, project, image-generation, task, and infrastructure namespace is denied.",
+          "icon": "design",
+          "accent": "#b5a58f",
+          "scope": "Specialist",
+          "tags": ["public web only"]
+        },
+        {
+          "name": "Policy source",
+          "product": "Baloo repository",
+          "description": "Review the exact per-agent allow and deny arrays in the private Baloo repository. This file remains the source of truth.",
+          "url": "https://github.com/alpar-t/baloo/blob/main/openclaw/openclaw.json",
+          "icon": "code",
+          "accent": "#a8b4c7",
+          "scope": "Source",
+          "tags": ["openclaw.json", "allowlist", "denylist"]
+        }
+      ]
+    }
+  ]
+}

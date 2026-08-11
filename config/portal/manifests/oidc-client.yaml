@@ -1,0 +1,130 @@
+# Create the Pocket ID client and write portal-oidc into the portal namespace.
+# The shared provisioner keeps the client secret and cookie key out of Git.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: portal-oidc-client
+  namespace: pocket-id
+  labels:
+    app.kubernetes.io/name: portal
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      serviceAccountName: oidc-provisioner
+      restartPolicy: OnFailure
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: provision
+          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
+          command: ["/bin/sh", "/scripts/provision.sh"]
+          env:
+            - name: APP_NAME
+              value: portal
+            - name: APP_URL
+              value: https://portal.newjoy.ro
+            - name: CALLBACK_URL
+              value: https://portal.newjoy.ro/oauth2/callback
+            - name: TARGET_NS
+              value: portal
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: script
+          configMap:
+            name: oidc-provisioner-script
+            defaultMode: 0555
+        - name: tmp
+          emptyDir: {}
+---
+# oauth2-proxy needs a separate stable encryption key. Generate it independently
+# of the shared OIDC provisioner so a first portal sync cannot race a provisioner
+# update in the Pocket ID application.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: portal-cookie-secret
+  namespace: pocket-id
+  labels:
+    app.kubernetes.io/name: portal
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      serviceAccountName: oidc-provisioner
+      restartPolicy: OnFailure
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: generate
+          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:ced693754e14ef5d66495db1d098f40fe07819b4b119b0f68de2a361fa83815b
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              K8S_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+              K8S_CA=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+              K8S_API=https://kubernetes.default.svc
+              SECRET_URL=$K8S_API/api/v1/namespaces/portal/secrets/portal-cookie
+
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+                --cacert "$K8S_CA" \
+                -H "Authorization: Bearer $K8S_TOKEN" \
+                "$SECRET_URL")
+              if [ "$STATUS" = "200" ]; then
+                echo "portal-cookie already exists, nothing to do"
+                exit 0
+              fi
+
+              COOKIE_SECRET=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
+              curl -sf -X POST \
+                --cacert "$K8S_CA" \
+                -H "Authorization: Bearer $K8S_TOKEN" \
+                -H "Content-Type: application/json" \
+                "$K8S_API/api/v1/namespaces/portal/secrets" \
+                -d "{
+                  \"apiVersion\": \"v1\",
+                  \"kind\": \"Secret\",
+                  \"metadata\": {\"name\": \"portal-cookie\", \"namespace\": \"portal\"},
+                  \"type\": \"Opaque\",
+                  \"stringData\": {\"cookie_secret\": \"$COOKIE_SECRET\"}
+                }"
+              echo "portal-cookie created"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

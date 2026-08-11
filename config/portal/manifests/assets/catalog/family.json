@@ -1,0 +1,251 @@
+{
+  "label": "Family workspace",
+  "intro": "Start with what you want to do. The smaller label on each card tells you which app provides it, and setup help is available where a phone or browser app makes it better.",
+  "sections": [
+    {
+      "id": "everyday",
+      "title": "Everyday",
+      "description": "Create, plan, remember, and find the things the household uses most.",
+      "services": [
+        {
+          "name": "Household AI",
+          "product": "Baloo",
+          "description": "Ask for help with projects, research, pictures, cooking, gardening, travel, and household knowledge.",
+          "url": "https://baloo.newjoy.ro",
+          "icon": "ai",
+          "accent": "#ad8cff",
+          "network": "anywhere",
+          "tags": ["AI", "assistant", "chat", "WhatsApp"],
+          "setup": {
+            "label": "Where to talk to Baloo",
+            "intro": "Baloo is available in the web chat and in WhatsApp. Different WhatsApp conversations route to the most useful specialist.",
+            "steps": [
+              "Open the web chat from this card, or message Baloo in WhatsApp.",
+              "Use a private Baloo chat for general help; use the Cooking, Garden, or Trips group for that specialist.",
+              "You can attach pictures directly in WhatsApp when you want Baloo to inspect them."
+            ],
+            "groups": [
+              {
+                "name": "Family users",
+                "agents": ["Alpar", "Kinga", "Cooking", "Garden", "Trips", "Interior Designer", "Newjoy Studio"]
+              },
+              {
+                "name": "Advanced apps",
+                "agents": ["Alpar", "Kinga", "Cooking", "Garden", "Trips", "Interior Designer", "Newjoy Studio"]
+              }
+            ]
+          }
+        },
+        {
+          "name": "Files & shared documents",
+          "product": "OpenCloud",
+          "description": "Store, share, edit, and sync household files and collaborative documents.",
+          "url": "https://drive.newjoy.ro",
+          "icon": "files",
+          "accent": "#4e9cff",
+          "network": "anywhere",
+          "tags": ["OpenCloud", "files", "documents", "drive"]
+        },
+        {
+          "name": "Pictures & albums",
+          "product": "Immich",
+          "description": "Browse, search, back up, and share the family photo and video library.",
+          "url": "https://photos.newjoy.ro",
+          "icon": "photos",
+          "accent": "#7f92ff",
+          "network": "anywhere",
+          "tags": ["Immich", "photos", "videos", "backup"],
+          "setup": {
+            "label": "Set up automatic phone backup",
+            "steps": [
+              "Install the Immich app on your phone.",
+              "Set the server address to https://photos.newjoy.ro and sign in with your household account.",
+              "Choose the phone albums you want to back up and allow background photo access."
+            ],
+            "links": [
+              {"label": "Immich mobile guide", "url": "https://docs.immich.app/features/mobile-app/"}
+            ]
+          }
+        },
+        {
+          "name": "Household paperwork",
+          "product": "Paperless",
+          "description": "Find scanned records, receipts, manuals, warranties, and other paperwork in one searchable archive.",
+          "url": "https://docs.newjoy.ro",
+          "icon": "documents",
+          "accent": "#67c89a",
+          "network": "anywhere",
+          "tags": ["Paperless", "documents", "scans", "archive", "receipts"]
+        },
+        {
+          "name": "Recipes & meal planning",
+          "product": "Tandoor",
+          "description": "Keep recipes, make meal plans, and build shared shopping lists.",
+          "url": "https://food.newjoy.ro",
+          "icon": "cooking",
+          "accent": "#f09a65",
+          "network": "anywhere",
+          "tags": ["Tandoor", "recipes", "food", "shopping"]
+        },
+        {
+          "name": "Trips & holidays",
+          "product": "TREK",
+          "description": "Collect bookings, build itineraries, manage packing, and track travel expenses.",
+          "url": "https://travel.newjoy.ro",
+          "icon": "travel",
+          "accent": "#58c6c1",
+          "network": "anywhere",
+          "tags": ["TREK", "trip planner", "travel", "holiday"],
+          "setup": {
+            "label": "Use it with Baloo",
+            "steps": [
+              "Open the trip planner here when you want the full itinerary and trip details.",
+              "In the Trips WhatsApp group, ask Baloo to research places, help with plans, or record shared trip expenses."
+            ]
+          }
+        },
+        {
+          "name": "Household budget",
+          "product": "Actual Budget",
+          "description": "Review spending, accounts, categories, and the household tracking budget.",
+          "url": "https://finance.newjoy.ro",
+          "icon": "budget",
+          "accent": "#65c5a2",
+          "network": "anywhere",
+          "tags": ["Actual Budget", "finance", "budget", "expenses"]
+        },
+        {
+          "name": "Tasks & projects",
+          "product": "Vikunja",
+          "description": "Capture tasks, organize projects, and keep shared to-do lists moving.",
+          "url": "https://tasks.newjoy.ro",
+          "icon": "tasks",
+          "accent": "#e989a8",
+          "network": "anywhere",
+          "tags": ["Vikunja", "tasks", "projects", "todo"]
+        }
+      ]
+    },
+    {
+      "id": "private",
+      "title": "Personal & private",
+      "description": "Passwords, communication, and identity. Each capability also has its own protected account.",
+      "services": [
+        {
+          "name": "Passwords & secure notes",
+          "product": "Vaultwarden · Bitwarden apps",
+          "description": "Store passwords securely and fill them into websites and phone apps without memorising or reusing them.",
+          "url": "https://vault.newjoy.ro",
+          "icon": "passwords",
+          "accent": "#5ca7ed",
+          "network": "anywhere",
+          "tags": ["Vaultwarden", "Bitwarden", "passwords", "vault", "secrets", "autofill"],
+          "setup": {
+            "label": "Install apps & browser autofill",
+            "steps": [
+              "Install Bitwarden Password Manager on your phone and the Bitwarden extension in every desktop browser you use.",
+              "Before signing in, choose the self-hosted server option and enter https://vault.newjoy.ro as the server URL.",
+              "Sign in with your household vault account, then enable biometric unlock and autofill on each device.",
+              "Once Bitwarden autofill works, turn off password saving in the browser to avoid duplicate prompts."
+            ],
+            "links": [
+              {"label": "Download Bitwarden apps", "url": "https://bitwarden.com/download/"},
+              {"label": "Connect to a self-hosted server", "url": "https://bitwarden.com/help/change-client-environment/"}
+            ]
+          }
+        },
+        {
+          "name": "Email",
+          "product": "Newjoy Webmail",
+          "description": "Read and send Newjoy mail from a browser.",
+          "url": "https://webmail.newjoy.ro",
+          "icon": "mail",
+          "accent": "#e3ad62",
+          "network": "anywhere",
+          "tags": ["webmail", "email", "mail"]
+        },
+        {
+          "name": "Account & sign-in",
+          "product": "Pocket ID",
+          "description": "Manage passkeys, profile details, signed-in sessions, and account activity.",
+          "url": "https://auth.newjoy.ro/settings/account",
+          "icon": "identity",
+          "accent": "#8da6ff",
+          "network": "anywhere",
+          "tags": ["Pocket ID", "identity", "passkeys"],
+          "setup": {
+            "label": "Add a passkey on this device",
+            "steps": [
+              "Open your account and add a passkey for the phone or computer you are using.",
+              "Keep more than one passkey when possible so losing one device does not lock you out.",
+              "Review active sessions and remove devices you no longer use."
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "home",
+      "title": "Home & entertainment",
+      "description": "Control the house from anywhere, watch the family library, and check cameras. Media playback still needs the home network or Tailscale.",
+      "services": [
+        {
+          "name": "Smart home",
+          "product": "Home Assistant",
+          "description": "Control lights and devices, check sensors, and run scenes and automations. This service does not use your Pocket ID sign-in.",
+          "url": "https://remote.nabucasa.com/",
+          "icon": "home",
+          "accent": "#50b9e9",
+          "network": "anywhere",
+          "access": "Nabu Casa Cloud",
+          "auth": "Separate HA sign-in",
+          "tags": ["Home Assistant", "smart home", "lights", "sensors"],
+          "setup": {
+            "label": "Install the phone app",
+            "steps": [
+              "Install the Home Assistant Companion app on your phone.",
+              "Home Assistant uses its own account, separate from the Pocket ID account that signs you into this portal.",
+              "Nabu Casa Cloud provides encrypted remote access when you are away; at home you can also use the direct local address.",
+              "Allow notifications and location only if you want home alerts or presence-based automations."
+            ],
+            "links": [
+              {"label": "Open at home", "url": "http://192.168.1.102:8123"},
+              {"label": "Home Assistant Companion", "url": "https://companion.home-assistant.io/"}
+            ]
+          }
+        },
+        {
+          "name": "Movies, TV & music",
+          "product": "Emby",
+          "description": "Watch the household media library on phones, computers, and televisions.",
+          "url": "http://192.168.1.204:8096",
+          "icon": "media",
+          "accent": "#5bc28a",
+          "network": "home",
+          "tags": ["Emby", "media", "movies", "television", "music"],
+          "setup": {
+            "label": "Install Emby on a device",
+            "steps": [
+              "Install the Emby app on your phone, tablet, television, or streaming device.",
+              "Connect to the home Wi-Fi or Tailscale and add http://192.168.1.204:8096 as the server.",
+              "Sign in with your personal Emby account so watch progress and favourites stay separate."
+            ],
+            "links": [
+              {"label": "Download Emby apps", "url": "https://emby.media/download.html"}
+            ]
+          }
+        },
+        {
+          "name": "Cameras & detections",
+          "product": "Frigate",
+          "description": "See live cameras, recent detections, and recorded events.",
+          "url": "https://frigate.newjoy.ro",
+          "icon": "camera",
+          "accent": "#ef8d6c",
+          "network": "anywhere",
+          "tags": ["Frigate", "cameras", "security", "detections"]
+        }
+      ]
+    }
+  ]
+}
