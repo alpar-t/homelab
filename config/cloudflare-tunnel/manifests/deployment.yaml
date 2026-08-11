@@ -4,7 +4,7 @@ metadata:
   name: cloudflared
   namespace: cloudflared
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: cloudflared
@@ -15,6 +15,17 @@ spec:
       annotations:
         configmap.reloader.stakater.com/reload: "cloudflared-config"
     spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: cloudflared
+          # Spread each Deployment revision independently so a surge pod can
+          # start while the previous revision is still running.
+          matchLabelKeys:
+            - pod-template-hash
       containers:
         - name: cloudflared
           image: docker.io/cloudflare/cloudflared:2026.7.3@sha256:e39ee8da81ad5e05d77f38d2f51c60ca51bf2a8450ac3abab50c17fdb91d91bf
@@ -32,10 +43,10 @@ spec:
           resources:
             requests:
               cpu: 50m
-              memory: 64Mi
+              memory: 128Mi
             limits:
               cpu: 200m
-              memory: 128Mi
+              memory: 256Mi
           volumeMounts:
             - name: config
               mountPath: /etc/cloudflared/config

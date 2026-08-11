@@ -25,17 +25,24 @@ controller:
       cpu: 500m
       memory: 256Mi
 
-  # Run on all nodes for availability
-  replicaCount: 2
+  # Keep one controller on each node. matchLabelKeys lets rolling-update surge
+  # pods spread independently from the previous Deployment revision.
+  replicaCount: 3
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/component: controller
+      matchLabelKeys:
+        - pod-template-hash
 
-  # Ensure at least 1 replica survives during node drain
-  podDisruptionBudget:
-    enabled: true
-    minAvailable: 1
+  # Keep two ingress paths available during voluntary disruptions.
+  minAvailable: 2
 
   # Allow scheduling on control plane nodes
   tolerations:
     - key: node-role.kubernetes.io/control-plane
       operator: Exists
       effect: NoSchedule
-
