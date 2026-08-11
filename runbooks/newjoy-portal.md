@@ -42,39 +42,23 @@ This is discovery policy, not authorization for the linked services. Each
 service must continue to enforce its own Pocket ID group policy or application
 permissions. Hiding a link in the portal does not revoke access to its URL.
 
-The UI, catalogs, icons, and nginx policy are baked into one private GHCR
-image. The pod never receives source files through ConfigMaps.
+The UI, catalogs, icons, and nginx policy are baked into one public GHCR image.
+The source repository is public too, and anonymous image pulls avoid a
+long-lived registry credential in the cluster. The pod never receives source
+files through ConfigMaps.
 
 ## First deployment
 
-The portal depends on the shared Pocket ID OIDC provisioner and a private GHCR
-pull credential, so Pocket ID must already be healthy and `portal-ghcr` must
-exist before the image-backed Deployment rolls out. A separate idempotent
-PreSync hook generates oauth2-proxy's cookie key; it does not depend on a change
-to the shared provisioner.
+The portal depends on the shared Pocket ID OIDC provisioner, so Pocket ID must
+already be healthy before the image-backed Deployment rolls out. A separate
+idempotent PreSync hook generates oauth2-proxy's cookie key; it does not depend
+on a change to the shared provisioner.
 
-1. Create `portal/portal-ghcr` using a GitHub token with read access to the
-   private `ghcr.io/alpar-t/newjoy-portal` package. Keep the token out of Git
-   and shell history:
-
-   ```zsh
-   kubectl create namespace portal --dry-run=client -o yaml |
-     kubectl apply --server-side --field-manager=portal-bootstrap -f -
-   read -s "PORTAL_GHCR_TOKEN?Paste the GHCR read token, then press Enter: "
-   echo
-   PORTAL_GHCR_AUTH="$(printf 'alpar-t:%s' "$PORTAL_GHCR_TOKEN" | base64)"
-   printf '{"auths":{"ghcr.io":{"auth":"%s"}}}' "$PORTAL_GHCR_AUTH" |
-     kubectl -n portal create secret generic portal-ghcr \
-       --type=kubernetes.io/dockerconfigjson \
-       --from-file=.dockerconfigjson=/dev/stdin
-   unset PORTAL_GHCR_TOKEN PORTAL_GHCR_AUTH
-   ```
-
-2. Sync the root `homelab` app, or apply `apps/portal.yaml` and sync `portal`.
-3. Open Pocket ID → OIDC Clients → `portal` → Allowed User Groups. Permit the
+1. Sync the root `homelab` app, or apply `apps/portal.yaml` and sync `portal`.
+2. Open Pocket ID → OIDC Clients → `portal` → Allowed User Groups. Permit the
    existing `family_users` and `advanced_apps` groups. Pocket ID creates new clients with no
    allowed users, so sign-in will fail until this is set.
-4. Open `https://portal.newjoy.ro` and sign in once as a member of each group.
+3. Open `https://portal.newjoy.ro` and sign in once as a member of each group.
 
 The provisioner creates the confidential client with this callback:
 
@@ -229,8 +213,8 @@ ID. After authentication, check that `family_users` sees the family catalog and
   `pocket-id` namespace and confirm `pocket-id-api-key` exists.
 - `portal-cookie` missing: check the `portal-cookie-secret` PreSync Job in the
   `pocket-id` namespace and confirm the `portal` namespace exists.
-- `ImagePullBackOff`: confirm `portal/portal-ghcr` exists and its token can read
-  the private `newjoy-portal` GHCR package.
+- `ImagePullBackOff`: confirm the manifest's immutable GHCR reference exists
+  and the `newjoy-portal` package remains publicly pullable.
 - Portal image workflow remains queued: confirm the `homelab-runners` listener
   is connected and the workflow uses `runs-on: homelab-runners`.
 - Login says the user is not allowed: add the user's group under the portal

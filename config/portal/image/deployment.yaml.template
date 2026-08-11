@@ -15,8 +15,6 @@ spec:
       labels:
         app.kubernetes.io/name: portal
     spec:
-      imagePullSecrets:
-        - name: portal-ghcr
       securityContext:
         runAsNonRoot: true
         runAsUser: 101

@@ -82,7 +82,7 @@ jobs:
             -C "$rootfs" .
           printf 'layer=%s\n' "$layer" >> "$GITHUB_OUTPUT"
 
-      - name: Publish private GHCR image
+      - name: Publish GHCR image
         id: publish
         shell: bash
         env:
