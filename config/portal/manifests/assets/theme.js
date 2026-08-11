@@ -19,7 +19,7 @@
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
     const themeColor = document.querySelector('meta[name="theme-color"]');
-    if (themeColor) themeColor.content = theme === "light" ? "#f4f1ea" : "#0b0f16";
+    if (themeColor) themeColor.content = theme === "light" ? "#f4f1ea" : "#171714";
   }
 
   function setTheme(theme) {

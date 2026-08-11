@@ -1,6 +1,6 @@
 {
   "label": "Family workspace",
-  "intro": "Start with what you want to do. The smaller label on each card tells you which app provides it, and setup help is available where a phone or browser app makes it better.",
+  "intro": "Choose what you want to do; the small label names the app behind it.",
   "sections": [
     {
       "id": "everyday",
@@ -15,6 +15,7 @@
           "icon": "ai",
           "accent": "#ad8cff",
           "network": "anywhere",
+          "channels": ["whatsapp"],
           "tags": ["AI", "assistant", "chat", "WhatsApp"],
           "setup": {
             "label": "Where to talk to Baloo",

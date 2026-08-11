@@ -43,6 +43,7 @@ function serviceCard(service) {
     service.auth || "",
     service.access || "",
     service.scope || "",
+    ...(service.channels || []),
     ...(service.tags || []),
     ...(service.setup?.steps || []),
     ...(service.setup?.groups || []).flatMap((group) => [group.name, ...(group.agents || [])])
@@ -66,8 +67,22 @@ function serviceCard(service) {
   iconUse.setAttribute("href", `/icons.svg#${service.icon || "website"}`);
   iconSvg.append(iconUse);
   icon.append(iconSvg);
-  top.append(icon);
-  if (service.url) top.append(makeElement("span", "open-arrow", "↗"));
+  const actions = makeElement("span", "service-actions");
+  for (const channel of service.channels || []) {
+    const channelIcon = makeElement("span", `channel-icon channel-${channel}`);
+    const channelLabel = channel === "whatsapp" ? "Also available on WhatsApp" : `Also available on ${channel}`;
+    channelIcon.setAttribute("aria-label", channelLabel);
+    channelIcon.title = channelLabel;
+    const channelSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    channelSvg.setAttribute("aria-hidden", "true");
+    const channelUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    channelUse.setAttribute("href", `/icons.svg#${channel}`);
+    channelSvg.append(channelUse);
+    channelIcon.append(channelSvg);
+    actions.append(channelIcon);
+  }
+  if (service.url) actions.append(makeElement("span", "open-arrow", "↗"));
+  top.append(icon, actions);
 
   const body = makeElement("div", "service-body");
   if (service.product) body.append(makeElement("span", "service-product", service.product));

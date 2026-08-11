@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg">
   <defs>
     <symbol id="ai" viewBox="0 0 24 24"><path d="M12 3l1.4 4.1a5.5 5.5 0 0 0 3.5 3.5L21 12l-4.1 1.4a5.5 5.5 0 0 0-3.5 3.5L12 21l-1.4-4.1a5.5 5.5 0 0 0-3.5-3.5L3 12l4.1-1.4a5.5 5.5 0 0 0 3.5-3.5L12 3Z"/><path d="M19 3v4M17 5h4"/></symbol>
+    <symbol id="whatsapp" viewBox="0 0 24 24"><path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.5-4A8 8 0 1 1 20 11.5Z"/><path d="M9 7.8c.3 2.8 2.5 5 5.2 5.4l1.1-1.1c.3-.3.7-.4 1.1-.2l1.4.7c.4.2.6.6.5 1-.2 1.3-1.4 2.2-2.7 2.1A9.1 9.1 0 0 1 6.3 6.4C6.2 5.1 7.1 4 8.4 3.7c.4-.1.8.1 1 .5l.7 1.5c.2.4.1.8-.2 1.1L9 7.8Z"/></symbol>
     <symbol id="files" viewBox="0 0 24 24"><path d="M3.5 7.5h6l2-2h9v13a2 2 0 0 1-2 2h-15v-13Z"/><path d="M3.5 9.5h17"/></symbol>
     <symbol id="photos" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="9" r="1.5"/><path d="m5.5 17 4.2-4.2 2.8 2.7 2.2-2.2 3.8 3.7"/></symbol>
     <symbol id="documents" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4V21H7z"/><path d="M14 3.5V8h4M10 12h5M10 15.5h5"/><path d="M4 7v12"/></symbol>

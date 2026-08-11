@@ -1,6 +1,6 @@
 {
   "label": "Baloo access map",
-  "intro": "A human-readable snapshot of the explicit tool policy in ../baloo/openclaw/openclaw.json. The main section describes Baloo — Alpar; every other agent has its own narrower allowlist.",
+  "intro": "A readable view of Baloo's explicit tool policy and each agent's narrower allowlist.",
   "sections": [
     {
       "id": "alpar-capabilities",

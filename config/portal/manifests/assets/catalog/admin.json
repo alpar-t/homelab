@@ -6,7 +6,7 @@
     {"id": "base", "label": "No portal group"}
   ],
   "label": "Homelab administrator",
-  "intro": "Start with the job you need to do; the smaller label names the app behind it. Destructive operations still belong in the repository and documented runbooks.",
+  "intro": "Choose the job; the small label names the app. Destructive work stays in Git and the runbooks.",
   "sections": [
     {
       "id": "household",
@@ -21,6 +21,7 @@
           "icon": "ai",
           "accent": "#ad8cff",
           "network": "anywhere",
+          "channels": ["whatsapp"],
           "tags": ["AI", "assistant", "chat", "WhatsApp"],
           "setup": {
             "label": "Where to talk to Baloo",
