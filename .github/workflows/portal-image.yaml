@@ -38,6 +38,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          export PATH="/home/runner/externals/node24/bin:$PATH"
           node --check config/portal/manifests/assets/app.js
           node --check config/portal/manifests/assets/theme.js
           for catalog in config/portal/manifests/assets/catalog/*.json; do
