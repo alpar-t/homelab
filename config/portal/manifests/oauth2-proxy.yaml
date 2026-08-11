@@ -14,6 +14,8 @@ spec:
       app.kubernetes.io/part-of: portal
   template:
     metadata:
+      annotations:
+        portal.newjoy.ro/cookie-secret-format: hex-32-v1
       labels:
         app.kubernetes.io/name: oauth2-proxy
         app.kubernetes.io/part-of: portal

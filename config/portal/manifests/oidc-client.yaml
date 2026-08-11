@@ -100,7 +100,7 @@ spec:
                 exit 0
               fi
 
-              COOKIE_SECRET=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
+              COOKIE_SECRET=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
               curl -sf -X POST \
                 --cacert "$K8S_CA" \
                 -H "Authorization: Bearer $K8S_TOKEN" \
