@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portal
+  namespace: portal
+  labels:
+    app.kubernetes.io/name: portal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: portal
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: portal
+    spec:
+      imagePullSecrets:
+        - name: portal-ghcr
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: nginx
+          image: ghcr.io/alpar-t/newjoy-portal:sha-aa4c198b36e67c9ab4ad4f5accb6b34a60605b92@sha256:d2278f2df8ed6d325ad4e99373a0f964be97e0b51ec0645d43ff3c84df119765
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          volumeMounts:
+            - name: cache
+              mountPath: /var/cache/nginx
+            - name: run
+              mountPath: /var/run
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: cache
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portal
+  namespace: portal
+  labels:
+    app.kubernetes.io/name: portal
+spec:
+  selector:
+    app.kubernetes.io/name: portal
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
