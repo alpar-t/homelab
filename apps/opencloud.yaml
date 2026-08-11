@@ -172,10 +172,10 @@ spec:
             resources:
               requests:
                 cpu: 100m
-                memory: 2Gi
+                memory: 4Gi
               limits:
                 cpu: 2000m
-                memory: 5Gi
+                memory: 6Gi
             persistence:
               config:
                 enabled: true
