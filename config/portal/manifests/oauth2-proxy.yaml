@@ -30,6 +30,7 @@ spec:
           args:
             - --http-address=0.0.0.0:4180
             - --reverse-proxy=true
+            - --trusted-proxy-ip=10.42.0.0/16
             - --upstream=static://200
             - --provider=oidc
             - --oidc-issuer-url=https://auth.newjoy.ro
