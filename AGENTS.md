@@ -26,6 +26,9 @@ Baloo's read-only OpenCloud/Newjoy MCP credential setup and validation:
 Longhorn minor-version upgrade procedure and validation gates:
 `runbooks/longhorn-upgrade.md`.
 
+Newjoy portal architecture, image delivery, catalog policy, and operations:
+`runbooks/newjoy-portal.md`.
+
 ## Baloo agent tool access
 
 OpenClaw's `mcp.servers` block is **gateway-global** — there is no per-agent MCP server config. Every agent can in principle reach every registered MCP server. The only access control is per-agent `tools.allow` and `tools.deny`.

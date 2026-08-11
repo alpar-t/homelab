@@ -160,19 +160,20 @@ Docker socket. The workflow downloads a pinned, checksummed `crane` release,
 creates a deterministic layer containing the static assets and nginx policy,
 and appends it to the pinned official nginx base image for `linux/amd64`.
 
-The image is pushed privately as
+The image is pushed publicly as
 `ghcr.io/alpar-t/newjoy-portal:sha-<commit>@sha256:<digest>`. After checking that
 the digest exists in the registry, the workflow renders the image-backed
 Deployment from `config/portal/image/deployment.yaml.template` and commits only
-the Deployment and Kustomization update. Its path filter excludes those two
-generated files, preventing a build loop.
+the Deployment update. Its path filter excludes that generated file,
+preventing a build loop.
 
 For the first deployment, merge the scale set, workflow, portal source, and
 image templates before adding `apps/portal.yaml`. The first workflow run
-publishes the image and commits the digest-pinned Deployment and Kustomization.
-Only then add the ArgoCD Application. This keeps every deployable revision valid
-and ensures a ConfigMap-backed portal is never needed. Subsequent asset changes
-only replace the immutable image reference.
+publishes the image and commits the digest-pinned Deployment. Only then add the
+ArgoCD Application. Argo CD deploys the top-level YAML files as a plain manifest
+directory; no Kustomize layer is involved. This keeps every deployable revision
+valid and ensures a ConfigMap-backed portal is never needed. Subsequent asset
+changes only replace the immutable image reference.
 
 `config/portal/image/Dockerfile` documents the equivalent conventional build,
 but ARC deliberately uses the daemonless path so the runner does not need a
@@ -189,8 +190,7 @@ done
 
 node --check config/portal/manifests/assets/app.js
 node --check config/portal/manifests/assets/theme.js
-kubectl kustomize config/portal/manifests >/tmp/portal-rendered.yaml
-kubectl create --dry-run=client --validate=false -f /tmp/portal-rendered.yaml
+kubectl create --dry-run=client --validate=false -f config/portal/manifests/
 ```
 
 After ArgoCD syncs:
