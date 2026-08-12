@@ -1,8 +1,8 @@
 # Migrate CNPG PostgreSQL from Longhorn to local SSD
 
 Status: pilot migrations completed on 2026-08-12. `tandoor-db` and
-`vikunja-db` are on local SSD; pause before `roundcube-db` for the planned
-standby-node reboot and observation gate.
+`vikunja-db` are on local SSD. Tandoor passed its planned standby-node reboot;
+complete Vikunja's equivalent test before `roundcube-db`.
 
 This runbook records the storage decision, current inventory, rolling migration
 procedure, and the operational changes required when CloudNativePG (CNPG) uses
@@ -106,7 +106,7 @@ column below is the migration record:
 
 | Namespace | Cluster | Instances | PVC size each | Approx. database size | Status / notes |
 | --- | --- | ---: | ---: | ---: | --- |
-| `tandoor` | `tandoor-db` | 2 | 5 Gi | 24 MB | Migrated; verified and post-backup completed 2026-08-12 |
+| `tandoor` | `tandoor-db` | 2 | 5 Gi | 24 MB | Migrated; verified, post-backup and standby-node reboot test completed 2026-08-12 |
 | `vikunja` | `vikunja-db` | 2 | 5 Gi | 18 MB | Migrated; verified and post-backup completed 2026-08-12 |
 | `roundcube` | `roundcube-db` | 2 | 5 Gi | 22 MB | Pending; low write volume |
 | `paperless-ngx` | `paperless-db` | 2 | 5 Gi | 65 MB | Pending; documents remain on Longhorn |
@@ -345,6 +345,15 @@ After each pilot, perform a planned reboot of the node hosting its standby and
 verify that the same local PVC is reused when the node returns. Do not test by
 deleting both copies or powering off two nodes.
 
+### Tandoor standby-node reboot record (2026-08-12)
+
+Rebooted `buksi`, which hosted standby `tandoor-db-2`. Buksi returned `Ready`
+after about three minutes. CNPG retained `tandoor-db-1` as primary on `pamacs`;
+`tandoor-db-2` restarted once on `buksi` and reused the unchanged local PVC/PV
+`pvc-8ebb28bc-e814-4cc1-96f9-98316443a76e`. Final verification confirmed two
+ready instances, zero replication lag, `Synced/Healthy` Argo and application
+status, and a new completed base backup `tandoor-db-20260812124323`.
+
 ## Node loss after migration
 
 CNPG automatically promotes the surviving instance when the primary's node is
@@ -384,10 +393,10 @@ taking another destructive step.
 - [x] Install and verify the CNPG 1.30 `kubectl` plugin
 - [x] Migrate `tandoor-db`
 - [x] Validate Tandoor's normal post-migration backup
-- [ ] Validate a planned Tandoor standby-node reboot
+- [x] Validate a planned Tandoor standby-node reboot (buksi, 2026-08-12)
 - [x] Migrate `vikunja-db`
 - [x] Verify Vikunja's SQL access, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and post-backup
-- [ ] Validate a planned pilot standby-node reboot, observe normal operation, and review both pilots
+- [ ] Validate Vikunja's planned standby-node reboot, observe normal operation, and review both pilots
 - [ ] Migrate `roundcube-db`
 - [ ] Migrate `paperless-db`
 - [ ] Migrate `stalwart-db`
