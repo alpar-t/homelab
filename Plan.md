@@ -59,7 +59,8 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
   - Tandoor pilot completed 2026-08-12; two local replicas and post-migration backup verified
   - Vikunja pilot completed 2026-08-12; SQL, replication, placement, cleanup, and post-backup verified
   - Tandoor standby-node reboot passed 2026-08-12; this covers the shared local-PVC recovery path
-  - Roundcube is the next migration
+  - Roundcube migrated 2026-08-12; replication, placement, cleanup, and pre/post backups verified
+  - Paperless is the next migration
   - Enforce required cross-node anti-affinity before relying on CNPG replication
   - Migrate Pocket ID and Vaultwarden last
 - [ ] **Set single-replica for rebuildable Longhorn volumes** - save ~115Gi storage
