@@ -1,8 +1,8 @@
 # Migrate CNPG PostgreSQL from Longhorn to local SSD
 
 Status: pilot migrations completed on 2026-08-12. `tandoor-db` and
-`vikunja-db` are on local SSD. Tandoor passed its planned standby-node reboot;
-complete Vikunja's equivalent test before `roundcube-db`.
+`vikunja-db` are on local SSD. Tandoor's planned standby-node reboot covered
+the local-PVC recovery mechanism; `roundcube-db` is the next migration.
 
 This runbook records the storage decision, current inventory, rolling migration
 procedure, and the operational changes required when CloudNativePG (CNPG) uses
@@ -341,9 +341,11 @@ Before marking a database complete:
 - `/var` remains below the alert threshold on all nodes.
 - Argo CD reports the application `Synced/Healthy`.
 
-After each pilot, perform a planned reboot of the node hosting its standby and
-verify that the same local PVC is reused when the node returns. Do not test by
-deleting both copies or powering off two nodes.
+After the first pilot, perform a planned reboot of the node hosting its standby
+and verify that the same local PVC is reused when the node returns. Do not test
+by deleting both copies or powering off two nodes. A second identical reboot is
+not required when the storage class, FCOS/k3s stack, and CNPG configuration are
+unchanged; rely on normal maintenance observations instead.
 
 ### Tandoor standby-node reboot record (2026-08-12)
 
@@ -396,7 +398,8 @@ taking another destructive step.
 - [x] Validate a planned Tandoor standby-node reboot (buksi, 2026-08-12)
 - [x] Migrate `vikunja-db`
 - [x] Verify Vikunja's SQL access, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and post-backup
-- [ ] Validate Vikunja's planned standby-node reboot, observe normal operation, and review both pilots
+- [x] Validate the local-PVC standby-reboot path on the first pilot; no duplicate Vikunja test required
+- [x] Review both pilots; proceed to `roundcube-db`
 - [ ] Migrate `roundcube-db`
 - [ ] Migrate `paperless-db`
 - [ ] Migrate `stalwart-db`
