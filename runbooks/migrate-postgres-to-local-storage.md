@@ -1,7 +1,8 @@
 # Migrate CNPG PostgreSQL from Longhorn to local SSD
 
-Status: in progress. `tandoor-db` migrated successfully on 2026-08-12;
-`vikunja-db` is the second pilot.
+Status: pilot migrations completed on 2026-08-12. `tandoor-db` and
+`vikunja-db` are on local SSD; pause before `roundcube-db` for the planned
+standby-node reboot and observation gate.
 
 This runbook records the storage decision, current inventory, rolling migration
 procedure, and the operational changes required when CloudNativePG (CNPG) uses
@@ -106,7 +107,7 @@ column below is the migration record:
 | Namespace | Cluster | Instances | PVC size each | Approx. database size | Status / notes |
 | --- | --- | ---: | ---: | ---: | --- |
 | `tandoor` | `tandoor-db` | 2 | 5 Gi | 24 MB | Migrated; verified and post-backup completed 2026-08-12 |
-| `vikunja` | `vikunja-db` | 2 | 5 Gi | 18 MB | Second pilot |
+| `vikunja` | `vikunja-db` | 2 | 5 Gi | 18 MB | Migrated; verified and post-backup completed 2026-08-12 |
 | `roundcube` | `roundcube-db` | 2 | 5 Gi | 22 MB | Pending; low write volume |
 | `paperless-ngx` | `paperless-db` | 2 | 5 Gi | 65 MB | Pending; documents remain on Longhorn |
 | `stalwart-mail` | `stalwart-db` | 2 | 8 Gi | 77 MB | Pending; mail blobs remain on Longhorn |
@@ -384,8 +385,9 @@ taking another destructive step.
 - [x] Migrate `tandoor-db`
 - [x] Validate Tandoor's normal post-migration backup
 - [ ] Validate a planned Tandoor standby-node reboot
-- [ ] Migrate `vikunja-db`
-- [ ] Pause and review both pilots
+- [x] Migrate `vikunja-db`
+- [x] Verify Vikunja's SQL access, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and post-backup
+- [ ] Validate a planned pilot standby-node reboot, observe normal operation, and review both pilots
 - [ ] Migrate `roundcube-db`
 - [ ] Migrate `paperless-db`
 - [ ] Migrate `stalwart-db`
