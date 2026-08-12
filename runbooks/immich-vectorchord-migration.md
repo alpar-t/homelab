@@ -112,3 +112,40 @@ daily backups + continuous WAL archiving.
 - v3 removed several API endpoints (`/assets/random`, `/sync/*`, `/server/theme`, …) and
   tightened OAuth (`issuerUrl` must be a valid URL; `oauth.allowInsecureRequests` for
   HTTP). Only third-party API clients are affected; verify OIDC login still works.
+
+## Stale `pg_vectors` blocked replica rebuild (2026-08-12)
+
+The migration removed the `vectors` extension and replaced both application indexes
+with `vchordrq`, but pgvecto.rs left a 699 MB `PGDATA/pg_vectors` directory behind.
+Normal pod restarts kept reusing the existing PVCs, and Barman backups continued to
+work, so the orphan was not visible until the first new CNPG replica was needed after
+the whole-cluster power outage.
+
+CNPG's replica join uses PostgreSQL's tar-based `pg_basebackup`. It failed on every
+attempt because an orphaned pgvecto.rs segment path exceeded PostgreSQL's 99-byte tar
+name limit:
+
+```text
+pg_basebackup: error: backup failed: ERROR: file name too long for tar format:
+"pg_vectors/indexes/.../segments/<uuid>"
+```
+
+The durable repair was:
+
+1. Verify the live catalog contains only `vchord` and `vector`, and that `clip_index`
+   and `face_index` use `vchordrq`.
+2. Move `PGDATA/pg_vectors` atomically to
+   `/var/lib/postgresql/data/pg_vectors-retired-20260812`, outside `PGDATA`.
+3. Delete the failed CNPG join Job and its partially initialized replacement PVC.
+   Wait for both deletions to finish before allowing a clean retry; otherwise the new
+   Job can race the old PVC deletion and end up referencing a missing claim.
+4. Let CNPG provision a fresh PVC and complete `pg_basebackup`.
+5. Verify two ready instances, cross-node placement, streaming replication with zero
+   replay lag, intact VectorChord indexes, and healthy Immich/Argo status.
+6. Complete a fresh Barman backup from the new standby, then delete the quarantined
+   retired directory.
+
+Final state: primary `immich-db-3` on `pufi`, replica `immich-db-1` on `pamacs`, and
+backup `immich-db-post-pgvectors-cleanup` completed successfully. Current VectorChord
+does not create `pg_vectors`; the directory belonged solely to retired pgvecto.rs, so
+it will not recur unless legacy files are restored into `PGDATA`.
