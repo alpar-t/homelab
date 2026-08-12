@@ -1,9 +1,9 @@
 # Migrate CNPG PostgreSQL from Longhorn to local SSD
 
-Status: pilot migrations completed on 2026-08-12. `tandoor-db` and
-`vikunja-db` and `roundcube-db` are on local SSD. Tandoor's planned
-standby-node reboot covered the local-PVC recovery mechanism; `paperless-db`
-is the next migration.
+Status: the first four migrations were completed on 2026-08-12. `tandoor-db`,
+`vikunja-db`, `roundcube-db`, and `paperless-db` are on local SSD. Tandoor's
+planned standby-node reboot covered the local-PVC recovery mechanism;
+`stalwart-db` is the next migration.
 
 This runbook records the storage decision, current inventory, rolling migration
 procedure, and the operational changes required when CloudNativePG (CNPG) uses
@@ -110,7 +110,7 @@ column below is the migration record:
 | `tandoor` | `tandoor-db` | 2 | 5 Gi | 24 MB | Migrated; verified, post-backup and standby-node reboot test completed 2026-08-12 |
 | `vikunja` | `vikunja-db` | 2 | 5 Gi | 18 MB | Migrated; verified and post-backup completed 2026-08-12 |
 | `roundcube` | `roundcube-db` | 2 | 5 Gi | 22 MB | Migrated; verified and pre/post backups completed 2026-08-12 |
-| `paperless-ngx` | `paperless-db` | 2 | 5 Gi | 65 MB | Pending; documents remain on Longhorn |
+| `paperless-ngx` | `paperless-db` | 2 | 5 Gi | 65 MB | Migrated; verified and pre/post backups completed 2026-08-12; documents remain on Longhorn |
 | `stalwart-mail` | `stalwart-db` | 2 | 8 Gi | 77 MB | Pending; mail blobs remain on Longhorn |
 | `immich` | `immich-db` | 2 | 20 Gi | 3.8 GB | Pending; preserve VectorChord image/config |
 | `homeassistant` | `homeassistant-db` | 2 | 45 Gi | 40 GB | Pending; largest clone and external HA client |
@@ -402,7 +402,7 @@ taking another destructive step.
 - [x] Validate the local-PVC standby-reboot path on the first pilot; no duplicate Vikunja test required
 - [x] Review both pilots; proceed to `roundcube-db`
 - [x] Migrate `roundcube-db`; SQL, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
-- [ ] Migrate `paperless-db`
+- [x] Migrate `paperless-db`; SQL, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
 - [ ] Migrate `stalwart-db`
 - [ ] Migrate `immich-db`
 - [ ] Migrate `homeassistant-db`
