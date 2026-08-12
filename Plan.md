@@ -56,9 +56,10 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
   - Compare operator-managed replication/Sentinel with simple Deployments for this 3-node cluster
   - Define when Redis needs persistence, HA, backups, and resource limits before migrating anything
 - [ ] **Migrate PostgreSQL from Longhorn to local storage** - see [runbooks/migrate-postgres-to-local-storage.md](runbooks/migrate-postgres-to-local-storage.md)
-  - Eliminates redundant replication (CNPG already handles HA)
-  - Better performance (direct SSD access)
-  - Simpler architecture (fewer moving parts)
+  - Tandoor pilot completed 2026-08-12; two local replicas and post-migration backup verified
+  - Vikunja is the second pilot; use the idempotent staged migration script
+  - Enforce required cross-node anti-affinity before relying on CNPG replication
+  - Migrate Pocket ID and Vaultwarden last
 - [ ] **Set single-replica for rebuildable Longhorn volumes** - save ~115Gi storage
   - `immich-thumbs` (100Gi) - regenerated from photos
   - `immich-model-cache` (10Gi) - downloaded from internet
