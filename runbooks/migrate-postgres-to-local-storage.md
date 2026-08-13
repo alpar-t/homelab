@@ -111,7 +111,7 @@ column below is the migration record:
 | `vikunja` | `vikunja-db` | 2 | 5 Gi | 18 MB | Migrated; verified and post-backup completed 2026-08-12 |
 | `roundcube` | `roundcube-db` | 2 | 5 Gi | 22 MB | Migrated; verified and pre/post backups completed 2026-08-12 |
 | `paperless-ngx` | `paperless-db` | 2 | 5 Gi | 65 MB | Migrated; verified and pre/post backups completed 2026-08-12; documents remain on Longhorn |
-| `stalwart-mail` | `stalwart-db` | 2 | 8 Gi | 77 MB | Pending; mail blobs remain on Longhorn |
+| `stalwart-mail` | `stalwart-db` | 2 | 8 Gi | 77 MB | Migrated; verified and pre/post backups completed 2026-08-13; mail blobs remain on Longhorn |
 | `immich` | `immich-db` | 2 | 20 Gi | 3.8 GB | Pending; preserve VectorChord image/config |
 | `homeassistant` | `homeassistant-db` | 2 | 45 Gi | 40 GB | Pending; largest clone and external HA client |
 | `vaultwarden` | `vaultwarden-db` | 2 | 5 Gi | 17 MB | Pending; security-critical, migrate late |
@@ -400,6 +400,24 @@ after about three minutes. CNPG retained `tandoor-db-1` as primary on `pamacs`;
 ready instances, zero replication lag, `Synced/Healthy` Argo and application
 status, and a new completed base backup `tandoor-db-20260812124323`.
 
+### Stalwart migration record (2026-08-13)
+
+Migrated `stalwart-db` with the resumable script after the global database and
+backup gate passed. CNPG cloned `stalwart-db-2` to `local-ssd` on `buksi`,
+promoted it, then rebuilt `stalwart-db-1` on `pamacs`. Final verification found
+both instances ready on node-matched local PVs, streaming replication at zero
+lag, SQL and continuous archiving healthy, Stalwart `1/1`, and Argo
+`Synced/Healthy`. The retired Longhorn PVs and volumes disappeared. Backups
+`stalwart-db-local-migration-pre` and `stalwart-db-local-migration-post`
+completed; the latter covered WAL `000000280000008800000058` through
+`000000280000008800000059`. Stalwart's mail-blob PVC remains on Longhorn HDD.
+
+The WAL archiver recorded one transient failure for `00000028.history` during
+the controlled switchover at 02:48:50Z, followed by a successful archive at
+02:49:39Z and a completed post-migration backup. Treat cumulative failure
+counters in context; require a later success and healthy CNPG archiving rather
+than expecting the counter to reset.
+
 ## Node loss after migration
 
 CNPG automatically promotes the surviving instance when the primary's node is
@@ -446,7 +464,7 @@ taking another destructive step.
 - [x] Review both pilots; proceed to `roundcube-db`
 - [x] Migrate `roundcube-db`; SQL, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
 - [x] Migrate `paperless-db`; SQL, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
-- [ ] Migrate `stalwart-db`
+- [x] Migrate `stalwart-db`; SQL, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
 - [ ] Migrate `immich-db`
 - [ ] Migrate `homeassistant-db`
 - [ ] Migrate `vaultwarden-db`
