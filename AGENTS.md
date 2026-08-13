@@ -92,7 +92,11 @@ instead of relying on the profile name. With Browserless, do not use its
 `trackingId` query parameter as the OpenClaw profile identity: `trackingId`
 rejects later connections while the first session is alive, breaking
 multi-command flows. Let OpenClaw own the live connection for each named
-profile through a normal Browserless CDP URL.
+profile through a normal Browserless CDP URL. Give profiles on the same
+Browserless service distinct, behavior-neutral CDP URLs (for example an
+explicit request timeout equal to the server default); OpenClaw may reuse the
+same controller when two profiles have byte-for-byte identical URLs, which
+mixes their tabs.
 
 Prereq: create the `BROWSER_CDP_TOKEN` key in the `baloo-secrets` Secret (used
 by both the browser pod's `TOKEN` and the CDP URL). The key is wired as

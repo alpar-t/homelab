@@ -28,7 +28,10 @@ could deliberately select it. The profile is intentionally ephemeral, so OLX
 may require login on each use. Its Browserless URL deliberately has no
 `trackingId`: Browserless rejects a second connection to an active tracking ID,
 whereas the LLM and credential filler need multiple commands against the same
-OpenClaw-owned profile session.
+OpenClaw-owned profile session. Its explicit `timeout=900000` query also keeps
+the OLX CDP URL distinct from the court profile without changing the effective
+server timeout; identical remote CDP URLs can share an OpenClaw controller and
+mix tabs.
 
 ## Create or rotate the Kubernetes Secret
 
