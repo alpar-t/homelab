@@ -62,9 +62,9 @@ spec:
               # prior one-minute ceiling; OpenClaw jobs retain their own limits.
               value: "900000"
             - name: CONCURRENT
-              # One Browserless session per named remote profile currently in
-              # use: cluster, court-case, and olx.
-              value: "3"
+              # Persistent sessions for cluster, court-case, and olx, plus a
+              # short CDP reachability handshake and one overlap/recovery slot.
+              value: "5"
             - name: TOKEN
               valueFrom:
                 secretKeyRef:
