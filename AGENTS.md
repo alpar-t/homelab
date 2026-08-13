@@ -88,7 +88,11 @@ This separates tabs and session state from unrelated browsing, but it is not an
 authorization boundary: browser profiles are gateway-global and any agent with
 the generic `browser` tool can select them. When the workflow needs access
 isolation, use a separately allowlisted tool namespace and browser service
-instead of relying on the profile name.
+instead of relying on the profile name. With Browserless, do not use its
+`trackingId` query parameter as the OpenClaw profile identity: `trackingId`
+rejects later connections while the first session is alive, breaking
+multi-command flows. Let OpenClaw own the live connection for each named
+profile through a normal Browserless CDP URL.
 
 Prereq: create the `BROWSER_CDP_TOKEN` key in the `baloo-secrets` Secret (used
 by both the browser pod's `TOKEN` and the CDP URL). The key is wired as

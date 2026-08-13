@@ -25,7 +25,10 @@ private `alpar-t/baloo` repository at `openclaw/skills/olx-account/`.
 The `olx` profile provides session separation, not access control: OpenClaw's
 profiles are gateway-global, so another agent with the generic `browser` tool
 could deliberately select it. The profile is intentionally ephemeral, so OLX
-may require login on each use.
+may require login on each use. Its Browserless URL deliberately has no
+`trackingId`: Browserless rejects a second connection to an active tracking ID,
+whereas the LLM and credential filler need multiple commands against the same
+OpenClaw-owned profile session.
 
 ## Create or rotate the Kubernetes Secret
 
