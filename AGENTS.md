@@ -82,6 +82,14 @@ pod's private CDP address relies on `browser.ssrfPolicy.allowedHostnames` (do
 **not** enable `dangerouslyAllowPrivateNetwork` — that would weaken navigation
 SSRF).
 
+For an authenticated browser workflow, create a dedicated named browser
+profile and require its skill to specify that profile on every browser call.
+This separates tabs and session state from unrelated browsing, but it is not an
+authorization boundary: browser profiles are gateway-global and any agent with
+the generic `browser` tool can select them. When the workflow needs access
+isolation, use a separately allowlisted tool namespace and browser service
+instead of relying on the profile name.
+
 Prereq: create the `BROWSER_CDP_TOKEN` key in the `baloo-secrets` Secret (used
 by both the browser pod's `TOKEN` and the CDP URL). The key is wired as
 `optional`, so until it exists the attach will fail but nothing crash-loops.

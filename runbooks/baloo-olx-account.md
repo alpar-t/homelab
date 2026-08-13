@@ -11,17 +11,21 @@ private `alpar-t/baloo` repository at `openclaw/skills/olx-account/`.
 - OLX credentials exist only in the `olx-baloo` Kubernetes Secret and the
   `olx-auth-mcp` sidecar environment. They are never added to `openclaw.json`,
   an agent workspace, a prompt, or browser-tool arguments.
-- The helper exposes only `olx-auth__login`. It types the credentials into an
-  isolated OLX browser tab and returns a status plus tab ID. Ordinary browser
-  navigation happens afterward.
-- Only `alpar` allows `olx-auth__login`; every other agent explicitly denies
-  `olx-auth__*`.
+- Every OLX browser action explicitly uses the dedicated `olx` profile. It
+  points to the existing Browserless service but keeps OLX tabs and session
+  state separate from the default `cluster` profile.
+- The helper exposes only `olx-auth__fill_credentials`. It verifies that the
+  supplied tab is on `https://login.olx.ro`, fills the visible fields, and
+  neither clicks nor submits. The LLM handles the changing page UI.
+- Only `alpar` allows `olx-auth__fill_credentials`; every other agent
+  explicitly denies `olx-auth__*`.
 - CAPTCHA, MFA, and new-device verification stop the workflow for human
   action. Do not attempt to bypass them.
 
-The browser profile is intentionally ephemeral, so the helper may log in on
-each use. This keeps maintenance and stored browser state to a minimum for an
-infrequent workflow.
+The `olx` profile provides session separation, not access control: OpenClaw's
+profiles are gateway-global, so another agent with the generic `browser` tool
+could deliberately select it. The profile is intentionally ephemeral, so OLX
+may require login on each use.
 
 ## Create or rotate the Kubernetes Secret
 
@@ -76,13 +80,16 @@ limits, and persistent price memory are deferred.
      openclaw mcp doctor olx-auth --probe
    ```
 
-3. In `Baloo — Alpar`, ask: “Check my OLX saved land search.” Confirm it logs
-   in and reports only OLX-marked new adverts whose displayed location is
-   Petreștii de Jos.
-4. Ask it to check unread messages. Confirm it shows a draft but does not type
+3. Confirm `openclaw browser profiles --json` lists distinct `cluster` and
+   `olx` profiles.
+4. In `Baloo — Alpar`, ask: “Check my OLX saved land search.” Confirm every
+   browser call uses `olx`, the helper fills but does not submit credentials,
+   and the result contains only OLX-marked new adverts whose displayed location
+   is Petreștii de Jos.
+5. Ask it to check unread messages. Confirm it shows a draft but does not type
    or send it. Approve the exact draft in a second message and verify it appears
    in the OLX thread.
-5. Ask another Baloo agent to access OLX. It must not have any `olx-auth__*`
+6. Ask another Baloo agent to access OLX. It must not have any `olx-auth__*`
    tool.
 
 If login stops for verification, use a browser session you control to satisfy
