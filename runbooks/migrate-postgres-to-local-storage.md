@@ -112,7 +112,7 @@ column below is the migration record:
 | `roundcube` | `roundcube-db` | 2 | 5 Gi | 22 MB | Migrated; verified and pre/post backups completed 2026-08-12 |
 | `paperless-ngx` | `paperless-db` | 2 | 5 Gi | 65 MB | Migrated; verified and pre/post backups completed 2026-08-12; documents remain on Longhorn |
 | `stalwart-mail` | `stalwart-db` | 2 | 8 Gi | 77 MB | Migrated; verified and pre/post backups completed 2026-08-13; mail blobs remain on Longhorn |
-| `immich` | `immich-db` | 2 | 20 Gi | 3.8 GB | Pending; preserve VectorChord image/config |
+| `immich` | `immich-db` | 2 | 20 Gi | 3.8 GB | Migrated; VectorChord/indexes and pre/post backups verified 2026-08-13 |
 | `homeassistant` | `homeassistant-db` | 2 | 45 Gi | 40 GB | Pending; largest clone and external HA client |
 | `vaultwarden` | `vaultwarden-db` | 2 | 5 Gi | 17 MB | Pending; security-critical, migrate late |
 | `pocket-id` | `pocket-id-db` | 2 | 5 Gi | 19 MB | Pending; identity dependency, migrate last |
@@ -418,6 +418,28 @@ the controlled switchover at 02:48:50Z, followed by a successful archive at
 counters in context; require a later success and healthy CNPG archiving rather
 than expecting the counter to reset.
 
+### Immich migration record (2026-08-13)
+
+Kept the exact VectorChord image/digest, preload library, extensions,
+PostgreSQL parameters, 20 Gi size, and backup configuration while changing only
+the storage and anti-affinity policy. The policy update caused CNPG's expected
+rolling restart; the primary's smart shutdown took several minutes while
+existing client sessions drained, then recovered without forced deletion.
+
+The resumable script backed up the Longhorn cluster, rebuilt and promoted
+`immich-db-1` on `local-ssd` at `pamacs`, then created `immich-db-2` on
+`local-ssd` at `buksi`. A Kubernetes HTTP/2 watch disconnected during the last
+clone, but CNPG and the script recovered without intervention. Final checks
+confirmed `vchord` 1.1.1, `vector` 0.8.3, the 604 MB `clip_index`, the 872 MB
+`face_index`, zero-lag streaming replication, successful archiving, and no
+obsolete `pg_vectors` path. The old Longhorn PVs and volumes disappeared;
+Immich remained `1/1` and Argo `Synced/Healthy`.
+
+Backups `immich-db-local-migration-pre` and
+`immich-db-local-migration-post` completed. The post-backup covered WAL
+`0000002600000047000000CF`. Node filesystem use after migration was 21% on
+`buksi`, 49% on `pamacs`, and 48% on `pufi`.
+
 ## Node loss after migration
 
 CNPG automatically promotes the surviving instance when the primary's node is
@@ -465,7 +487,7 @@ taking another destructive step.
 - [x] Migrate `roundcube-db`; SQL, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
 - [x] Migrate `paperless-db`; SQL, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
 - [x] Migrate `stalwart-db`; SQL, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
-- [ ] Migrate `immich-db`
+- [x] Migrate `immich-db`; VectorChord/indexes, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
 - [ ] Migrate `homeassistant-db`
 - [ ] Migrate `vaultwarden-db`
 - [ ] Migrate `pocket-id-db`
