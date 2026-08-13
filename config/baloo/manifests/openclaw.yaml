@@ -28,8 +28,8 @@ spec:
       labels:
         app.kubernetes.io/name: openclaw
       annotations:
-        homelab/config-rev: "2026-08-13h"
-        secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo,olx-baloo,court-case-baloo"
+        homelab/config-rev: "2026-08-15a"
+        secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo,paperless-baloo-token,olx-baloo,court-case-baloo"
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -71,6 +71,32 @@ spec:
             - name: github-app-key
               mountPath: /var/run/secrets/github-app
               readOnly: true
+        # The Paperless MCP sidecar receives only this subdirectory from the
+        # shared state PVC. Create it before kubelet resolves the subPath mount,
+        # including on a newly provisioned state volume.
+        - name: prepare-inbound-media
+          image: busybox:1.37@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+          command:
+            - sh
+            - -c
+            - mkdir -p /state/media/inbound
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 5m
+              memory: 8Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi
+          volumeMounts:
+            - name: state
+              mountPath: /state
         # Substitute ${BALOO_OWNER_PHONE} into openclaw.json → /rendered/openclaw.json
         - name: render-config
           image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
@@ -159,6 +185,14 @@ spec:
                 secretKeyRef:
                   name: opencloud-baloo
                   key: app-token
+                  optional: true
+            # Dedicated non-admin Paperless token. Optional while staging so
+            # the pod can render before the Secret is provisioned.
+            - name: PAPERLESS_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-baloo-token
+                  key: token
                   optional: true
           securityContext:
             runAsUser: 1000
@@ -550,6 +584,64 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
+
+        # Community Paperless MCP server, restricted by OpenClaw's tool filter.
+        # The sidecar has no credential of its own: every request must carry the
+        # dedicated Paperless token from the OpenClaw MCP client configuration.
+        # Its only filesystem view is the inbound-media directory used for
+        # explicit document uploads from WhatsApp/WebChat attachments.
+        - name: paperless-mcp
+          image: ghcr.io/baruchiro/paperless-mcp:sha-b66ac72@sha256:abba37e831e789633900d3f6911768484b24f989793a05df83c8f95bb24ac8c5
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: paperless-mcp
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: PAPERLESS_URL
+              value: http://paperless-ngx.paperless-ngx.svc.cluster.local:8000
+            - name: PAPERLESS_PUBLIC_URL
+              value: https://docs.newjoy.ro
+            - name: PAPERLESS_API_VERSION
+              value: "9"
+            - name: PAPERLESS_MCP_UPLOAD_PATHS
+              value: /state/media/inbound
+          startupProbe:
+            tcpSocket:
+              port: paperless-mcp
+            failureThreshold: 30
+            periodSeconds: 2
+            timeoutSeconds: 1
+          livenessProbe:
+            tcpSocket:
+              port: paperless-mcp
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            tcpSocket:
+              port: paperless-mcp
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: state
+              mountPath: /state/media/inbound
+              subPath: media/inbound
+              readOnly: true
 
         # OpenAI-compatible synchronous image API for clients such as Open
         # WebUI. The agent still decides when to call generate_image/edit_image;

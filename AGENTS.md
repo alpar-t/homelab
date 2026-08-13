@@ -26,6 +26,9 @@ Baloo's read-only OpenCloud/Newjoy MCP credential setup and validation:
 Baloo's OLX account skill, credential isolation, and validation procedure:
 `runbooks/baloo-olx-account.md`.
 
+Baloo's Paperless document MCP account, credential, and validation procedure:
+`runbooks/baloo-paperless-mcp.md`.
+
 Longhorn minor-version upgrade procedure and validation gates:
 `runbooks/longhorn-upgrade.md`.
 
@@ -125,9 +128,13 @@ manifests remain under `config/baloo/manifests/` here. Expect that repository to
 be checked out at the sibling path `../baloo`, and operate there for Baloo source
 changes instead of searching for those files here. When editing anything in
 `openclaw/agents/*/SOUL.md` or `AGENTS.md`, or when authoring a new skill, first
-load Anthropic's skill-creator guidance for review principles:
+load the skill-creator guidance native to the coding agent for review
+principles:
 
-- https://raw.githubusercontent.com/anthropics/skills/main/skills/skill-creator/SKILL.md
+- Claude Code: load Anthropic's guidance from
+  https://raw.githubusercontent.com/anthropics/skills/main/skills/skill-creator/SKILL.md
+- Codex: load its installed `skill-creator` skill from the session's available
+  skills catalog.
 
 Key points to apply: imperative tone with the *why*, keep files lean, avoid rigid ALL-CAPS rules, put "when to use" details in the description (for skills) or in the first paragraph (for agents), specify output formats with concrete examples where they aren't obvious.
 
