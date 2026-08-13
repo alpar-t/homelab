@@ -28,8 +28,8 @@ spec:
       labels:
         app.kubernetes.io/name: openclaw
       annotations:
-        homelab/config-rev: "2026-08-13a"
-        secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo,olx-baloo"
+        homelab/config-rev: "2026-08-13b"
+        secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo,olx-baloo,court-case-baloo"
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -417,6 +417,73 @@ spec:
             - name: git-repo
               mountPath: /git
               readOnly: true
+            - name: tmp
+              mountPath: /tmp
+
+        # Court credential + durable document-state boundary. The password is
+        # never rendered into OpenClaw config or exposed in an agent tool result.
+        - name: court-case-mcp
+          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
+          imagePullPolicy: IfNotPresent
+          command:
+            - node
+            - /git/link/openclaw/tools/court-case-mcp.js
+          ports:
+            - name: court-case-mcp
+              containerPort: 18804
+              protocol: TCP
+          env:
+            - name: OPENCLAW_GATEWAY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: OPENCLAW_GATEWAY_TOKEN
+            - name: COURT_CASE_DOCUMENT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: court-case-baloo
+                  key: document-password
+            - name: COURT_CASE_STATE_DIR
+              value: /state/court-case
+          livenessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:18804/health', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:18804/health', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 25m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+              readOnly: true
+            - name: state
+              mountPath: /state
             - name: tmp
               mountPath: /tmp
 
