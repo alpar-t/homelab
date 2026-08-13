@@ -113,7 +113,7 @@ column below is the migration record:
 | `paperless-ngx` | `paperless-db` | 2 | 5 Gi | 65 MB | Migrated; verified and pre/post backups completed 2026-08-12; documents remain on Longhorn |
 | `stalwart-mail` | `stalwart-db` | 2 | 8 Gi | 77 MB | Migrated; verified and pre/post backups completed 2026-08-13; mail blobs remain on Longhorn |
 | `immich` | `immich-db` | 2 | 20 Gi | 3.8 GB | Migrated; VectorChord/indexes and pre/post backups verified 2026-08-13 |
-| `homeassistant` | `homeassistant-db` | 2 | 45 Gi | 40 GB | Pending; largest clone and external HA client |
+| `homeassistant` | `homeassistant-db` | 2 | 45 Gi | 40 GB | Migrated; recorder connectivity and pre/post backups verified 2026-08-13 |
 | `vaultwarden` | `vaultwarden-db` | 2 | 5 Gi | 17 MB | Pending; security-critical, migrate late |
 | `pocket-id` | `pocket-id-db` | 2 | 5 Gi | 19 MB | Pending; identity dependency, migrate last |
 
@@ -440,6 +440,37 @@ Backups `immich-db-local-migration-pre` and
 `0000002600000047000000CF`. Node filesystem use after migration was 21% on
 `buksi`, 49% on `pamacs`, and 48% on `pufi`.
 
+### Home Assistant migration record (2026-08-13)
+
+The standalone Home Assistant device had five active recorder connections and
+current writes before migration. The 40 GB pre-backup ran on
+`homeassistant-db-2` for four hours and six seconds. The initial script run used
+a four-hour transition timeout and exited at the backup gate six seconds before
+CNPG marked it completed; no PVC had been deleted. Resuming with a six-hour
+timeout reused the completed backup and continued from standby replacement.
+
+CNPG cloned and promoted `homeassistant-db-2` to `local-ssd` on `pamacs`, then
+rebuilt `homeassistant-db-1` on `local-ssd` at `pufi`. Final verification found
+both instances ready on node-matched local PVs, zero-lag streaming replication,
+five recorder connections, and recorder writes within two seconds of current
+time. The `homeassistant-db-external` service retained `192.168.1.200` and its
+primary selector, Argo reported `Synced/Healthy`, and the retired Longhorn PVs
+and volumes disappeared.
+
+Backups `homeassistant-db-local-migration-pre` and
+`homeassistant-db-local-migration-post` completed. The post-backup covered WAL
+`00000024000000D300000043` through `00000024000000D30000005E`. A transient
+archive failure for `00000024.history` during the controlled switchover at
+12:54:06Z was followed by successful archives through 15:58:28Z and the
+completed post-backup. Node filesystem use after migration was 21% on `buksi`
+and 38% on both `pamacs` and `pufi`.
+
+The migration script now performs a final ten-second grace poll after a backup
+deadline so a controller update at the boundary does not produce a false
+timeout. Long-running databases should still use an explicit timeout sized for
+their observed backup and clone duration; use at least six hours for this Home
+Assistant database at its current CPU limit.
+
 ## Node loss after migration
 
 CNPG automatically promotes the surviving instance when the primary's node is
@@ -488,6 +519,6 @@ taking another destructive step.
 - [x] Migrate `paperless-db`; SQL, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
 - [x] Migrate `stalwart-db`; SQL, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
 - [x] Migrate `immich-db`; VectorChord/indexes, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
-- [ ] Migrate `homeassistant-db`
+- [x] Migrate `homeassistant-db`; recorder freshness, external service, zero-lag replication, PV placement, Argo health, Longhorn cleanup, and pre/post backups verified
 - [ ] Migrate `vaultwarden-db`
 - [ ] Migrate `pocket-id-db`

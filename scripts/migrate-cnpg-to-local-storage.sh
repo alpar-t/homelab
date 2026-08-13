@@ -353,6 +353,14 @@ run_backup() {
     case "$phase" in failed|error) die "backup $name failed" ;; esac
     sleep 5
   done
+
+  # A backup can finish between the final loop poll and its deadline. Give the
+  # controller one last reconciliation interval before reporting a timeout.
+  sleep 10
+  phase="$(k get backup.postgresql.cnpg.io "$name" -n "$NAMESPACE" -o jsonpath='{.status.phase}')"
+  log "backup $name final phase after timeout grace: ${phase:-pending}"
+  [[ "$phase" == "completed" ]] && return 0
+  case "$phase" in failed|error) die "backup $name failed" ;; esac
   die "timed out waiting for backup $name"
 }
 
