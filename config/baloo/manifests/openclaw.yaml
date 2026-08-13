@@ -28,8 +28,8 @@ spec:
       labels:
         app.kubernetes.io/name: openclaw
       annotations:
-        homelab/config-rev: "2026-08-10a"
-        secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo"
+        homelab/config-rev: "2026-08-13a"
+        secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo,olx-baloo"
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -276,6 +276,10 @@ spec:
               value: /rendered/openclaw.json
             - name: OPENCLAW_STATE_DIR
               value: /state
+            # Enables the loopback-only browser control API used by the OLX
+            # credential helper. It remains protected by the gateway token.
+            - name: OPENCLAW_EAGER_BROWSER_CONTROL_SERVER
+              value: "1"
             - name: OPENCLAW_GATEWAY_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -344,6 +348,77 @@ spec:
             - name: github-app-key
               mountPath: /var/run/secrets/github-app
               readOnly: true
+
+        # Credential-isolating OLX login helper. Only this sidecar receives the
+        # account email/password; the LLM-facing tool returns status + tab id.
+        # All subsequent OLX navigation uses OpenClaw's ordinary browser tool.
+        - name: olx-auth-mcp
+          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
+          imagePullPolicy: IfNotPresent
+          command:
+            - node
+            - /git/link/openclaw/tools/olx-auth-mcp.js
+          ports:
+            - name: olx-auth-mcp
+              containerPort: 18803
+              protocol: TCP
+          env:
+            - name: OPENCLAW_GATEWAY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: OPENCLAW_GATEWAY_TOKEN
+            - name: OLX_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: olx-baloo
+                  key: email
+                  optional: true
+            - name: OLX_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: olx-baloo
+                  key: password
+                  optional: true
+          livenessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:18803/health', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:18803/health', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
 
         # Agent-facing task tools. The bot token exists only in this sidecar;
         # the OpenClaw gateway reaches its curated MCP surface over localhost.
