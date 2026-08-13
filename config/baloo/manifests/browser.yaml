@@ -58,7 +58,9 @@ spec:
             - name: EXTERNAL
               value: "http://browser.baloo.svc.cluster.local:3000"
             - name: TIMEOUT
-              value: "60000"
+              # Document-heavy browser agents need more than Browserless's
+              # prior one-minute ceiling; OpenClaw jobs retain their own limits.
+              value: "900000"
             - name: CONCURRENT
               value: "2"
             - name: TOKEN
