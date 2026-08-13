@@ -14,6 +14,9 @@ private `alpar-t/baloo` repository at `openclaw/skills/olx-account/`.
 - Every OLX browser action explicitly uses the dedicated `olx` profile. It
   points to the existing Browserless service but keeps OLX tabs and session
   state separate from the default `cluster` profile.
+- Browserless launches `olx` with Chromium `userDataDir=/profiles/olx`, backed
+  by the `browser-olx-profile` PVC. Successful login cookies therefore survive
+  browser and OpenClaw pod restarts; the other profiles remain ephemeral.
 - The helper exposes only `olx-auth__fill_credentials`. It verifies that the
   supplied tab is on `https://login.olx.ro`, fills the visible fields, and
   neither clicks nor submits. The LLM handles the changing page UI.
@@ -24,14 +27,19 @@ private `alpar-t/baloo` repository at `openclaw/skills/olx-account/`.
 
 The `olx` profile provides session separation, not access control: OpenClaw's
 profiles are gateway-global, so another agent with the generic `browser` tool
-could deliberately select it. The profile is intentionally ephemeral, so OLX
-may require login on each use. Its Browserless URL deliberately has no
+could deliberately select it. Persisted OLX cookies are credentials in their
+own right and inherit that limitation. Its Browserless URL deliberately has no
 `trackingId`: Browserless rejects a second connection to an active tracking ID,
 whereas the LLM and credential filler need multiple commands against the same
 OpenClaw-owned profile session. Its explicit `timeout=900000` query also keeps
 the OLX CDP URL distinct from the court profile without changing the effective
 server timeout; identical remote CDP URLs can share an OpenClaw controller and
 mix tabs.
+
+The PVC uses `longhorn-ssd-noreplica`: this session state is intentionally not
+backed up and losing it only requires logging in again. The browser Deployment
+uses `Recreate` because two pods must never operate on the same Chromium
+user-data directory.
 
 ## Create or rotate the Kubernetes Secret
 
@@ -88,16 +96,21 @@ limits, and persistent price memory are deferred.
 
 3. Confirm `openclaw browser profiles --json` lists distinct `cluster` and
    `olx` profiles.
-4. In `Baloo — Alpar`, ask: “Check my OLX saved land search.” Confirm every
+4. After one successful login, restart the browser Deployment and open OLX
+   again with profile `olx`. Confirm it remains authenticated without invoking
+   the credential helper.
+5. In `Baloo — Alpar`, ask: “Check my OLX saved land search.” Confirm every
    browser call uses `olx`, the helper fills but does not submit credentials,
    and the result contains only OLX-marked new adverts whose displayed location
    is Petreștii de Jos.
-5. Ask it to check unread messages. Confirm it shows a draft but does not type
+6. Ask it to check unread messages. Confirm it shows a draft but does not type
    or send it. Approve the exact draft in a second message and verify it appears
    in the OLX thread.
-6. Ask another Baloo agent to access OLX. It must not have any `olx-auth__*`
+7. Ask another Baloo agent to access OLX. It must not have any `olx-auth__*`
    tool.
 
-If login stops for verification, use a browser session you control to satisfy
-OLX's challenge, or retry later. Never weaken the browser NetworkPolicy or
-expose the control API outside the pod to work around account verification.
+If login stops for verification, do not loop retries. The current deployment
+does not expose an interactive Browserless view, so retry later; solving a
+challenge in an unrelated manual browser does not transfer that browser's
+session. Never weaken the browser NetworkPolicy or expose the control API
+outside the pod to work around account verification.
