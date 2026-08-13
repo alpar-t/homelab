@@ -31,6 +31,13 @@ metadata:
 spec:
   instances: 2
   enablePDB: false
+
+  # Local storage relies on CNPG replication for HA. Never place both database
+  # instances on the same node.
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
   
   # Use tensorchord/cloudnative-vectorchord image for vector extension support.
   # VectorChord (vchord) is Immich v3's required vector extension; it CASCADE-installs
@@ -59,7 +66,10 @@ spec:
     # table rewrites (WAL) plus vchord index rebuilds filled the 10Gi volume and
     # tripped CNPG's low-disk-space shutdown on the primary.
     size: 20Gi
-    storageClass: longhorn-ssd
+    storageClass: local-ssd
+    # Rancher local-path volumes cannot be expanded in place. Replace one CNPG
+    # instance/PVC at a time if this allocation must grow.
+    resizeInUseVolumes: false
 
   resources:
     requests:
@@ -101,4 +111,3 @@ spec:
       archive_mode: "on"
       archive_timeout: "1h"
       max_slot_wal_keep_size: "1GB"
-
