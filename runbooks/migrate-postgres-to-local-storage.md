@@ -348,6 +348,49 @@ by deleting both copies or powering off two nodes. A second identical reboot is
 not required when the storage class, FCOS/k3s stack, and CNPG configuration are
 unchanged; rely on normal maintenance observations instead.
 
+### Post-outage backup recovery
+
+After the 2026-08-12 whole-site power outage, Pocket ID's scheduled `Backup`
+remained in `walArchivingFailing` even though its standby had returned and WAL
+archiving was healthy. The operator kept retrying the stale object because it
+still carried an outage-era backup session. Before removing such an object,
+verify all of the following on the current primary:
+
+```sql
+SELECT application_name, state, sync_state,
+       pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) AS lag_bytes
+FROM pg_stat_replication;
+SELECT archived_count, failed_count, last_archived_wal, last_archived_time,
+       last_failed_wal, last_failed_time
+FROM pg_stat_archiver;
+SELECT count(*) FROM pg_stat_progress_basebackup;
+```
+
+Require streaming replication, current successful WAL archiving with no new
+failure, and zero active base backups. Compare the `Backup` object's recorded
+pod/container and session with current state and check operator and instance
+logs. Only when the recorded session is demonstrably stale, delete the fully
+qualified control object and immediately prove the path with a named backup:
+
+```bash
+kubectl -n pocket-id delete backup.postgresql.cnpg.io \
+  pocket-id-db-daily-20260812030000
+kubectl cnpg backup pocket-id-db -n pocket-id \
+  --backup-name pocket-id-db-post-outage-check
+kubectl -n pocket-id get backup.postgresql.cnpg.io \
+  pocket-id-db-post-outage-check --watch
+```
+
+Do not use the ambiguous `backup` short name because Longhorn also registers
+it. Pocket ID's replacement completed on `pocket-id-db-2`, covering WAL
+`000000230000005300000002`.
+
+Vaultwarden's outage backup was terminally `failed` with `instance manager was
+restarted during backup`; it did not need deletion. A new named backup on
+`vaultwarden-db-2` completed through WAL `000000210000001400000025` and restored
+the cluster's `LastBackupSucceeded=True` condition. Preserve terminal failed
+objects as incident evidence unless their presence is blocking reconciliation.
+
 ### Tandoor standby-node reboot record (2026-08-12)
 
 Rebooted `buksi`, which hosted standby `tandoor-db-2`. Buksi returned `Ready`
