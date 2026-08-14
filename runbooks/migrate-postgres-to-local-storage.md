@@ -114,7 +114,7 @@ column below is the migration record:
 | `stalwart-mail` | `stalwart-db` | 2 | 8 Gi | 77 MB | Migrated; verified and pre/post backups completed 2026-08-13; mail blobs remain on Longhorn |
 | `immich` | `immich-db` | 2 | 20 Gi | 3.8 GB | Migrated; VectorChord/indexes and pre/post backups verified 2026-08-13 |
 | `homeassistant` | `homeassistant-db` | 2 | 45 Gi | 40 GB | Migrated; recorder connectivity and pre/post backups verified 2026-08-13 |
-| `vaultwarden` | `vaultwarden-db` | 2 | 5 Gi | 17 MB | Pending; security-critical, migrate late |
+| `vaultwarden` | `vaultwarden-db` | 2 | 5 Gi | 17 MB | Migrated; SQL/app and pre/post backups verified 2026-08-14 |
 | `pocket-id` | `pocket-id-db` | 2 | 5 Gi | 19 MB | Pending; identity dependency, migrate last |
 
 There is no separate OnlyOffice CNPG cluster. Vikunja was missing from the old
@@ -471,6 +471,28 @@ timeout. Long-running databases should still use an explicit timeout sized for
 their observed backup and clone duration; use at least six hours for this Home
 Assistant database at its current CPU limit.
 
+### Vaultwarden migration record (2026-08-13/14)
+
+Migrated `vaultwarden-db` after a fresh global health and backup gate. CNPG
+cloned and promoted `vaultwarden-db-2` to `local-ssd` on `pufi`, then rebuilt
+`vaultwarden-db-1` on `local-ssd` at `pamacs`. Both local instances reached
+CNPG Ready before the primary's `pg_stat_replication` view contained the new
+standby, so the script's first final verification stopped safely before the
+post-backup. A later idempotent resume skipped all completed storage stages,
+verified zero-lag streaming, and created the post-backup.
+
+Final checks confirmed SQL access, two node-matched local PVs, zero-lag
+replication, continuous archiving with no failures, Vaultwarden `1/1`, Argo
+`Synced/Healthy`, and removal of both old Longhorn PVs and volumes. Backups
+`vaultwarden-db-local-migration-pre` and
+`vaultwarden-db-local-migration-post` completed; the post-backup covered WAL
+`000000220000001400000041` through `000000220000001400000042`.
+
+The migration script now waits for the database-level replication row to reach
+`streaming` with zero lag instead of assuming Kubernetes/CNPG Ready immediately
+implies that stronger condition. This gate is used both before destructive PVC
+replacement and during final verification.
+
 ## Node loss after migration
 
 CNPG automatically promotes the surviving instance when the primary's node is
@@ -520,5 +542,5 @@ taking another destructive step.
 - [x] Migrate `stalwart-db`; SQL, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
 - [x] Migrate `immich-db`; VectorChord/indexes, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
 - [x] Migrate `homeassistant-db`; recorder freshness, external service, zero-lag replication, PV placement, Argo health, Longhorn cleanup, and pre/post backups verified
-- [ ] Migrate `vaultwarden-db`
+- [x] Migrate `vaultwarden-db`; SQL, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
 - [ ] Migrate `pocket-id-db`

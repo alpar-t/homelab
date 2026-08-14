@@ -244,13 +244,24 @@ assert_replication_caught_up() {
   local primary="$1"
   local standby="$2"
   local row state lag
-  row="$(k exec -n "$NAMESPACE" "$primary" -c postgres -- \
-    psql -U postgres -d postgres -v ON_ERROR_STOP=1 -Atqc \
-    "SELECT state || '|' || COALESCE(pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)::text, '') FROM pg_stat_replication WHERE application_name = '$standby'")"
-  state="${row%%|*}"
-  lag="${row#*|}"
-  [[ "$state" == "streaming" && "$lag" == "0" ]] || \
-    die "replication $primary -> $standby is state=$state lag=$lag bytes"
+  local deadline=$(( $(date +%s) + TIMEOUT_SECONDS ))
+
+  # CNPG can report two ready instances just before the primary exposes the new
+  # standby in pg_stat_replication. Wait for the stronger database-level gate.
+  while (( $(date +%s) < deadline )); do
+    row="$(k exec -n "$NAMESPACE" "$primary" -c postgres -- \
+      psql -U postgres -d postgres -v ON_ERROR_STOP=1 -Atqc \
+      "SELECT state || '|' || COALESCE(pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)::text, '') FROM pg_stat_replication WHERE application_name = '$standby'" \
+      2>/dev/null || true)"
+    state="${row%%|*}"
+    lag="${row#*|}"
+    if [[ "$state" == "streaming" && "$lag" == "0" ]]; then
+      return 0
+    fi
+    log "replication $primary -> $standby is state=${state:-missing} lag=${lag:-missing} bytes; waiting"
+    sleep 5
+  done
+  die "replication $primary -> $standby did not reach streaming at zero lag"
 }
 
 wait_for_state() {
