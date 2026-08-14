@@ -115,7 +115,7 @@ column below is the migration record:
 | `immich` | `immich-db` | 2 | 20 Gi | 3.8 GB | Migrated; VectorChord/indexes and pre/post backups verified 2026-08-13 |
 | `homeassistant` | `homeassistant-db` | 2 | 45 Gi | 40 GB | Migrated; recorder connectivity and pre/post backups verified 2026-08-13 |
 | `vaultwarden` | `vaultwarden-db` | 2 | 5 Gi | 17 MB | Migrated; SQL/app and pre/post backups verified 2026-08-14 |
-| `pocket-id` | `pocket-id-db` | 2 | 5 Gi | 19 MB | Pending; identity dependency, migrate last |
+| `pocket-id` | `pocket-id-db` | 2 | 5 Gi | 19 MB | Migrated last; identity app and pre/post backups verified 2026-08-14 |
 
 There is no separate OnlyOffice CNPG cluster. Vikunja was missing from the old
 inventory and is included here.
@@ -493,6 +493,26 @@ The migration script now waits for the database-level replication row to reach
 implies that stronger condition. This gate is used both before destructive PVC
 replacement and during final verification.
 
+### Pocket ID and fleet completion record (2026-08-14)
+
+Migrated `pocket-id-db` last, after its daily backup and identity application
+were healthy. CNPG cloned and promoted `pocket-id-db-2` to `local-ssd` on
+`pufi`, then rebuilt `pocket-id-db-1` on `local-ssd` at `pamacs`. Final checks
+confirmed SQL access, zero-lag streaming replication, node-matched local PVs,
+Pocket ID `1/1`, Argo `Synced/Healthy`, and removal of both old Longhorn PVs and
+volumes. Backups `pocket-id-db-local-migration-pre` and
+`pocket-id-db-local-migration-post` completed; the post-backup covered WAL
+`000000240000005300000035` through `000000240000005300000036`.
+
+The final fleet audit found all nine CNPG clusters at `2/2` with Ready,
+ContinuousArchiving, and LastBackupSucceeded true. All 18 CNPG PVCs were Bound
+on `local-ssd`; every database's newest backup was completed; every
+ScheduledBackup used the required six-field cron; and all nine Argo applications
+were `Synced/Healthy`. Node filesystem use was 22% on `buksi` and 37% on both
+`pamacs` and `pufi`. This completes the database portion of the Longhorn exit;
+application data PVCs explicitly called out in the inventory remain on their
+documented storage classes.
+
 ## Node loss after migration
 
 CNPG automatically promotes the surviving instance when the primary's node is
@@ -543,4 +563,4 @@ taking another destructive step.
 - [x] Migrate `immich-db`; VectorChord/indexes, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
 - [x] Migrate `homeassistant-db`; recorder freshness, external service, zero-lag replication, PV placement, Argo health, Longhorn cleanup, and pre/post backups verified
 - [x] Migrate `vaultwarden-db`; SQL, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
-- [ ] Migrate `pocket-id-db`
+- [x] Migrate `pocket-id-db`; SQL, zero-lag replication, PV placement, Argo/app health, Longhorn cleanup, and pre/post backups verified
