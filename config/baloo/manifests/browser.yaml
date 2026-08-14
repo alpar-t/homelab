@@ -80,10 +80,12 @@ spec:
           resources:
             requests:
               cpu: 250m
-              memory: 512Mi
+              # Three long-lived isolated Chromium profiles need headroom even
+              # when their steady-state footprint is small.
+              memory: 1Gi
             limits:
               cpu: "2"
-              memory: 2Gi
+              memory: 4Gi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -110,7 +112,7 @@ spec:
         - name: dshm
           emptyDir:
             medium: Memory
-            sizeLimit: 512Mi
+            sizeLimit: 1Gi
         - name: olx-profile
           persistentVolumeClaim:
             claimName: browser-olx-profile
