@@ -35,6 +35,9 @@ Longhorn minor-version upgrade procedure and validation gates:
 CNPG database local-storage decision, inventory, and rolling migration:
 `runbooks/migrate-postgres-to-local-storage.md`.
 
+CNPG in-tree Barman backup to Barman Cloud Plugin migration and validation:
+`runbooks/migrate-cnpg-to-barman-cloud-plugin.md`.
+
 Newjoy portal architecture, image delivery, catalog policy, and operations:
 `runbooks/newjoy-portal.md`.
 
