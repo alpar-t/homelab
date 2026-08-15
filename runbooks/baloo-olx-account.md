@@ -52,8 +52,11 @@ OLX credentials exist only in the `olx-baloo` Kubernetes Secret and the
 `olx-auth-mcp` sidecar environment. The helper receives the PinchTab API token,
 verifies the supplied tab is exactly on `https://login.olx.ro`, identifies the
 visible localized email and password fields, and fills them through PinchTab.
-It never returns credentials and never clicks or submits. The LLM handles the
-changing page UI without seeing the password.
+When OLX renders the form but Chromium exposes an empty accessibility tree, the
+helper checks that both `input[type=email]` and `input[type=password]` are
+rendered on screen on that verified origin before using them as a narrow
+fallback. It never returns credentials and never clicks or submits. The LLM
+handles the changing page UI without seeing the password.
 
 CAPTCHA, MFA, and new-device verification require human action. PinchTab's
 handoff record coordinates that pause but is not a lock or security boundary;
