@@ -6,6 +6,7 @@ const viewPicker = document.querySelector("#view-picker");
 const viewSelect = document.querySelector("#view-select");
 const themeToggle = document.querySelector("#theme-toggle");
 const themeLabel = document.querySelector("#theme-label");
+const assetVersion = document.querySelector('meta[name="portal-asset-version"]')?.content || "local";
 
 let catalog;
 let capabilityPolicy = {};
@@ -32,6 +33,10 @@ function makeElement(tag, className, text) {
   if (className) element.className = className;
   if (text !== undefined) element.textContent = text;
   return element;
+}
+
+function versionedAsset(path) {
+  return `${path}?v=${encodeURIComponent(assetVersion)}`;
 }
 
 function serviceCard(service) {
@@ -71,7 +76,7 @@ function serviceCard(service) {
   icon.style.setProperty("--accent", service.accent);
   const iconSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   const iconUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
-  iconUse.setAttribute("href", `/icons.svg#${service.icon || "website"}`);
+  iconUse.setAttribute("href", `${versionedAsset("/icons.svg")}#${service.icon || "website"}`);
   iconSvg.append(iconUse);
   icon.append(iconSvg);
   const actions = makeElement("span", "service-actions");
@@ -83,7 +88,7 @@ function serviceCard(service) {
     const channelSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     channelSvg.setAttribute("aria-hidden", "true");
     const channelUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
-    channelUse.setAttribute("href", `/icons.svg#${channel}`);
+    channelUse.setAttribute("href", `${versionedAsset("/icons.svg")}#${channel}`);
     channelSvg.append(channelUse);
     channelIcon.append(channelSvg);
     actions.append(channelIcon);

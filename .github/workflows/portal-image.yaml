@@ -95,6 +95,12 @@ jobs:
             "$rootfs/usr/share/nginx/html" \
             "$rootfs/etc/nginx/conf.d"
           cp -R config/portal/manifests/assets/. "$rootfs/usr/share/nginx/html/"
+          sed -i "s/__PORTAL_ASSET_VERSION__/${GITHUB_SHA}/g" \
+            "$rootfs/usr/share/nginx/html/index.html"
+          if grep -q __PORTAL_ASSET_VERSION__ "$rootfs/usr/share/nginx/html/index.html"; then
+            echo "Portal asset version placeholder was not fully rendered" >&2
+            exit 1
+          fi
           cp config/portal/manifests/nginx/default.conf "$rootfs/etc/nginx/conf.d/default.conf"
           find "$rootfs" -exec touch -h -d '@0' {} +
           tar \

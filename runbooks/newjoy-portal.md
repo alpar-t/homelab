@@ -173,6 +173,10 @@ the stylesheet so the selected theme is applied before the first paint.
 Docker socket. The workflow downloads a pinned, checksummed `crane` release,
 creates a deterministic layer containing the static assets and nginx policy,
 and appends it to the pinned official nginx base image for `linux/amd64`.
+The build injects the source commit SHA into the CSS, JavaScript, and icon URLs;
+nginx also serves the tiny portal shell with `Cache-Control: private, no-store`
+and disables validators. This prevents a browser from mixing assets from two
+immutable image revisions after a rollout.
 
 The image is pushed publicly as
 `ghcr.io/alpar-t/newjoy-portal:sha-<commit>@sha256:<digest>`. After checking that
