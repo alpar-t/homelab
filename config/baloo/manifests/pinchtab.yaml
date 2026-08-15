@@ -13,6 +13,12 @@ metadata:
   labels:
     app.kubernetes.io/name: pinchtab
 data:
+  # PinchTab 0.15.1 detects container mode through this Docker-compatible
+  # marker. containerd does not create it, so mount the empty key at
+  # /.dockerenv and let PinchTab add Chromium's intended --no-sandbox flag.
+  # Container isolation remains non-root + no-new-privileges + dropped caps +
+  # RuntimeDefault seccomp + read-only root filesystem.
+  .dockerenv: ""
   config.json: |
     {
       "configVersion": "0.8.0",
@@ -108,7 +114,7 @@ spec:
       labels:
         app.kubernetes.io/name: pinchtab
       annotations:
-        homelab/config-rev: "2026-08-14a"
+        homelab/config-rev: "2026-08-15b"
         secret.reloader.stakater.com/reload: "pinchtab-baloo"
     spec:
       automountServiceAccountToken: false
@@ -169,6 +175,10 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
+              readOnly: true
+            - name: config
+              mountPath: /.dockerenv
+              subPath: .dockerenv
               readOnly: true
             - name: data
               mountPath: /data

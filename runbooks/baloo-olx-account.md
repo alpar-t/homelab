@@ -13,6 +13,11 @@ general browser backend until this evaluation is complete.
 - PinchTab has its own pod, ClusterIP Service, NetworkPolicy, API token, and
   2-GiB PVC. It cannot reach cluster or LAN addresses and accepts API traffic
   only from the OpenClaw pod.
+- PinchTab 0.15.1 checks for `/.dockerenv` before adding Chromium's required
+  container-mode `--no-sandbox` flag. k3s/containerd does not create that
+  Docker marker, so the ConfigMap mounts an empty marker file. Do not replace
+  this with elevated capabilities or `allowPrivilegeEscalation`; the container
+  remains the Chromium isolation boundary.
 - PinchTab permits top-level navigation only to `olx.ro` and its subdomains.
   JavaScript evaluation, cookies API access, downloads, uploads, network
   interception, clipboard access, macros, file URLs, and state export stay
