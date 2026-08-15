@@ -13,7 +13,7 @@
   },
   "Paperless": {
     "maturity": "stable",
-    "baloo": {"available": false}
+    "baloo": {"available": true, "detail": "Alpar only"}
   },
   "Tandoor": {
     "maturity": "stable",
