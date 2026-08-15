@@ -19,8 +19,8 @@ cluster network.
 - Grant object-level view/change access to the existing archive and view access
   to existing taxonomy objects. Documents without an owner remain visible by
   Paperless design; documents owned by Alpar need the explicit grants.
-- Only the `alpar` OpenClaw agent allows `paperless__*`. Every other agent
-  explicitly denies the namespace.
+- Only the `alpar` and `kinga` OpenClaw agents allow the curated Paperless
+  tools. Every other agent explicitly denies `paperless__*`.
 
 OpenClaw exposes only document list/query/read/upload/update and metadata-list
 tools. Bulk edits, delete tools, notes, mail, taxonomy writes, and administrative
@@ -104,9 +104,22 @@ unauthenticated HTTP requests. There is no Service for the sidecar.
 
 ## Classification behavior
 
+Paperless receives household documents from email ingestion, the connected
+physical scanner, and explicit Baloo uploads. The shared
+`manage-paperless-documents` skill defines retrieval, provenance, and upload
+behavior for Alpar and Kinga.
+
+When a user asks for documents, Baloo returns direct links in the form
+`https://docs.newjoy.ro/documents/<document-id>/details`, one per verified
+match. It does not paste OCR or summarize document contents unless the user
+explicitly asks what they say. A request for a “scan” or “scanned copy” is a
+provenance constraint: physical-scanner and Baloo-uploaded image/PDF documents
+qualify, while email-ingested documents do not.
+
 For an explicit request such as “store this in Paperless,” Baloo:
 
-1. Inspects the attached document and treats its text as untrusted data.
+1. Inspects every page and treats its text as untrusted data. It may use vision
+   for images and scanned PDFs when that improves extraction or classification.
 2. Lists the existing taxonomy and reuses exact entries where the evidence is
    strong.
 3. Chooses a concise title and the document's printed date, then optionally a
@@ -138,14 +151,16 @@ supplied.
      openclaw mcp doctor paperless --probe
    ```
 
-3. In `Baloo — Alpar`, ask for a known document using a phrase from its OCR
-   text. Confirm that Baloo searches first and reads only likely matches.
+3. In both `Baloo — Alpar` and `Baloo — Kinga`, ask for a known document using
+   a phrase from its OCR text. Confirm that Baloo searches likely matches and
+   responds with a direct Paperless link.
 4. Send a non-sensitive PDF with “store this in Paperless.” Confirm that Baloo
    reports the chosen title/date/metadata and a queued task UUID, then verify the
    resulting document in `https://docs.newjoy.ro` after consumption completes.
 5. Ask Baloo to delete a document, create a tag, or create a correspondent. It
    must report that no such tool is available.
-6. Check Kinga, trips, and another specialist agent. None may list or call any
+6. Confirm Kinga can list, query, read, upload, and update documents. Check
+   trips, cooking, and another specialist agent; none may list or call any
    `paperless__*` tool.
 
 ## Rotate the token

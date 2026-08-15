@@ -129,15 +129,20 @@ Baloo's OpenClaw configuration, agent workspaces, and shared skills live in the
 private `alpar-t/baloo` repository under `openclaw/`; only its Kubernetes
 manifests remain under `config/baloo/manifests/` here. Expect that repository to
 be checked out at the sibling path `../baloo`, and operate there for Baloo source
-changes instead of searching for those files here. When editing anything in
-`openclaw/agents/*/SOUL.md` or `AGENTS.md`, or when authoring a new skill, first
-load the skill-creator guidance native to the coding agent for review
-principles:
+changes instead of searching for those files here. Identify the coding agent
+performing the change. When editing anything in `openclaw/agents/*/SOUL.md` or
+`AGENTS.md`, or when authoring a new skill, first load that coding agent's native
+skill-creator guidance:
 
 - Claude Code: load Anthropic's guidance from
   https://raw.githubusercontent.com/anthropics/skills/main/skills/skill-creator/SKILL.md
 - Codex: load its installed `skill-creator` skill from the session's available
-  skills catalog.
+  skills catalog; do not hard-code a local installation path.
+- Another coding agent: use its native equivalent when available. Otherwise,
+  fall back to Anthropic's guidance above and state that fallback.
+
+Do not direct one coding agent to use another agent's installation paths or
+agent-specific tools.
 
 Key points to apply: imperative tone with the *why*, keep files lean, avoid rigid ALL-CAPS rules, put "when to use" details in the description (for skills) or in the first paragraph (for agents), specify output formats with concrete examples where they aren't obvious.
 
