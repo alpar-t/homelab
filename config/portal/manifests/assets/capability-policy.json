@@ -1,0 +1,114 @@
+{
+  "Baloo": {
+    "maturity": "experimental",
+    "baloo": {"available": true, "detail": "AI-native"}
+  },
+  "OpenCloud": {
+    "maturity": "stable",
+    "baloo": {"available": true, "detail": "Read-only"}
+  },
+  "Immich": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "Paperless": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "Tandoor": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "TREK": {
+    "maturity": "experimental",
+    "baloo": {"available": true}
+  },
+  "Actual Budget": {
+    "maturity": "stable",
+    "baloo": {"available": true, "detail": "Alpar only"}
+  },
+  "Vikunja": {
+    "maturity": "stable",
+    "baloo": {"available": true}
+  },
+  "Vaultwarden · Bitwarden apps": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "Newjoy Webmail": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "Pocket ID": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "Home Assistant": {
+    "maturity": "stable",
+    "baloo": {"available": true}
+  },
+  "Emby": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "Frigate": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "Argo CD": {
+    "maturity": "stable",
+    "baloo": {"available": true, "detail": "Read-only"}
+  },
+  "Longhorn": {
+    "maturity": "stable",
+    "baloo": {"available": true, "detail": "Read-only"}
+  },
+  "Pi-hole": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "Omada Controller": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "Node-RED": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "OTMonitor": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "Pocket ID admin": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "Stalwart Mail": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "Sonarr": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "Radarr": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "Prowlarr": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "qBittorrent": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  },
+  "Maintainerr": {
+    "maturity": "experimental",
+    "baloo": {"available": false}
+  },
+  "newjoy.ro": {
+    "maturity": "stable",
+    "baloo": {"available": false}
+  }
+}

@@ -94,6 +94,20 @@ shape:
 Use `"network": "home"` for LAN/Tailscale-only links. The UI renders that
 constraint but does not proxy the destination.
 
+Maturity and direct Baloo access are centralized in
+`config/portal/manifests/assets/capability-policy.json`, keyed by the exact
+`product` string. `maturity` is either `stable` or `experimental`. `baloo`
+records whether an agent has direct tool access; use `detail` for meaningful
+limits such as `Read-only` or `Alpar only`. Do not mark ordinary web research
+as direct Baloo access.
+
+```json
+"OpenCloud": {
+  "maturity": "stable",
+  "baloo": {"available": true, "detail": "Read-only"}
+}
+```
+
 Add an optional `setup` object when a phone app, browser extension, server URL,
 or non-obvious first-run step materially improves the experience. `steps` are
 rendered as an ordered list, `links` open official setup/download pages in a new

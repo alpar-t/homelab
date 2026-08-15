@@ -44,6 +44,31 @@ jobs:
           for catalog in config/portal/manifests/assets/catalog/*.json; do
             jq empty "$catalog"
           done
+          policy=config/portal/manifests/assets/capability-policy.json
+          jq -e '
+            all(.[];
+              (.maturity == "stable" or .maturity == "experimental") and
+              (.baloo.available | type == "boolean") and
+              ((.baloo.detail // "") | type == "string")
+            )
+          ' "$policy" >/dev/null
+          missing_products="$({
+            jq -r '.sections[].services[].product // empty' \
+              config/portal/manifests/assets/catalog/admin.json \
+              config/portal/manifests/assets/catalog/family.json \
+              config/portal/manifests/assets/catalog/base.json | sort -u
+            printf '%s\n' __POLICY_BOUNDARY__
+            jq -r 'keys[]' "$policy" | sort -u
+          } | awk '
+            $0 == "__POLICY_BOUNDARY__" { policy = 1; next }
+            !policy { products[$0] = 1; next }
+            { delete products[$0] }
+            END { for (product in products) print product }
+          ' | sort)"
+          if [[ -n "$missing_products" ]]; then
+            printf 'Missing capability policy for:\n%s\n' "$missing_products" >&2
+            exit 1
+          fi
 
       - name: Install verified crane release
         shell: bash

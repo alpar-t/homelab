@@ -387,15 +387,22 @@ kbd { padding: 3px 7px; border: 1px solid var(--line); border-radius: 6px; backg
 .service-body h3 { margin: 0 0 6px; font-size: 17px; font-weight: 650; letter-spacing: -.015em; }
 .service-body p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
 .service-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 14px; color: var(--quiet); font-size: 10px; }
-.network, .tag, .access-badge, .auth-badge { display: inline-flex; align-items: center; gap: 6px; }
+.network, .access-badge, .auth-badge, .policy-badge { display: inline-flex; align-items: center; gap: 6px; }
 .scope { padding: 4px 7px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
 .network i { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
 .network-home i { background: var(--home); }
+.policy-badge { padding: 4px 7px; border: 1px solid var(--line); border-radius: 999px; font-weight: 650; letter-spacing: .015em; }
+.policy-badge::before { width: 5px; height: 5px; border-radius: 50%; background: currentColor; content: ""; }
+.maturity-stable { border-color: color-mix(in srgb, var(--green), transparent 65%); background: color-mix(in srgb, var(--green), transparent 91%); color: var(--green); }
+.maturity-experimental { border-color: color-mix(in srgb, var(--home), transparent 60%); background: color-mix(in srgb, var(--home), transparent 89%); color: var(--home); }
+.baloo-available { border-color: color-mix(in srgb, #ad8cff, transparent 62%); background: color-mix(in srgb, #ad8cff, transparent 90%); color: color-mix(in srgb, #ad8cff, var(--text) 18%); }
+.baloo-available::before { width: auto; height: auto; background: none; content: "✦"; font-size: 10px; line-height: 1; }
+.baloo-unavailable { color: var(--quiet); }
+.baloo-unavailable::before { background: var(--quiet); opacity: .7; }
 .access-badge,
 .auth-badge { padding: 4px 7px; border-radius: 6px; font-weight: 650; letter-spacing: .02em; }
 .access-badge { border: 1px solid color-mix(in srgb, var(--cloud), transparent 68%); background: color-mix(in srgb, var(--cloud), transparent 91%); color: var(--cloud); }
 .auth-badge { border: 1px solid color-mix(in srgb, var(--auth), transparent 65%); background: color-mix(in srgb, var(--auth), transparent 90%); color: var(--auth); }
-.tag::before { content: "·"; margin-right: 1px; }
 
 .service-setup {
   border-top: 1px solid var(--line);

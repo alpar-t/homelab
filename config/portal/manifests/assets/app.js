@@ -8,6 +8,7 @@ const themeToggle = document.querySelector("#theme-toggle");
 const themeLabel = document.querySelector("#theme-label");
 
 let catalog;
+let capabilityPolicy = {};
 let availableViews = [];
 let currentView = "admin";
 
@@ -34,6 +35,9 @@ function makeElement(tag, className, text) {
 }
 
 function serviceCard(service) {
+  const policy = capabilityPolicy[service.product] || {};
+  const maturity = policy.maturity;
+  const baloo = policy.baloo;
   const hasSetup = Boolean(service.setup);
   const card = makeElement("article", `service-card${service.url ? "" : " info-card"}${hasSetup ? " has-setup" : ""}`);
   card.dataset.search = [
@@ -43,6 +47,9 @@ function serviceCard(service) {
     service.auth || "",
     service.access || "",
     service.scope || "",
+    maturity || "",
+    baloo?.available ? "AI available" : baloo ? "AI unavailable" : "",
+    baloo?.detail || "",
     ...(service.channels || []),
     ...(service.tags || []),
     ...(service.setup?.steps || []),
@@ -91,6 +98,20 @@ function serviceCard(service) {
 
   const meta = makeElement("div", "service-meta");
   if (service.scope) meta.append(makeElement("span", "scope", service.scope));
+  if (maturity) {
+    const maturityLabel = maturity === "experimental" ? "Experimental" : "Stable";
+    meta.append(makeElement("span", `policy-badge maturity-${maturity}`, maturityLabel));
+  }
+  if (baloo) {
+    const balooLabel = baloo.available
+      ? `Baloo${baloo.detail ? ` · ${baloo.detail}` : ""}`
+      : "No Baloo access";
+    const balooBadge = makeElement("span", `policy-badge baloo-${baloo.available ? "available" : "unavailable"}`, balooLabel);
+    balooBadge.title = baloo.available
+      ? `Available through Baloo${baloo.detail ? `: ${baloo.detail}` : ""}`
+      : "Baloo has no direct tool access to this service";
+    meta.append(balooBadge);
+  }
   if (service.network) {
     const network = makeElement("span", `network ${service.network === "home" ? "network-home" : ""}`);
     network.append(makeElement("i"), document.createTextNode(service.network === "home" ? "Home / Tailscale" : "Anywhere"));
@@ -98,7 +119,6 @@ function serviceCard(service) {
   }
   if (service.access) meta.append(makeElement("span", "access-badge", service.access));
   if (service.auth) meta.append(makeElement("span", "auth-badge", service.auth));
-  for (const tag of service.tags || []) meta.append(makeElement("span", "tag", tag));
 
   primary.append(top, body, meta);
   card.append(primary);
@@ -191,6 +211,12 @@ async function fetchCatalog(view = "") {
   return response.json();
 }
 
+async function fetchCapabilityPolicy() {
+  const response = await fetch("/capability-policy.json", { cache: "no-store", credentials: "same-origin" });
+  if (!response.ok) throw new Error(`Capability policy returned ${response.status}`);
+  return response.json();
+}
+
 async function switchView(view) {
   viewSelect.disabled = true;
   try {
@@ -230,10 +256,12 @@ function filterCatalog() {
 
 async function loadPortal() {
   try {
-    const [initialCatalog, identityResponse] = await Promise.all([
+    const [initialCatalog, initialPolicy, identityResponse] = await Promise.all([
       fetchCatalog(),
+      fetchCapabilityPolicy(),
       fetch("/whoami", { cache: "no-store", credentials: "same-origin" })
     ]);
+    capabilityPolicy = initialPolicy;
     catalog = initialCatalog;
     renderCatalog(catalog);
 
