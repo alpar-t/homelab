@@ -1,0 +1,249 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: node-storage-health
+  namespace: node-config
+data:
+  check-node-storage.sh: |
+    #!/bin/sh
+    set -u
+
+    health_dir=/health
+    state_dir=/state
+    issues=/tmp/node-storage-health-issues
+    var_path=/host-var
+    sys_block=/host-sys/block
+
+    var_warn_pct=75
+    var_critical_pct=85
+    inode_warn_pct=75
+    inode_critical_pct=85
+    free_warn_kib=104857600     # 100 GiB
+    free_critical_kib=52428800  # 50 GiB
+    temperature_warn_c=65
+    temperature_critical_c=75
+    wear_warn_pct=80
+    wear_critical_pct=95
+
+    mkdir -p "$health_dir" "$state_dir"
+
+    number() {
+      printf '%s\n' "$1" | tr -d ',% ' | sed 's/^0x//'
+    }
+
+    safe_name() {
+      printf '%s\n' "$1" | sed 's#[^A-Za-z0-9_.-]#_#g'
+    }
+
+    add_issue() {
+      severity=$1
+      shift
+      printf '%s: %s\n' "$severity" "$*" >> "$issues"
+    }
+
+    check_threshold() {
+      label=$1
+      value=$2
+      warn=$3
+      critical=$4
+      unit=$5
+      if [ "$value" -ge "$critical" ]; then
+        add_issue CRITICAL "$label ${value}${unit} (critical >= ${critical}${unit})"
+      elif [ "$value" -ge "$warn" ]; then
+        add_issue WARNING "$label ${value}${unit} (warning >= ${warn}${unit})"
+      fi
+    }
+
+    check_counter_increase() {
+      device=$1
+      counter=$2
+      value=$3
+      severity=$4
+      key=$(safe_name "${device}_${counter}")
+      baseline="$state_dir/${key}.baseline"
+
+      case "$value" in
+        ''|*[!0-9]*)
+          add_issue WARNING "$device SMART counter $counter is unreadable"
+          return
+          ;;
+      esac
+
+      if [ ! -s "$baseline" ]; then
+        printf '%s\n' "$value" > "$baseline"
+        return
+      fi
+
+      old=$(cat "$baseline" 2>/dev/null || printf '%s' "$value")
+      case "$old" in
+        ''|*[!0-9]*) old=$value ;;
+      esac
+      if [ "$value" -gt "$old" ]; then
+        add_issue "$severity" "$device SMART $counter increased ${old}->${value}; acknowledge by removing $baseline after investigation"
+      fi
+    }
+
+    ata_attribute() {
+      attribute=$1
+      # RAW_VALUE starts at column 10. Some drives append Min/Max details, so
+      # $NF is not reliably the numeric value (notably for temperature).
+      printf '%s\n' "$smart_output" | awk -v name="$attribute" '$2 == name {print $10; exit}' | tr -d ', '
+    }
+
+    check_device() {
+      device=$1
+      model=$2
+
+      smart_output=$(smartctl -a "$device" 2>&1)
+      smart_rc=$?
+      # smartctl uses a bitmask. Bits 0-2 mean invocation/open/command failure;
+      # higher bits describe SMART state and historical logs parsed below.
+      if [ $((smart_rc & 7)) -ne 0 ]; then
+        add_issue CRITICAL "$device ($model) SMART read failed (smartctl rc=$smart_rc)"
+        return
+      fi
+
+      if printf '%s\n' "$smart_output" | grep -Eq 'overall-health.*FAILED|SMART Health Status:.*(BAD|FAILED)'; then
+        add_issue CRITICAL "$device ($model) SMART overall health is failing"
+      fi
+
+      case "$device" in
+        /dev/nvme*)
+          critical_warning=$(number "$(printf '%s\n' "$smart_output" | awk -F: '/Critical Warning:/ {print $2; exit}')")
+          case "$critical_warning" in
+            ''|*[!0-9a-fA-F]*) add_issue WARNING "$device critical-warning field is unreadable" ;;
+            *)
+              if [ $((0x$critical_warning)) -ne 0 ]; then
+                add_issue CRITICAL "$device NVMe critical warning is 0x$critical_warning"
+              fi
+              ;;
+          esac
+
+          temperature=$(number "$(printf '%s\n' "$smart_output" | awk -F: '/^Temperature:/ {print $2; exit}' | awk '{print $1}')")
+          case "$temperature" in
+            ''|*[!0-9]*) add_issue WARNING "$device temperature is unreadable" ;;
+            *) check_threshold "$device temperature" "$temperature" "$temperature_warn_c" "$temperature_critical_c" C ;;
+          esac
+
+          spare=$(number "$(printf '%s\n' "$smart_output" | awk -F: '/Available Spare:/ && $1 !~ /Threshold/ {print $2; exit}')")
+          spare_threshold=$(number "$(printf '%s\n' "$smart_output" | awk -F: '/Available Spare Threshold:/ {print $2; exit}')")
+          case "$spare:$spare_threshold" in
+            *[!0-9:]*|:*) add_issue WARNING "$device available-spare fields are unreadable" ;;
+            *)
+              if [ "$spare" -le "$spare_threshold" ]; then
+                add_issue CRITICAL "$device available spare ${spare}% is at/below ${spare_threshold}% threshold"
+              fi
+              ;;
+          esac
+
+          wear=$(number "$(printf '%s\n' "$smart_output" | awk -F: '/Percentage Used:/ {print $2; exit}')")
+          case "$wear" in
+            ''|*[!0-9]*) add_issue WARNING "$device wear percentage is unreadable" ;;
+            *) check_threshold "$device wear" "$wear" "$wear_warn_pct" "$wear_critical_pct" % ;;
+          esac
+
+          media_errors=$(number "$(printf '%s\n' "$smart_output" | awk -F: '/Media and Data Integrity Errors:/ {print $2; exit}')")
+          error_entries=$(number "$(printf '%s\n' "$smart_output" | awk -F: '/Error Information Log Entries:/ {print $2; exit}')")
+          check_counter_increase "$device" media_errors "$media_errors" CRITICAL
+          check_counter_increase "$device" error_log_entries "$error_entries" WARNING
+          ;;
+        *)
+          temperature=$(ata_attribute Temperature_Celsius)
+          [ -n "$temperature" ] || temperature=$(ata_attribute Airflow_Temperature_Cel)
+          case "$temperature" in
+            '') : ;;
+            *[!0-9]*) add_issue WARNING "$device temperature is unreadable" ;;
+            *) check_threshold "$device temperature" "$temperature" "$temperature_warn_c" "$temperature_critical_c" C ;;
+          esac
+
+          pending=$(ata_attribute Current_Pending_Sector)
+          case "$pending" in
+            '') : ;;
+            *[!0-9]*) add_issue WARNING "$device pending-sector count is unreadable" ;;
+            *)
+              if [ "$pending" -gt 0 ]; then
+                add_issue CRITICAL "$device has $pending current pending sectors"
+              fi
+              ;;
+          esac
+
+          for counter in Reallocated_Sector_Ct Offline_Uncorrectable Reported_Uncorrect UDMA_CRC_Error_Count; do
+            value=$(ata_attribute "$counter")
+            [ -n "$value" ] && check_counter_increase "$device" "$counter" "$value" WARNING
+          done
+          ;;
+      esac
+    }
+
+    run_check() {
+      : > "$issues"
+
+      var_line=$(df -Pk "$var_path" | awk 'NR == 2 {gsub(/%/, "", $5); print $4, $5}')
+      set -- $var_line
+      if [ "$#" -ne 2 ]; then
+        add_issue CRITICAL "/var capacity is unreadable"
+        var_available_kib=0
+        var_used_pct=100
+      else
+        var_available_kib=$1
+        var_used_pct=$2
+        check_threshold "/var usage" "$var_used_pct" "$var_warn_pct" "$var_critical_pct" %
+        if [ "$var_available_kib" -le "$free_critical_kib" ]; then
+          add_issue CRITICAL "/var free space is $((var_available_kib / 1048576))GiB (critical <= 50GiB)"
+        elif [ "$var_available_kib" -le "$free_warn_kib" ]; then
+          add_issue WARNING "/var free space is $((var_available_kib / 1048576))GiB (warning <= 100GiB)"
+        fi
+      fi
+
+      inode_used_pct=$(df -Pi "$var_path" | awk 'NR == 2 {gsub(/%/, "", $5); print $5}')
+      case "$inode_used_pct" in
+        ''|*[!0-9]*) add_issue CRITICAL "/var inode usage is unreadable" ;;
+        *) check_threshold "/var inode usage" "$inode_used_pct" "$inode_warn_pct" "$inode_critical_pct" % ;;
+      esac
+
+      device_count=0
+      seen_devices=' '
+      for block_path in "$sys_block"/nvme*n1 "$sys_block"/sd*; do
+        [ -e "$block_path" ] || continue
+        block_name=${block_path##*/}
+        model=$(cat "$block_path/device/model" 2>/dev/null | tr -s ' ' | sed 's/^ //;s/ $//')
+        case "$model" in
+          *VIRTUAL-DISK*|*Virtual*|*iSCSI*|*IET*) continue ;;
+        esac
+        case "$block_name" in
+          nvme*n1) device="/dev/${block_name%n1}" ;;
+          *) device="/dev/$block_name" ;;
+        esac
+        case "$seen_devices" in *" $device "*) continue ;; esac
+        seen_devices="$seen_devices$device "
+        device_count=$((device_count + 1))
+        check_device "$device" "${model:-unknown model}"
+      done
+
+      if [ "$device_count" -eq 0 ]; then
+        add_issue CRITICAL "no physical NVMe/SATA devices were discovered"
+      fi
+
+      if [ -s "$issues" ]; then
+        if grep -q '^CRITICAL:' "$issues"; then
+          level=CRITICAL
+        else
+          level=WARNING
+        fi
+        details=$(tr '\n' ';' < "$issues" | sed 's/;$//;s/;/; /g')
+        printf '%s node=%s %s\n' "$level" "${NODE_NAME:-unknown}" "$details" > "$health_dir/status"
+        rm -f "$health_dir/ready"
+      else
+        printf 'OK node=%s /var=%s%% inodes=%s%% free=%sGiB physical_devices=%s\n' \
+          "${NODE_NAME:-unknown}" "$var_used_pct" "$inode_used_pct" \
+          "$((var_available_kib / 1048576))" "$device_count" > "$health_dir/status"
+        : > "$health_dir/ready"
+      fi
+
+      cat "$health_dir/status"
+    }
+
+    while true; do
+      run_check
+      sleep 60
+    done

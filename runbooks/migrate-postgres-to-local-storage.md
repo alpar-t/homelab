@@ -546,9 +546,9 @@ taking another destructive step.
 
 ## Tracking checklist
 
-- [ ] Add `/var` capacity and NVMe health alerts
-- [ ] Update node-maintenance procedure for local CNPG PVCs
-- [ ] Decide and document CNPG PDB policy
+- [x] Add `/var`, inode, NVMe, and SATA SMART health alerts
+- [x] Update node-maintenance procedure for local CNPG PVCs
+- [x] Enable CNPG-managed PDBs and document the maintenance policy
 - [x] Install and verify the CNPG 1.30 `kubectl` plugin
 - [x] Migrate `tandoor-db`
 - [x] Validate Tandoor's normal post-migration backup

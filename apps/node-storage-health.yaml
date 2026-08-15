@@ -1,0 +1,24 @@
+# Per-node /var capacity and physical-drive SMART health monitor.
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: node-storage-health
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-19"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/alpar-t/homelab.git
+    targetRevision: main
+    path: config/node-storage-health/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: node-config
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

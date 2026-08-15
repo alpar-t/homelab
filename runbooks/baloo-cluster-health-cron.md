@@ -22,6 +22,9 @@ have dropped those too).
 - **Scoped tools:** `k8s__kubectl_get,k8s__kubectl_describe` only — this is the
   biggest lever; the unscoped agent loads ~200 trek tools + maps/hass/browser/
   searxng schemas on every run.
+- **Node storage:** explicitly checks that every `node-storage-health` DaemonSet
+  pod is Ready. On failure it describes the current pod and pages the exact
+  `/var`, inode, NVMe, or SATA SMART readiness-probe reason.
 - **Delivery:** `announce` on WhatsApp to `${BALOO_OWNER_PHONE}`.
 - **All-clear token:** the run replies the cron silent token `NO_REPLY` (not
   `HEARTBEAT_OK`) so nothing is delivered; a real problem returns one terse line.

@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-storage-health
+  namespace: node-config
+  labels:
+    app.kubernetes.io/name: node-storage-health
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: node-storage-health
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      # A pre-existing health failure must not prevent the corrected collector
+      # from rolling out to the other nodes.
+      maxUnavailable: 100%
+  template:
+    metadata:
+      annotations:
+        configmap.reloader.stakater.com/reload: node-storage-health
+      labels:
+        app.kubernetes.io/name: node-storage-health
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: system-node-critical
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: health
+          image: docker.io/prometheuscommunity/smartctl-exporter:v0.14.0@sha256:cfe22c36d7d2fac48ebf619707305acb65eb0fb670656eb80f356e606d782bc1
+          command:
+            - /bin/sh
+            - /config/check-node-storage.sh
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          securityContext:
+            privileged: true
+            runAsUser: 0
+            readOnlyRootFilesystem: true
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - cat /health/status 2>/dev/null; test -f /health/ready
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 1
+          resources:
+            requests:
+              cpu: 10m
+              memory: 24Mi
+            limits:
+              cpu: 200m
+              memory: 96Mi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: health
+              mountPath: /health
+            - name: state
+              mountPath: /state
+            - name: tmp
+              mountPath: /tmp
+            - name: host-var
+              mountPath: /host-var
+              readOnly: true
+            - name: host-sys
+              mountPath: /host-sys
+              readOnly: true
+            - name: host-dev
+              mountPath: /dev
+      volumes:
+        - name: config
+          configMap:
+            name: node-storage-health
+            defaultMode: 0555
+        - name: health
+          emptyDir: {}
+        - name: state
+          hostPath:
+            path: /var/lib/node-storage-health
+            type: DirectoryOrCreate
+        - name: tmp
+          emptyDir: {}
+        - name: host-var
+          hostPath:
+            path: /var
+            type: Directory
+        - name: host-sys
+          hostPath:
+            path: /sys
+            type: Directory
+        - name: host-dev
+          hostPath:
+            path: /dev
+            type: Directory

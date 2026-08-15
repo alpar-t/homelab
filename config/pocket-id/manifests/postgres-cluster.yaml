@@ -24,7 +24,7 @@ metadata:
 spec:
   # HA: 2 instances with automatic failover
   instances: 2
-  enablePDB: false
+  enablePDB: true
 
   # Local storage relies on CNPG replication for HA. Never place both database
   # instances on the same node.

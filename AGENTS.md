@@ -140,33 +140,30 @@ Key points to apply: imperative tone with the *why*, keep files lean, avoid rigi
 
 ## Container image references
 
-Always verify image references against the actual registry before writing them into manifests. Do not guess or infer from the GitHub repo name — published image names often differ (e.g. the `rhasspy/wyoming-faster-whisper` repo publishes as `rhasspy/wyoming-whisper` on Docker Hub). Verify by fetching the GitHub README or the registry page directly.
+Always verify image references against the actual registry before writing them
+into manifests. Do not guess or infer from the GitHub repo name — published
+image names often differ (e.g. the `rhasspy/wyoming-faster-whisper` repo
+publishes as `rhasspy/wyoming-whisper` on Docker Hub).
 
-**Lookup workflow — always use these commands, not WebFetch to Docker Hub UI (which is unreliable):**
+**Lookup workflow — always use `scripts/resolve-container-image.py`, not ad-hoc
+`curl`, Docker Hub UI, or `docker manifest` commands.** The helper queries the
+registry with `skopeo`, verifies that the tag has a Linux `amd64` image, and
+returns the manifest-list digest. With no tag it selects the highest stable
+version-like tag; pass an explicit tag when a project uses non-version tags.
 
 ```bash
-# 1. registry.k8s.io images (kubectl, coredns, git-sync, etc.)
-curl -s "https://europe-west10-docker.pkg.dev/v2/k8s-artifacts-prod/images/<name>/tags/list" \
-  | python3 -c "import sys,json; d=json.load(sys.stdin); \
-    tags=[t for t in d.get('tags',[]) if not any(x in t for x in ['alpha','beta','rc','sha'])]; \
-    print('\n'.join(sorted(tags)[-10:]))"
-# Then get digest:
-docker manifest inspect --verbose registry.k8s.io/<name>:<tag> \
-  | python3 -c "import sys,json; d=json.load(sys.stdin); \
-    print(d[0].get('Descriptor',{}).get('digest','') if isinstance(d,list) else '')"
+# Inspect the newest stable version-like tags.
+scripts/resolve-container-image.py registry.k8s.io/kubectl --list
 
-# 2. Docker Hub / ghcr.io images — use Hub REST API, not the web UI:
-curl -s "https://registry.hub.docker.com/v2/repositories/<org>/<image>/tags/?page_size=20&ordering=last_updated" \
-  | python3 -c "import sys,json; d=json.load(sys.stdin); \
-    [print(t['name']) for t in d.get('results',[]) \
-      if not any(x in t['name'] for x in ['sha256','sig','att','metadata'])]"
-# Then get manifest-list digest:
-docker manifest inspect --verbose <image>:<tag> \
-  | python3 -c "import sys,json; d=json.load(sys.stdin); \
-    print(d[0].get('Descriptor',{}).get('digest','') if isinstance(d,list) else '')"
+# Select the highest stable version-like tag and resolve it.
+scripts/resolve-container-image.py prometheuscommunity/smartctl-exporter
+
+# Resolve a deliberately selected tag.
+scripts/resolve-container-image.py registry.k8s.io/kubectl v1.34.6
 ```
 
-Always write image refs as `<registry>/<image>:<tag>@<digest>` for reproducibility.
+Copy the helper's `reference=` value into the manifest. Always write image refs
+as `<registry>/<image>:<tag>@<digest>` for reproducibility.
 
 **`registry.k8s.io/kubectl` is distroless** — no shell, no `cp`, no standard Unix tools.
 To get kubectl into a volume, use an Alpine init container that `wget`s the binary:
