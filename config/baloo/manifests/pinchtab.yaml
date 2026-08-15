@@ -4,7 +4,7 @@
 # PinchTab is exposed to the OpenClaw pod only and initially permits top-level
 # navigation only to OLX. Its /data PVC holds Chromium profiles and service
 # state; disposable instances use temporary profiles that PinchTab removes on
-# stop, while the named `olx` profile survives instance and pod restarts.
+# stop, while the OLX-only `default` profile survives instance and pod restarts.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -78,7 +78,7 @@ data:
       },
       "profiles": {
         "baseDir": "/data/profiles",
-        "defaultProfile": "olx",
+        "defaultProfile": "default",
         "quarantineKeep": 1
       },
       "multiInstance": {
@@ -114,7 +114,7 @@ spec:
       labels:
         app.kubernetes.io/name: pinchtab
       annotations:
-        homelab/config-rev: "2026-08-15b"
+        homelab/config-rev: "2026-08-15c"
         secret.reloader.stakater.com/reload: "pinchtab-baloo"
     spec:
       automountServiceAccountToken: false

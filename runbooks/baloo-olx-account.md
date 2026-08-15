@@ -22,10 +22,13 @@ general browser backend until this evaluation is complete.
   JavaScript evaluation, cookies API access, downloads, uploads, network
   interception, clipboard access, macros, file URLs, and state export stay
   disabled. Interactive screencast is enabled for operator handoff.
-- The named `olx` Chromium profile lives at `/data/profiles/olx` on the
-  `pinchtab-data` PVC. Login cookies and browser state survive instance and pod
-  restarts. The PVC uses `longhorn-ssd-noreplica`: it is replaceable login state,
-  receives no recurring backup, and loss requires signing in again.
+- The OLX Chromium profile lives at `/data/profiles/default` on the
+  `pinchtab-data` PVC. PinchTab 0.15.1 hardcodes `default` when its orchestrator
+  shorthand routes auto-launch; `profiles.defaultProfile` does not rename that
+  profile. The service and tool are OLX-only, so the generic name does not mix
+  account state. Login cookies and browser state survive instance and pod
+  restarts. The PVC uses `longhorn-ssd-noreplica`: it is replaceable login
+  state, receives no recurring backup, and loss requires signing in again.
 - PinchTab uses the `simple` strategy. A shorthand browser request lazily starts
   one instance with the default `olx` profile. Explicit orchestration requests
   can start additional instances with separate persistent or disposable
@@ -141,7 +144,7 @@ kubectl -n baloo get secret pinchtab-baloo \
 5. Start an explicit named test profile, record state, restart that instance,
    and verify the state remains. Restart the PinchTab pod and repeat.
 6. Verify a second instance cannot open a profile already locked by the first.
-7. Log into OLX, restart PinchTab, and confirm the named `olx` profile remains
+7. Log into OLX, restart PinchTab, and confirm the OLX-only `default` profile remains
    authenticated. Exercise saved-search and unread-message drafting; do not send
    a reply without a second-message confirmation.
 8. Confirm Browserless still handles ordinary `browser` calls.

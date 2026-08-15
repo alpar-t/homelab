@@ -28,7 +28,7 @@ spec:
       labels:
         app.kubernetes.io/name: openclaw
       annotations:
-        homelab/config-rev: "2026-08-15c"
+        homelab/config-rev: "2026-08-15d"
         secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo,paperless-baloo-token,olx-baloo,court-case-baloo,pinchtab-baloo"
     spec:
       automountServiceAccountToken: false
