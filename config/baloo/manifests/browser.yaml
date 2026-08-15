@@ -27,10 +27,6 @@ metadata:
     app.kubernetes.io/name: browser
 spec:
   replicas: 1
-  # The OLX Chromium user-data directory is on an RWO PVC. Stop the old pod
-  # before starting its replacement so two Browserless instances never use it.
-  strategy:
-    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: browser
@@ -68,9 +64,9 @@ spec:
               # prior one-minute ceiling; OpenClaw jobs retain their own limits.
               value: "900000"
             - name: CONCURRENT
-              # Persistent sessions for cluster, court-case, and olx, plus a
-              # short CDP reachability handshake and one overlap/recovery slot.
-              value: "5"
+              # Sessions for cluster and court-case, plus a short CDP
+              # reachability handshake and one overlap/recovery slot.
+              value: "4"
             - name: TOKEN
               valueFrom:
                 secretKeyRef:
@@ -103,36 +99,12 @@ spec:
           volumeMounts:
             - name: dshm
               mountPath: /dev/shm
-            # Only the olx profile opts into this path through Browserless's
-            # userDataDir launch option; other profiles remain ephemeral.
-            - name: olx-profile
-              mountPath: /profiles/olx
       volumes:
         # Chromium crashes with the default 64Mi /dev/shm; give it room.
         - name: dshm
           emptyDir:
             medium: Memory
             sizeLimit: 1Gi
-        - name: olx-profile
-          persistentVolumeClaim:
-            claimName: browser-olx-profile
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: browser-olx-profile
-  namespace: baloo
-  labels:
-    app.kubernetes.io/name: browser
-spec:
-  accessModes:
-    - ReadWriteOnce
-  # Replaceable login state: keep it fast, local to one Longhorn replica, and
-  # out of recurring backups. Re-authentication is the recovery procedure.
-  storageClassName: longhorn-ssd-noreplica
-  resources:
-    requests:
-      storage: 2Gi
 ---
 apiVersion: v1
 kind: Service

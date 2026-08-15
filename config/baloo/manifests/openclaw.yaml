@@ -28,8 +28,8 @@ spec:
       labels:
         app.kubernetes.io/name: openclaw
       annotations:
-        homelab/config-rev: "2026-08-15b"
-        secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo,paperless-baloo-token,olx-baloo,court-case-baloo"
+        homelab/config-rev: "2026-08-15c"
+        secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo,paperless-baloo-token,olx-baloo,court-case-baloo,pinchtab-baloo"
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -165,6 +165,13 @@ spec:
                   name: baloo-secrets
                   key: BROWSER_CDP_TOKEN
                   optional: true
+            # Control-plane token for the isolated PinchTab canary. It is
+            # rendered into the plugin config, never into an agent prompt.
+            - name: PINCHTAB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: pinchtab-baloo
+                  key: token
             # Dedicated, non-admin OpenCloud account. Keep these optional while
             # staging: creating the Secret triggers Reloader and makes the
             # read-only Newjoy WebDAV MCP available without a broken rollout.
@@ -214,19 +221,20 @@ spec:
               readOnly: true
             - name: rendered
               mountPath: /rendered
-        # Keep state-installed plugins (whatsapp, browser) in lockstep with the
-        # pinned core image. Plugins live in the /state PVC and are installed
-        # once, so a core image bump leaves them stale — that drift shipped a
-        # whatsapp plugin without inbound location parsing (2026-07-06). This
-        # resolves each tracked plugin to the ClawHub version compatible with
-        # the running core. Non-fatal: if ClawHub is unreachable at boot we keep
-        # the last-good plugin already on the PVC rather than crash-looping.
+        # Install the reviewed PinchTab canary plugin at an exact version, then
+        # keep all state-installed plugins in lockstep with the pinned core.
+        # Existing tracked updates remain non-fatal so a transient registry
+        # outage does not replace last-good plugin state.
         - name: plugin-sync
           image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
           command:
             - sh
             - -c
-            - node /app/dist/index.js plugins update --all || true
+            - |
+              if ! node /app/dist/index.js plugins inspect pinchtab >/dev/null 2>&1; then
+                node /app/dist/index.js plugins install npm:@pinchtab/pinchtab@0.15.1 --pin
+              fi
+              node /app/dist/index.js plugins update --all || true
           env:
             - name: HOME
               value: /state/home
@@ -385,7 +393,7 @@ spec:
 
         # Credential-isolating OLX login helper. Only this sidecar receives the
         # account email/password; the LLM-facing tool returns status + tab id.
-        # All subsequent OLX navigation uses OpenClaw's ordinary browser tool.
+        # All subsequent OLX navigation uses the explicit PinchTab tool.
         - name: olx-auth-mcp
           image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
           imagePullPolicy: IfNotPresent
@@ -397,11 +405,13 @@ spec:
               containerPort: 18803
               protocol: TCP
           env:
-            - name: OPENCLAW_GATEWAY_TOKEN
+            - name: PINCHTAB_URL
+              value: http://pinchtab.baloo.svc.cluster.local:9867
+            - name: PINCHTAB_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: baloo-secrets
-                  key: OPENCLAW_GATEWAY_TOKEN
+                  name: pinchtab-baloo
+                  key: token
             - name: OLX_EMAIL
               valueFrom:
                 secretKeyRef:
