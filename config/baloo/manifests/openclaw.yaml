@@ -71,15 +71,15 @@ spec:
             - name: github-app-key
               mountPath: /var/run/secrets/github-app
               readOnly: true
-        # The Paperless MCP sidecar receives only this subdirectory from the
-        # shared state PVC. Create it before kubelet resolves the subPath mount,
-        # including on a newly provisioned state volume.
+        # Media helpers receive only these subdirectories from the shared state
+        # PVC. Create them before kubelet resolves the subPath mounts, including
+        # on a newly provisioned state volume.
         - name: prepare-inbound-media
           image: busybox:1.37@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
           command:
             - sh
             - -c
-            - mkdir -p /state/media/inbound
+            - mkdir -p /state/media/inbound /state/media/tool-image-generation
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
@@ -391,8 +391,8 @@ spec:
               mountPath: /var/run/secrets/github-app
               readOnly: true
 
-        # Credential and inbound-photo boundary for OLX. Only this sidecar sees
-        # the password and the read-only WhatsApp/WebChat attachment directory.
+        # Credential and photo boundary for OLX. Only this sidecar sees the
+        # password plus the read-only inbound and image-tool output directories.
         # Navigation and listing fields remain LLM-driven through PinchTab.
         - name: olx-auth-mcp
           image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
@@ -426,6 +426,8 @@ spec:
                   optional: true
             - name: OLX_INBOUND_MEDIA_DIR
               value: /state/media/inbound
+            - name: OLX_GENERATED_MEDIA_DIR
+              value: /state/media/tool-image-generation
           livenessProbe:
             exec:
               command:
@@ -466,6 +468,10 @@ spec:
             - name: state
               mountPath: /state/media/inbound
               subPath: media/inbound
+              readOnly: true
+            - name: state
+              mountPath: /state/media/tool-image-generation
+              subPath: media/tool-image-generation
               readOnly: true
             - name: tmp
               mountPath: /tmp

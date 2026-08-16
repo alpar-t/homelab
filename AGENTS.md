@@ -23,7 +23,7 @@ Vaultwarden client compatibility monitoring and safe upgrade procedure:
 Baloo's read-only OpenCloud/Newjoy MCP credential setup and validation:
 `runbooks/baloo-opencloud-mcp.md`.
 
-Baloo's OLX account skill, credential isolation, and validation procedure:
+Baloo's public Kubernetes deployment checks for OLX integration:
 `runbooks/baloo-olx-account.md`.
 
 Baloo's Paperless document MCP account, credential, and validation procedure:
