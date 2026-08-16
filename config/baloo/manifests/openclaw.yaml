@@ -653,6 +653,66 @@ spec:
               subPath: media/inbound
               readOnly: true
 
+        # The community Paperless server accepts base64 or absolute paths, but
+        # OpenClaw presents channel attachments as media://inbound/<id>. Keep
+        # that channel-facing reference opaque to the model and translate it to
+        # the read-only shared path before forwarding the MCP request.
+        - name: paperless-media-proxy
+          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
+          imagePullPolicy: IfNotPresent
+          command:
+            - node
+            - /git/link/openclaw/tools/paperless-media-proxy.js
+          ports:
+            - name: paperless-proxy
+              containerPort: 18805
+              protocol: TCP
+          env:
+            - name: PAPERLESS_MCP_UPSTREAM_URL
+              value: http://127.0.0.1:3000
+            - name: PAPERLESS_MCP_PROXY_PORT
+              value: "18805"
+            - name: PAPERLESS_MCP_INBOUND_DIR
+              value: /state/media/inbound
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: paperless-proxy
+            failureThreshold: 30
+            periodSeconds: 2
+            timeoutSeconds: 1
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: paperless-proxy
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: paperless-proxy
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+              readOnly: true
+
         # OpenAI-compatible synchronous image API for clients such as Open
         # WebUI. The agent still decides when to call generate_image/edit_image;
         # this sidecar only adapts those client tool calls to OpenClaw's image

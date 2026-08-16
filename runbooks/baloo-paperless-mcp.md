@@ -98,6 +98,14 @@ the rest of the OpenClaw state volume. `PAPERLESS_MCP_UPLOAD_PATHS` confines the
 community server's `file_path` upload mode to the same directory and resolves
 symlinks before checking the boundary.
 
+Channel attachments are presented to the agent as
+`media://inbound/<id>`. The local `paperless-media-proxy` sidecar rewrites that
+value only for `post_document.file_path`, producing
+`/state/media/inbound/<id>` before forwarding the authenticated MCP request to
+the community server. It rejects cross-bucket, nested, traversal-shaped, and
+malformed media references. This keeps the model from needing raw bytes or from
+guessing container-specific paths.
+
 The API token is not present in the Paperless sidecar environment. OpenClaw
 sends it as a Bearer header on each MCP request, and the server rejects
 unauthenticated HTTP requests. There is no Service for the sidecar.
@@ -149,6 +157,14 @@ supplied.
    ```bash
    kubectl -n baloo exec deployment/openclaw -c openclaw -- \
      openclaw mcp doctor paperless --probe
+   ```
+
+   Confirm the adapter is ready and that both Paperless containers are present:
+
+   ```bash
+   kubectl -n baloo get pod -l app.kubernetes.io/name=openclaw \
+     -o jsonpath='{range .items[0].status.containerStatuses[*]}{.name}{"\t"}{.ready}{"\n"}{end}' \
+     | grep '^paperless-'
    ```
 
 3. In both `Baloo — Alpar` and `Baloo — Kinga`, ask for a known document using
