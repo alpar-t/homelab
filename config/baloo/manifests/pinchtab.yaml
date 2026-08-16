@@ -52,7 +52,7 @@ data:
         "allowCookies": false,
         "allowNetworkIntercept": false,
         "allowFileScheme": false,
-        "allowUpload": false,
+        "allowUpload": true,
         "allowClipboard": false,
         "allowStateExport": false,
         "enableActionGuards": true,
@@ -114,7 +114,7 @@ spec:
       labels:
         app.kubernetes.io/name: pinchtab
       annotations:
-        homelab/config-rev: "2026-08-15c"
+        homelab/config-rev: "2026-08-16a"
         secret.reloader.stakater.com/reload: "pinchtab-baloo"
     spec:
       automountServiceAccountToken: false

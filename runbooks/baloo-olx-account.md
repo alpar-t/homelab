@@ -21,7 +21,9 @@ general browser backend until this evaluation is complete.
 - PinchTab permits top-level navigation only to `olx.ro` and its subdomains.
   JavaScript evaluation, cookies API access, downloads, uploads, network
   interception, clipboard access, macros, file URLs, and state export stay
-  disabled. Interactive screencast is enabled for operator handoff.
+  disabled in the agent-facing plugin. PinchTab's server-side upload endpoint
+  is enabled only for the constrained inbound-photo bridge described below.
+  Interactive screencast is enabled for operator handoff.
 - The OLX Chromium profile lives at `/data/profiles/default` on the
   `pinchtab-data` PVC. PinchTab 0.15.1 hardcodes `default` when its orchestrator
   shorthand routes auto-launch; `profiles.defaultProfile` does not rename that
@@ -46,7 +48,7 @@ browser-based account flows: a named persistent profile, a narrowly allowed
 agent/tool, domain restrictions, private network isolation, and explicit human
 confirmation for consequential writes.
 
-## Credential helper
+## Credential and inbound-photo helper
 
 OLX credentials exist only in the `olx-baloo` Kubernetes Secret and the
 `olx-auth-mcp` sidecar environment. The helper receives the PinchTab API token,
@@ -61,6 +63,21 @@ handles the changing page UI without seeing the password.
 CAPTCHA, MFA, and new-device verification require human action. PinchTab's
 handoff record coordinates that pause but is not a lock or security boundary;
 never loop challenge attempts or claim the agent solved a challenge.
+
+The same sidecar exposes `olx-auth__attach_photos`. OpenClaw stores inbound
+WhatsApp and WebChat files under `/state/media/inbound`; the sidecar receives
+only that directory as a read-only PVC subPath, following the proven Paperless
+attachment boundary. It accepts only canonical `media://inbound/<id>`
+references, rejects traversal and symlinks, verifies regular JPEG/PNG/WebP
+bytes, and limits each request to 10 photos, 10 MiB per photo, and 40 MiB total.
+
+The helper verifies that the target tab is currently on HTTPS OLX, base64
+stages the approved bytes through PinchTab, and returns only status/count. It
+does not fill listing text or click Publish. PinchTab separately confines path
+uploads to `<stateDir>/uploads`; no OpenClaw state PVC is mounted in the
+PinchTab pod, so its browser process cannot browse attachment storage or other
+OpenClaw state. Keep the agent-facing PinchTab plugin's `allowUploads` false:
+the helper is the only supported media bridge.
 
 ## Create or rotate secrets
 
@@ -103,10 +120,15 @@ On demand, the skill can:
    language.
 5. Send only the exact proposed reply after explicit confirmation and after
    checking that no newer incoming message changed the context.
+6. Inspect attached product photos, ask only for facts not safely visible,
+   research comparable listings, and propose an exact title, description,
+   category, price, location, delivery choice, and photo order.
+7. Create and publish that new advert only after Alpar approves the complete
+   proposal. Any material revision needs fresh approval; paid promotion,
+   renewal, deletion, and edits to existing adverts remain out of scope.
 
-The first version does not create, edit, renew, promote, or price adverts and
-does not run a recurring poll. Photo inspection, listing creation, negotiation
-limits, and persistent price memory are deferred.
+The workflow remains on-demand and creates no recurring poll. Negotiation
+limits and persistent target-price memory remain separate future work.
 
 ## Operator view for login or CAPTCHA
 
@@ -140,7 +162,8 @@ kubectl -n baloo get secret pinchtab-baloo \
 
 2. Confirm the runtime plugin is exactly `0.15.1`, its compatibility alias is
    disabled, and `alpar` alone has the `pinchtab` tool.
-3. Probe `olx-auth` and verify the helper fills an OLX login tab without
+3. Probe `olx-auth` and verify it exposes exactly `fill_credentials` and
+   `attach_photos`. Confirm the credential helper fills an OLX login tab without
    submitting it.
 4. Start two explicit disposable instances and confirm they have distinct
    profile directories and those directories disappear when stopped.
@@ -150,7 +173,13 @@ kubectl -n baloo get secret pinchtab-baloo \
 7. Log into OLX, restart PinchTab, and confirm the OLX-only `default` profile remains
    authenticated. Exercise saved-search and unread-message drafting; do not send
    a reply without a second-message confirmation.
-8. Confirm Browserless still handles ordinary `browser` calls.
+8. Send a non-sensitive test image to Baloo. Confirm its canonical inbound
+   media reference resolves in the OLX helper, attach it to OLX's create-ad
+   file input, and verify the thumbnail appears. Stop before publication and
+   remove or abandon the test draft through the normal OLX UI.
+9. Confirm direct absolute paths, `media://outbound`, traversal, symlinks,
+   unsupported file bytes, non-OLX tabs, and more than 10 photos are refused.
+10. Confirm Browserless still handles ordinary `browser` calls.
 
 For rollback, revert the PinchTab manifest/config commits. Browserless remains
 deployed throughout. Argo CD will remove `pinchtab` and its replaceable PVC;

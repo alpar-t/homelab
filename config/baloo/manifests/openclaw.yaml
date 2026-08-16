@@ -28,7 +28,7 @@ spec:
       labels:
         app.kubernetes.io/name: openclaw
       annotations:
-        homelab/config-rev: "2026-08-15e"
+        homelab/config-rev: "2026-08-16a"
         secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo,paperless-baloo-token,olx-baloo,court-case-baloo,pinchtab-baloo"
     spec:
       automountServiceAccountToken: false
@@ -391,9 +391,9 @@ spec:
               mountPath: /var/run/secrets/github-app
               readOnly: true
 
-        # Credential-isolating OLX login helper. Only this sidecar receives the
-        # account email/password; the LLM-facing tool returns status + tab id.
-        # All subsequent OLX navigation uses the explicit PinchTab tool.
+        # Credential and inbound-photo boundary for OLX. Only this sidecar sees
+        # the password and the read-only WhatsApp/WebChat attachment directory.
+        # Navigation and listing fields remain LLM-driven through PinchTab.
         - name: olx-auth-mcp
           image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
           imagePullPolicy: IfNotPresent
@@ -424,6 +424,8 @@ spec:
                   name: olx-baloo
                   key: password
                   optional: true
+            - name: OLX_INBOUND_MEDIA_DIR
+              value: /state/media/inbound
           livenessProbe:
             exec:
               command:
@@ -460,6 +462,10 @@ spec:
           volumeMounts:
             - name: git-repo
               mountPath: /git
+              readOnly: true
+            - name: state
+              mountPath: /state/media/inbound
+              subPath: media/inbound
               readOnly: true
             - name: tmp
               mountPath: /tmp
