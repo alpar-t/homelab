@@ -74,10 +74,10 @@ spec:
             # ===================
             # General Settings
             # ===================
-            # Signups closed — accounts exist; add new users via email invite
+            # Temporarily allow account creation while SMTP is disabled
             - name: SIGNUPS_ALLOWED
-              value: "false"
-            # Allow inviting users via email (requires SMTP)
+              value: "true"
+            # Allow organization invitations without email
             - name: INVITATIONS_ALLOWED
               value: "true"
             # WebSocket notifications for real-time sync
@@ -87,25 +87,7 @@ spec:
             - name: SHOW_PASSWORD_HINT
               value: "false"
             
-            # ===================
-            # SMTP Configuration
-            # ===================
-            # Uses Stalwart as local relay (cluster-internal, no auth needed)
-            - name: SMTP_HOST
-              value: "stalwart.stalwart-mail.svc.cluster.local"
-            - name: SMTP_PORT
-              value: "25"
-            - name: SMTP_FROM
-              valueFrom:
-                secretKeyRef:
-                  name: vaultwarden-smtp
-                  key: from_address
-            - name: SMTP_SECURITY
-              value: "off"
-            # No SMTP auth: Stalwart's port-25 listener advertises no AUTH
-            # mechanism. SMTP_USERNAME/PASSWORD must be UNSET (not empty) —
-            # if defined at all, Vaultwarden's client attempts auth and fails
-            # with "No compatible authentication mechanism was found".
+            # SMTP is intentionally unset for email-free onboarding
             
             # ===================
             # Logging
