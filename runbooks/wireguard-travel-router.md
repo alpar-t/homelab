@@ -153,6 +153,12 @@ kubectl -n wireguard exec deployment/wireguard-home -- wg show wg0
 `latest handshake` should remain under roughly two minutes while the GL is
 online, and transfer counters should increase during the TCP checks.
 
+The configuration passed a physical GL power-cycle test on 2026-08-21:
+`wg_home` started automatically, restored its handshake and split routes,
+dnsmasq retained Pi-hole-first ordering and its 10,000-entry cache, Emby and
+Home Assistant returned HTTP 200, and authenticated access to the Kubernetes
+API at `192.168.1.174:6443` succeeded from a GL LAN client.
+
 WireGuard resolves `torok.go.ro` when the profile starts. If the home public
 IP changes during a trip and the tunnel stops handshaking, stop/start the GL
 profile to resolve the new address. Add an endpoint-refresh cron only after
