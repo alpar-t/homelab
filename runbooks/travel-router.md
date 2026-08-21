@@ -17,10 +17,10 @@ ssh root@192.168.80.1        # OpenWrt/dropbear, root has full busybox shell
 ```
 
 Notes on the box: OpenWrt-based, **busybox** userland — `ping` has no
-fractional `-i`, **no `python3`**, no `lsusb`; use `iwinfo`, `logread`,
-`ip`, and `tailscale` directly. LAN may renumber to `192.168.9.x` when the
-Brovi LTE stick is the WAN (to dodge a subnet clash); the LAN base here is
-`.80.x`.
+fractional `-i`, **no `python3`**, no `lsusb`; use `iwinfo`, `logread`, and
+`ip`. Tailscale was uninstalled on 2026-08-21; commands below are retained as
+historical incident evidence. LAN may renumber to `192.168.9.x` when the Brovi
+LTE stick is the WAN (to dodge a subnet clash); the LAN base here is `.80.x`.
 
 ## Uplink modes
 
@@ -106,7 +106,7 @@ tailscale netcheck                       # NAT type, nearest DERP, UDP:true
 
 ### Chosen tunnel change (2026-08-21)
 
-The GL is moving from Tailscale subnet routing to direct WireGuard. This removes
+The GL moved from Tailscale subnet routing to direct WireGuard. This removes
 the direct-to-DERP path-selection state machine that amplified lossy hotel WiFi
 and uses the existing router-forwarded UDP port plus `torok.go.ro`. It does not
 make a bad 2.4 GHz uplink good, and unlike Tailscale it cannot relay around a

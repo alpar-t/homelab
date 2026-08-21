@@ -21,7 +21,7 @@ deployment; the old Tailscale subnet router is removed during cutover.
 | Home MetalLB VIP | `192.168.1.208` |
 | Home WireGuard address | `10.77.0.1/24` |
 | GL WireGuard address | `10.77.0.2/32` |
-| Routed through WireGuard | `10.77.0.1/32`, home host `/32`s, `192.168.1.0/24` |
+| Routed through WireGuard | `10.77.0.1/32`, Pi-hole `10.43.252.171/32`, home host `/32`s, `192.168.1.0/24` |
 | GL LANs accepted by home | `192.168.80.0/24`, `192.168.9.0/24` |
 | DNS path | Clients → GL dnsmasq cache → Pi-hole ClusterIP `10.43.252.171` through WG |
 | MTU | `1380` |
@@ -113,14 +113,25 @@ Cluster-policy services.
 Do this while physically connected to the GL LAN, so a VPN mistake cannot
 lock out router administration.
 
-1. In the GL admin panel, open **VPN → WireGuard Client → Add Manually**.
-2. Name the group `Home direct`, upload `gl-home.conf`, and apply it.
-3. Stop and disable the GL's Tailscale client before starting WireGuard. Both
-   otherwise try to install `192.168.1.0/24`, making routing unpredictable.
-4. Start the WireGuard profile. Do not enable a VPN kill switch: this is a
-   split tunnel and ordinary internet traffic must continue on the travel WAN.
-5. After the WireGuard checks pass, remove the obsolete Tailscale route and
-   firewall helpers described under cleanup.
+Do not start this profile from **VPN → WireGuard Client**. On this firmware the
+GL UI attaches even a split-AllowedIPs profile to its global `Primary Tunnel`
+and kill switch, which blackholes ordinary internet traffic. The UI profile
+used during the initial import was removed after its values were copied.
+
+Configure a normal OpenWrt `proto=wireguard` interface named `wg_home` in
+`/etc/config/network`, using the keys and endpoint from `gl-home.conf`:
+
+- interface address `10.77.0.2/32`, MTU `1380`;
+- endpoint `torok.go.ro:41641`, keepalive 25 seconds;
+- `route_allowed_ips=1`;
+- allowed IPs `10.77.0.1/32`, `10.43.252.171/32`, the home-service `/32`s,
+  and `192.168.1.0/24`.
+
+Put `wg_home` in its own firewall zone with output accepted, masquerading and
+MTU fixing enabled, then add a `lan` → `wg_home` forwarding. Leave the
+interface without `disabled=1`: netifd then starts it automatically at boot.
+Ordinary internet keeps using the WAN default route because WireGuard has no
+`0.0.0.0/0` AllowedIP.
 
 Verify on the GL:
 
@@ -171,11 +182,18 @@ then make Pi-hole the router's upstream:
    uci set dhcp.@dnsmasq[0].cachesize='10000'
    uci -q delete dhcp.@dnsmasq[0].server
    uci add_list dhcp.@dnsmasq[0].server='/torok.go.ro/1.1.1.1'
-   uci add_list dhcp.@dnsmasq[0].server='10.43.252.171'
    uci add_list dhcp.@dnsmasq[0].server='1.1.1.1'
+   uci add_list dhcp.@dnsmasq[0].server='10.43.252.171'
    uci commit dhcp
    /etc/init.d/dnsmasq restart
    ```
+
+   This GL firmware builds dnsmasq's runtime server list in reverse UCI
+   declaration order. The apparently reversed `1.1.1.1` then Pi-hole entries
+   above are intentional. After restart, `logread -e dnsmasq` must list
+   `10.43.252.171` before generic `1.1.1.1`. A live check on 2026-08-21 showed
+   that declaring Pi-hole first caused public DNS to win despite
+   `strict-order`.
 
 Check the effective setup while connected to the GL LAN (replace `.80.1` with
 `.9.1` if the GL renumbered itself):
@@ -205,7 +223,14 @@ On the GL:
 - remove its `* * * * * /etc/ensure-home-routes.sh` cron entry;
 - remove the Tailscale wait/route block from `/etc/rc.local` and the
   `postrouting_tailscale0_rule` MASQUERADE addition from `/etc/firewall.user`;
+- remove the `tailscale`, `gl-sdk4-tailscale`, and
+  `gl-sdk4-ui-tailscaleview` packages;
 - securely remove any loose copy of `gl-home.conf` after backing up the GL.
+
+The 2026-08-21 cutover retained a mode-`0600` rollback archive and retired
+state only under `/root/`; no active package, init link, process, interface,
+route, cron command, boot hook, firewall hook, or `/etc/config/tailscale`
+remains.
 
 At home, confirm ArgoCD pruned the old Application and namespace:
 
