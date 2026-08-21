@@ -5,10 +5,9 @@
 # emptyDir at /git; OpenClaw reads config and workspaces from /git/link/openclaw/.
 # Writable state (WA session auth, credentials) lives on the Longhorn PVC at /state.
 #
-# Config changes (SOUL.md, AGENTS.md) propagate on the next conversation without restart.
-# openclaw.json changes (bindings, tool policies) require a new pod — the render-config
-# init container bakes the config at startup and CrashLoopBackOff restarts don't re-run it.
-#   kubectl rollout restart deployment/openclaw -n baloo
+# Prompt, helper, and source-config changes propagate from git-sync. The
+# render-config sidecar atomically refreshes /rendered/openclaw.json so OpenClaw
+# can hot-reload supported settings; only restart-required settings need a rollout.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -28,7 +27,7 @@ spec:
       labels:
         app.kubernetes.io/name: openclaw
       annotations:
-        homelab/config-rev: "2026-08-16a"
+        homelab/config-rev: "2026-08-21a"
         secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo,paperless-baloo-token,olx-baloo,court-case-baloo,pinchtab-baloo"
     spec:
       automountServiceAccountToken: false
@@ -294,6 +293,142 @@ spec:
             - name: github-app-key
               mountPath: /var/run/secrets/github-app
               readOnly: true
+
+        # Re-render secret-backed source config after each git-sync update.
+        # Writing and renaming in the same emptyDir makes each update atomic;
+        # parse failures leave the last-good rendered config untouched.
+        - name: render-config
+          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
+          command:
+            - node
+            - -e
+            - |
+              const fs = require('fs');
+              const sourcePath = '/git/link/openclaw/openclaw.json';
+              const renderedPath = '/rendered/openclaw.json';
+              let lastSource;
+              function render() {
+                try {
+                  const source = fs.readFileSync(sourcePath, 'utf8');
+                  if (source === lastSource) return;
+                  const output = source.replace(/\$\{([^}]+)\}/g, (match, key) => process.env[key] ?? match);
+                  JSON.parse(output);
+                  const current = fs.existsSync(renderedPath) ? fs.readFileSync(renderedPath, 'utf8') : '';
+                  if (output !== current) {
+                    const temporaryPath = `${renderedPath}.${process.pid}.tmp`;
+                    fs.writeFileSync(temporaryPath, output, { mode: 0o600 });
+                    fs.renameSync(temporaryPath, renderedPath);
+                    console.log(`render-config: updated ${renderedPath}`);
+                  }
+                  lastSource = source;
+                } catch (error) {
+                  console.error(`render-config: keeping last-good config: ${error.message}`);
+                }
+              }
+              render();
+              setInterval(render, 2000);
+          env:
+            - name: BALOO_OWNER_PHONE
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: BALOO_OWNER_PHONE
+            - name: KINGA_PHONE
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: KINGA_PHONE
+            - name: BALOO_SHEF_GROUP
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: BALOO_SHEF_GROUP
+            - name: BALOO_GARDEN_GROUP
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: BALOO_GARDEN_GROUP
+            - name: BALOO_TRIPS_PALKOEK_GROUP
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: BALOO_TRIPS_PALKOEK_GROUP
+                  optional: true
+            - name: HA_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: HA_TOKEN_READONLY
+            - name: TREK_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: TREK_CLIENT_ID
+            - name: TREK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: TREK_CLIENT_SECRET
+            - name: ACTUAL_MCP_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: ACTUAL_MCP_API_KEY
+            - name: BROWSER_CDP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: BROWSER_CDP_TOKEN
+                  optional: true
+            - name: PINCHTAB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: pinchtab-baloo
+                  key: token
+            - name: OPENCLOUD_WEBDAV_URL
+              valueFrom:
+                secretKeyRef:
+                  name: opencloud-baloo
+                  key: webdav-url
+                  optional: true
+            - name: OPENCLOUD_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: opencloud-baloo
+                  key: username
+                  optional: true
+            - name: OPENCLOUD_APP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: opencloud-baloo
+                  key: app-token
+                  optional: true
+            - name: PAPERLESS_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: paperless-baloo-token
+                  key: token
+                  optional: true
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+              readOnly: true
+            - name: rendered
+              mountPath: /rendered
 
         - name: openclaw
           image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac

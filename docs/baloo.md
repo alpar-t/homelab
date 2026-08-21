@@ -98,19 +98,24 @@ short 08:00–10:00 window.
 - Writable state: `/state` Longhorn PVC
 - Deployment: `config/baloo/manifests/openclaw.yaml`
 
-The `render-config` init container substitutes secret-backed environment
-variables into `openclaw.json`. Changes to bindings, tools, models, MCP servers,
-or the Deployment require:
+The `render-config` init container creates the first secret-backed config before
+startup. A companion sidecar then watches the git-synced source, validates JSON,
+and atomically replaces `/rendered/openclaw.json`. OpenClaw hot-reloads supported
+changes to bindings, tools, models, and MCP servers without restarting the pod.
+
+Deployment changes and settings OpenClaw explicitly reports as
+restart-required still require:
 
 ```bash
 kubectl rollout restart deployment/openclaw -n baloo
 ```
 
-Prompt and managed-cron payload changes are picked up from git without a
-restart. Cron synchronization status is visible with:
+Prompt, helper, source-config, and managed-cron changes are picked up from git
+without a restart. Render and cron synchronization status are visible with:
 
 ```bash
 kubectl -n baloo logs deployment/openclaw -c cron-sync --tail=100
+kubectl -n baloo logs deployment/openclaw -c render-config --tail=100
 ```
 
 ## Trip group model
