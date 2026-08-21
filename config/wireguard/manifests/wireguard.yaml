@@ -118,6 +118,10 @@ spec:
     metadata:
       labels:
         app: wireguard-home
+      annotations:
+        # Bump when start.sh changes so the mounted ConfigMap is applied by a
+        # fresh pod instead of waiting for an unrelated restart.
+        wireguard.home/config-revision: "2026-08-21.1"
     spec:
       automountServiceAccountToken: false
       # Prefer buksi so its Local-policy MetalLB services remain reachable.
