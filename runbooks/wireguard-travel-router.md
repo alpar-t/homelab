@@ -159,6 +159,11 @@ dnsmasq retained Pi-hole-first ordering and its 10,000-entry cache, Emby and
 Home Assistant returned HTTP 200, and authenticated access to the Kubernetes
 API at `192.168.1.174:6443` succeeded from a GL LAN client.
 
+A physical WAN disconnect/reconnect test passed the same day. The Brovi DHCP
+address and default route returned, WireGuard re-handshook without manual
+action, Pi-hole blocking resumed, and Emby, Home Assistant, and authenticated
+Kubernetes access all recovered.
+
 WireGuard resolves `torok.go.ro` when the profile starts. If the home public
 IP changes during a trip and the tunnel stops handshaking, stop/start the GL
 profile to resolve the new address. Add an endpoint-refresh cron only after
