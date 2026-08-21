@@ -115,7 +115,7 @@ without a restart. Render and cron synchronization status are visible with:
 
 ```bash
 kubectl -n baloo logs deployment/openclaw -c cron-sync --tail=100
-kubectl -n baloo logs deployment/openclaw -c render-config --tail=100
+kubectl -n baloo logs deployment/openclaw -c config-renderer --tail=100
 ```
 
 ## Trip group model

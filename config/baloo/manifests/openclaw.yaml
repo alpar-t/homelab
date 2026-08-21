@@ -27,7 +27,7 @@ spec:
       labels:
         app.kubernetes.io/name: openclaw
       annotations:
-        homelab/config-rev: "2026-08-21a"
+        homelab/config-rev: "2026-08-21b"
         secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo,paperless-baloo-token,olx-baloo,court-case-baloo,pinchtab-baloo"
     spec:
       automountServiceAccountToken: false
@@ -297,7 +297,7 @@ spec:
         # Re-render secret-backed source config after each git-sync update.
         # Writing and renaming in the same emptyDir makes each update atomic;
         # parse failures leave the last-good rendered config untouched.
-        - name: render-config
+        - name: config-renderer
           image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
           command:
             - node
