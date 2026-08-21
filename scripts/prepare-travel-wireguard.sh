@@ -89,7 +89,7 @@ umask 077
   echo "PresharedKey = ${gl_preshared_key}"
   # The home-host /32s beat a directly connected hotel 192.168.1.0/24;
   # the broad route covers all other home addresses when there is no clash.
-  echo "AllowedIPs = 10.77.0.1/32, 192.168.1.102/32, 192.168.1.202/32, 192.168.1.203/32, 192.168.1.204/32, 192.168.1.0/24"
+  echo "AllowedIPs = 10.77.0.1/32, 10.43.252.171/32, 192.168.1.102/32, 192.168.1.202/32, 192.168.1.203/32, 192.168.1.204/32, 192.168.1.0/24"
   echo "Endpoint = torok.go.ro:41641"
   echo "PersistentKeepalive = 25"
 } >"${client_config}"

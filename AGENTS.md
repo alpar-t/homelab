@@ -237,12 +237,13 @@ buksi but can reschedule; MetalLB moves the VIP to its node. Keys live only in
 the manually managed `wireguard/wireguard-keys` Secret and the GL profile;
 never commit them. See `runbooks/wireguard-travel-router.md`.
 
-The GL uses its local dnsmasq cache and forwards DNS to the home Pi-hole at
-`192.168.1.202` through WireGuard. Clients must receive the GL itself as their
-DHCP DNS server, not Pi-hole directly, or they bypass the cache. Keep the
-domain-specific public bootstrap resolver for `torok.go.ro`; without it a
-reboot can deadlock DNS and tunnel startup. A strict-order public fallback is
-allowed only after Pi-hole fails.
+The GL uses its local dnsmasq cache and forwards DNS through WireGuard to the
+pinned Pi-hole ClusterIP `10.43.252.171`; the Local-policy MetalLB VIP
+`192.168.1.202` rejects this cross-node pod path. Clients must receive the GL
+itself as their DHCP DNS server, not Pi-hole directly, or they bypass the
+cache. Keep the domain-specific public bootstrap resolver for `torok.go.ro`;
+without it a reboot can deadlock DNS and tunnel startup. A strict-order public
+fallback is allowed only after Pi-hole fails.
 
 ### MetalLB + WireGuard co-location constraint
 

@@ -23,7 +23,7 @@ deployment; the old Tailscale subnet router is removed during cutover.
 | GL WireGuard address | `10.77.0.2/32` |
 | Routed through WireGuard | `10.77.0.1/32`, home host `/32`s, `192.168.1.0/24` |
 | GL LANs accepted by home | `192.168.80.0/24`, `192.168.9.0/24` |
-| DNS path | Clients → GL dnsmasq cache → Pi-hole `192.168.1.202` through WG |
+| DNS path | Clients → GL dnsmasq cache → Pi-hole ClusterIP `10.43.252.171` through WG |
 | MTU | `1380` |
 | NAT keepalive | 25 seconds |
 
@@ -155,8 +155,9 @@ then make Pi-hole the router's upstream:
 
 1. Open **Network → DNS**.
 2. Select **DNS Proxy** and set the proxy server to
-   **`192.168.1.202#53`**. This is the primary Pi-hole reached through
-   WireGuard.
+   **`10.43.252.171#53`**. This is the primary Pi-hole reached through
+   WireGuard. The in-cluster address avoids Pi-hole's Local-policy MetalLB VIP,
+   which rejects cross-node traffic from the WireGuard pod.
 3. Enable **Override DNS Settings for All Clients**. Remove any LAN DHCP option
    that still advertises `192.168.1.202` directly.
 4. In LuCI/SSH, make the dnsmasq behavior explicit. Pi-hole is primary;
@@ -170,7 +171,7 @@ then make Pi-hole the router's upstream:
    uci set dhcp.@dnsmasq[0].cachesize='10000'
    uci -q delete dhcp.@dnsmasq[0].server
    uci add_list dhcp.@dnsmasq[0].server='/torok.go.ro/1.1.1.1'
-   uci add_list dhcp.@dnsmasq[0].server='192.168.1.202'
+   uci add_list dhcp.@dnsmasq[0].server='10.43.252.171'
    uci add_list dhcp.@dnsmasq[0].server='1.1.1.1'
    uci commit dhcp
    /etc/init.d/dnsmasq restart

@@ -15,6 +15,9 @@ metadata:
     metallb.universe.tf/loadBalancerIPs: "192.168.1.202"
 spec:
   type: LoadBalancer
+  # WireGuard travel DNS reaches this stable in-cluster address directly;
+  # pin it so a Service recreation cannot silently break that route.
+  clusterIP: 10.43.252.171
   # Local policy = hot spare behavior:
   # - MetalLB announces IP from one node only
   # - Only the pod on that node receives traffic

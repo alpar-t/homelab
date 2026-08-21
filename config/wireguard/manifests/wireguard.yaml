@@ -69,6 +69,13 @@ data:
     wg-quick up "${config_file}"
 
     iptables -N "${forward_chain}"
+    # Pi-hole's LAN VIP uses externalTrafficPolicy: Local and has no endpoint
+    # on buksi, so traffic from this pod to 192.168.1.202 is rejected by
+    # kube-proxy. Send travel DNS directly to Pi-hole's stable ClusterIP.
+    iptables -A "${forward_chain}" -i "${interface_name}" \
+      -d 10.43.252.171/32 -p udp --dport 53 -j ACCEPT
+    iptables -A "${forward_chain}" -i "${interface_name}" \
+      -d 10.43.252.171/32 -p tcp --dport 53 -j ACCEPT
     iptables -A "${forward_chain}" -i "${interface_name}" \
       -d 192.168.1.0/24 -j ACCEPT
     iptables -A "${forward_chain}" -o "${interface_name}" \
@@ -76,6 +83,10 @@ data:
     iptables -I FORWARD 1 -j "${forward_chain}"
 
     iptables -t nat -N "${nat_chain}"
+    iptables -t nat -A "${nat_chain}" -s 10.77.0.0/24 \
+      -d 10.43.252.171/32 -p udp --dport 53 -j MASQUERADE
+    iptables -t nat -A "${nat_chain}" -s 10.77.0.0/24 \
+      -d 10.43.252.171/32 -p tcp --dport 53 -j MASQUERADE
     iptables -t nat -A "${nat_chain}" -s 10.77.0.0/24 \
       -d 192.168.1.0/24 -j MASQUERADE
     iptables -t nat -A "${nat_chain}" -s 192.168.80.0/24 \
