@@ -126,7 +126,12 @@ Suggested allocation for your homelab:
 | 192.168.1.201 | Paperless FTP |
 | 192.168.1.202 | Pi-hole DNS |
 | 192.168.1.203 | Immich LAN (large uploads) |
-| 192.168.1.204+ | (reserved for future) |
+| 192.168.1.204 | Emby |
+| 192.168.1.205 | qBittorrent peer traffic |
+| 192.168.1.206 | Whisper |
+| 192.168.1.207 | Baloo SearXNG MCP |
+| 192.168.1.208 | Travel WireGuard |
+| 192.168.1.209+ | (reserved for future) |
 
 **Adjust based on your network configuration!**
 
@@ -189,4 +194,3 @@ These are fine for homelab use.
 
 - [MetalLB Official Docs](https://metallb.io/)
 - [MetalLB Layer 2 Mode](https://metallb.io/concepts/layer2/)
-

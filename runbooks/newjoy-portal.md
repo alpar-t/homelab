@@ -91,7 +91,7 @@ shape:
 }
 ```
 
-Use `"network": "home"` for LAN/Tailscale-only links. The UI renders that
+Use `"network": "home"` for LAN/WireGuard-only links. The UI renders that
 constraint but does not proxy the destination.
 
 Maturity and direct Baloo access are centralized in
@@ -240,5 +240,5 @@ ID. After authentication, check that `family_users` sees the family catalog and
 - Everyone sees only account links: confirm oauth2-proxy requests the `groups`
   scope, has `--set-xauthrequest=true`, and ingress forwards
   `X-Auth-Request-Groups`.
-- A local link fails remotely: connect Tailscale; `192.168.1.x` destinations
+- A local link fails remotely: connect through the travel WireGuard; `192.168.1.x` destinations
   intentionally do not pass through Cloudflare or the portal.

@@ -102,9 +102,9 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
 - [x] Frigate NVR
   - [ ] Finish the Home Assistant integration: create/confirm the Mosquitto user, update the `frigate-mqtt` Secret, and verify Frigate events arrive in HA. The broker currently rejects the January 2026 credentials as unauthorized.
 - [x] **Off-LAN SSH access via Cloudflare Access** — see [runbooks/cloudflare-access-ssh.md](runbooks/cloudflare-access-ssh.md). Unblocks bootstrap work (creating secrets, etc.) from anywhere without depending on VPN.
-- [x] **VPN: tear out Headscale, deploy stock Tailscale** — done 2026-06-11. Headscale's TS2021 noise protocol can't be proxied by free Cloudflare Tunnel (bidirectional gRPC-over-HTTP/2 after the 101 upgrade). Replaced with stock Tailscale; subnet router pinned to buksi for MetalLB co-location. See [runbooks/tailscale.md](runbooks/tailscale.md).
-- [ ] **VPN: HA subnet router** — single point of failure today: `tailscale-subnet-router` is `replicas: 1` pinned to buksi, so if buksi is down, remote access to `192.168.1.0/24` (and the GL-MT3000's gateway back home) is lost entirely. Tailscale supports advertising the same subnet from multiple nodes for automatic failover — add a second subnet router on pamacs or pufi. Note: this won't help for MetalLB `externalTrafficPolicy: Local` services (Emby, Immich, arr-stack), which are still only reachable via buksi's path regardless — see co-location constraint in [runbooks/tailscale.md](runbooks/tailscale.md).
-- [x] **Tailscale: Pi-hole as DNS for tailnet devices** — done 2026-06-12. Tailscale admin → DNS → global nameserver `192.168.1.202` (Pi-hole), "Override local DNS" on.
+- [x] **VPN: retire Tailscale in favor of direct WireGuard** — done 2026-08-21 after Tailscale path switching stalled on lossy travel WiFi. The GL uses `torok.go.ro:41641`; see [runbooks/wireguard-travel-router.md](runbooks/wireguard-travel-router.md).
+- [x] **VPN: HA home endpoint** — the router forwards to MetalLB VIP `192.168.1.208`; a single WireGuard pod is softly preferred on buksi and follows the VIP to another node after failure.
+- [x] **Travel DNS: GL cache backed by Pi-hole** — GL clients query local dnsmasq, which forwards to `192.168.1.202` through WireGuard.
 - [x] Deploy [TREK](https://github.com/mauriceboe/TREK) — holiday / trip planner
   - [x] Pocket ID OIDC SSO with group-based admin claim (`trek-admins`)
   - [x] Reusable OIDC provisioner (`scripts/provision-oidc.sh`) for all future apps
@@ -113,7 +113,7 @@ Building a resilient, low-power home lab using Odroid nodes and Kubernetes.
   - [ ] TREK: configure Immich integration
   - [x] TREK: fix OIDC auth failure showing empty trip list instead of error (filed [#1283](https://github.com/mauriceboe/TREK/issues/1283))
 - [x] Configure arr stack (Sonarr/Radarr/Prowlarr) with Emby
-- [x] ~~Configure private network access through Headscale~~ — replaced by stock Tailscale (see above)
+- [x] ~~Configure private network access through Headscale~~ — replaced by direct WireGuard (see above)
 - [x] AI agent: Claude-powered WhatsApp chatbot hooked to [alpar-t/life](https://github.com/alpar-t/life) — deployed as Baloo (OpenClaw)
 - [ ] **Baloo: OpenAI Pro subscription + wire into Baloo** — set up an OpenAI Pro account, add API key to `baloo-secrets`, add the OpenAI provider to `openclaw.json` (model config), evaluate for agents where it outperforms Claude (e.g. image-heavy receipt parsing)
 

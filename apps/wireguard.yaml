@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: tailscale
+  name: wireguard
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -10,10 +10,10 @@ spec:
   source:
     repoURL: https://github.com/alpar-t/homelab
     targetRevision: main
-    path: config/tailscale/manifests
+    path: config/wireguard/manifests
   destination:
     server: https://kubernetes.default.svc
-    namespace: tailscale
+    namespace: wireguard
   syncPolicy:
     automated:
       prune: true

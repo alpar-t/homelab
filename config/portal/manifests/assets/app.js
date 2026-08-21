@@ -119,7 +119,7 @@ function serviceCard(service) {
   }
   if (service.network) {
     const network = makeElement("span", `network ${service.network === "home" ? "network-home" : ""}`);
-    network.append(makeElement("i"), document.createTextNode(service.network === "home" ? "Home / Tailscale" : "Anywhere"));
+    network.append(makeElement("i"), document.createTextNode(service.network === "home" ? "Home / WireGuard" : "Anywhere"));
     meta.append(network);
   }
   if (service.access) meta.append(makeElement("span", "access-badge", service.access));

@@ -1,0 +1,204 @@
+# Direct WireGuard endpoint for the GL-MT3000 travel router.
+#
+# The internet router forwards UDP/41641 to MetalLB VIP 192.168.1.208. A single
+# movable pod is softly preferred on buksi (where Local-policy media services
+# live) and can reschedule to another node without changing keys or the public
+# endpoint. The manually-created wireguard-keys Secret is prepared by
+# scripts/prepare-travel-wireguard.sh and is never stored in git.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wireguard-home
+  namespace: wireguard
+data:
+  start.sh: |
+    #!/bin/sh
+    set -eu
+
+    interface_name="wg0"
+    config_dir="/run/wireguard"
+    config_file="${config_dir}/${interface_name}.conf"
+    forward_chain="WG_TRAVEL_FWD"
+    nat_chain="WG_TRAVEL_NAT"
+
+    remove_firewall_rules() {
+      while iptables -C FORWARD -j "${forward_chain}" 2>/dev/null; do
+        iptables -D FORWARD -j "${forward_chain}" || break
+      done
+      iptables -F "${forward_chain}" 2>/dev/null || true
+      iptables -X "${forward_chain}" 2>/dev/null || true
+
+      while iptables -t nat -C POSTROUTING -j "${nat_chain}" 2>/dev/null; do
+        iptables -t nat -D POSTROUTING -j "${nat_chain}" || break
+      done
+      iptables -t nat -F "${nat_chain}" 2>/dev/null || true
+      iptables -t nat -X "${nat_chain}" 2>/dev/null || true
+    }
+
+    shut_down() {
+      remove_firewall_rules
+      wg-quick down "${config_file}" 2>/dev/null || true
+    }
+
+    trap shut_down EXIT
+    trap 'exit 0' TERM INT
+
+    umask 077
+    mkdir -p "${config_dir}"
+    server_private_key="$(cat /run/keys/server-private-key)"
+    gl_public_key="$(cat /run/keys/gl-public-key)"
+    gl_preshared_key="$(cat /run/keys/gl-preshared-key)"
+
+    cat >"${config_file}" <<EOF
+    [Interface]
+    Address = 10.77.0.1/24
+    ListenPort = 41641
+    PrivateKey = ${server_private_key}
+
+    [Peer]
+    PublicKey = ${gl_public_key}
+    PresharedKey = ${gl_preshared_key}
+    AllowedIPs = 10.77.0.2/32, 192.168.80.0/24, 192.168.9.0/24
+    EOF
+    unset server_private_key gl_public_key gl_preshared_key
+
+    # Clean up chains left by an ungraceful previous container exit, then
+    # install narrowly-scoped forwarding and source NAT for the home LAN.
+    remove_firewall_rules
+    wg-quick up "${config_file}"
+
+    iptables -N "${forward_chain}"
+    iptables -A "${forward_chain}" -i "${interface_name}" \
+      -d 192.168.1.0/24 -j ACCEPT
+    iptables -A "${forward_chain}" -o "${interface_name}" \
+      -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+    iptables -I FORWARD 1 -j "${forward_chain}"
+
+    iptables -t nat -N "${nat_chain}"
+    iptables -t nat -A "${nat_chain}" -s 10.77.0.0/24 \
+      -d 192.168.1.0/24 -j MASQUERADE
+    iptables -t nat -A "${nat_chain}" -s 192.168.80.0/24 \
+      -d 192.168.1.0/24 -j MASQUERADE
+    iptables -t nat -A "${nat_chain}" -s 192.168.9.0/24 \
+      -d 192.168.1.0/24 -j MASQUERADE
+    iptables -t nat -I POSTROUTING 1 -j "${nat_chain}"
+
+    while :; do
+      sleep 3600 &
+      wait "$!" || true
+    done
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wireguard-home
+  namespace: wireguard
+  labels:
+    app: wireguard-home
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: wireguard-home
+  template:
+    metadata:
+      labels:
+        app: wireguard-home
+    spec:
+      automountServiceAccountToken: false
+      # Prefer buksi so its Local-policy MetalLB services remain reachable.
+      # This is soft: after a buksi failure the pod and its MetalLB VIP move to
+      # another node, preserving the tunnel to the rest of the home LAN.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - buksi
+      # Override Kubernetes' five-minute defaults so a dead node causes a
+      # useful WireGuard failover rather than a long DNS outage.
+      tolerations:
+        - key: node.kubernetes.io/not-ready
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 30
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 30
+      terminationGracePeriodSeconds: 15
+      containers:
+        - name: wireguard
+          image: docker.io/linuxserver/wireguard:1.0.20260223-r0-ls120@sha256:3abfd4b82212106e357989750b9c0c9859aa511f5305a9a55c18c8de7198b655
+          command: ["/bin/sh", "/opt/wireguard/start.sh"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+                - NET_ADMIN
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - name: wireguard
+              containerPort: 41641
+              protocol: UDP
+          readinessProbe:
+            exec:
+              command: ["wg", "show", "wg0"]
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["wg", "show", "wg0"]
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          volumeMounts:
+            - name: start-script
+              mountPath: /opt/wireguard
+              readOnly: true
+            - name: keys
+              mountPath: /run/keys
+              readOnly: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+      volumes:
+        - name: start-script
+          configMap:
+            name: wireguard-home
+            defaultMode: 0555
+        - name: keys
+          secret:
+            secretName: wireguard-keys
+            defaultMode: 0400
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wireguard-home
+  namespace: wireguard
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: "192.168.1.208"
+spec:
+  type: LoadBalancer
+  # MetalLB advertises the VIP only from the node with the ready pod. On
+  # reschedule the L2 ownership and UDP flow move together.
+  externalTrafficPolicy: Local
+  selector:
+    app: wireguard-home
+  ports:
+    - name: wireguard
+      port: 41641
+      targetPort: wireguard
+      protocol: UDP

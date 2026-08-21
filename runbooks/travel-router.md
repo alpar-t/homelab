@@ -1,9 +1,10 @@
 # Travel router (GL.iNet GL-MT3000 / Beryl AX)
 
-Portable router for travel + homelab failover. Joins the tailnet as
-`gl-mt3000` (`100.96.142.22`) so remote devices reach the home
-`192.168.1.0/24` through the home subnet router (`k8s-subnet-router`,
-`100.115.237.20`). Background: CLAUDE.md → "Travel network / backup uplink".
+Portable router for travel + homelab failover. Its target home-access path is
+direct, split-tunnel WireGuard to `torok.go.ro:41641`; see
+`runbooks/wireguard-travel-router.md` for preparation, GL cutover, validation,
+and recovery. The old Tailscale client and home subnet router are removed as
+part of the migration.
 
 ## Access
 
@@ -93,12 +94,20 @@ tailscale netcheck                       # NAT type, nearest DERP, UDP:true
 1. **Better uplink.** Plug in the Brovi LTE stick (dedicated data, no hotel
    congestion) or point the WiFi client at the hotel **5 GHz** SSID instead
    of 2.4 GHz ch 6. Either stabilises the direct path and the stalls stop.
-2. **Make DNS survive tunnel flaps.** Don't leave roaming devices pointed at
-   `192.168.1.202`. Set `--accept-dns=false` on travel devices, or change
-   the tailnet global nameserver to a public resolver (or one reachable via
-   a `100.x` tailnet IP) so lookups don't depend on the home-subnet path.
+2. **Make DNS survive tunnel flaps.** LAN clients now query the GL's local
+   dnsmasq cache, which forwards to Pi-hole through WireGuard. Do not advertise
+   `192.168.1.202` directly through DHCP. See the DNS section of
+   `runbooks/wireguard-travel-router.md`.
 3. **Latent risk — subnet collision.** The hotel LAN was also
-   `192.168.1.0/24`, identical to home. Tailscale currently wins via /32
+   `192.168.1.0/24`, identical to home. At the time, Tailscale won via /32
    host routes + a metric-0 `192.168.1.0/24 dev tailscale0`, so it wasn't
    the active fault, but it's fragile. If home hosts become reachable *only
    when* off the hotel WiFi, suspect this and renumber one side.
+
+### Chosen tunnel change (2026-08-21)
+
+The GL is moving from Tailscale subnet routing to direct WireGuard. This removes
+the direct-to-DERP path-selection state machine that amplified lossy hotel WiFi
+and uses the existing router-forwarded UDP port plus `torok.go.ro`. It does not
+make a bad 2.4 GHz uplink good, and unlike Tailscale it cannot relay around a
+hotel that blocks UDP; use the LTE/5 GHz uplink to avoid that failure mode.

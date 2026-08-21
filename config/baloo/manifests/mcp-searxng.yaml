@@ -54,7 +54,7 @@ spec:
             capabilities:
               drop: [ALL]
 ---
-# ClusterIP + LAN LoadBalancer — single service, Cluster policy so Tailscale works from any node
+# ClusterIP + LAN LoadBalancer — Cluster policy keeps it reachable through WireGuard after node failover
 apiVersion: v1
 kind: Service
 metadata:

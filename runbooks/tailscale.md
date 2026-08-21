@@ -1,10 +1,11 @@
-# Tailscale remote access
+# Retired Tailscale remote access
 
-Stock Tailscale subnet router giving off-LAN access to `192.168.1.0/24`.
-Replaced headscale on 2026-06-11 (headscale's TS2021 noise protocol can't be
-proxied by free Cloudflare Tunnel after the HTTP 101 upgrade).
+Historical configuration retained for incident context. The Tailscale subnet
+router was replaced by direct WireGuard after the GL-MT3000's direct/DERP path
+transitions stalled on lossy travel WiFi. Do not recreate this deployment for
+the travel router; use `runbooks/wireguard-travel-router.md`.
 
-## What's deployed
+## What was deployed
 
 - **Namespace**: `tailscale`
 - **Manifests**: `config/tailscale/manifests/`
@@ -14,7 +15,7 @@ proxied by free Cloudflare Tunnel after the HTTP 101 upgrade).
   if `tailscale-state` is wiped. After first run, disable key expiry on the
   device in the Tailscale admin console.
 
-## Tailscale admin console
+## Historical Tailscale admin console
 
 - **Machines**: `k8s-subnet-router` — should show "Expiry disabled" and "Subnets"
 - **Subnet routes**: `192.168.1.0/24` must be approved (blue checkmark)
@@ -58,7 +59,9 @@ kubectl rollout restart deployment/tailscale-subnet-router -n tailscale
 # and update the tailscale-auth secret
 ```
 
-## GL-MT3000 travel router (LAN client gateway)
+## Historical GL-MT3000 Tailscale path
+
+The configuration below is incident history, not a rollback path.
 
 The GL-MT3000 (Tailscale IP `100.96.142.22`) lets devices on its WiFi reach
 `192.168.1.0/24` without installing Tailscale on each device. The GL acts as a

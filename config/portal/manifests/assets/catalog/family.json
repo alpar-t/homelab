@@ -188,7 +188,7 @@
     {
       "id": "home",
       "title": "Home & entertainment",
-      "description": "Control the house from anywhere, watch the family library, and check cameras. Media playback still needs the home network or Tailscale.",
+      "description": "Control the house from anywhere, watch the family library, and check cameras. Media playback still needs the home network or WireGuard.",
       "services": [
         {
           "name": "Smart home",
@@ -228,7 +228,7 @@
             "label": "Install Emby on a device",
             "steps": [
               "Install the Emby app on your phone, tablet, television, or streaming device.",
-              "Connect to the home Wi-Fi or Tailscale and add http://192.168.1.204:8096 as the server.",
+              "Connect to the home Wi-Fi or travel WireGuard and add http://192.168.1.204:8096 as the server.",
               "Sign in with your personal Emby account so watch progress and favourites stay separate."
             ],
             "links": [

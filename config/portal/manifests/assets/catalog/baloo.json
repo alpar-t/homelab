@@ -143,7 +143,7 @@
           "icon": "denied",
           "accent": "#ef7d72",
           "scope": "Network policy",
-          "tags": ["LAN", "cluster", "Tailscale"]
+          "tags": ["LAN", "cluster", "WireGuard"]
         },
         {
           "name": "No self-modification",

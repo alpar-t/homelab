@@ -228,35 +228,37 @@ Access from this workstation:
 When the user asks anything HA-related, default to these — do not look in
 the k3s cluster (it only has the DB).
 
-## Tailscale remote access
+## Travel WireGuard remote access
 
-Stock Tailscale (controlplane.tailscale.com) provides remote access to the LAN
-(`192.168.1.0/24`) via a subnet router pod in the `tailscale` namespace.
+The GL-MT3000 reaches the home `192.168.1.0/24` LAN through direct WireGuard
+at `torok.go.ro:41641/udp`. The internet router forwards that port to MetalLB
+VIP `192.168.1.208`. The single `wireguard-home` pod is softly preferred on
+buksi but can reschedule; MetalLB moves the VIP to its node. Keys live only in
+the manually managed `wireguard/wireguard-keys` Secret and the GL profile;
+never commit them. See `runbooks/wireguard-travel-router.md`.
 
-- **Subnet router is pinned to buksi** (`nodeSelector: kubernetes.io/hostname: buksi`).
-  This is not optional — see the co-location constraint below.
-- **Auth key** lives in the `tailscale-auth` secret (break-glass only; the node
-  identity persists in `tailscale-state` across pod restarts).
-- **DNS**: Tailscale admin → DNS → global nameserver `192.168.1.202` (Pi-hole),
-  "Override local DNS" on. Without this, tailnet devices use carrier/WiFi DNS.
-- **ACL**: `config/tailscale/` — allow-all with `autoApprovers` for the subnet route.
+The GL uses its local dnsmasq cache and forwards DNS to the home Pi-hole at
+`192.168.1.202` through WireGuard. Clients must receive the GL itself as their
+DHCP DNS server, not Pi-hole directly, or they bypass the cache. Keep the
+domain-specific public bootstrap resolver for `torok.go.ro`; without it a
+reboot can deadlock DNS and tunnel startup. A strict-order public fallback is
+allowed only after Pi-hole fails.
 
-### MetalLB + Tailscale co-location constraint
+### MetalLB + WireGuard co-location constraint
 
 kube-proxy drops forwarded traffic in nftables FILTER FORWARD for
 `externalTrafficPolicy: Local` services when no local pod exists on the
-forwarding node. Because Tailscale's iptables-legacy MASQUERADE only fires when
-traffic goes via the cluster overlay (cni0/flannel), cross-node MetalLB traffic
-going out the physical NIC (enp2s0) is dropped before POSTROUTING is reached.
+forwarding node. Cross-node MetalLB traffic going out the physical NIC can be
+dropped before the WireGuard pod's POSTROUTING masquerade is reached.
 
-**Rule**: the subnet router must run on the same node as any MetalLB service
-with `externalTrafficPolicy: Local` that you want reachable via Tailscale.
-Emby, Immich, and arr-stack are all on buksi — hence the pin. Services with
+**Rule**: prefer the WireGuard pod on the same node as any MetalLB service with
+`externalTrafficPolicy: Local` that you want reachable. Emby, Immich, and
+arr-stack are all on buksi — hence the soft affinity. Services with
 `externalTrafficPolicy: Cluster` (whisper, homeassistant-db, paperless-ftp)
 work from any node because kube-proxy DNAT routes them via flannel regardless.
 
-If you ever move Emby or other Local-policy services to a different node, move
-the subnet router nodeSelector with them.
+If you move those Local-policy services, update the WireGuard affinity. Keep
+the internet-router target on the MetalLB VIP, never on a node address.
 
 ## Node workload placement (`workload/cpu-intensive`)
 
@@ -280,7 +282,7 @@ schedule anywhere.
   workload/cpu-intensive=true`); it survives reboots/k3s restarts but not a node
   re-provision — re-apply it if pamacs is rebuilt.
 - **Genuinely pinned, do not add this to them:** arr-stack/emby (MetalLB
-  `Local` + Tailscale, buksi), opencloud core (local-ssd PVC on pufi),
+  `Local` + travel WireGuard, buksi), opencloud core (local-ssd PVC on pufi),
   omada-controller (`hostNetwork` — moving it changes the controller IP and
   disrupts AP/switch adoption).
 
@@ -288,7 +290,7 @@ schedule anywhere.
 
 Portable kit for travel and homelab failover:
 
-- **GL.iNet GL-MT3000 (Beryl AX)** — travel router/Mifi. Default admin: `192.168.8.1` (may renumber to `192.168.9.1` when Brovi is the WAN to avoid subnet conflict). Connected to homelab via Tailscale. SSH access + a Tailscale-stall post-mortem: `runbooks/travel-router.md`.
+- **GL.iNet GL-MT3000 (Beryl AX)** — travel router/Mifi. Default admin: `192.168.8.1` (may renumber to `192.168.9.1` when Brovi is the WAN to avoid subnet conflict). Connects to the homelab through direct WireGuard; setup and the prior Tailscale-stall post-mortem are in `runbooks/travel-router.md` and `runbooks/wireguard-travel-router.md`.
 - **Brovi E3372 USB Surf Stick** — LTE modem plugged into the GL's USB port as WAN uplink. HiLink web UI (SMS inbox, signal) reachable at `192.168.8.1` from the GL's WAN side. Carries a dedicated SIM with its own mobile number and data plan.
 - **WhatsApp Business** — registered on the Brovi SIM number (iPhone, separate from personal WhatsApp). Intended as the interface for an **OpenClaw** AI agent (open-source LLM agent framework, supports WhatsApp).
 

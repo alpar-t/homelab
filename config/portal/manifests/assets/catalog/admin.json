@@ -346,7 +346,7 @@
         {
           "name": "Movies, TV & music",
           "product": "Emby",
-          "description": "Watch the household media library from the LAN or Tailscale.",
+          "description": "Watch the household media library from the LAN or WireGuard.",
           "url": "http://192.168.1.204:8096",
           "icon": "media",
           "accent": "#5bc28a",
@@ -356,7 +356,7 @@
             "label": "Install Emby on a device",
             "steps": [
               "Install the Emby app on your phone, tablet, television, or streaming device.",
-              "Connect to the home Wi-Fi or Tailscale and add http://192.168.1.204:8096 as the server.",
+              "Connect to the home Wi-Fi or travel WireGuard and add http://192.168.1.204:8096 as the server.",
               "Sign in with your personal Emby account so watch progress and favourites stay separate."
             ],
             "links": [

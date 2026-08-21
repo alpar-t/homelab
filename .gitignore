@@ -7,3 +7,5 @@ infrastructure/genesis/ipxe/tftpboot/undionly.kpxe
 *.swp
 *~
 
+# Locally generated WireGuard client profiles and private keys
+.wireguard/

@@ -77,7 +77,7 @@ power cut merely because a drain timed out.
 ## Power off the nodes
 
 Power off `pufi`, then `pamacs`, and keep `buksi` until last because `buksi`
-hosts the Tailscale subnet router. The cluster retains its two-of-three etcd
+normally hosts the WireGuard pod. Its MetalLB VIP can move, and the cluster retains its two-of-three etcd
 quorum until the second node begins shutting down.
 
 ```bash
