@@ -54,8 +54,9 @@ agent denies it. To finish MCP activation:
    `render-config` init container.
 3. Change the MCP Deployment in `deployment.yaml` to one replica.
 4. Change `mcp.servers.actual.enabled` to `true` in Baloo's `openclaw.json`.
-5. Restart OpenClaw after both repositories have synced, because
-   `openclaw.json` changes require a pod restart.
+5. Because this activation also changes a secret-backed environment value,
+   wait for the Reloader rollout (or roll out OpenClaw once). The subsequent
+   `openclaw.json` enablement itself hot-reloads and does not require a restart.
 
 ## Recovery
 

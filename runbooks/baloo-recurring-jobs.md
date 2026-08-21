@@ -36,7 +36,8 @@ last-run timestamp, and remains an 08:00 task.
    create a duplicate.
 5. Leaves all other jobs, including user-created reminders, alone.
 6. Re-reads the file every 60 seconds, so git-sync prompt/job changes do not
-   require a pod restart. A manifest or tool-policy change still does.
+   require a pod restart. The config-renderer also applies tool-policy and
+   other supported `openclaw.json` changes without a restart.
 
 If an optional delivery environment variable such as
 `BALOO_TRIPS_PALKOEK_GROUP` is absent, the corresponding managed jobs are
@@ -55,12 +56,16 @@ The audit checks that every cron tool is allowed by its target agent.
 
 ## Deploy and verify
 
-Changes to `openclaw.json` or the Deployment require a restart:
+After an `openclaw.json` change, verify the renderer and OpenClaw's reload log;
+do not restart the pod:
 
 ```bash
-kubectl rollout restart deployment/openclaw -n baloo
-kubectl -n baloo rollout status deployment/openclaw
+kubectl -n baloo logs deployment/openclaw -c config-renderer --tail=100
+kubectl -n baloo logs deployment/openclaw -c openclaw --tail=200 | grep '\[reload\]'
 ```
+
+Only Deployment changes, secret-backed environment changes, and settings that
+OpenClaw explicitly marks restart-required need a rollout.
 
 Inspect the reconciler and resulting jobs:
 

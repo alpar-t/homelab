@@ -50,8 +50,8 @@ inside the pod when chasing group IDs.
 1. Pick the env-var slot in the private repo's `openclaw/openclaw.json`
    (e.g. `${BALOO_GARDEN_GROUP}`) — or add a new one.
 2. Put the value in the `baloo-secrets` secret. The secret is rendered into
-   the openclaw container by the `render-config` init container; ArgoCD
-   manages it via `apps/baloo.yaml`. Patch directly when iterating:
+   the OpenClaw pod and consumed by both config renderers; ArgoCD manages it via
+   `apps/baloo.yaml`. Patch directly when iterating:
 
    ```bash
    VAL=$(printf '%s' '120363428319977593@g.us' | base64)
@@ -59,6 +59,10 @@ inside the pod when chasing group IDs.
      --type=merge -p "{\"data\":{\"BALOO_GARDEN_GROUP\":\"$VAL\"}}"
    kubectl -n baloo rollout restart deploy/openclaw
    ```
+
+   This rollout is required because Kubernetes does not update container
+   environment variables in place. Ordinary `openclaw.json` binding changes
+   hot-reload through `config-renderer` and do not need it.
 
    For a durable change, update the secret manifest under
    `config/baloo/manifests/` and let Argo reconcile.

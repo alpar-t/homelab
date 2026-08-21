@@ -155,8 +155,8 @@ Google Cloud setup:
    in the project that owns `GOOGLE_MAPS_API_KEY`; Maps Platform billing must
    be active.
 2. If the key has API restrictions, add **Time Zone API** to its allowed APIs.
-3. After deploying and restarting OpenClaw, verify discovery with
-   `openclaw mcp probe google-timezone`.
+3. After both repositories sync and OpenClaw logs a successful config hot
+   reload, verify discovery with `openclaw mcp probe google-timezone`.
 
 Run the deterministic wrapper tests with:
 
