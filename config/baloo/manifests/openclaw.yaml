@@ -556,22 +556,28 @@ spec:
                   name: baloo-secrets
                   key: OPENCLAW_GATEWAY_TOKEN
           startupProbe:
-            httpGet:
-              path: /health
-              port: newjoy-worker
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:18806/health', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
             failureThreshold: 30
             periodSeconds: 2
             timeoutSeconds: 1
           livenessProbe:
-            httpGet:
-              path: /health
-              port: newjoy-worker
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:18806/health', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
             periodSeconds: 30
             timeoutSeconds: 5
           readinessProbe:
-            httpGet:
-              path: /health
-              port: newjoy-worker
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:18806/health', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
             periodSeconds: 10
             timeoutSeconds: 5
           resources:
