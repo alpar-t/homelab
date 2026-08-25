@@ -526,6 +526,81 @@ spec:
               mountPath: /var/run/secrets/github-app
               readOnly: true
 
+        # Run image-heavy Newjoy turns outside the gateway's cgroup. The
+        # loopback-only service admits one organizer run at a time while
+        # preserving the worker's three semantic lanes.
+        - name: newjoy-organizer
+          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
+          imagePullPolicy: IfNotPresent
+          command:
+            - node
+            - /git/link/openclaw/tools/newjoy-organizer-service.js
+          ports:
+            - name: newjoy-worker
+              containerPort: 18806
+              protocol: TCP
+          env:
+            - name: HOME
+              value: /state/home
+            - name: NODE_ENV
+              value: production
+            - name: PATH
+              value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+            - name: OPENCLAW_CONFIG_PATH
+              value: /rendered/openclaw.json
+            - name: OPENCLAW_STATE_DIR
+              value: /state
+            - name: OPENCLAW_GATEWAY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: OPENCLAW_GATEWAY_TOKEN
+          startupProbe:
+            httpGet:
+              path: /health
+              port: newjoy-worker
+            failureThreshold: 30
+            periodSeconds: 2
+            timeoutSeconds: 1
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: newjoy-worker
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: newjoy-worker
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 6Gi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+              readOnly: true
+            - name: rendered
+              mountPath: /rendered
+              readOnly: true
+            - name: state
+              mountPath: /state
+            - name: tmp
+              mountPath: /tmp
+
         # Credential and photo boundary for OLX. Only this sidecar sees the
         # password plus the read-only inbound and image-tool output directories.
         # Navigation and listing fields remain LLM-driven through PinchTab.
