@@ -38,7 +38,7 @@ its own B2 prefix. Preserve these values exactly.
 | --- | --- | --- | ---: | --- |
 | `vaultwarden` | `vaultwarden-db` | `vaultwarden-db` | 30d | daily 02:00 |
 | `pocket-id` | `pocket-id-db` | `pocket-id-db` | 30d | daily 03:00 |
-| `immich` | `immich-db` | `immich-db` | 14d | daily 03:00 |
+| `immich` | `immich-db` | `immich-db` | 14d | daily 05:15 |
 | `paperless-ngx` | `paperless-db` | `paperless-db` | 14d | daily 03:15 |
 | `vikunja` | `vikunja-db` | `vikunja-db` | 30d | daily 03:20 |
 | `stalwart-mail` | `stalwart-db` | `stalwart-db` | 14d | daily 03:30 |

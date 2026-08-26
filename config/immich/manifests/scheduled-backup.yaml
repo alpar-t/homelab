@@ -5,7 +5,9 @@
 # WAL archiving provides continuous protection between base backups
 
 ---
-# Daily base backup at 3:00 AM
+# Daily base backup at 05:15 UTC, after the 03:00-05:00 staggered Zincati
+# maintenance windows. Immich backups take long enough to overlap a node reboot
+# when started at 03:00, which caused repeat Wednesday failures.
 apiVersion: postgresql.cnpg.io/v1
 kind: ScheduledBackup
 metadata:
@@ -14,9 +16,9 @@ metadata:
   labels:
     app: immich
 spec:
-  # Daily at 3:00 AM
+  # Daily at 05:15 UTC
   # CNPG requires 6-field cron (seconds prefix) — 5-field silently fires hourly.
-  schedule: "0 0 3 * * *"
+  schedule: "0 15 5 * * *"
   
   # Which cluster to backup
   cluster:
@@ -27,4 +29,3 @@ spec:
   
   # Immediately trigger first backup when created
   immediate: true
-
