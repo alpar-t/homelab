@@ -1,0 +1,61 @@
+# Delete abandoned Emby offline-download staging directories after 30 days.
+# Emby creates one top-level directory per sync job under /config/sync. Active
+# jobs are much younger than the cutoff; completed downloads remain available
+# for a month before their replaceable server-side conversion is reclaimed.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: emby-sync-cleanup
+  namespace: media
+  labels:
+    app.kubernetes.io/name: emby
+spec:
+  schedule: "17 4 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: emby-sync-cleanup
+        spec:
+          restartPolicy: Never
+          nodeSelector:
+            kubernetes.io/hostname: buksi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+          containers:
+            - name: cleanup
+              image: docker.io/library/alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  find /sync -mindepth 1 -maxdepth 1 -type d -mtime +30 -print -exec rm -rf -- {} +
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+                readOnlyRootFilesystem: true
+              resources:
+                requests:
+                  cpu: 5m
+                  memory: 8Mi
+                limits:
+                  cpu: 100m
+                  memory: 32Mi
+              volumeMounts:
+                - name: sync
+                  mountPath: /sync
+          volumes:
+            - name: sync
+              persistentVolumeClaim:
+                claimName: emby-sync

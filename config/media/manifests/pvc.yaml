@@ -67,6 +67,24 @@ spec:
     requests:
       storage: 20Gi
 ---
+# Replaceable server-side conversions for Emby offline downloads. Keep these
+# off the replicated config SSD: individual sync files are large and Emby
+# stages them until clients finish or abandon their download jobs.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: emby-sync
+  namespace: media
+  labels:
+    app.kubernetes.io/name: emby
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn-hdd-noreplica
+  resources:
+    requests:
+      storage: 100Gi
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

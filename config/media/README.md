@@ -218,10 +218,11 @@ media apps. One login sets a cookie on `.newjoy.ro` — works across all subdoma
 
 | PVC | Class | Size | Purpose |
 |-----|-------|------|---------|
-| qbit-incomplete | longhorn-ssd-noreplica (RWO) | 300Gi | Active torrent downloads (random I/O) |
-| movies-data | longhorn-hdd-noreplica (RWX) | 1.5Ti | Movie downloads + library |
-| tv-data | longhorn-hdd-noreplica (RWX) | 1Ti | TV downloads + library |
-| emby-config | longhorn-ssd | 2Gi | Emby metadata & settings |
+| qbit-incomplete | longhorn-ssd-noreplica (RWO) | 600Gi | Active torrent downloads (random I/O) |
+| movies-data | longhorn-hdd-noreplica (RWO) | 2000Gi | Movie downloads + library |
+| tv-data | longhorn-hdd-noreplica (RWO) | 2000Gi | TV downloads + library |
+| emby-config | longhorn-ssd | 20Gi | Emby metadata & settings |
+| emby-sync | longhorn-hdd-noreplica | 100Gi | Replaceable offline-download conversions; pruned after 30 days |
 | sonarr-config | longhorn-ssd | 1Gi | Sonarr database & settings |
 | radarr-config | longhorn-ssd | 1Gi | Radarr database & settings |
 | prowlarr-config | longhorn-ssd | 1Gi | Prowlarr database & settings |
