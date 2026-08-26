@@ -584,10 +584,10 @@ spec:
             timeoutSeconds: 5
           resources:
             requests:
-              cpu: 500m
+              cpu: "2"
               memory: 8Gi
             limits:
-              cpu: "2"
+              cpu: "4"
               memory: 12Gi
           securityContext:
             runAsNonRoot: true
