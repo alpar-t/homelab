@@ -39,7 +39,7 @@ spec:
                 - -c
                 - |
                   set -eu
-                  find /sync -mindepth 1 -maxdepth 1 -type d -mtime +30 -print -exec rm -rf -- {} +
+                  find /sync -mindepth 1 -maxdepth 1 -type d ! -name lost+found -mtime +30 -print -exec rm -rf -- {} +
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:
