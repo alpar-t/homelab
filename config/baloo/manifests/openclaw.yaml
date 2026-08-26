@@ -533,6 +533,8 @@ spec:
           image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
           imagePullPolicy: IfNotPresent
           command:
+            - /usr/bin/tini
+            - --
             - node
             - /git/link/openclaw/tools/newjoy-organizer-service.js
           ports:
