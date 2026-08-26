@@ -583,10 +583,10 @@ spec:
           resources:
             requests:
               cpu: 500m
-              memory: 1Gi
+              memory: 8Gi
             limits:
               cpu: "2"
-              memory: 8Gi
+              memory: 12Gi
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
