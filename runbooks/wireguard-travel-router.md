@@ -166,8 +166,76 @@ Kubernetes access all recovered.
 
 WireGuard resolves `torok.go.ro` when the profile starts. If the home public
 IP changes during a trip and the tunnel stops handshaking, stop/start the GL
-profile to resolve the new address. Add an endpoint-refresh cron only after
-inspecting the firmware's generated WireGuard interface name; do not guess it.
+profile to resolve the new address.
+
+### Automatic recovery after an upstream Wi-Fi change
+
+WireGuard has no connected/disconnected process: OpenWrt considers `wg_home`
+up whenever its local interface is configured, even if the peer has stopped
+handshaking. Normally WireGuard recovers automatically after the WAN path
+changes. On 2026-08-27, however, `wg_home` remained locally up with correct
+routes and endpoint DNS while receiving no handshake replies for 7.5 hours;
+restarting only that interface restored the tunnel immediately.
+
+The GL therefore runs `scripts/gl-wireguard-watchdog.sh` once per minute from
+root's crontab:
+
+```cron
+* * * * * /root/gl-wireguard-watchdog.sh
+```
+
+The watchdog treats a handshake older than three minutes as stale, sends a
+probe and waits five seconds for normal recovery, then restarts only `wg_home`
+if it is still stale. Restarts are limited to once per ten minutes so a real
+home outage cannot cause a tight loop. The 25-second keepalive makes the
+three-minute threshold meaningful for this peer; do not reuse it unchanged on
+an idle WireGuard profile without keepalive. Interventions are visible with:
+
+```bash
+logread -e gl-wireguard-watchdog
+```
+
+Install or refresh it from this repository while connected to the GL LAN:
+
+```bash
+scp scripts/gl-wireguard-watchdog.sh root@192.168.80.1:/root/gl-wireguard-watchdog.sh
+ssh root@192.168.80.1 '
+  chmod 0700 /root/gl-wireguard-watchdog.sh
+  grep -qxF "* * * * * /root/gl-wireguard-watchdog.sh" /etc/crontabs/root ||
+    echo "* * * * * /root/gl-wireguard-watchdog.sh" >>/etc/crontabs/root
+  /etc/init.d/cron restart
+'
+```
+
+After installation, exercise the recovery path without waiting for a real
+outage. This bypasses only the pre-restart freshness checks; the normal
+three-minute threshold still validates the recovered handshake:
+
+```bash
+ssh root@192.168.80.1 \
+  'WG_HOME_FORCE_RESTART=true WG_HOME_COOLDOWN=0 /root/gl-wireguard-watchdog.sh'
+```
+
+## Replacement and configuration backup
+
+The home-side manifests, key/profile preparation helper, watchdog, and rebuild
+instructions are source-controlled here. The GL's live UCI configuration is
+not: `/etc/config/network` contains the client private key, and the router also
+stores Wi-Fi credentials and other secrets. Never commit a raw GL configuration
+backup or UCI export.
+
+On firmware 4.8.1, the built-in `sysupgrade` backup covers the relevant UCI
+network, firewall, DHCP/DNS, and wireless files, root's crontab, and SSH keys.
+It does not cover `/root/gl-wireguard-watchdog.sh`; reinstall that file from
+this repository after restoring the backup. Keep a current GL backup encrypted
+and off the router. Restore it only to the same model and preferably the same
+firmware version, then validate the settings in this runbook before relying on
+the tunnel.
+
+Without that encrypted backup or the original mode-`0600` `gl-home.conf`, a
+replacement cannot recover the GL private key from the home-side Kubernetes
+Secret: the server stores only the GL public key. Generate a new GL key pair
+and update both sides as a controlled key rotation instead.
 
 ## Pi-hole through the GL DNS cache
 
