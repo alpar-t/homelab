@@ -118,6 +118,16 @@ spec:
                 secretKeyRef:
                   name: baloo-secrets
                   key: KINGA_PHONE
+            - name: NORA_PHONE
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: NORA_PHONE
+            - name: REBEKA_PHONE
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: REBEKA_PHONE
             - name: BALOO_SHEF_GROUP
               valueFrom:
                 secretKeyRef:
@@ -338,6 +348,16 @@ spec:
                 secretKeyRef:
                   name: baloo-secrets
                   key: KINGA_PHONE
+            - name: NORA_PHONE
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: NORA_PHONE
+            - name: REBEKA_PHONE
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: REBEKA_PHONE
             - name: BALOO_SHEF_GROUP
               valueFrom:
                 secretKeyRef:

@@ -8,8 +8,9 @@ garden, …) to a WhatsApp peer via `bindings[].match.peer`:
 - `kind: group` + a group JID (`<digits>@g.us`) for group chats
 
 The values are interpolated from secrets in `baloo-secrets`
-(`BALOO_OWNER_PHONE`, `KINGA_PHONE`, `BALOO_SHEF_GROUP`, `BALOO_GARDEN_GROUP`,
-…). To wire up a new binding you need the channel ID. WhatsApp doesn't expose
+(`BALOO_OWNER_PHONE`, `KINGA_PHONE`, `NORA_PHONE`, `REBEKA_PHONE`,
+`BALOO_SHEF_GROUP`, `BALOO_GARDEN_GROUP`, …). To wire up a new binding you need
+the channel ID. WhatsApp doesn't expose
 group JIDs in the mobile UI, so the canonical way is to send one message into
 the target chat and read the ID out of OpenClaw's logs.
 
