@@ -69,7 +69,7 @@ spec:
         # FTP server sidecar for scanner uploads
         # Shares the consume volume with Paperless
         - name: ftp-server
-          image: docker.io/stilliard/pure-ftpd:trixie-1.0.50@sha256:41c9aaded1fd06053c500d28415613ca7605ecc39a3e1c2ec4f0a279bd78f253
+          image: docker.io/stilliard/pure-ftpd:trixie-1.0.50@sha256:872002410afd04a369d74429fcdabc39a0d6915fac09d4af916755b2199612aa
           env:
             - name: PUBLICHOST
               value: "192.168.1.201"
