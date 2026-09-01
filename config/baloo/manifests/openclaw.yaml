@@ -629,6 +629,68 @@ spec:
             - name: tmp
               mountPath: /tmp
 
+        # Generic bounded image conversion and manipulation for agents and
+        # OpenCloud adapters. It is reachable only from containers in this pod.
+        - name: image-tools
+          image: ghcr.io/alpar-t/homelab-image-tools:sha-261b6987f2cff1fe09dd90e0df226eaa26769ae3@sha256:55819e619f963361741818cca2ddc7cf6cba3e7e553576cc8c793a8634fd574a
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: image-tools
+              containerPort: 18807
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: IMAGE_TOOLS_HOST
+              value: 127.0.0.1
+            - name: IMAGE_TOOLS_PORT
+              value: "18807"
+          startupProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:18807/health', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
+            failureThreshold: 30
+            periodSeconds: 2
+            timeoutSeconds: 1
+          livenessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:18807/health', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - node
+                - -e
+                - "require('http').get('http://127.0.0.1:18807/health', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "2"
+              memory: 1Gi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: state
+              mountPath: /state
+            - name: tmp
+              mountPath: /tmp
+
         # Credential and photo boundary for OLX. Only this sidecar sees the
         # password plus the read-only inbound and image-tool output directories.
         # Navigation and listing fields remain LLM-driven through PinchTab.
