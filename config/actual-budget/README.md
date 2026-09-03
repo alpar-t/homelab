@@ -14,6 +14,9 @@ ledger; trip-level expenses remain in TREK and are rolled up separately.
   exposes split-transaction writes, and supports authenticated HTTP transport.
 - The MCP has no Ingress. It is reachable only inside the cluster.
 - The MCP is activated after the first budget supplies a Sync ID.
+- MCP connections remain idle for 15 minutes. This exceeds Baloo's 9-minute
+  MCP runtime lifetime, preventing Baloo from reusing a session after the
+  community server has evicted it.
 - Password is the primary server login method so headless API clients can
   authenticate; Pocket ID remains an allowed web login method.
 - Baloo uses Actual's local password identity, not the Pocket ID user. The

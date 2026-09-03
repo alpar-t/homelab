@@ -178,6 +178,11 @@ spec:
               value: /app/data
             - name: LOG_LEVEL
               value: info
+            # Baloo retains an idle MCP runtime for 9 minutes. Keep the
+            # upstream session alive longer so Baloo disposes it first instead
+            # of reusing a server-evicted mcp-session-id.
+            - name: SESSION_IDLE_TIMEOUT_MINUTES
+              value: "15"
           startupProbe:
             httpGet:
               path: /health
