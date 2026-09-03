@@ -59,7 +59,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: generate
-          image: docker.io/bitnami/kubectl:latest@sha256:3220dcc839f55be732a29548043a1ddf635a0dd6c8781b0f2a0bcdc19029c7d3
+          image: docker.io/bitnami/kubectl:latest@sha256:b29d8c1665b70817259ceecaea16ab27aab6368b48daf485d19436c809067492
           command: ["/bin/sh", "-c"]
           env:
             - name: HOME
