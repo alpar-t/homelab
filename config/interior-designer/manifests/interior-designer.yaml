@@ -62,6 +62,8 @@ spec:
             # delegated to the existing OpenClaw gateway below.
             - name: ENABLE_PERSISTENT_CONFIG
               value: "false"
+            - name: ENABLE_FOLLOW_UP_GENERATION
+              value: "false"
             - name: RAG_EMBEDDING_ENGINE
               value: openai
             - name: RAG_EMBEDDING_MODEL
