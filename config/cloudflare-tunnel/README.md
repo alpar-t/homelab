@@ -179,9 +179,7 @@ You should see "Connection established" messages.
    - Application name: `Longhorn` (or `Internal Apps`)
    - Session duration: `24 hours`
    - Application domain: `longhorn.newjoy.ro`
-4. Click **Add more** to protect additional subdomains:
-   - `argocd.newjoy.ro`
-   - (add more as needed)
+4. Click **Add more** to protect additional exposed subdomains as needed.
 5. Click **Next**
 6. Add policy:
    - Policy name: `Allow Me`
@@ -211,10 +209,14 @@ See `config/longhorn/ingress.yaml` for an example.
 
 ### 5.3 Test Access
 
-1. Open `https://argocd.newjoy.ro` in browser
+1. Open the protected application's URL in a browser.
 2. You should see Cloudflare Access login page
 3. Click "Sign in with Google"
 4. After auth, you're redirected to the app
+
+ArgoCD is deliberately not an exposed application. Its hostname is denied by
+the tunnel before the wildcard route; use the port-forward procedure in
+`runbooks/argocd-access.md`.
 
 ---
 
@@ -252,7 +254,9 @@ spec:
 
 No DNS changes needed - the wildcard CNAME covers all subdomains automatically.
 
-**No need to update cloudflared config** - just add Ingress resources!
+Also check the explicit deny rules in the cloudflared config. A denied hostname
+must be intentionally removed from that list before a new Ingress can be
+publicly reachable.
 
 ---
 
@@ -264,8 +268,8 @@ User → Cloudflare Access (auth) → Cloudflare Tunnel → cloudflared pod → 
 ```
 
 **Domains:**
-- `argocd.newjoy.ro`, `longhorn.newjoy.ro`, etc. - Protected by Cloudflare Access
+- `longhorn.newjoy.ro` and other administrative web apps - Protected by Cloudflare Access
+- `argocd.newjoy.ro` - Denied at the tunnel; accessible only by port-forward
 - `newjoy.ro`, `www.newjoy.ro` - Public
 
 **No inbound ports needed** - tunnel connects outbound to Cloudflare.
-

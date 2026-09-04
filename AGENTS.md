@@ -3,6 +3,13 @@
 3-node k3s cluster on Intel x86_64 Odroid hardware (`amd64` in Kubernetes).
 See [README.md](README.md) for the broader picture.
 
+## Ticket lookup
+
+When a task refers to a project ticket such as `HOME-46`, ask Baloo to retrieve
+the ticket details from the configured issue tracker before implementing it.
+Because `ask_baloo` invokes a second LLM, use it only when the user explicitly
+requests or approves the lookup.
+
 ## Runbooks
 
 Detailed operational knowledge — incident post-mortems, recovery procedures, and
@@ -43,6 +50,9 @@ Newjoy portal architecture, image delivery, catalog policy, and operations:
 
 Cloudflare Tunnel outage history, one-connector-per-node placement, and checks:
 `runbooks/cloudflare-tunnel-availability.md`.
+
+ArgoCD's private administrative access, public-exposure checks, and rollback:
+`runbooks/argocd-access.md`.
 
 ## Baloo agent tool access
 

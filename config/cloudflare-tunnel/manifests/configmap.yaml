@@ -12,6 +12,12 @@ data:
     no-autoupdate: true
 
     ingress:
+      # ArgoCD administration is intentionally limited to kubectl port-forward.
+      # Keep this before the catch-all so wildcard DNS cannot expose ArgoCD.
+      # See runbooks/argocd-access.md.
+      - hostname: argocd.newjoy.ro
+        service: http_status:404
+
       # SSH access via Cloudflare Access (browser-rendered terminal).
       # Auth gate is in the Cloudflare dashboard; this rule just routes
       # ssh.newjoy.ro to buksi's sshd.
@@ -22,4 +28,3 @@ data:
       # Route all other traffic to ingress-nginx
       # Each app defines its own Ingress resource for routing
       - service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
-
