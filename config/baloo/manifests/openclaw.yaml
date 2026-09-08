@@ -325,7 +325,11 @@ spec:
               if ! node /app/dist/index.js plugins inspect pinchtab >/dev/null 2>&1; then
                 node /app/dist/index.js plugins install npm:@pinchtab/pinchtab@0.15.1 --pin
               fi
-              node /app/dist/index.js plugins update --all || true
+              core_version="$(node -p 'require("/app/package.json").version')"
+              whatsapp_version="$(node -p 'try { require("/state/extensions/whatsapp/package.json").version } catch { "" }')"
+              if [ "$whatsapp_version" != "$core_version" ]; then
+                node /app/dist/index.js plugins update whatsapp || true
+              fi
           env:
             - name: HOME
               value: /state/home
