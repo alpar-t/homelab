@@ -329,6 +329,8 @@ spec:
           env:
             - name: HOME
               value: /state/home
+            - name: OPENCLAW_CONFIG_PATH
+              value: /rendered/openclaw.json
             - name: OPENCLAW_STATE_DIR
               value: /state
           securityContext:
@@ -348,6 +350,9 @@ spec:
           volumeMounts:
             - name: state
               mountPath: /state
+            - name: rendered
+              mountPath: /rendered
+              readOnly: true
             - name: tmp
               mountPath: /tmp
       containers:
