@@ -101,6 +101,57 @@ spec:
               readOnly: true
             - name: stable-workspaces
               mountPath: /workspace
+        # The compiled Codex plugin in 2026.9.2 omits two runtime links. Build
+        # a dependency-complete node_modules tree for the bundled plugin so it
+        # keeps reserved harness ownership, usage reporting, and compaction.
+        - name: prepare-codex-plugin-deps
+          image: ghcr.io/openclaw/openclaw:2026.9.2@sha256:a8604855b76cd613cbaa45d6db093dc017b09a2faea5dc9cee023fb7ac262250
+          command:
+            - node
+            - -e
+            - |
+              const fs = require('fs');
+              const path = require('path');
+              const { createRequire } = require('module');
+              const source = '/app/extensions/codex/node_modules';
+              const destination = '/plugin-deps';
+              fs.mkdirSync(destination, { recursive: true });
+              for (const entry of fs.readdirSync(source)) {
+                fs.cpSync(path.join(source, entry), path.join(destination, entry), {
+                  recursive: true,
+                  dereference: true,
+                });
+              }
+              const packageByPlatform = {
+                'linux-x64': '@openai/codex-linux-x64',
+                'linux-arm64': '@openai/codex-linux-arm64',
+              };
+              const platformPackage = packageByPlatform[`${process.platform}-${process.arch}`];
+              if (!platformPackage) throw new Error(`unsupported Codex platform ${process.platform}-${process.arch}`);
+              const codexManifest = fs.realpathSync(path.join(source, '@openai/codex/package.json'));
+              const platformSource = path.dirname(createRequire(codexManifest).resolve(`${platformPackage}/package.json`));
+              fs.cpSync(platformSource, path.join(destination, platformPackage), {
+                recursive: true,
+                dereference: true,
+              });
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: codex-plugin-deps
+              mountPath: /plugin-deps
         # Media helpers receive only these subdirectories from the shared state
         # PVC. Create them before kubelet resolves the subPath mounts, including
         # on a newly provisioned state volume.
@@ -610,6 +661,9 @@ spec:
               mountPath: /state
             - name: tmp
               mountPath: /tmp
+            - name: codex-plugin-deps
+              mountPath: /app/dist/extensions/codex/node_modules
+              readOnly: true
             - name: github-app-key
               mountPath: /var/run/secrets/github-app
               readOnly: true
@@ -699,6 +753,9 @@ spec:
               mountPath: /state
             - name: tmp
               mountPath: /tmp
+            - name: codex-plugin-deps
+              mountPath: /app/dist/extensions/codex/node_modules
+              readOnly: true
 
         # Generic bounded image conversion and manipulation for agents and
         # OpenCloud adapters. It is reachable only from containers in this pod.
@@ -1171,6 +1228,9 @@ spec:
               mountPath: /state
             - name: tmp
               mountPath: /tmp
+            - name: codex-plugin-deps
+              mountPath: /app/dist/extensions/codex/node_modules
+              readOnly: true
 
         # Reconcile recurring OpenClaw cron jobs from git without touching
         # one-shot reminders created by users in chat.
@@ -1232,11 +1292,16 @@ spec:
               mountPath: /tmp
             - name: state
               mountPath: /state
+            - name: codex-plugin-deps
+              mountPath: /app/dist/extensions/codex/node_modules
+              readOnly: true
 
       volumes:
         - name: git-repo
           emptyDir: {}
         - name: stable-workspaces
+          emptyDir: {}
+        - name: codex-plugin-deps
           emptyDir: {}
         - name: rendered
           emptyDir: {}
