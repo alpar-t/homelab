@@ -70,6 +70,37 @@ spec:
             - name: github-app-key
               mountPath: /var/run/secrets/github-app
               readOnly: true
+        # OpenClaw 2026.9 records canonical workspace paths. Copy the rotating
+        # git-sync checkout into a stable directory before any agent starts.
+        - name: prepare-stable-workspaces
+          image: ghcr.io/openclaw/openclaw:2026.9.2@sha256:a8604855b76cd613cbaa45d6db093dc017b09a2faea5dc9cee023fb7ac262250
+          command:
+            - node
+            - /git/link/openclaw/tools/sync-stable-workspace.js
+            - --once
+            - /git/link/openclaw
+            - /workspace/openclaw
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+              readOnly: true
+            - name: stable-workspaces
+              mountPath: /workspace
         # Media helpers receive only these subdirectories from the shared state
         # PVC. Create them before kubelet resolves the subPath mounts, including
         # on a newly provisioned state volume.
@@ -304,6 +335,37 @@ spec:
               mountPath: /var/run/secrets/github-app
               readOnly: true
 
+        # Keep workspace path identities stable while git-sync rotates its
+        # checkout symlink. Individual files are replaced atomically.
+        - name: workspace-sync
+          image: ghcr.io/openclaw/openclaw:2026.9.2@sha256:a8604855b76cd613cbaa45d6db093dc017b09a2faea5dc9cee023fb7ac262250
+          command:
+            - node
+            - /git/link/openclaw/tools/sync-stable-workspace.js
+            - /git/link/openclaw
+            - /workspace/openclaw
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+              readOnly: true
+            - name: stable-workspaces
+              mountPath: /workspace
+
         # Re-render secret-backed source config after each git-sync update.
         # Writing and renaming in the same emptyDir makes each update atomic;
         # parse failures leave the last-good rendered config untouched.
@@ -447,6 +509,9 @@ spec:
             - name: git-repo
               mountPath: /git
               readOnly: true
+            - name: stable-workspaces
+              mountPath: /workspace
+              readOnly: true
             - name: rendered
               mountPath: /rendered
 
@@ -536,6 +601,9 @@ spec:
             - name: git-repo
               mountPath: /git
               readOnly: true
+            - name: stable-workspaces
+              mountPath: /workspace
+              readOnly: true
             - name: rendered
               mountPath: /rendered
             - name: state
@@ -620,6 +688,9 @@ spec:
           volumeMounts:
             - name: git-repo
               mountPath: /git
+              readOnly: true
+            - name: stable-workspaces
+              mountPath: /workspace
               readOnly: true
             - name: rendered
               mountPath: /rendered
@@ -1090,6 +1161,9 @@ spec:
             - name: git-repo
               mountPath: /git
               readOnly: true
+            - name: stable-workspaces
+              mountPath: /workspace
+              readOnly: true
             - name: rendered
               mountPath: /rendered
               readOnly: true
@@ -1148,6 +1222,9 @@ spec:
             - name: git-repo
               mountPath: /git
               readOnly: true
+            - name: stable-workspaces
+              mountPath: /workspace
+              readOnly: true
             - name: rendered
               mountPath: /rendered
               readOnly: true
@@ -1158,6 +1235,8 @@ spec:
 
       volumes:
         - name: git-repo
+          emptyDir: {}
+        - name: stable-workspaces
           emptyDir: {}
         - name: rendered
           emptyDir: {}
