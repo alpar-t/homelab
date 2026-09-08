@@ -98,7 +98,7 @@ spec:
               mountPath: /state
         # Substitute ${BALOO_OWNER_PHONE} into openclaw.json → /rendered/openclaw.json
         - name: render-config
-          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
+          image: ghcr.io/openclaw/openclaw:2026.9.2@sha256:a8604855b76cd613cbaa45d6db093dc017b09a2faea5dc9cee023fb7ac262250
           command:
             - node
             - -e
@@ -235,7 +235,7 @@ spec:
         # Existing tracked updates remain non-fatal so a transient registry
         # outage does not replace last-good plugin state.
         - name: plugin-sync
-          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
+          image: ghcr.io/openclaw/openclaw:2026.9.2@sha256:a8604855b76cd613cbaa45d6db093dc017b09a2faea5dc9cee023fb7ac262250
           command:
             - sh
             - -c
@@ -308,7 +308,7 @@ spec:
         # Writing and renaming in the same emptyDir makes each update atomic;
         # parse failures leave the last-good rendered config untouched.
         - name: config-renderer
-          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
+          image: ghcr.io/openclaw/openclaw:2026.9.2@sha256:a8604855b76cd613cbaa45d6db093dc017b09a2faea5dc9cee023fb7ac262250
           command:
             - node
             - -e
@@ -451,7 +451,7 @@ spec:
               mountPath: /rendered
 
         - name: openclaw
-          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
+          image: ghcr.io/openclaw/openclaw:2026.9.2@sha256:a8604855b76cd613cbaa45d6db093dc017b09a2faea5dc9cee023fb7ac262250
           imagePullPolicy: IfNotPresent
           command:
             - node
@@ -550,7 +550,7 @@ spec:
         # loopback-only service admits one organizer run at a time while
         # preserving the worker's three semantic lanes.
         - name: newjoy-organizer
-          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
+          image: ghcr.io/openclaw/openclaw:2026.9.2@sha256:a8604855b76cd613cbaa45d6db093dc017b09a2faea5dc9cee023fb7ac262250
           imagePullPolicy: IfNotPresent
           command:
             - /usr/bin/tini
@@ -695,7 +695,7 @@ spec:
         # password plus the read-only inbound and image-tool output directories.
         # Navigation and listing fields remain LLM-driven through PinchTab.
         - name: olx-auth-mcp
-          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
+          image: ghcr.io/openclaw/openclaw:2026.9.2@sha256:a8604855b76cd613cbaa45d6db093dc017b09a2faea5dc9cee023fb7ac262250
           imagePullPolicy: IfNotPresent
           command:
             - node
@@ -779,7 +779,7 @@ spec:
         # Court credential + durable document-state boundary. The password is
         # never rendered into OpenClaw config or exposed in an agent tool result.
         - name: court-case-mcp
-          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
+          image: ghcr.io/openclaw/openclaw:2026.9.2@sha256:a8604855b76cd613cbaa45d6db093dc017b09a2faea5dc9cee023fb7ac262250
           imagePullPolicy: IfNotPresent
           command:
             - node
@@ -846,7 +846,7 @@ spec:
         # Agent-facing task tools. The bot token exists only in this sidecar;
         # the OpenClaw gateway reaches its curated MCP surface over localhost.
         - name: vikunja-mcp
-          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
+          image: ghcr.io/openclaw/openclaw:2026.9.2@sha256:a8604855b76cd613cbaa45d6db093dc017b09a2faea5dc9cee023fb7ac262250
           imagePullPolicy: IfNotPresent
           command:
             - node
@@ -970,7 +970,7 @@ spec:
         # that channel-facing reference opaque to the model and translate it to
         # the read-only shared path before forwarding the MCP request.
         - name: paperless-media-proxy
-          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
+          image: ghcr.io/openclaw/openclaw:2026.9.2@sha256:a8604855b76cd613cbaa45d6db093dc017b09a2faea5dc9cee023fb7ac262250
           imagePullPolicy: IfNotPresent
           command:
             - node
@@ -1030,7 +1030,7 @@ spec:
         # this sidecar only adapts those client tool calls to OpenClaw's image
         # provider CLI so results return to the originating HTTP chat.
         - name: image-api
-          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
+          image: ghcr.io/openclaw/openclaw:2026.9.2@sha256:a8604855b76cd613cbaa45d6db093dc017b09a2faea5dc9cee023fb7ac262250
           imagePullPolicy: IfNotPresent
           command:
             - node
@@ -1101,7 +1101,7 @@ spec:
         # Reconcile recurring OpenClaw cron jobs from git without touching
         # one-shot reminders created by users in chat.
         - name: cron-sync
-          image: ghcr.io/openclaw/openclaw:2026.7.1-2@sha256:8789721d2e9b24b780a1504b56deb4c6bd5c7dbf96a1dd117e7c45c2ed72c8ac
+          image: ghcr.io/openclaw/openclaw:2026.9.2@sha256:a8604855b76cd613cbaa45d6db093dc017b09a2faea5dc9cee023fb7ac262250
           command:
             - node
             - /git/link/openclaw/tools/sync-cron-jobs.js
