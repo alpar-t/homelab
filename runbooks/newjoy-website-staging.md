@@ -62,6 +62,14 @@ inventoried their projects. OpenCloud reports directory getcontentlength as
 404 inside an otherwise successful multistatus: the adapter allows only that
 specific missing collection property, not missing file data or access failures.
 
+First live ARC poll 34357498360 succeeded at 13:32 UTC on 9 September 2026:
+5 observed, 0 eligible, 0 failures, 62 metadata requests, 0 media downloads.
+The first observations were made about 13:31:46 UTC; initial eligibility is
+about 16:31:46 UTC / 19:31:46 Bucharest if sources remain unchanged.
+The registry updater's first run 34357502303 also succeeded and retained the
+sample image because no live release exists yet. Full acceptance/publication
+and the subsequent warm-cache behavior are still pending verification.
+
 ## Publication and automatic staging update
 
 Build code/tests, accepted public content, and artifact privacy checks before
