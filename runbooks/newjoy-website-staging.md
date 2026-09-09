@@ -69,6 +69,10 @@ about 16:31:46 UTC / 19:31:46 Bucharest if sources remain unchanged.
 The registry updater's first run 34357502303 also succeeded and retained the
 sample image because no live release exists yet. Full acceptance/publication
 and the subsequent warm-cache behavior are still pending verification.
+Second poll 34359960556 at 13:54 UTC retained nextEligibleAt
+2026-09-09T16:31:46.328Z in a replacement runner, again with five observations,
+zero failures, and zero media downloads. Observation persistence is verified;
+post-import derivative-cache reuse is not yet verified.
 
 ## Publication and automatic staging update
 
