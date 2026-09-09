@@ -48,10 +48,18 @@ under the configured 2021–2026 year roots.
 
 Scheduled/manual runs poll OpenCloud; push runs build solely from accepted
 snapshots. Polling is requested every 15 minutes, with a three-hour *observed*
-quiet window. GitHub schedules can be delayed. No old file timestamp or fixture
-substitutes for that window. Each poll preserves invalid/unavailable projects'
+quiet window. GitHub schedules can be delayed. Fixtures never substitute for
+accepted live content. Each poll preserves invalid/unavailable projects'
 last accepted state. Detailed errors stay in state/last-poll.json; Actions logs
 contain counts including mediaDownloads and mediaBytes.
+
+The owner approved an initial-deployment exception: dispatch site-image.yaml
+with `-f initial_import=true`. Never-accepted projects may qualify from the newest
+valid source modification time across renders, catalogs, website.yaml, and
+baloo.yaml if all are at least three hours old. Missing/future timestamps use
+normal observed timing; known fingerprint changes block the shortcut. Catalog
+and before/after version checks remain mandatory. The flag defaults off and
+cannot accelerate accepted-project updates or rewrite observation timestamps.
 
 One ARC runner and non-cancelling workflow concurrency serialize the pipeline.
 An interrupted poll can leave state/poll.lock. First verify no runner is active;
