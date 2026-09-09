@@ -7,6 +7,7 @@ has a separate scale set while the controller and credential Secret are shared.
 |---|---|---|
 | `baloo-export-runners` | `alpar-t/baloo_export` | Export validation and publishing |
 | `homelab-runners` | `alpar-t/homelab` | Homelab validation and daemonless image publishing |
+| `newjoy-website-runners` | `alpar-t/newjoy-website` | Private website validation and immutable image publishing |
 
 - Controller chart: `gha-runner-scale-set-controller` 0.14.2 in `arc-systems`.
 - Runner chart: `gha-runner-scale-set` 0.14.2 in `arc-runners`.
@@ -16,7 +17,7 @@ has a separate scale set while the controller and credential Secret are shared.
 
 ## Credential
 
-The `arc-runners/github-arc-token` Secret is created manually and is never committed. It contains the `github_token` key with a fine-grained PAT selected only for repositories that use ARC. Repository-level runner registration requires repository Administration read/write and Metadata read for both `alpar-t/baloo_export` and `alpar-t/homelab`.
+The `arc-runners/github-arc-token` Secret is created manually and is never committed. It contains the `github_token` key with a fine-grained PAT selected only for repositories that use ARC. Repository-level runner registration requires repository Administration read/write and Metadata read for `alpar-t/baloo_export`, `alpar-t/homelab`, and `alpar-t/newjoy-website`.
 
 To rotate it without putting the token in shell history:
 

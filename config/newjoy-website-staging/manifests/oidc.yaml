@@ -1,0 +1,91 @@
+# Requires the shared pocket-id/oidc-provisioner resources from the homelab repository.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: newjoy-website-staging-oidc-client
+  namespace: pocket-id
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      serviceAccountName: oidc-provisioner
+      restartPolicy: OnFailure
+      securityContext:
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: provision
+          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:3814fb1f62f9cfc5944de088c5817c68c88b5d721feebe36420b666a90a61ce7
+          # The deployed shared script's final Secret POST writes its response to
+          # stdout. Suppress stdout so the returned client secret cannot enter logs;
+          # stderr remains visible for failures.
+          command: [/bin/sh, -c, '/bin/sh /scripts/provision.sh >/dev/null']
+          env:
+            - {name: APP_NAME, value: newjoy-website-staging}
+            - {name: APP_URL, value: https://staging.newjoy.ro}
+            - {name: CALLBACK_URL, value: https://staging.newjoy.ro/oauth2/callback}
+            - {name: TARGET_NS, value: newjoy-website-staging}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: script, mountPath: /scripts, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: script
+          configMap: {name: oidc-provisioner-script, defaultMode: 0555}
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: newjoy-website-staging-cookie
+  namespace: pocket-id
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      serviceAccountName: oidc-provisioner
+      restartPolicy: OnFailure
+      securityContext:
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: generate
+          image: ghcr.io/openclaw/openclaw:2026.6.11@sha256:3814fb1f62f9cfc5944de088c5817c68c88b5d721feebe36420b666a90a61ce7
+          command: [/bin/sh, -c]
+          args:
+            - |
+              set -eu
+              token=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+              ca=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+              api=https://kubernetes.default.svc
+              secret_url=$api/api/v1/namespaces/newjoy-website-staging/secrets/newjoy-website-staging-cookie
+              status=$(curl -s -o /dev/null -w '%{http_code}' --cacert "$ca" -H "Authorization: Bearer $token" "$secret_url")
+              [ "$status" = 200 ] && exit 0
+              if [ "$status" != 404 ]; then
+                echo "unexpected status reading cookie Secret: $status" >&2
+                exit 1
+              fi
+              cookie_secret=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+              curl -sf -o /dev/null -X POST --cacert "$ca" -H "Authorization: Bearer $token" \
+                -H 'Content-Type: application/json' "$api/api/v1/namespaces/newjoy-website-staging/secrets" \
+                -d "{\"apiVersion\":\"v1\",\"kind\":\"Secret\",\"metadata\":{\"name\":\"newjoy-website-staging-cookie\",\"namespace\":\"newjoy-website-staging\"},\"type\":\"Opaque\",\"stringData\":{\"cookie_secret\":\"$cookie_secret\"}}"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
