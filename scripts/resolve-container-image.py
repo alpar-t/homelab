@@ -63,7 +63,7 @@ def natural_key(value: str) -> tuple[tuple[int, int | str], ...]:
     )
 
 
-def candidate_tags(image: str, allow_prerelease: bool) -> list[str]:
+def candidate_tags(image: str, allow_prerelease: bool, pattern: str | None = None) -> list[str]:
     payload = run_skopeo("list-tags", f"docker://{image}")
     try:
         tags = json.loads(payload)["Tags"]
@@ -72,6 +72,10 @@ def candidate_tags(image: str, allow_prerelease: bool) -> list[str]:
 
     candidates = []
     for tag in tags:
+        if pattern is not None:
+            if isinstance(tag, str) and re.fullmatch(pattern, tag):
+                candidates.append(tag)
+            continue
         if not isinstance(tag, str) or not VERSION_LIKE.fullmatch(tag):
             continue
         if ARCH_SUFFIX.search(tag):
@@ -93,7 +97,8 @@ def main() -> None:
     parser.add_argument("image", help="image repository, with an optional embedded tag")
     parser.add_argument("tag", nargs="?", help="explicit tag to resolve")
     parser.add_argument("--list", action="store_true", help="list stable candidate tags without resolving one")
-    parser.add_argument("--limit", type=int, default=20, help="candidate count for --list (default: 20)")
+    parser.add_argument("--limit", type=int, default=20, help="candidate count for --list (default: 20; 0 lists all)")
+    parser.add_argument("--tag-pattern", help="full-match tag regex for --list, including non-version tags")
     parser.add_argument("--allow-prerelease", action="store_true", help="include version-like prerelease tags")
     parser.add_argument("--os", default="linux", help="required image OS (default: linux)")
     parser.add_argument("--arch", default="amd64", help="required image architecture (default: amd64)")
@@ -101,8 +106,15 @@ def main() -> None:
 
     if not shutil.which("skopeo"):
         fail("skopeo is not installed or not on PATH")
-    if args.limit < 1:
-        fail("--limit must be positive")
+    if args.limit < 0:
+        fail("--limit must not be negative")
+    if args.tag_pattern:
+        if not args.list:
+            fail("--tag-pattern requires --list")
+        try:
+            re.compile(args.tag_pattern)
+        except re.error:
+            fail("invalid --tag-pattern regex")
 
     raw_image, embedded_tag = split_embedded_tag(args.image)
     if args.tag and embedded_tag:
@@ -113,10 +125,10 @@ def main() -> None:
     if args.list:
         if tag:
             fail("--list cannot be combined with a tag")
-        tags = candidate_tags(image, args.allow_prerelease)
+        tags = candidate_tags(image, args.allow_prerelease, args.tag_pattern)
         if not tags:
             fail("the registry returned no matching version-like tags; pass an explicit tag")
-        for candidate in tags[: args.limit]:
+        for candidate in (tags[: args.limit] if args.limit else tags):
             print(candidate)
         return
 

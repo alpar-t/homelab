@@ -1,72 +1,102 @@
 # Newjoy website staging and source integration
 
-Website source and importer live in private `alpar-t/newjoy-website`; this
-repository owns runner infrastructure and eventual GitOps deployment references.
-The portal is a separate application; see `newjoy-portal.md` for the existing
-Pocket ID authentication pattern, not website release state.
+Website/importer source: private alpar-t/newjoy-website. Homelab owns runner
+storage, credential mounts, staging protection, and GitOps image references.
+The separate portal is documented in newjoy-portal.md.
 
-## Initial checks — 9 September 2026, before registration retry
+## Staging and authentication
 
-- `newjoy-website-runners` Application is Synced/Healthy, but that is not proof
-  of a usable runner. Its scale set has no listener.
-- ARC controller logs at 08:08 UTC report HTTP 404 from
-  `POST /repos/alpar-t/newjoy-website/actions/runners/registration-token`.
-  The homelab and Baloo-export listeners are healthy.
-- No `newjoy-website-staging` namespace exists. No website workflow runs were
-  returned by GitHub. Production is unchanged.
-- No dedicated website OpenCloud Secret was found. `baloo/opencloud-baloo`
-  belongs to the existing integration, not the website builder.
-- The website visual checkpoint is unfinished. Infrastructure validation must
-  not be described as artistic acceptance or production readiness.
+The initial sample-content image is deployed and Argo reports Synced/Healthy.
+The owner verified login at staging.newjoy.ro on 9 September 2026.
+Authentication is entirely the existing oauth2-proxy + Pocket ID infrastructure
+client. Any Pocket ID login is allowed: isGroupRestricted=false, no group
+allowlist. No authentication code belongs in Astro, and no further Pocket ID
+integration is needed for OpenCloud content.
 
-## Repository runner access
+Signed-out root, assets, and environment requests redirect through the proxy.
+Staging responses use private, no-store and no-index headers. Keep the OIDC
+provisioner's stdout suppression, which prevents Secret response logging.
+Do not interpret deployment health as visual-design acceptance.
 
-The owner must include `alpar-t/newjoy-website` in the fine-grained PAT backing
-`arc-runners/github-arc-token`, with repository Administration read/write and
-Metadata read. Do not copy a workstation PAT into the cluster or widen access to
-all repositories as a shortcut. Never print token values.
+## Shared OpenCloud credentials — owner-approved exception
 
-After access changes, check the ARC controller and listener before dispatching
-the website's manual image workflow. ArgoCD health alone missed this failure.
-If rotating the credential, follow `config/actions-runner-controller/README.md`.
+On 9 September 2026 the owner explicitly accepted reusing Baloo's exact
+OpenCloud credentials, including write permissions. No new identity or
+read-only account is required. The importer only issues GET and PROPFIND;
+this is a code guard, not server-enforced least privilege.
 
-The token permissions were corrected on 9 September. A targeted annotation on
-the Newjoy AutoscalingRunnerSet triggered reconciliation without restarting the
-shared controller. Its listener became healthy. The first workflow exposed an
-invalid `setup-node` pin; website commit `6ab0fc9` fixes it using the verified
-`v6.2.0` commit. Run `34328923429` then passed. The user made the container package
-public, and the image resolver verified anonymous amd64 access to its digest.
+Run `node scripts/sync-newjoy-opencloud-secret.mjs` to copy the three existing
+keys from baloo/opencloud-baloo to arc-runners/newjoy-website-opencloud.
+It prints only a success/mismatch status and verifies exact values in memory.
+Repeat after Baloo credential rotation. This is not automatic Secret replication.
+Do not print credentials, commit Secrets, restart Baloo, or broaden its access.
 
-`apps/newjoy-website-staging.yaml` and `config/newjoy-website-staging/manifests/`
-contain the first staging-only deployment. It uses the sample-content image,
-not a live OpenCloud import. All routes require Pocket ID through ingress.
+## Build storage and polling
 
-## Remaining integration gates
+The website ARC scale set mounts newjoy-website-build, a 30Gi expandable
+longhorn-ssd PVC, at /newjoy-build. Its two replicas retain observations,
+accepted project snapshots, media derivatives, and publication state across
+ephemeral runner pods. The PVC opts out of Argo pruning. Watch usage; orphan
+cache/snapshot pruning is not implemented yet.
 
-1. Provision a dedicated OpenCloud reader with Viewer access to the intended
-   project source, then an expiring App Token. The builder must not reuse the
-   organizer's write-capable token. `baloo-opencloud-mcp.md` describes the existing
-   identity, sharing, and App Token pattern; do not change Baloo incidentally.
-2. Allocate durable accepted-snapshot, observation, and derivative-cache storage.
-   Keep raw source and credentials out of public artifacts and workflow output.
-3. Run a bounded live canary with the website's actual adapter. Record the first
-   observation durably and respect the real three-hour quiet window; old source
-   timestamps are not a substitute. Verify unchanged runs download no media.
-4. Wire serialized polling and publication only after the manual path works.
-   Check every 15 minutes, build only for accepted-content or source-code changes,
-   and prevent an older job from publishing after a newer release. Give content
-   releases unique identities even when the Git source commit is unchanged.
-5. Publish an immutable image and verify anonymous registry access. Resolve its
-   tag and amd64 digest with `scripts/resolve-container-image.py` before writing
-   any deployable reference. Keep staging-only manifests out of the active
-   app-of-apps until their image and authentication prerequisites exist.
-6. Provision the staging Pocket ID client and intended reviewers. Protect the
-   root prefix, including assets and environment settings. Verify signed-out
-   redirects and authenticated `private, no-store` / no-index responses through
-   Cloudflare. The shared OIDC helper logs secret responses, so retain the
-   staging wrapper's stdout suppression.
+The website workflow is enabled by repository variable
+NEWJOY_CONTENT_SYNC_ENABLED=true. NEWJOY_SOURCE_PROJECT_KEYS initially selects
+the five authored demonstration projects using opaque public keys; it contains
+no private folder names. Keep this bounded canary until live acceptance and a
+warm no-download run are verified. Clearing it expands polling to all projects
+under the configured 2021–2026 year roots.
 
-Website templates and details are in its `deploy/homelab/` and
-`docs/deployment.md`. Automatic updates stop at staging. Production promotion
-requires explicit user approval and copies the exact reviewed image digest;
-it never rebuilds or fetches fresh OpenCloud material.
+Scheduled/manual runs poll OpenCloud; push runs build solely from accepted
+snapshots. Polling is requested every 15 minutes, with a three-hour *observed*
+quiet window. GitHub schedules can be delayed. No old file timestamp or fixture
+substitutes for that window. Each poll preserves invalid/unavailable projects'
+last accepted state. Detailed errors stay in state/last-poll.json; Actions logs
+contain counts including mediaDownloads and mediaBytes.
+
+One ARC runner and non-cancelling workflow concurrency serialize the pipeline.
+An interrupted poll can leave state/poll.lock. First verify no runner is active;
+only then remove that exact lock. Do not delete accepted state or observations.
+
+The live WebDAV adapter has read all five authored website.yaml files and
+inventoried their projects. OpenCloud reports directory getcontentlength as
+404 inside an otherwise successful multistatus: the adapter allows only that
+specific missing collection property, not missing file data or access failures.
+
+## Publication and automatic staging update
+
+Build code/tests, accepted public content, and artifact privacy checks before
+publication. Release identity combines Git revision and accepted snapshot IDs:
+unchanged polls do not rebuild/re-publish, and failed builds retry.
+Images contain only static pages and optimized media, never raw source or tokens.
+Every build uses a unique sha-COMMIT-run-NUMBER-ATTEMPT tag plus immutable digest.
+A source-head check skips superseded publications.
+
+Website image builds run on homelab. The separate newjoy-staging-update workflow
+runs a registry/Git-only task on a GitHub-hosted runner, using this repository's
+GITHUB_TOKEN rather than a cross-repository PAT. Every 15 minutes it selects
+the newest run/attempt, uses scripts/resolve-container-image.py to verify public
+linux/amd64 availability and the digest, and commits only
+config/newjoy-website-staging/manifests/deployment.yaml. It never edits production.
+Concurrent Git pushes fail safely and retry on the next run; release ordering
+prevents an older run replacing a newer one.
+
+The image resolver's --list --tag-pattern REGEX --limit 0 supports discovery of
+these non-version tags; normal version resolution is unchanged.
+
+The already deployed sample image stays in place until the first live candidate
+passes acceptance/build. Verify the actual first acceptance, warm-cache run,
+image publication, and GitOps advancement before claiming end-to-end completion.
+
+## Promotion and runner operations
+
+Production promotion always requires explicit owner approval and copies the
+reviewed staging tag@digest unchanged. No rebuild or source fetch occurs.
+Public image visibility (including staging content) was explicitly accepted;
+Pocket ID gates web access, not registry artifact downloads.
+
+Runner registration uses arc-runners/github-arc-token, scoped to the selected
+repositories including newjoy-website. On 9 September a corrected PAT and a
+targeted scale-set annotation restored the listener; the shared ARC controller
+was not restarted. Website setup-node pin 6ab0fc9 fixed the initial action error.
+Workflow 34328923429 published the initial sample image. See
+config/actions-runner-controller/README.md for rotation and registration checks.

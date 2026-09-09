@@ -45,13 +45,19 @@ template:
           capabilities:
             drop: [ALL]
         resources:
-          requests: {cpu: 100m, memory: 256Mi}
-          limits: {cpu: "2", memory: 2Gi}
+          requests: {cpu: 250m, memory: 512Mi, ephemeral-storage: 2Gi}
+          limits: {cpu: "2", memory: 2Gi, ephemeral-storage: 10Gi}
         volumeMounts:
           - {name: work, mountPath: /home/runner/_work}
           - {name: tool-cache, mountPath: /opt/hostedtoolcache}
+          - {name: build-storage, mountPath: /newjoy-build}
+          - {name: opencloud, mountPath: /var/run/newjoy-opencloud, readOnly: true}
     volumes:
       - name: work
-        emptyDir: {sizeLimit: 2Gi}
+        emptyDir: {sizeLimit: 8Gi}
       - name: tool-cache
         emptyDir: {sizeLimit: 1Gi}
+      - name: build-storage
+        persistentVolumeClaim: {claimName: newjoy-website-build}
+      - name: opencloud
+        secret: {secretName: newjoy-website-opencloud, defaultMode: 0440}
