@@ -60,6 +60,9 @@ baloo.yaml if all are at least three hours old. Missing/future timestamps use
 normal observed timing; known fingerprint changes block the shortcut. Catalog
 and before/after version checks remain mandatory. The flag defaults off and
 cannot accelerate accepted-project updates or rewrite observation timestamps.
+For initially recent files, the source-age deadline persists across subsequent
+scheduled polls. A changed fingerprint discards that deadline and requires the
+normal observed quiet window.
 
 One ARC runner and non-cancelling workflow concurrency serialize the pipeline.
 An interrupted poll can leave state/poll.lock. First verify no runner is active;
