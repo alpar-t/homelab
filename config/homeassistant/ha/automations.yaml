@@ -222,8 +222,9 @@
   description: >
     Run Cserep zone 3x morning (07:00, 08:00, 09:00) and 3x evening (19:00, 20:00,
     21:00) for 7 minutes each. Skips if IU controller is already running (c1_m on)
-    to prevent concurrent zone runs. Also skips if both moisture sensors are above 40%.
-    Bypasses Smart Irrigation since Cserep is on a covered terrace and rain doesn't reach it.
+    to prevent concurrent zone runs. Waters only when the driveway potted-plant
+    moisture sensor reads 50% or less. Bypasses Smart Irrigation because this pot
+    is not reached by rain.
   triggers:
   - platform: time
     at: '07:00:00'
@@ -241,14 +242,10 @@
   - condition: state
     entity_id: binary_sensor.irrigation_unlimited_c1_m
     state: 'off'
-  - condition: or
-    conditions:
-    - condition: numeric_state
-      entity_id: sensor.cherep_soil_moisture_min
-      below: 40
-    - condition: numeric_state
-      entity_id: sensor.gw1100a_soil_moisture_8
-      below: 40
+  - condition: template
+    value_template: >-
+      {% set moisture = states('sensor.gw1100a_soil_moisture_6') %}
+      {{ is_number(moisture) and moisture | float <= 50 }}
   actions:
   - data:
       entity_id: binary_sensor.irrigation_unlimited_c1_z5
