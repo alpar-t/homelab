@@ -29,10 +29,13 @@ for f in "$HA_SRC/dashboards/"*.yaml; do
   scp -q "$f" "$HA_HOST:/config/dashboards/$(basename "$f")"
 done
 
-echo "==> Reloading automations..."
-reload "automation/reload"
-
 echo "==> Reloading core config (packages)..."
 reload "homeassistant/reload_core_config"
+
+echo "==> Reloading template entities..."
+reload "template/reload"
+
+echo "==> Reloading automations..."
+reload "automation/reload"
 
 echo "==> Done."

@@ -1,0 +1,53 @@
+# Accuracy-filtered location trackers for safety-sensitive automations.
+#
+# Mobile location providers sometimes publish a coarse cellular or Wi-Fi fix
+# with kilometre-scale uncertainty. Keep the last trusted coordinates instead
+# of letting such a fix create a false zone departure and subsequent arrival.
+# The raw trackers remain available for maps and diagnostics.
+
+template:
+  - device_tracker:
+      - name: Alpar Trusted Location
+        default_entity_id: device_tracker.alpar_trusted_location
+        unique_id: alpar_trusted_location
+        latitude: >-
+          {% set accuracy = state_attr('device_tracker.alpar', 'gps_accuracy') | float(9999) %}
+          {{ state_attr('device_tracker.alpar', 'latitude')
+             if accuracy <= 250 else this.attributes.get('latitude') }}
+        longitude: >-
+          {% set accuracy = state_attr('device_tracker.alpar', 'gps_accuracy') | float(9999) %}
+          {{ state_attr('device_tracker.alpar', 'longitude')
+             if accuracy <= 250 else this.attributes.get('longitude') }}
+        location_accuracy: >-
+          {% set accuracy = state_attr('device_tracker.alpar', 'gps_accuracy') | float(9999) %}
+          {{ accuracy if accuracy <= 250 else this.attributes.get('gps_accuracy') }}
+
+      - name: Kinga Trusted Location
+        default_entity_id: device_tracker.kinga_trusted_location
+        unique_id: kinga_trusted_location
+        latitude: >-
+          {% set accuracy = state_attr('device_tracker.kinga', 'gps_accuracy') | float(9999) %}
+          {{ state_attr('device_tracker.kinga', 'latitude')
+             if accuracy <= 250 else this.attributes.get('latitude') }}
+        longitude: >-
+          {% set accuracy = state_attr('device_tracker.kinga', 'gps_accuracy') | float(9999) %}
+          {{ state_attr('device_tracker.kinga', 'longitude')
+             if accuracy <= 250 else this.attributes.get('longitude') }}
+        location_accuracy: >-
+          {% set accuracy = state_attr('device_tracker.kinga', 'gps_accuracy') | float(9999) %}
+          {{ accuracy if accuracy <= 250 else this.attributes.get('gps_accuracy') }}
+
+      - name: Marci Trusted Location
+        default_entity_id: device_tracker.marci_trusted_location
+        unique_id: marci_trusted_location
+        latitude: >-
+          {% set accuracy = state_attr('device_tracker.sm_a256b_marci', 'gps_accuracy') | float(9999) %}
+          {{ state_attr('device_tracker.sm_a256b_marci', 'latitude')
+             if accuracy <= 250 else this.attributes.get('latitude') }}
+        longitude: >-
+          {% set accuracy = state_attr('device_tracker.sm_a256b_marci', 'gps_accuracy') | float(9999) %}
+          {{ state_attr('device_tracker.sm_a256b_marci', 'longitude')
+             if accuracy <= 250 else this.attributes.get('longitude') }}
+        location_accuracy: >-
+          {% set accuracy = state_attr('device_tracker.sm_a256b_marci', 'gps_accuracy') | float(9999) %}
+          {{ accuracy if accuracy <= 250 else this.attributes.get('gps_accuracy') }}

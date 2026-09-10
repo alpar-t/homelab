@@ -1,17 +1,19 @@
 - id: '1761501054969'
   alias: Open Gate When Approaching
-  description: ''
+  description: >-
+    Open for zone entries from accuracy-filtered location trackers. The trusted
+    trackers ignore fixes with GPS accuracy worse than 250 m.
   triggers:
   - trigger: zone
-    entity_id: device_tracker.alpar
+    entity_id: device_tracker.alpar_trusted_location
     zone: zone.arriving_home
     event: enter
   - trigger: zone
-    entity_id: person.kinga
+    entity_id: device_tracker.kinga_trusted_location
     zone: zone.arriving_home
     event: enter
   - trigger: zone
-    entity_id: person.marci
+    entity_id: device_tracker.marci_trusted_location
     zone: zone.home
     event: enter
   conditions: []
@@ -77,18 +79,20 @@
   mode: restart
 - id: '1762185870585'
   alias: Close gate when leaving home
-  description: ''
+  description: >-
+    Close for zone transitions from accuracy-filtered location trackers. The
+    trusted trackers ignore fixes with GPS accuracy worse than 250 m.
   triggers:
   - trigger: zone
-    entity_id: device_tracker.alpar
+    entity_id: device_tracker.alpar_trusted_location
     zone: zone.home
     event: leave
   - trigger: zone
-    entity_id: person.kinga
+    entity_id: device_tracker.kinga_trusted_location
     zone: zone.home
     event: leave
   - trigger: zone
-    entity_id: person.marci
+    entity_id: device_tracker.marci_trusted_location
     zone: zone.home
     event: enter
   conditions: []
@@ -110,7 +114,7 @@
     webhook_id: opengate-alpar
   conditions:
   - condition: zone
-    entity_id: device_tracker.alpar
+    entity_id: device_tracker.alpar_trusted_location
     zone: zone.home
   actions:
   - action: cover.open_cover
