@@ -481,18 +481,37 @@
   mode: single
 
 - id: front_door_eloszoba_light_control
-  alias: "Front Door: Előszoba light on when door opens at dark"
-  description: Turns on the hallway light when the front door opens and it's dark outside.
+  alias: "Front Door: Control Előszoba light"
+  description: >-
+    Turns on the hallway light when the front door opens after dark. Turns it
+    off whenever the front door is locked. Closing and unlocking do nothing.
   triggers:
     - trigger: state
       entity_id: binary_sensor.front_door_door
       to: "on"
-  conditions:
-    - condition: state
-      entity_id: binary_sensor.is_dark_mode
-      state: "on"
+      id: door_opened
+    - trigger: state
+      entity_id: lock.front_door
+      to: "locked"
+      id: door_locked
+  conditions: []
   actions:
-    - action: light.turn_on
-      target:
-        entity_id: light.eloszoba
+    - choose:
+        - conditions:
+            - condition: trigger
+              id: door_opened
+            - condition: state
+              entity_id: binary_sensor.dark_mode
+              state: "on"
+          sequence:
+            - action: light.turn_on
+              target:
+                entity_id: light.eloszoba
+        - conditions:
+            - condition: trigger
+              id: door_locked
+          sequence:
+            - action: light.turn_off
+              target:
+                entity_id: light.eloszoba
   mode: single
