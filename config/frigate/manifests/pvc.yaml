@@ -1,5 +1,7 @@
-# Frigate storage for recordings
-# Using HDD storage class with no replication
+# Frigate storage for disposable recordings. The bound Longhorn replica is
+# deliberately isolated on pamacs's quarantined 3 TB disk; see
+# runbooks/frigate-disposable-media-disk.md.
+# Using HDD storage class with no replication.
 #
 # BACKUP EXCLUSION: This volume is excluded from Longhorn weekly backups.
 # See config/longhorn/manifests/backup-exclusions.yaml
@@ -17,7 +19,9 @@ spec:
   storageClassName: longhorn-hdd-noreplica
   resources:
     requests:
-      storage: 200Gi
+      # Do not allocate the disk's full nominal capacity. 2Ti leaves Longhorn's
+      # required free-space reserve plus working room for ext4 and snapshots.
+      storage: 2Ti
 ---
 # Config persistence (for Frigate database + model cache)
 apiVersion: v1
@@ -34,4 +38,3 @@ spec:
   resources:
     requests:
       storage: 10Gi
-
