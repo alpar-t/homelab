@@ -578,7 +578,11 @@ spec:
         - name: openclaw
           image: ghcr.io/openclaw/openclaw:2026.9.2@sha256:a8604855b76cd613cbaa45d6db093dc017b09a2faea5dc9cee023fb7ac262250
           imagePullPolicy: IfNotPresent
+          # The gateway launches Codex app-server subprocesses. Keep tini as
+          # PID 1 so terminated descendants are reaped instead of accumulating.
           command:
+            - /usr/bin/tini
+            - --
             - node
             - /app/dist/index.js
             - gateway
