@@ -773,7 +773,7 @@ spec:
         # Generic bounded image conversion and manipulation for agents and
         # OpenCloud adapters. It is reachable only from containers in this pod.
         - name: image-tools
-          image: ghcr.io/alpar-t/homelab-image-tools:sha-261b6987f2cff1fe09dd90e0df226eaa26769ae3@sha256:55819e619f963361741818cca2ddc7cf6cba3e7e553576cc8c793a8634fd574a
+          image: ghcr.io/alpar-t/homelab-image-tools:sha-ed10d98bf90b062f19f9054fe50f4462006f27a0@sha256:745a1377931606866cf84e04429311ec3b7fb9e3009d7440636002c9ac234a38
           imagePullPolicy: IfNotPresent
           ports:
             - name: image-tools
@@ -1193,6 +1193,8 @@ spec:
               value: openai/gpt-image-2
             - name: OPENCLAW_IMAGE_TIMEOUT_MS
               value: "180000"
+            - name: IMAGE_TOOLS_URL
+              value: http://127.0.0.1:18807
             - name: IMAGE_API_TOKEN
               valueFrom:
                 secretKeyRef:
