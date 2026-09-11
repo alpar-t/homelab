@@ -648,11 +648,14 @@ spec:
             timeoutSeconds: 5
           resources:
             requests:
-              cpu: 500m
-              memory: 2Gi
-            limits:
+              # Newjoy semantic turns and their Codex/MCP children execute in
+              # this cgroup. Reserve the larger share here so two image lanes
+              # can run without starving the gateway health endpoint.
               cpu: "2"
               memory: 8Gi
+            limits:
+              cpu: "6"
+              memory: 12Gi
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
@@ -681,9 +684,9 @@ spec:
               mountPath: /var/run/secrets/github-app
               readOnly: true
 
-        # Run image-heavy Newjoy turns outside the gateway's cgroup. The
-        # loopback-only service admits one organizer run at a time while
-        # preserving the worker's three semantic lanes.
+        # The loopback-only coordinator admits one organizer run at a time.
+        # Semantic turns run through the gateway, so this sidecar needs only
+        # the smaller share of the pod's unchanged aggregate resource budget.
         - name: newjoy-organizer
           image: ghcr.io/openclaw/openclaw:2026.9.2@sha256:a8604855b76cd613cbaa45d6db093dc017b09a2faea5dc9cee023fb7ac262250
           imagePullPolicy: IfNotPresent
@@ -739,11 +742,11 @@ spec:
             timeoutSeconds: 5
           resources:
             requests:
+              cpu: 500m
+              memory: 2Gi
+            limits:
               cpu: "2"
               memory: 8Gi
-            limits:
-              cpu: "6"
-              memory: 12Gi
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
