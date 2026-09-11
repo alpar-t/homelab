@@ -15,9 +15,9 @@ const DEFAULT_PORT = 18807;
 const DEFAULT_READ_ROOTS = ["/state/media/inbound", "/state/media/generated"];
 const DEFAULT_OUTPUT_ROOT = "/state/media/generated/image-tools";
 const MAX_MCP_REQUEST_BYTES = 128 * 1024;
-const MAX_INPUT_BYTES = 20 * 1024 * 1024;
+const MAX_INPUT_BYTES = 60 * 1024 * 1024;
 const MAX_OUTPUT_BYTES = 8 * 1024 * 1024;
-const MAX_INPUT_PIXELS = 40_000_000;
+const MAX_INPUT_PIXELS = 64_000_000;
 const MAX_DIMENSION = 8_192;
 const DEFAULT_MODEL_SIDE = 4_096;
 const PROCESS_TIMEOUT_SECONDS = 30;
@@ -309,6 +309,16 @@ export function createImageToolsHttpServer(options = {}) {
           "cache-control": "no-store",
         });
         response.end(result.data);
+        return;
+      }
+      if (request.method === "POST" && url.pathname === "/v1/metadata") {
+        const source = await readBoundedBody(request, MAX_INPUT_BYTES);
+        const metadata = await imageMetadata(source);
+        response.writeHead(200, {
+          "content-type": "application/json",
+          "cache-control": "no-store",
+        });
+        response.end(JSON.stringify(metadata));
         return;
       }
       if (request.method === "POST" && url.pathname === "/mcp") {

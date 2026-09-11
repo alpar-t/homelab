@@ -55,3 +55,29 @@ test("serves the generic raw transform endpoint", async () => {
     await new Promise((resolvePromise) => server.close(resolvePromise));
   }
 });
+
+test("serves bounded metadata for raw browser-upload bytes", async () => {
+  const server = createImageToolsHttpServer();
+  await new Promise((resolvePromise) => server.listen(0, "127.0.0.1", resolvePromise));
+  try {
+    const address = server.address();
+    const response = await fetch(`http://127.0.0.1:${address.port}/v1/metadata`, {
+      method: "POST",
+      headers: { "content-type": "image/avif" },
+      body: await fixture(),
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      format: "heif",
+      width: 32,
+      height: 24,
+      pages: 1,
+      orientation: null,
+      space: "srgb",
+      channels: 4,
+      hasAlpha: true,
+    });
+  } finally {
+    await new Promise((resolvePromise) => server.close(resolvePromise));
+  }
+});
