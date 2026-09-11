@@ -42,6 +42,10 @@ spec:
               issuer: "https://auth.newjoy.ro"
               clientId: "b85f28eb-bf7d-4544-a311-eadcd5c09a2d"
               accountUrl: "https://auth.newjoy.ro/settings/account"
+            storage:
+              # The chart reads only the global class for OnlyOffice's PVC.
+              # Use replicated SSD storage; longhorn-ssd has two replicas.
+              storageClass: "longhorn-ssd"
 
           # ===================
           # Disable Keycloak (using Pocket ID)
@@ -84,7 +88,6 @@ spec:
             persistence:
               enabled: true
               size: 2Gi
-              storageClass: "local-ssd"
             resources:
               requests:
                 cpu: 100m
