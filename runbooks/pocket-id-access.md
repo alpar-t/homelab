@@ -95,9 +95,8 @@ or API keys in applications. In particular:
 
 Public landing pages, health endpoints, sign-in pages, and Pocket ID account
 settings are intentionally reachable without application group membership.
-The old Forecastle ingress is now managed by the portal Application and redirects
-`dashboard.newjoy.ro` to the protected portal with HTTP 308. An explicit
-Cloudflare Tunnel 404 rule provides an additional local-routing block. Verify
-the hostname externally: the deployed tunnel did not honor that rule alone,
-so the ingress redirect is the verified boundary. Expect 308 to the portal or
-404, never a dashboard page. The access test prevents removing that redirect.
+Forecastle is retired; remove its namespace and dedicated cluster RBAC. It had
+no PVCs or stored application data. `dashboard.newjoy.ro` has no Kubernetes
+Ingress and an explicit local Cloudflare Tunnel 404 rule. Verify HTTP 404
+externally; the deployed tunnel did not honor the local rule alone while the
+old Ingress existed. The access test rejects reintroducing a dashboard Ingress.

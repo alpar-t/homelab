@@ -20,7 +20,7 @@ EXCEPTIONS = {
     'public': {'newjoy.ro', 'www.newjoy.ro', 'auth.newjoy.ro'},
     'separate-account': {'vault.newjoy.ro', 'mail.newjoy.ro'},
     'document-token': {'office.newjoy.ro', 'wopi.newjoy.ro'},
-    'redirect': {'dashboard.newjoy.ro'},
+    'blocked': {'dashboard.newjoy.ro'},
 }
 
 
@@ -46,9 +46,7 @@ def validate_ingress(ingress: dict) -> None:
         mode = policy['mode']
         if mode in EXCEPTIONS:
             assert host in EXCEPTIONS[mode], f'Review a new authentication exception: {host}'
-            if mode == 'redirect':
-                assert annotations.get('nginx.ingress.kubernetes.io/permanent-redirect') == 'https://portal.newjoy.ro/', 'Legacy dashboard must redirect to the protected portal'
-                assert annotations.get('nginx.ingress.kubernetes.io/permanent-redirect-code') == '308'
+            assert mode != 'blocked', 'Retired services must not have an Ingress'
             continue
         assert policy['client'] in GROUPS and GROUPS[policy['client']], f'{host} needs allowed groups'
         if mode == 'oidc':
@@ -219,8 +217,8 @@ const vm = require("node:vm");
 '''
         subprocess.run(['node'], input=('const SOURCE = ' + json.dumps(source) + ';\n' + harness).encode(), check=True)
 
-    def test_legacy_dashboard_cannot_lose_its_redirect(self):
-        with self.assertRaisesRegex(AssertionError, 'must redirect'):
+    def test_retired_dashboard_cannot_be_exposed_again(self):
+        with self.assertRaisesRegex(AssertionError, 'must not have an Ingress'):
             validate_ingress({'metadata': {}, 'spec': {'rules': [{'host': 'dashboard.newjoy.ro'}]}})
 
 

@@ -57,7 +57,7 @@
     "mode": "document-token"
   },
   "dashboard.newjoy.ro": {
-    "mode": "redirect"
+    "mode": "blocked"
   },
   "frigate.newjoy.ro": {
     "mode": "proxy",
