@@ -21,7 +21,14 @@ data:
         }
         for (const client of result.data) {
           checked++;
-          if (client.isGroupRestricted !== true || !Array.isArray(client.allowedUserGroups) || !client.allowedUserGroups.length) {
+          // The list DTO omits group memberships; inspect each full client DTO.
+          const detailResponse = await fetch(`http://pocket-id.pocket-id.svc.cluster.local/api/oidc/clients/${encodeURIComponent(client.id)}`, {
+            headers: {"X-API-Key": process.env.POCKET_ID_API_KEY},
+            signal: AbortSignal.timeout(30000),
+          });
+          if (!detailResponse.ok) throw new Error(`Pocket ID client audit failed: HTTP ${detailResponse.status}`);
+          const detail = await detailResponse.json();
+          if (detail.isGroupRestricted !== true || !Array.isArray(detail.allowedUserGroups) || !detail.allowedUserGroups.length) {
             denied.push(`${client.name} (${client.id})`);
           }
         }

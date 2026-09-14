@@ -95,5 +95,9 @@ or API keys in applications. In particular:
 
 Public landing pages, health endpoints, sign-in pages, and Pocket ID account
 settings are intentionally reachable without application group membership.
-The stale unmanaged Forecastle dashboard at `dashboard.newjoy.ro` is blocked by
-an explicit Cloudflare Tunnel 404 rule before the wildcard ingress route.
+The old Forecastle ingress is now managed by the portal Application and redirects
+`dashboard.newjoy.ro` to the protected portal with HTTP 308. An explicit
+Cloudflare Tunnel 404 rule provides an additional local-routing block. Verify
+the hostname externally: the deployed tunnel did not honor that rule alone,
+so the ingress redirect is the verified boundary. Expect 308 to the portal or
+404, never a dashboard page. The access test prevents removing that redirect.

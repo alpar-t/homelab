@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -19,7 +20,7 @@ EXCEPTIONS = {
     'public': {'newjoy.ro', 'www.newjoy.ro', 'auth.newjoy.ro'},
     'separate-account': {'vault.newjoy.ro', 'mail.newjoy.ro'},
     'document-token': {'office.newjoy.ro', 'wopi.newjoy.ro'},
-    'blocked': {'dashboard.newjoy.ro'},
+    'redirect': {'dashboard.newjoy.ro'},
 }
 
 
@@ -45,6 +46,9 @@ def validate_ingress(ingress: dict) -> None:
         mode = policy['mode']
         if mode in EXCEPTIONS:
             assert host in EXCEPTIONS[mode], f'Review a new authentication exception: {host}'
+            if mode == 'redirect':
+                assert annotations.get('nginx.ingress.kubernetes.io/permanent-redirect') == 'https://portal.newjoy.ro/', 'Legacy dashboard must redirect to the protected portal'
+                assert annotations.get('nginx.ingress.kubernetes.io/permanent-redirect-code') == '308'
             continue
         assert policy['client'] in GROUPS and GROUPS[policy['client']], f'{host} needs allowed groups'
         if mode == 'oidc':
@@ -184,6 +188,40 @@ class AccessPolicyTests(unittest.TestCase):
     def test_future_helm_ingress_needs_a_policy(self):
         with self.assertRaisesRegex(AssertionError, 'needs an access policy'):
             validate_helm_values({'ingress': {'enabled': True, 'hosts': ['future.newjoy.ro']}})
+
+    def test_daily_audit_reads_full_client_details(self):
+        documents = list(yaml.safe_load_all((ROOT / 'config/pocket-id/manifests/access-check.yaml').read_text()))
+        source = documents[0]['data']['check.js']
+        # List responses omit group memberships in the deployed version. The
+        # full DTO must govern both successful checks and restriction failures.
+        harness = r'''
+const vm = require("node:vm");
+(async () => {
+  for (const restricted of [true, false]) {
+    const messages = [];
+    const process = {env: {POCKET_ID_API_KEY: "test-fixture"}, exitCode: 0};
+    let detailReads = 0;
+    const fetch = async url => {
+      if (url.includes("?")) return {ok: true, json: async () => ({
+        data: [{id: "future-service", name: "Future service"}], pagination: {totalPages: 1}
+      })};
+      detailReads++;
+      return {ok: true, json: async () => ({isGroupRestricted: restricted, allowedUserGroups: [{id: "family"}]})};
+    };
+    vm.runInNewContext(SOURCE, {fetch, process, URLSearchParams, AbortSignal,
+      console: {log: message => messages.push(message), error: message => messages.push(message)}});
+    await new Promise(setImmediate);
+    if (detailReads !== 1 || process.exitCode !== (restricted ? 0 : 1)) {
+      throw new Error(`Unexpected audit behavior: ${detailReads}, ${process.exitCode}, ${messages}`);
+    }
+  }
+})();
+'''
+        subprocess.run(['node'], input=('const SOURCE = ' + json.dumps(source) + ';\n' + harness).encode(), check=True)
+
+    def test_legacy_dashboard_cannot_lose_its_redirect(self):
+        with self.assertRaisesRegex(AssertionError, 'must redirect'):
+            validate_ingress({'metadata': {}, 'spec': {'rules': [{'host': 'dashboard.newjoy.ro'}]}})
 
 
 if __name__ == '__main__':
