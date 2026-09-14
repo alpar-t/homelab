@@ -40,6 +40,9 @@ spec:
             - --oidc-jwks-url=http://pocket-id.pocket-id.svc.cluster.local/.well-known/jwks.json
             - --scope=openid profile email groups
             - --oidc-groups-claim=groups
+            - --allowed-group=family_users
+            - --allowed-group=advanced_apps
+            - --allowed-group=kids
             - --set-xauthrequest=true
             - --email-domain=*
             - --insecure-oidc-allow-unverified-email=true

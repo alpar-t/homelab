@@ -5,10 +5,12 @@ cd "$(dirname "$0")/.."
 
 usage() {
   cat <<'EOF'
-Usage: scripts/test [all|image-tools|newjoy-staging|portal ...]
+Usage: scripts/test [all|image-tools|newjoy-staging|portal|access-policy|access-policy-live ...]
 
 With no targets, runs every local test. Pass one or more target names for a
 focused run. Use `scripts/test list` to print the targets.
+access-policy-live is opt-in: it requires cluster/API access and creates then
+deletes temporary ordinary Pocket ID users to verify authorization.
 EOF
 }
 
@@ -30,7 +32,7 @@ from pathlib import Path
 root = Path("config/portal/manifests/assets")
 catalogs = [
     json.loads((root / "catalog" / name).read_text())
-    for name in ("admin.json", "family.json", "base.json")
+    for name in ("admin.json", "family.json", "kids.json", "base.json")
 ]
 policy = json.loads((root / "capability-policy.json").read_text())
 for product, value in policy.items():
@@ -48,6 +50,12 @@ missing = sorted(referenced - policy.keys())
 assert not missing, f"Missing capability policy for: {', '.join(missing)}"
 PY
       ;;
+    access-policy)
+      python3 scripts/test-access-policy.py
+      ;;
+    access-policy-live)
+      python3 scripts/test-pocket-id-live.py
+      ;;
     *)
       echo "Unknown test target: $1" >&2
       usage >&2
@@ -57,14 +65,14 @@ PY
 }
 
 if [[ ${1:-all} == list ]]; then
-  printf '%s\n' image-tools newjoy-staging portal
+  printf '%s\n' image-tools newjoy-staging portal access-policy access-policy-live
   exit 0
 fi
 
 targets=("$@")
 if [[ ${#targets[@]} -eq 0 || ${targets[0]} == all ]]; then
   [[ ${#targets[@]} -le 1 ]] || { usage >&2; exit 2; }
-  targets=(image-tools newjoy-staging portal)
+  targets=(image-tools newjoy-staging portal access-policy)
 fi
 for target in "${targets[@]}"; do
   run_target "$target"

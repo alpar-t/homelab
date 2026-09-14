@@ -1,0 +1,146 @@
+{
+  "finance.newjoy.ro": {
+    "mode": "oidc",
+    "client": "actual"
+  },
+  "baloo.newjoy.ro": {
+    "mode": "oidc",
+    "client": "interior-designer"
+  },
+  "photos.newjoy.ro": {
+    "mode": "oidc",
+    "client": "30ba5ebe-f059-4c30-b37f-6e97b75c37b9"
+  },
+  "docs.newjoy.ro": {
+    "mode": "oidc",
+    "client": "6158fea9-7085-4f2d-8cfb-7131182ed8bf"
+  },
+  "food.newjoy.ro": {
+    "mode": "oidc",
+    "client": "e9adc85d-8f41-4095-87df-0384d772e377"
+  },
+  "webmail.newjoy.ro": {
+    "mode": "oidc",
+    "client": "15779aba-122b-45d2-bfbb-7770c1817225"
+  },
+  "travel.newjoy.ro": {
+    "mode": "oidc",
+    "client": "trek"
+  },
+  "tasks.newjoy.ro": {
+    "mode": "oidc",
+    "client": "vikunja"
+  },
+  "drive.newjoy.ro": {
+    "mode": "oidc",
+    "client": "b85f28eb-bf7d-4544-a311-eadcd5c09a2d"
+  },
+  "newjoy.ro": {
+    "mode": "public"
+  },
+  "www.newjoy.ro": {
+    "mode": "public"
+  },
+  "auth.newjoy.ro": {
+    "mode": "public"
+  },
+  "vault.newjoy.ro": {
+    "mode": "separate-account"
+  },
+  "mail.newjoy.ro": {
+    "mode": "separate-account"
+  },
+  "wopi.newjoy.ro": {
+    "mode": "document-token"
+  },
+  "office.newjoy.ro": {
+    "mode": "document-token"
+  },
+  "dashboard.newjoy.ro": {
+    "mode": "blocked"
+  },
+  "frigate.newjoy.ro": {
+    "mode": "proxy",
+    "client": "4ddf4ee0-5ae2-4069-9aed-74e8bb567ce4",
+    "namespace": "frigate",
+    "service": "oauth2-proxy-frigate"
+  },
+  "longhorn.newjoy.ro": {
+    "mode": "proxy",
+    "client": "bcbb35af-b37b-4d02-93c3-87b68dd50570",
+    "namespace": "longhorn-system",
+    "service": "oauth2-proxy-longhorn"
+  },
+  "nodered.newjoy.ro": {
+    "mode": "proxy",
+    "client": "3aec8dd6-097e-4957-a45e-20e49bd89fce",
+    "namespace": "nodered",
+    "service": "oauth2-proxy-nodered"
+  },
+  "wifi.newjoy.ro": {
+    "mode": "proxy",
+    "client": "ebe13ee7-31a6-4e06-9930-8ca1f9c2249e",
+    "namespace": "omada-controller",
+    "service": "oauth2-proxy-omada"
+  },
+  "otmonitor.newjoy.ro": {
+    "mode": "proxy",
+    "client": "38aee51c-917c-4915-99d0-44edbd3016bc",
+    "namespace": "otmonitor",
+    "service": "oauth2-proxy-otmonitor"
+  },
+  "pihole.newjoy.ro": {
+    "mode": "proxy",
+    "client": "4ecefc48-e2c3-4902-84ed-29f702206cfa",
+    "namespace": "pihole",
+    "service": "oauth2-proxy-pihole"
+  },
+  "portal.newjoy.ro": {
+    "mode": "proxy",
+    "client": "portal",
+    "namespace": "portal",
+    "service": "oauth2-proxy"
+  },
+  "staging.newjoy.ro": {
+    "mode": "proxy",
+    "client": "newjoy-website-staging",
+    "namespace": "newjoy-website-staging",
+    "service": "oauth2-proxy"
+  },
+  "maintainerr.newjoy.ro": {
+    "mode": "proxy",
+    "client": "33064a51-cb32-4d2f-b5cf-a2d37682c529",
+    "namespace": "media",
+    "service": "oauth2-proxy-media"
+  },
+  "media-auth.newjoy.ro": {
+    "mode": "proxy",
+    "client": "33064a51-cb32-4d2f-b5cf-a2d37682c529",
+    "namespace": "media",
+    "service": "oauth2-proxy-media"
+  },
+  "prowlarr.newjoy.ro": {
+    "mode": "proxy",
+    "client": "33064a51-cb32-4d2f-b5cf-a2d37682c529",
+    "namespace": "media",
+    "service": "oauth2-proxy-media"
+  },
+  "qbit.newjoy.ro": {
+    "mode": "proxy",
+    "client": "33064a51-cb32-4d2f-b5cf-a2d37682c529",
+    "namespace": "media",
+    "service": "oauth2-proxy-media"
+  },
+  "radarr.newjoy.ro": {
+    "mode": "proxy",
+    "client": "33064a51-cb32-4d2f-b5cf-a2d37682c529",
+    "namespace": "media",
+    "service": "oauth2-proxy-media"
+  },
+  "sonarr.newjoy.ro": {
+    "mode": "proxy",
+    "client": "33064a51-cb32-4d2f-b5cf-a2d37682c529",
+    "namespace": "media",
+    "service": "oauth2-proxy-media"
+  }
+}

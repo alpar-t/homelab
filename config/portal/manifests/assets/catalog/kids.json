@@ -1,0 +1,172 @@
+{
+  "label": "Kids workspace",
+  "intro": "Your photos, entertainment, and passwords, all in one place.",
+  "sections": [
+    {
+      "id": "photos",
+      "title": "Photos",
+      "description": "Back up your phone and enjoy the albums shared with you.",
+      "services": [
+        {
+          "name": "Pictures & albums",
+          "product": "Immich",
+          "description": "Back up your photos and videos, find your memories, and browse albums shared with you.",
+          "url": "https://photos.newjoy.ro",
+          "icon": "photos",
+          "accent": "#7f92ff",
+          "network": "anywhere",
+          "tags": [
+            "Immich",
+            "photos",
+            "videos",
+            "backup"
+          ],
+          "setup": {
+            "label": "Set up automatic phone backup",
+            "steps": [
+              "Install the Immich app on your phone.",
+              "Set the server address to https://photos.newjoy.ro and sign in with your household account.",
+              "Choose the phone albums you want to back up and allow background photo access."
+            ],
+            "links": [
+              {
+                "label": "Immich mobile guide",
+                "url": "https://docs.immich.app/features/mobile-app/"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "entertainment",
+      "title": "Movies & TV",
+      "description": "Watch the household library and add movies or series. Playback needs the home network or travel WireGuard.",
+      "services": [
+        {
+          "name": "Movies, TV & music",
+          "product": "Emby",
+          "description": "Watch the household media library on phones, computers, and televisions.",
+          "url": "http://192.168.1.204:8096",
+          "icon": "media",
+          "accent": "#5bc28a",
+          "network": "home",
+          "tags": [
+            "Emby",
+            "media",
+            "movies",
+            "television",
+            "music"
+          ],
+          "setup": {
+            "label": "Install Emby on a device",
+            "steps": [
+              "Install the Emby app on your phone, tablet, television, or streaming device.",
+              "Connect to the home Wi-Fi or travel WireGuard and add http://192.168.1.204:8096 as the server.",
+              "Sign in with your personal Emby account so watch progress and favourites stay separate."
+            ],
+            "links": [
+              {
+                "label": "Download Emby apps",
+                "url": "https://emby.media/download.html"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Movie library automation",
+          "product": "Radarr",
+          "description": "Manage films, wanted releases, downloads, and library imports.",
+          "url": "https://radarr.newjoy.ro",
+          "icon": "movies",
+          "accent": "#e3a94f",
+          "network": "anywhere",
+          "tags": [
+            "movies",
+            "media",
+            "automation"
+          ]
+        },
+        {
+          "name": "TV library automation",
+          "product": "Sonarr",
+          "description": "Manage television series, wanted episodes, downloads, and imports.",
+          "url": "https://sonarr.newjoy.ro",
+          "icon": "tv-series",
+          "accent": "#55a6db",
+          "network": "anywhere",
+          "tags": [
+            "television",
+            "media",
+            "automation"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "account",
+      "title": "Passwords & account",
+      "description": "Keep your passwords safe and manage how you sign in.",
+      "services": [
+        {
+          "name": "Passwords & secure notes",
+          "product": "Vaultwarden · Bitwarden apps",
+          "description": "Store passwords securely and fill them into websites and phone apps without memorising or reusing them.",
+          "url": "https://vault.newjoy.ro",
+          "icon": "passwords",
+          "accent": "#5ca7ed",
+          "network": "anywhere",
+          "tags": [
+            "Vaultwarden",
+            "Bitwarden",
+            "passwords",
+            "vault",
+            "secrets",
+            "autofill"
+          ],
+          "setup": {
+            "label": "Install apps & browser autofill",
+            "steps": [
+              "Install Bitwarden Password Manager on your phone and the Bitwarden extension in every desktop browser you use.",
+              "Before signing in, choose the self-hosted server option and enter https://vault.newjoy.ro as the server URL.",
+              "Sign in with your household vault account, then enable biometric unlock and autofill on each device.",
+              "Once Bitwarden autofill works, turn off password saving in the browser to avoid duplicate prompts."
+            ],
+            "links": [
+              {
+                "label": "Download Bitwarden apps",
+                "url": "https://bitwarden.com/download/"
+              },
+              {
+                "label": "Connect to a self-hosted server",
+                "url": "https://bitwarden.com/help/change-client-environment/"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Account & sign-in",
+          "product": "Pocket ID",
+          "description": "Manage passkeys, profile details, signed-in sessions, and account activity.",
+          "url": "https://auth.newjoy.ro/settings/account",
+          "icon": "identity",
+          "accent": "#8da6ff",
+          "network": "anywhere",
+          "tags": [
+            "Pocket ID",
+            "identity",
+            "passkeys"
+          ],
+          "setup": {
+            "label": "Add a passkey on this device",
+            "steps": [
+              "Open your account and add a passkey for the phone or computer you are using.",
+              "Keep more than one passkey when possible so losing one device does not lock you out.",
+              "Review active sessions and remove devices you no longer use."
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

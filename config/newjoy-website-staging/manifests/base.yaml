@@ -108,6 +108,7 @@ spec:
             - --oidc-jwks-url=http://pocket-id.pocket-id.svc.cluster.local/.well-known/jwks.json
             - --scope=openid profile email groups
             - --oidc-groups-claim=groups
+            - --allowed-group=advanced_apps
             - --email-domain=*
             - --insecure-oidc-allow-unverified-email=true
             - --cookie-secure=true

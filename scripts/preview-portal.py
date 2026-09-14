@@ -10,7 +10,7 @@ from urllib.parse import parse_qs, urlparse
 
 
 ASSET_ROOT = Path(__file__).resolve().parents[1] / "config/portal/manifests/assets"
-CATALOGS = {"admin", "family", "baloo", "base"}
+CATALOGS = {"admin", "family", "kids", "baloo", "base"}
 
 
 class PortalPreviewHandler(http.server.SimpleHTTPRequestHandler):

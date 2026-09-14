@@ -25,14 +25,16 @@ The browser receives the common HTML/CSS/JavaScript shell and requests
 | Pocket ID group | Catalog | Contents |
 |---|---|---|
 | `advanced_apps` | `admin.json` | Household services plus operations and media administration |
+| `kids` | `kids.json` | Immich, Emby, Radarr, Sonarr, Vaultwarden, and account settings |
 | `family_users` | `family.json` | Household services |
-| Neither | `base.json` | Pocket ID account links only |
+| None | No portal access | `base.json` is available only as an administrator preview |
 
-The admin match is evaluated first and its catalog is a superset of the family
-catalog. Direct requests to `/catalog/admin.json` and the other backing files
+The admin match is evaluated first, then kids, then family. The admin catalog
+is a superset of both household catalogs. Direct requests to `/catalog/admin.json`
+and the other backing files
 are rejected by nginx's `internal` location.
 
-Members of `advanced_apps` get a **View as** selector for reviewing the family,
+Members of `advanced_apps` get a **View as** selector for reviewing the family, kids,
 Baloo-access, and no-group experiences. nginx validates the real Pocket ID
 group before honoring `?view=`; non-admin users cannot reveal another catalog
 by constructing that query parameter themselves. The Baloo view is
@@ -41,6 +43,14 @@ documentation, not a Pocket ID user role.
 This is discovery policy, not authorization for the linked services. Each
 service must continue to enforce its own Pocket ID group policy or application
 permissions. Hiding a link in the portal does not revoke access to its URL.
+
+Assign children only to `kids`; adding `family_users` also grants access to
+household documents and budgets. The kids catalog includes no email link because
+an account identifier does not imply a Newjoy mailbox. Vaultwarden and Emby
+require separate application accounts. The shared Media OIDC client grants
+access to Prowlarr and qBittorrent as well as Radarr and Sonarr; only the latter
+two appear in the kids catalog. See `runbooks/pocket-id-access.md` for the
+application policy and the limits of Pocket ID enforcement.
 
 The UI, catalogs, icons, and nginx policy are baked into one public GHCR image.
 The source repository is public too, and anonymous image pulls avoid a
@@ -56,7 +66,8 @@ on a change to the shared provisioner.
 
 1. Sync the root `homelab` app, or apply `apps/portal.yaml` and sync `portal`.
 2. Open Pocket ID → OIDC Clients → `portal` → Allowed User Groups. Permit the
-   existing `family_users` and `advanced_apps` groups. Pocket ID creates new clients with no
+   existing `family_users`, `advanced_apps`, and `kids` groups. The shared
+   provisioner creates new clients with no
    allowed users, so sign-in will fail until this is set.
 3. Open `https://portal.newjoy.ro` and sign in once as a member of each group.
 
@@ -222,6 +233,7 @@ curl -I https://portal.newjoy.ro
 
 An unauthenticated request should redirect through `/oauth2/start` to Pocket
 ID. After authentication, check that `family_users` sees the family catalog and
+`kids` sees only the kids catalog. A user with no access groups must be denied.
 `advanced_apps` sees the operations sections and view selector. Confirm that requesting
 `https://portal.newjoy.ro/catalog/admin.json` returns 404.
 

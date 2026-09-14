@@ -2,6 +2,7 @@
   "views": [
     {"id": "admin", "label": "Advanced apps"},
     {"id": "family", "label": "Family users"},
+    {"id": "kids", "label": "Kids"},
     {"id": "baloo", "label": "Baloo access"},
     {"id": "base", "label": "No portal group"}
   ],

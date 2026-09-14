@@ -1,0 +1,108 @@
+{
+  "15779aba-122b-45d2-bfbb-7770c1817225": [
+    "family_users"
+  ],
+  "6158fea9-7085-4f2d-8cfb-7131182ed8bf": [
+    "family_users"
+  ],
+  "38aee51c-917c-4915-99d0-44edbd3016bc": [
+    "advanced_apps"
+  ],
+  "e822cb49-40e6-410e-951a-d28206398a9d": [
+    "family_users",
+    "advanced_apps",
+    "kids"
+  ],
+  "3aec8dd6-097e-4957-a45e-20e49bd89fce": [
+    "advanced_apps"
+  ],
+  "e9adc85d-8f41-4095-87df-0384d772e377": [
+    "family_users"
+  ],
+  "4ecefc48-e2c3-4902-84ed-29f702206cfa": [
+    "family_users"
+  ],
+  "bcbb35af-b37b-4d02-93c3-87b68dd50570": [
+    "advanced_apps"
+  ],
+  "93274076-f425-46a9-9776-54ea5b5c3c14": [
+    "advanced_apps"
+  ],
+  "ebe13ee7-31a6-4e06-9930-8ca1f9c2249e": [
+    "advanced_apps"
+  ],
+  "d091e2a4-702e-4fe8-8c99-fdb9f3cee0da": [
+    "family_users",
+    "advanced_apps"
+  ],
+  "969a7cea-97e5-4aed-bb94-2c691dbad920": [
+    "family_users",
+    "advanced_apps"
+  ],
+  "b85f28eb-bf7d-4544-a311-eadcd5c09a2d": [
+    "opencloud_admin",
+    "opencloud_users_"
+  ],
+  "30ba5ebe-f059-4c30-b37f-6e97b75c37b9": [
+    "family_users",
+    "advanced_apps",
+    "kids"
+  ],
+  "aee43fcb-d529-47b4-83e7-f615637036f4": [
+    "family_users",
+    "advanced_apps"
+  ],
+  "OpenCloudIOS": [
+    "opencloud_admin",
+    "opencloud_users_"
+  ],
+  "4ddf4ee0-5ae2-4069-9aed-74e8bb567ce4": [
+    "family_users",
+    "advanced_apps"
+  ],
+  "OpenCloudAndroid": [
+    "opencloud_admin",
+    "opencloud_users_"
+  ],
+  "a3ffe55a-f7ba-4562-b8f9-87e6e62b5a03": [
+    "family_users",
+    "advanced_apps"
+  ],
+  "OpenCloudDesktop": [
+    "opencloud_admin",
+    "opencloud_users_"
+  ],
+  "portal": [
+    "family_users",
+    "advanced_apps",
+    "kids"
+  ],
+  "trek": [
+    "family_users",
+    "advanced_apps"
+  ],
+  "33064a51-cb32-4d2f-b5cf-a2d37682c529": [
+    "family_users",
+    "advanced_apps",
+    "kids"
+  ],
+  "interior-designer": [
+    "family_users",
+    "advanced_apps"
+  ],
+  "sure": [
+    "family_users",
+    "advanced_apps"
+  ],
+  "vikunja": [
+    "family_users",
+    "advanced_apps"
+  ],
+  "actual": [
+    "family_users",
+    "advanced_apps"
+  ],
+  "newjoy-website-staging": [
+    "advanced_apps"
+  ]
+}

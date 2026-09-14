@@ -48,6 +48,10 @@ CNPG in-tree Barman backup to Barman Cloud Plugin migration and validation:
 Newjoy portal architecture, image delivery, catalog policy, and operations:
 `runbooks/newjoy-portal.md`.
 
+Pocket ID application group restrictions, reconciliation, and access checks:
+`runbooks/pocket-id-access.md`. Require explicit access groups for new OIDC
+clients and web sign-in proxies; run `scripts/test access-policy` on changes.
+
 Pamacs's quarantined Frigate HDD and one-shutdown 8 TB replacement procedure:
 `runbooks/frigate-disposable-media-disk.md`.
 

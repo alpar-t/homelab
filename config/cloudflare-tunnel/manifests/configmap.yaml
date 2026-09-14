@@ -18,6 +18,11 @@ data:
       - hostname: argocd.newjoy.ro
         service: http_status:404
 
+      # The old unmanaged Forecastle dashboard has no group authentication.
+      # The group-protected portal at portal.newjoy.ro replaces it.
+      - hostname: dashboard.newjoy.ro
+        service: http_status:404
+
       # SSH access via Cloudflare Access (browser-rendered terminal).
       # Auth gate is in the Cloudflare dashboard; this rule just routes
       # ssh.newjoy.ro to buksi's sshd.

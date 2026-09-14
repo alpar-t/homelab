@@ -47,6 +47,9 @@ spec:
             - --cookie-name=_oauth2_proxy_nodered
             - --cookie-domain=nodered.newjoy.ro
             # Email/user validation
+            - --scope=openid profile email groups
+            - --oidc-groups-claim=groups
+            - --allowed-group=advanced_apps
             - --email-domain=*
             - --insecure-oidc-allow-unverified-email=true
             # Redirect configuration

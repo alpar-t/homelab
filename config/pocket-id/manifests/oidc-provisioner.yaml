@@ -85,7 +85,8 @@ data:
           \"callbackURLs\": [\"$CALLBACK_URL\"],
           \"logoutCallbackURLs\": [\"$APP_URL\"],
           \"isPublic\": false,
-          \"pkceEnabled\": false
+          \"pkceEnabled\": false,
+          \"isGroupRestricted\": true
         }" \
         https://auth.newjoy.ro/api/oidc/clients
       echo "Client created"
