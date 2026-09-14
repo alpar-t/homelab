@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/test [all|image-tools|newjoy-staging|portal ...]
+
+With no targets, runs every local test. Pass one or more target names for a
+focused run. Use `scripts/test list` to print the targets.
+EOF
+}
+
+run_target() {
+  case "$1" in
+    image-tools)
+      (cd config/image-tools && npm test)
+      ;;
+    newjoy-staging)
+      python3 scripts/test-newjoy-staging.py
+      ;;
+    portal)
+      node --check config/portal/manifests/assets/app.js
+      node --check config/portal/manifests/assets/theme.js
+      python3 - <<'PY'
+import json
+from pathlib import Path
+
+root = Path("config/portal/manifests/assets")
+catalogs = [
+    json.loads((root / "catalog" / name).read_text())
+    for name in ("admin.json", "family.json", "base.json")
+]
+policy = json.loads((root / "capability-policy.json").read_text())
+for product, value in policy.items():
+    assert value["maturity"] in {"stable", "experimental"}, product
+    assert isinstance(value["baloo"]["available"], bool), product
+    assert isinstance(value["baloo"].get("detail", ""), str), product
+referenced = {
+    service["product"]
+    for catalog in catalogs
+    for section in catalog.get("sections", [])
+    for service in section.get("services", [])
+    if service.get("product")
+}
+missing = sorted(referenced - policy.keys())
+assert not missing, f"Missing capability policy for: {', '.join(missing)}"
+PY
+      ;;
+    *)
+      echo "Unknown test target: $1" >&2
+      usage >&2
+      return 2
+      ;;
+  esac
+}
+
+if [[ ${1:-all} == list ]]; then
+  printf '%s\n' image-tools newjoy-staging portal
+  exit 0
+fi
+
+targets=("$@")
+if [[ ${#targets[@]} -eq 0 || ${targets[0]} == all ]]; then
+  [[ ${#targets[@]} -le 1 ]] || { usage >&2; exit 2; }
+  targets=(image-tools newjoy-staging portal)
+fi
+for target in "${targets[@]}"; do
+  run_target "$target"
+done

@@ -1,0 +1,28 @@
+prefix_rule(
+    pattern = ["scripts/test"],
+    decision = "allow",
+    justification = "Run all or selected trusted homelab repository tests.",
+    match = [
+        "scripts/test",
+        "scripts/test image-tools",
+        "scripts/test portal newjoy-staging",
+        "scripts/test list",
+    ],
+    not_match = ["bash scripts/test", "scripts/deploy-ha.sh"],
+)
+
+prefix_rule(
+    pattern = ["python3", "scripts/preview-portal.py"],
+    decision = "allow",
+    justification = "Start the repository's loopback-only portal preview.",
+    match = ["python3 scripts/preview-portal.py", "python3 scripts/preview-portal.py --port 8081"],
+    not_match = ["python3 -c print(1)", "python3 scripts/update-newjoy-staging.py"],
+)
+
+prefix_rule(
+    pattern = ["scripts/resolve-container-image.py"],
+    decision = "allow",
+    justification = "Run the repository's read-only container image resolver.",
+    match = ["scripts/resolve-container-image.py registry.k8s.io/kubectl --list"],
+    not_match = ["python3 scripts/create-github-app.py"],
+)

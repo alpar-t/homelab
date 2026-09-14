@@ -2,6 +2,22 @@
 
 Self-hosting infrastructure using 3 Intel x86_64 Odroid nodes running Kubernetes.
 
+## Local tests
+
+`scripts/test` runs all local repository tests. Select one or more independent
+targets when working on a specific area:
+
+```bash
+scripts/test
+scripts/test image-tools
+scripts/test portal newjoy-staging
+scripts/test list
+```
+
+Trusted Codex sessions load `.codex/rules/repository.rules`, which allows this
+test dispatcher, the loopback portal preview, and the read-only container image
+resolver without repeated approval prompts.
+
 ## What This Is
 
 A 3-node highly-available Kubernetes cluster on low-power Intel x86_64
