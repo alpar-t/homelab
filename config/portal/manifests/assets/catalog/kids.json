@@ -1,7 +1,24 @@
 {
   "label": "Kids workspace",
-  "intro": "Your photos, entertainment, and passwords, all in one place.",
+  "intro": "Search the web, enjoy your photos and entertainment, and keep your passwords safe.",
   "sections": [
+    {
+      "id": "search",
+      "title": "Search",
+      "description": "Find information across the web.",
+      "services": [
+        {
+          "name": "Search the web",
+          "product": "SearXNG",
+          "description": "Find information across multiple search engines in one place.",
+          "url": "https://search.newjoy.ro",
+          "icon": "search",
+          "accent": "#8e77d9",
+          "network": "anywhere",
+          "tags": ["search", "web", "SearXNG"]
+        }
+      ]
+    },
     {
       "id": "photos",
       "title": "Photos",

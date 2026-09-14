@@ -1,4 +1,10 @@
 {
+  "search.newjoy.ro": {
+    "mode": "proxy",
+    "client": "searxng-search",
+    "namespace": "baloo",
+    "service": "oauth2-proxy-search"
+  },
   "finance.newjoy.ro": {
     "mode": "oidc",
     "client": "actual"

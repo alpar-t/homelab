@@ -25,7 +25,7 @@ The browser receives the common HTML/CSS/JavaScript shell and requests
 | Pocket ID group | Catalog | Contents |
 |---|---|---|
 | `advanced_apps` | `admin.json` | Household services plus operations and media administration |
-| `kids` | `kids.json` | Immich, Emby, Radarr, Sonarr, Vaultwarden, and account settings |
+| `kids` | `kids.json` | Search, Immich, Emby, Radarr, Sonarr, Vaultwarden, and account settings |
 | `family_users` | `family.json` | Household services |
 | None | No portal access | `base.json` is available only as an administrator preview |
 

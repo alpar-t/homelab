@@ -15,6 +15,16 @@
       "description": "What the household can create, plan, store, watch, and remember.",
       "services": [
         {
+          "name": "Search the web",
+          "product": "SearXNG",
+          "description": "Find information across multiple search engines in one place.",
+          "url": "https://search.newjoy.ro",
+          "icon": "search",
+          "accent": "#8e77d9",
+          "network": "anywhere",
+          "tags": ["search", "web", "SearXNG"]
+        },
+        {
           "name": "Preview the Newjoy website",
           "product": "Newjoy staging",
           "description": "Review the latest website preview before it is published.",

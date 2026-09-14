@@ -52,7 +52,7 @@ kubectl -n pocket-id logs job/pocket-id-access-check-manual
 
 ## Groups
 
-- `kids`: portal, both Immich Photos clients, and shared media sign-in.
+- `kids`: portal, both Immich Photos clients, shared media sign-in, and web search.
 - `family_users`: household applications, including documents, budgets, and website staging.
 - `advanced_apps`: operations, website staging, and household applications.
 - `opencloud_admin` and `opencloud_users_`: OpenCloud web and mobile/desktop clients.
@@ -64,10 +64,18 @@ documents or budgets. An ordinary Pocket ID user with no groups must not be
 allowed to sign in to any application client. Pocket ID's own account/passkey
 settings remain available so the user can manage their identity.
 
-The `kids` portal contains Immich, Emby, Radarr, Sonarr, Vaultwarden, and account
+The `kids` portal contains SearXNG, Immich, Emby, Radarr, Sonarr, Vaultwarden, and account
 settings. Emby is available on the home network or travel WireGuard. The shared
 Media client covers Radarr, Sonarr, Prowlarr, qBittorrent, and Maintainerr;
 its group policy applies to all those public endpoints.
+
+`search.newjoy.ro` exposes SearXNG's browser interface through
+`baloo/oauth2-proxy-search`, with the `searxng-search` Pocket ID client allowing
+`family_users`, `kids`, or `advanced_apps`. Both root and search/API requests
+require authentication; only the `/oauth2` login flow routes directly to the
+proxy. Baloo continues to use the internal `searxng` Service. The family, kids,
+and administrator catalogs all include search. This is a web search interface;
+group membership does not enable content filtering or parental controls.
 
 ## Web proxies and sessions
 

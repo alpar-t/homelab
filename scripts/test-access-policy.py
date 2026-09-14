@@ -102,7 +102,7 @@ class AccessPolicyTests(unittest.TestCase):
         kids_clients = {identifier for identifier, groups in GROUPS.items() if 'kids' in groups}
         self.assertEqual(kids_clients, {'portal', '30ba5ebe-f059-4c30-b37f-6e97b75c37b9',
                                        'e822cb49-40e6-410e-951a-d28206398a9d',
-                                       '33064a51-cb32-4d2f-b5cf-a2d37682c529'})
+                                       '33064a51-cb32-4d2f-b5cf-a2d37682c529', 'searxng-search'})
 
     def test_all_declared_services_have_a_policy(self):
         for host, policy in SERVICES.items():
@@ -147,7 +147,7 @@ class AccessPolicyTests(unittest.TestCase):
                         self.assertEqual(len(expected), 1, f'{path}: new proxy needs a service/group policy')
                         validate_proxy(container, set(next(iter(expected))))
                         proxies[key] = container
-                    if '/scripts/provision.sh' in container.get('command', []):
+                    if '/scripts/provision.sh' in ' '.join(container.get('command', [])):
                         env = {item['name']: item.get('value') for item in container.get('env', [])}
                         self.assertIn(env.get('APP_NAME'), GROUPS, f'{path}: new OIDC service needs an explicit group policy')
         expected_proxies = {(p['namespace'], p['service']) for p in SERVICES.values() if p['mode'] == 'proxy'}
@@ -166,7 +166,7 @@ class AccessPolicyTests(unittest.TestCase):
     def test_kids_catalog_contains_only_selected_services(self):
         catalog = json.loads((ROOT / 'config/portal/manifests/assets/catalog/kids.json').read_text())
         products = {service['product'] for section in catalog['sections'] for service in section['services']}
-        self.assertEqual(products, {'Immich', 'Emby', 'Radarr', 'Sonarr', 'Vaultwarden · Bitwarden apps', 'Pocket ID'})
+        self.assertEqual(products, {'Immich', 'Emby', 'Radarr', 'Sonarr', 'Vaultwarden · Bitwarden apps', 'Pocket ID', 'SearXNG'})
 
     def test_future_proxy_without_groups_is_rejected(self):
         with self.assertRaisesRegex(AssertionError, 'missing or incorrect groups'):

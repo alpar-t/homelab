@@ -1,4 +1,8 @@
 {
+  "SearXNG": {
+    "maturity": "stable",
+    "baloo": {"available": true}
+  },
   "Newjoy staging": {
     "maturity": "experimental",
     "baloo": {"available": false}

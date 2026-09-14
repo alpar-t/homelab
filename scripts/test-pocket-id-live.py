@@ -60,9 +60,9 @@ class LiveAccessTests(unittest.TestCase):
     def test_no_groups_denied_by_every_client(self):
         self.assertEqual(self.assert_access(set()), 0)
 
-    def test_kids_allowed_only_photos_portal_and_media(self):
+    def test_kids_allowed_only_photos_portal_media_and_search(self):
         self.api.api('/users/' + self.user['id'] + '/user-groups', 'PUT', {'userGroupIds': [self.groups['kids']]})
-        self.assertEqual(self.assert_access({'kids'}), 4)
+        self.assertEqual(self.assert_access({'kids'}), 5)
 
 
 if __name__ == '__main__':

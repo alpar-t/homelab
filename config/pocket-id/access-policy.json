@@ -1,4 +1,9 @@
 {
+  "searxng-search": [
+    "family_users",
+    "advanced_apps",
+    "kids"
+  ],
   "15779aba-122b-45d2-bfbb-7770c1817225": [
     "family_users"
   ],
