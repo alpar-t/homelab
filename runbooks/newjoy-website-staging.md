@@ -34,39 +34,30 @@ Do not print credentials, commit Secrets, restart Baloo, or broaden its access.
 ## Build storage and polling
 
 The website ARC scale set mounts newjoy-website-build, a 30Gi expandable
-longhorn-ssd PVC, at /newjoy-build. Its two replicas retain observations,
-accepted project snapshots, media derivatives, and publication state across
+longhorn-ssd PVC, at /newjoy-build. Its two replicas retain accepted editorial
+and source fingerprints, project snapshots, media derivatives, and publication state across
 ephemeral runner pods. The PVC opts out of Argo pruning. Watch usage; orphan
 cache/snapshot pruning is not implemented yet.
 
 The website workflow is enabled by repository variable
-NEWJOY_CONTENT_SYNC_ENABLED=true. NEWJOY_SOURCE_PROJECT_KEYS initially selects
-the five authored demonstration projects using opaque public keys; it contains
-no private folder names. Keep this bounded canary until live acceptance and a
-warm no-download run are verified. Clearing it expands polling to all projects
-under the configured 2021–2026 year roots.
+NEWJOY_CONTENT_SYNC_ENABLED=true. It checks every immediate project folder under
+the configured 2021–2026 year roots so a new story can be detected anywhere.
 
 Scheduled/manual runs poll OpenCloud; push runs build solely from accepted
-snapshots. Polling is requested every 15 minutes, with a three-hour *observed*
-quiet window. GitHub schedules can be delayed. Fixtures never substitute for
-accepted live content. Each poll preserves invalid/unavailable projects'
-last accepted state. Detailed errors stay in state/last-poll.json; Actions logs
-contain counts including mediaDownloads and mediaBytes.
-
-The owner approved an initial-deployment exception: dispatch site-image.yaml
-with `-f initial_import=true`. Never-accepted projects may qualify from the newest
-valid source modification time across renders, catalogs, website.yaml, and
-baloo.yaml if all are at least three hours old. Missing/future timestamps use
-normal observed timing; known fingerprint changes block the shortcut. Catalog
-and before/after version checks remain mandatory. The flag defaults off and
-cannot accelerate accepted-project updates or rewrite observation timestamps.
-For initially recent files, the source-age deadline persists across subsequent
-scheduled polls. A changed fingerprint discards that deadline and requires the
-normal observed quiet window.
+snapshots. Polling is requested every five minutes and performs only shallow
+project-root `website.yaml` metadata checks until a story file is new or changed.
+That trigger immediately runs deterministic full collection and validation; no
+quiet period or LLM is involved. The owner accepts that render/catalog changes
+will also change `website.yaml`, so render-only changes are not polling triggers.
+GitHub schedules can be delayed. Fixtures never substitute for accepted live
+content. Each poll preserves invalid/unavailable projects' last accepted state.
+Detailed errors stay in state/last-poll.json; Actions logs contain counts
+including mediaDownloads and mediaBytes. Full before/after fingerprints still
+reject concurrent source changes.
 
 One ARC runner and non-cancelling workflow concurrency serialize the pipeline.
 An interrupted poll can leave state/poll.lock. First verify no runner is active;
-only then remove that exact lock. Do not delete accepted state or observations.
+only then remove that exact lock. Do not delete accepted state.
 
 The live WebDAV adapter has read all five authored website.yaml files and
 inventoried their projects. OpenCloud reports directory getcontentlength as
@@ -96,7 +87,7 @@ A source-head check skips superseded publications.
 
 Website image builds run on homelab. The separate newjoy-staging-update workflow
 runs a registry/Git-only task on a GitHub-hosted runner, using this repository's
-GITHUB_TOKEN rather than a cross-repository PAT. Every 15 minutes it selects
+GITHUB_TOKEN rather than a cross-repository PAT. Every five minutes it selects
 the newest run/attempt, uses scripts/resolve-container-image.py to verify public
 linux/amd64 availability and the digest, and commits only
 config/newjoy-website-staging/manifests/deployment.yaml. It never edits production.

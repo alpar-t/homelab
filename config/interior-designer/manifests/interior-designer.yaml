@@ -45,7 +45,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: open-webui
-          image: ghcr.io/open-webui/open-webui:main@sha256:6a773e5c3a246b65cbe74ce942b294292c0e5f81c138f703d111bc162f7d7c3d
+          image: ghcr.io/open-webui/open-webui:0.11.3@sha256:41daa0cf2561a5d4c8d1ff31ee2a98d93ab4d3ac2605cac69366ff6a3374a933
           ports:
             - name: http
               containerPort: 8080

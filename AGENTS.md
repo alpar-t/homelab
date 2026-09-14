@@ -48,7 +48,7 @@ CNPG in-tree Barman backup to Barman Cloud Plugin migration and validation:
 Newjoy portal architecture, image delivery, catalog policy, and operations:
 `runbooks/newjoy-portal.md`.
 
-Disposable Frigate recordings on pamacs's quarantined failing HDD:
+Pamacs's quarantined Frigate HDD and one-shutdown 8 TB replacement procedure:
 `runbooks/frigate-disposable-media-disk.md`.
 
 Cloudflare Tunnel outage history, one-connector-per-node placement, and checks:
