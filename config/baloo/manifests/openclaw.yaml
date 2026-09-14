@@ -248,6 +248,11 @@ spec:
                 secretKeyRef:
                   name: baloo-secrets
                   key: ACTUAL_MCP_API_KEY
+            - name: OPENCLAW_GATEWAY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: OPENCLAW_GATEWAY_TOKEN
             # CDP token for the isolated browser pod (config/baloo/manifests/browser.yaml).
             # Optional so the pod still renders before the secret key is created.
             - name: BROWSER_CDP_TOKEN
@@ -516,6 +521,11 @@ spec:
                 secretKeyRef:
                   name: baloo-secrets
                   key: ACTUAL_MCP_API_KEY
+            - name: OPENCLAW_GATEWAY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: OPENCLAW_GATEWAY_TOKEN
             - name: BROWSER_CDP_TOKEN
               valueFrom:
                 secretKeyRef:

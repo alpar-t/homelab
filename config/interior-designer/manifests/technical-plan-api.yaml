@@ -1,0 +1,244 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: technical-plan-work
+  namespace: baloo
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: technical-plan-api
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: technical-plan-api
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: technical-plan-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: technical-plan-api
+      annotations:
+        secret.reloader.stakater.com/reload: "opencloud-baloo,baloo-secrets"
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: git-sync-init
+          image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
+          args:
+            - --repo=https://github.com/alpar-t/baloo.git
+            - --root=/git
+            - --link=link
+            - --depth=1
+            - --github-app-application-id=4150403
+            - --github-app-installation-id=142711366
+            - --github-app-private-key-file=/var/run/secrets/github-app/private-key.pem
+            - --one-time
+          securityContext:
+            runAsUser: 65533
+            runAsGroup: 65533
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+            - name: tmp
+              mountPath: /tmp
+            - name: github-app-key
+              mountPath: /var/run/secrets/github-app
+              readOnly: true
+        - name: prepare-renderer
+          image: ghcr.io/open-webui/open-webui:0.11.3@sha256:41daa0cf2561a5d4c8d1ff31ee2a98d93ab4d3ac2605cac69366ff6a3374a933
+          command:
+            - uv
+            - run
+            - --script
+            - /git/link/openclaw/skills/sketchup-technical-svg-plans/scripts/technical_plans.py
+            - schema
+          env:
+            - name: UV_CACHE_DIR
+              value: /work/uv-cache
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+              readOnly: true
+            - name: work
+              mountPath: /work
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        - name: technical-plan-api
+          # Reuse the exact Open WebUI image already deployed in this app. It
+          # contains uv, Cairo, FastAPI, pypdf, and the browser file contract.
+          image: ghcr.io/open-webui/open-webui:0.11.3@sha256:41daa0cf2561a5d4c8d1ff31ee2a98d93ab4d3ac2605cac69366ff6a3374a933
+          command:
+            - python
+            - /git/link/openclaw/tools/technical-plan-api.py
+          ports:
+            - name: http
+              containerPort: 18809
+          env:
+            - name: PORT
+              value: "18809"
+            - name: TECHNICAL_PLAN_WORK_ROOT
+              value: /work/technical-plans
+            - name: UV_CACHE_DIR
+              value: /work/uv-cache
+            - name: OPENWEBUI_INTERNAL_URL
+              value: http://interior-designer.baloo.svc.cluster.local:8080
+            - name: TECHNICAL_DRAFTER_MODEL_ID
+              value: newjoy-technical-drafter
+            - name: TECHNICAL_PLAN_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: OPENCLAW_GATEWAY_TOKEN
+            - name: OPENCLOUD_WEBDAV_URL
+              valueFrom:
+                secretKeyRef:
+                  name: opencloud-baloo
+                  key: webdav-url
+            - name: OPENCLOUD_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: opencloud-baloo
+                  key: username
+            - name: OPENCLOUD_APP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: opencloud-baloo
+                  key: app-token
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 250m
+              memory: 384Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+              readOnly: true
+            - name: work
+              mountPath: /work
+            - name: tmp
+              mountPath: /tmp
+        - name: git-sync
+          image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
+          args:
+            - --repo=https://github.com/alpar-t/baloo.git
+            - --root=/git
+            - --link=link
+            - --depth=1
+            - --period=60s
+            - --github-app-application-id=4150403
+            - --github-app-installation-id=142711366
+            - --github-app-private-key-file=/var/run/secrets/github-app/private-key.pem
+          securityContext:
+            runAsUser: 65533
+            runAsGroup: 65533
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+            - name: tmp
+              mountPath: /tmp
+            - name: github-app-key
+              mountPath: /var/run/secrets/github-app
+              readOnly: true
+      volumes:
+        - name: git-repo
+          emptyDir: {}
+        - name: work
+          persistentVolumeClaim:
+            claimName: technical-plan-work
+        - name: tmp
+          emptyDir: {}
+        - name: github-app-key
+          secret:
+            secretName: baloo-github-app
+            items:
+              - key: private-key
+                path: private-key.pem
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: technical-plan-api
+  namespace: baloo
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: technical-plan-api
+  ports:
+    - name: http
+      port: 18809
+      targetPort: http

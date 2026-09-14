@@ -1,12 +1,22 @@
 # Baloo OpenCloud MCP
 
-Baloo reaches Newjoy project material through OpenCloud's documented WebDAV interface. The MCP bridge is source-controlled in the private `alpar-t/baloo` repository and exposes only list, search, metadata, bounded text-read, and image-read tools. It has no generic write, move, copy, delete, sharing, or administrative operation.
+Baloo reaches Newjoy project material through OpenCloud's documented WebDAV
+interface. The MCP bridge is source-controlled in the private `alpar-t/baloo`
+repository. General agents receive only list, search, metadata, bounded
+text-read, and image-read tools. The Newjoy organizer additionally receives
+bounded directory, move, text/YAML, and organization-state operations. The
+Newjoy Technical Drafter uses a separate deterministic service for bounded
+binary import, immutable PDF review candidates, and immutable issued PDFs. No
+agent receives generic deletion, sharing, or administrative operations.
 
 ## Access model
 
 - Use a dedicated Pocket ID identity for Baloo, not Alpar's or Kinga's account.
 - Sign in to OpenCloud once with that identity so OpenCloud provisions the user.
-- Share only the `Proiecte Newjoy` parent with that user. Start with Viewer permission; increase it only when a separately guarded catalog-write workflow is implemented.
+- Share only the `Proiecte Newjoy` parent with that user. The account needs
+  permission to create and move content because organizer and technical-plan
+  writes are constrained in code and by per-agent tool allowlists rather than
+  by a separate OpenCloud identity.
 - Create one expiring OpenCloud App Token for this integration. OpenCloud App Tokens can access everything visible to their user, so folder sharing is the effective least-privilege boundary.
 - Copy the exact WebDAV URL from the shared Space/folder's info panel. The MCP treats this URL as its root and rejects parent traversal.
 
@@ -24,7 +34,9 @@ kubectl -n baloo create secret generic opencloud-baloo \
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
-The OpenClaw Deployment watches `opencloud-baloo` through Reloader. Creating or updating the Secret starts a rollout; `openclaw.json` is rendered again with the new values.
+The OpenClaw and technical-plan Deployments watch `opencloud-baloo` through
+Reloader. Creating or updating the Secret starts their rollouts;
+`openclaw.json` is rendered again with the new values.
 
 For rotation, create a second App Token first, update the Secret, wait for a healthy rollout and successful image read, then revoke the old token. Never log or commit either token.
 
@@ -40,6 +52,17 @@ For rotation, create a second App Token first, update the Secret, wait for a hea
 2. Open the Web UI and select `Baloo — Newjoy Studio`.
 3. Ask it to list only images below the WebDAV root. Check that it cannot see any folder outside `Proiecte Newjoy`.
 4. Ask it to inspect one non-sensitive image. Confirm the answer includes its relative path, file ID, ETag, factual description, Romanian and English alt text, and `review_state: proposed`.
-5. Ask it to upload, rename, or delete a file. It must report that no such tool exists.
+5. Ask Alpar to upload, rename, or delete a file. It must report that no such
+   tool exists. Newjoy Studio may perform only its explicitly allowlisted
+   organization writes.
+6. Select `Baloo — Newjoy Technical Drafter`. Confirm it is Astra with high
+   reasoning, has no messaging binding, and can see both technical-plan skills.
+7. In a disposable project, import one bounded source, render a working PDF,
+   inspect every returned PNG page, and attach the exact working OpenCloud PDF
+   in the browser. Confirm a different agent cannot invoke either browser tool.
+8. Approve an issue revision, publish it below
+   `Execution/Technical Plans/Issued/<scope>/`, and compare the reported
+   SHA-256 with a fresh OpenCloud download. Reusing the revision with different
+   bytes, skipping a room/export, or skipping a preview page must fail.
 
 If authentication fails, confirm the username is the OpenCloud UUID, the App Token is still valid, and the copied URL is the WebDAV URL—not the browser address-bar URL.

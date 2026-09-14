@@ -13,7 +13,7 @@
   },
   "OpenCloud": {
     "maturity": "stable",
-    "baloo": {"available": true, "detail": "Read-only"}
+    "baloo": {"available": true, "detail": "Read-only generally; guarded Newjoy writes"}
   },
   "Immich": {
     "maturity": "stable",

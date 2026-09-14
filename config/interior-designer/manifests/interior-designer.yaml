@@ -43,6 +43,41 @@ spec:
         fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        # Open WebUI resolves external OpenAPI tool schemas during startup.
+        # Avoid a rollout race that would leave the preview tool undiscovered.
+        - name: wait-technical-plan-api
+          image: ghcr.io/open-webui/open-webui:0.11.3@sha256:41daa0cf2561a5d4c8d1ff31ee2a98d93ab4d3ac2605cac69366ff6a3374a933
+          command:
+            - python
+            - -c
+            - |
+              import time
+              import urllib.request
+              url = "http://technical-plan-api.baloo.svc.cluster.local:18809/health"
+              for attempt in range(90):
+                  try:
+                      with urllib.request.urlopen(url, timeout=2) as response:
+                          if response.status == 200:
+                              raise SystemExit(0)
+                  except Exception:
+                      time.sleep(2)
+              raise SystemExit("technical-plan-api did not become ready")
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
       containers:
         - name: open-webui
           image: ghcr.io/open-webui/open-webui:0.11.3@sha256:41daa0cf2561a5d4c8d1ff31ee2a98d93ab4d3ac2605cac69366ff6a3374a933
@@ -120,13 +155,21 @@ spec:
             # default model ACL hides every agent from non-admin users.
             - name: BYPASS_MODEL_ACCESS_CONTROL
               value: "true"
+            # External OpenAPI tools receive the authenticated browser session
+            # plus chat/message IDs so the preview bridge can attach the exact
+            # OpenCloud PDF to the response being rendered.
+            - name: ENABLE_FORWARD_USER_INFO_HEADERS
+              value: "true"
+            - name: TOOL_SERVER_CONNECTIONS
+              value: >-
+                [{"url":"http://technical-plan-api.baloo.svc.cluster.local:18809","path":"openapi.json","type":"openapi","auth_type":"session","config":{"enable":true,"access_grants":[{"principal_type":"user","principal_id":"*","permission":"read"}]},"info":{"id":"technical-plans-preview","name":"Newjoy Technical Plan Preview","description":"Preview verified OpenCloud PDFs and durably import plan sources."}}]
             # OpenClaw agents are discovered dynamically, so they have no Open
             # WebUI model record carrying feature metadata. Mark image
             # generation as supported and enabled by default; users can still
             # turn it off per chat from the normal feature controls.
             - name: DEFAULT_MODEL_METADATA
               value: >-
-                {"capabilities":{"image_generation":true},"defaultFeatureIds":["image_generation"],"builtinTools":{"image_generation":true}}
+                {"capabilities":{"image_generation":true,"file_upload":true},"defaultFeatureIds":["image_generation"],"builtinTools":{"image_generation":true},"toolIds":["server:technical-plans-preview"]}
             - name: OPENAI_API_BASE_URLS
               value: http://openclaw.baloo.svc.cluster.local:18789/v1
             - name: OPENAI_API_KEYS

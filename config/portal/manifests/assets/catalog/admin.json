@@ -55,11 +55,11 @@
             "groups": [
               {
                 "name": "Family users",
-                "agents": ["Alpar", "Kinga", "Cooking", "Garden", "Trips", "Interior Designer", "Newjoy Studio"]
+                "agents": ["Alpar", "Kinga", "Cooking", "Garden", "Trips", "Interior Designer", "Newjoy Studio", "Newjoy Technical Drafter"]
               },
               {
                 "name": "Advanced apps",
-                "agents": ["Alpar", "Kinga", "Cooking", "Garden", "Trips", "Interior Designer", "Newjoy Studio"]
+                "agents": ["Alpar", "Kinga", "Cooking", "Garden", "Trips", "Interior Designer", "Newjoy Studio", "Newjoy Technical Drafter"]
               }
             ]
           }

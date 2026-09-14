@@ -201,6 +201,14 @@
           "tags": ["public web only"]
         },
         {
+          "name": "Newjoy Technical Drafter",
+          "description": "Astra on high reasoning creates and revises coordinated technical-plan sets from Newjoy project exports. It can read the scoped project, render deterministic A4 PDFs, import bounded browser sources, attach review copies, and issue only reviewed PDFs to guarded OpenCloud paths.",
+          "icon": "design",
+          "accent": "#73a6c5",
+          "scope": "Specialist",
+          "tags": ["technical plans", "PDF review", "guarded OpenCloud write"]
+        },
+        {
           "name": "Policy source",
           "product": "Baloo repository",
           "description": "Review the exact per-agent allow and deny arrays in the private Baloo repository. This file remains the source of truth.",
