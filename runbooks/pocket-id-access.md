@@ -29,6 +29,8 @@ allowlists, and new shared-provisioner clients absent from the policy. Keep
 endpoint authentication modes in `config/pocket-id/service-access-policy.json`;
 public and independent-account exceptions are deliberately limited in the test.
 Install `scripts/requirements-access-tests.txt` if PyYAML is unavailable locally.
+The daily-audit regression test also requires Node.js 22 or newer; CI installs
+Python and Node explicitly.
 
 The live test is opt-in because it requires administrator API access. It creates
 temporary ordinary identities with non-deliverable email identifiers, exercises Pocket ID's
