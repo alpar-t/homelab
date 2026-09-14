@@ -87,6 +87,8 @@ spec:
               value: "true"
             - name: UV_PYTHON_INSTALL_DIR
               value: /work/uv-python
+            - name: XDG_CACHE_HOME
+              value: /work/xdg-cache
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
@@ -134,6 +136,8 @@ spec:
               value: "true"
             - name: UV_PYTHON_INSTALL_DIR
               value: /work/uv-python
+            - name: XDG_CACHE_HOME
+              value: /work/xdg-cache
             - name: OPENWEBUI_INTERNAL_URL
               value: http://interior-designer.baloo.svc.cluster.local:8080
             - name: TECHNICAL_DRAFTER_MODEL_ID

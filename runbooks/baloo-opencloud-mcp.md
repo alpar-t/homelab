@@ -48,6 +48,8 @@ The reused WebUI image defaults to a root home directory. For non-root
 renderer processes, explicitly select `/usr/local/bin/python`, disable managed
 Python discovery, and keep uv's cache/install directories under `/work`; do
 not let startup probe `/root/.local/share/uv/python`.
+Set `XDG_CACHE_HOME=/work/xdg-cache` for writable Fontconfig caches so successful
+PDF renders do not return root-home cache errors in their inspection output.
 
 For rotation, create a second App Token first, update the Secret, wait for a healthy rollout and successful image read, then revoke the old token. Never log or commit either token.
 
