@@ -76,6 +76,7 @@ require authentication; only the `/oauth2` login flow routes directly to the
 proxy. Baloo continues to use the internal `searxng` Service. The family, kids,
 and administrator catalogs all include search. This is a web search interface;
 group membership does not enable content filtering or parental controls.
+See `searxng-maintenance.md` for Google engine failures and upgrade validation.
 
 ## Web proxies and sessions
 
