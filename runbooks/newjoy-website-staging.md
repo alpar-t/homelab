@@ -9,8 +9,11 @@ The separate portal is documented in newjoy-portal.md.
 The initial sample-content image is deployed and Argo reports Synced/Healthy.
 The owner verified login at staging.newjoy.ro on 9 September 2026.
 Authentication is entirely the existing oauth2-proxy + Pocket ID infrastructure
-client. Any Pocket ID login is allowed: isGroupRestricted=false, no group
-allowlist. No authentication code belongs in Astro, and no further Pocket ID
+client. Pocket ID enables group restrictions and permits `family_users` or
+`advanced_apps`; oauth2-proxy enforces the same groups. The staging preview is
+listed in both portal catalogs. Keep the client policy in
+`config/pocket-id/access-policy.json`; see `runbooks/pocket-id-access.md` for checks.
+No authentication code belongs in Astro, and no further Pocket ID
 integration is needed for OpenCloud content.
 
 Signed-out root, assets, and environment requests redirect through the proxy.

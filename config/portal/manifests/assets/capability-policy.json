@@ -1,4 +1,8 @@
 {
+  "Newjoy staging": {
+    "maturity": "experimental",
+    "baloo": {"available": false}
+  },
   "Baloo": {
     "maturity": "experimental",
     "baloo": {"available": true, "detail": "AI-native"}

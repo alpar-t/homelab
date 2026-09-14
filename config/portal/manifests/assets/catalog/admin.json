@@ -15,6 +15,16 @@
       "description": "What the household can create, plan, store, watch, and remember.",
       "services": [
         {
+          "name": "Preview the Newjoy website",
+          "product": "Newjoy staging",
+          "description": "Review the latest website preview before it is published.",
+          "url": "https://staging.newjoy.ro",
+          "icon": "deploy",
+          "accent": "#ef8c67",
+          "network": "anywhere",
+          "tags": ["Newjoy", "website", "staging", "preview"]
+        },
+        {
           "name": "Household AI",
           "product": "Baloo",
           "description": "Ask for help with projects, research, pictures, cooking, gardening, travel, and household knowledge.",

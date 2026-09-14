@@ -53,7 +53,7 @@ kubectl -n pocket-id logs job/pocket-id-access-check-manual
 ## Groups
 
 - `kids`: portal, both Immich Photos clients, and shared media sign-in.
-- `family_users`: household applications, including documents and budgets.
+- `family_users`: household applications, including documents, budgets, and website staging.
 - `advanced_apps`: operations, website staging, and household applications.
 - `opencloud_admin` and `opencloud_users_`: OpenCloud web and mobile/desktop clients.
 

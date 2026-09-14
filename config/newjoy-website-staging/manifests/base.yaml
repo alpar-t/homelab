@@ -109,6 +109,7 @@ spec:
             - --scope=openid profile email groups
             - --oidc-groups-claim=groups
             - --allowed-group=advanced_apps
+            - --allowed-group=family_users
             - --email-domain=*
             - --insecure-oidc-allow-unverified-email=true
             - --cookie-secure=true
