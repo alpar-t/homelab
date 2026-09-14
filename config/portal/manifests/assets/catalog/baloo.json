@@ -194,7 +194,7 @@
         },
         {
           "name": "Interior Designer",
-          "description": "Public search, fetch, and isolated browser only. Every household, project, image-generation, task, and infrastructure namespace is denied.",
+          "description": "Public web research and isolated browsing, with image generation and editing delivered through Open WebUI. No household, project, task, or infrastructure access.",
           "icon": "design",
           "accent": "#b5a58f",
           "scope": "Specialist",
