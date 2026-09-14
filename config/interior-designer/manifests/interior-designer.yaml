@@ -162,7 +162,7 @@ spec:
               value: "true"
             - name: TOOL_SERVER_CONNECTIONS
               value: >-
-                [{"url":"http://technical-plan-api.baloo.svc.cluster.local:18809","path":"openapi.json","type":"openapi","auth_type":"session","config":{"enable":true,"access_grants":[{"principal_type":"user","principal_id":"*","permission":"read"}]},"info":{"id":"technical-plans-preview","name":"Newjoy Technical Plan Preview","description":"Preview verified OpenCloud PDFs and durably import plan sources."}}]
+                [{"url":"http://technical-plan-api.baloo.svc.cluster.local:18809","path":"openapi.json","type":"openapi","auth_type":"session","config":{"enable":true,"access_grants":[{"principal_type":"user","principal_id":"*","permission":"read"}]},"info":{"id":"technical-plans-preview","name":"Newjoy Verified Previews","description":"Attach verified plan PDFs or generated website previews; durably import plan sources. Each operation verifies its allowed chat model."}}]
             # OpenClaw agents are discovered dynamically, so they have no Open
             # WebUI model record carrying feature metadata. Mark image
             # generation as supported and enabled by default; users can still
