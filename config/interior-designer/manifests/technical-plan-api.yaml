@@ -81,6 +81,12 @@ spec:
           env:
             - name: UV_CACHE_DIR
               value: /work/uv-cache
+            - name: UV_PYTHON
+              value: /usr/local/bin/python
+            - name: UV_NO_MANAGED_PYTHON
+              value: "true"
+            - name: UV_PYTHON_INSTALL_DIR
+              value: /work/uv-python
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
@@ -122,6 +128,12 @@ spec:
               value: /work/technical-plans
             - name: UV_CACHE_DIR
               value: /work/uv-cache
+            - name: UV_PYTHON
+              value: /usr/local/bin/python
+            - name: UV_NO_MANAGED_PYTHON
+              value: "true"
+            - name: UV_PYTHON_INSTALL_DIR
+              value: /work/uv-python
             - name: OPENWEBUI_INTERNAL_URL
               value: http://interior-designer.baloo.svc.cluster.local:8080
             - name: TECHNICAL_DRAFTER_MODEL_ID

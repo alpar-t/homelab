@@ -44,6 +44,10 @@ The Python bridge loads its service code at process startup: changes to
 `technical-plan-api.py` require a rollout of `deployment/technical-plan-api`
 after git-sync reaches the desired revision. Agent prompts, shared skills, and
 the stdio MCP adapter continue to update through the normal git-sync path.
+The reused WebUI image defaults to a root home directory. For non-root
+renderer processes, explicitly select `/usr/local/bin/python`, disable managed
+Python discovery, and keep uv's cache/install directories under `/work`; do
+not let startup probe `/root/.local/share/uv/python`.
 
 For rotation, create a second App Token first, update the Secret, wait for a healthy rollout and successful image read, then revoke the old token. Never log or commit either token.
 
