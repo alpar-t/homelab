@@ -786,7 +786,7 @@ spec:
         # Generic bounded image conversion and manipulation for agents and
         # OpenCloud adapters. It is reachable only from containers in this pod.
         - name: image-tools
-          image: ghcr.io/alpar-t/homelab-image-tools:sha-0a0da21eddfec61fd65f1cee3497f15bf2828d0f@sha256:eba55bdc2ceb6502ddd928bc9cd75f985f1cae8caeae17c6bea1963fa3838d32
+          image: ghcr.io/alpar-t/homelab-image-tools:sha-93e9907998ce2f6f1090181371ce4cff9914c489@sha256:bbcf654ef531c1f019b82013131ea1e74603c920a44be6c5ff9052febcc00a9c
           imagePullPolicy: IfNotPresent
           ports:
             - name: image-tools
