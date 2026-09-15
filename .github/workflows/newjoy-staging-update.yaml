@@ -1,6 +1,12 @@
 name: Update Newjoy staging release
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/newjoy-staging-update.yaml'
+      - 'scripts/update-newjoy-staging.py'
+      - 'scripts/test-newjoy-staging.py'
   schedule:
     - cron: '*/5 * * * *'
 permissions:
@@ -20,7 +26,9 @@ jobs:
       - name: Install registry inspector
         run: sudo apt-get update && sudo apt-get install --yes skopeo
       - name: Test bounded staging updater
-        run: python3 scripts/test-newjoy-staging.py
+        run: |
+          python3 scripts/test-newjoy-staging.py
+          node --test scripts/test-newjoy-staging-dispatch-secret.mjs
       - name: Resolve and record the latest published website release
         shell: bash
         run: |

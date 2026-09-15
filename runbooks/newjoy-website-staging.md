@@ -90,12 +90,33 @@ A source-head check skips superseded publications.
 
 Website image builds run on homelab. The separate newjoy-staging-update workflow
 runs a registry/Git-only task on a GitHub-hosted runner, using this repository's
-GITHUB_TOKEN rather than a cross-repository PAT. Every five minutes it selects
+GITHUB_TOKEN for its Git changes. A successful website image publication
+immediately dispatches this workflow on `main`. It also runs every five minutes
+as a recovery fallback and on main pushes affecting its updater code. It selects
 the newest run/attempt, uses scripts/resolve-container-image.py to verify public
 linux/amd64 availability and the digest, and commits only
 config/newjoy-website-staging/manifests/deployment.yaml. It never edits production.
 Concurrent Git pushes fail safely and retry on the next run; release ordering
 prevents an older run replacing a newer one.
+
+On 14 September 2026 the owner approved reusing `arc-runners/github-arc-token`
+for the website-to-homelab dispatch. Its fine-grained PAT needs Actions read/write
+(permissions apply to all repositories selected on that token). Run
+`node scripts/sync-newjoy-staging-dispatch-secret.mjs` to copy `github_token`
+directly into private alpar-t/newjoy-website's encrypted Actions secret
+`NEWJOY_STAGING_DISPATCH_TOKEN`. Repeat after token rotation; no automatic
+credential synchronization is provided. The helper suppresses Secret bodies,
+credential-bearing subprocess errors, and all API details. Never print the token,
+commit it, or mount the ARC credential into website build pods. Only trusted site
+main builds use it, solely to dispatch this staging workflow. The updater still
+verifies public amd64 digests and cannot edit production.
+
+Image publication is marked complete on durable builder storage only after
+dispatch succeeds. Transient dispatch errors retry at most three times; a failed
+dispatch leaves publication retryable, and scheduled updater runs remain a
+separate recovery path. A successful dispatch acknowledges a queued workflow,
+not a verified deployment: check its run, GitOps image reference, Argo sync, and
+the live website pod's image/readiness independently.
 
 The image resolver's --list --tag-pattern REGEX --limit 0 supports discovery of
 these non-version tags; normal version resolution is unchanged.
