@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
 import { createServer as createHttpServer } from "node:http";
-import { mkdir, open, readFile, realpath, stat } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdir, open, readFile, readdir, realpath, rm, stat } from "node:fs/promises";
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import sharp from "sharp";
@@ -14,13 +16,21 @@ const DEFAULT_HOST = "127.0.0.1";
 const DEFAULT_PORT = 18807;
 const DEFAULT_READ_ROOTS = ["/state/media/inbound", "/state/media/generated"];
 const DEFAULT_OUTPUT_ROOT = "/state/media/generated/image-tools";
+const DEFAULT_AUDIO_OUTPUT_ROOT = "/state/media/generated/audio-chunks";
 const MAX_MCP_REQUEST_BYTES = 128 * 1024;
+const MAX_JSON_REQUEST_BYTES = 16 * 1024;
 const MAX_INPUT_BYTES = 60 * 1024 * 1024;
 const MAX_OUTPUT_BYTES = 8 * 1024 * 1024;
 const MAX_INPUT_PIXELS = 64_000_000;
 const MAX_DIMENSION = 8_192;
 const DEFAULT_MODEL_SIDE = 4_096;
 const PROCESS_TIMEOUT_SECONDS = 30;
+const AUDIO_SPLIT_TIMEOUT_MS = 10 * 60 * 1000;
+const DEFAULT_AUDIO_SEGMENT_SECONDS = 1_200;
+const MIN_AUDIO_SEGMENT_SECONDS = 300;
+const MAX_AUDIO_SEGMENT_SECONDS = 1_300;
+const MAX_AUDIO_DURATION_SECONDS = 8 * 60 * 60;
+const execFileAsync = promisify(execFile);
 const OUTPUT_MIME = new Map([
   ["jpeg", "image/jpeg"],
   ["png", "image/png"],
@@ -74,9 +84,101 @@ export async function confinedMediaFile(inputPath, roots = DEFAULT_READ_ROOTS) {
   const metadata = await stat(target);
   if (!metadata.isFile()) throw new Error("path must identify a regular file");
   if (metadata.size < 1 || metadata.size > MAX_INPUT_BYTES) {
-    throw new Error(`image must be from 1 to ${MAX_INPUT_BYTES} bytes`);
+    throw new Error(`media must be from 1 to ${MAX_INPUT_BYTES} bytes`);
   }
   return { path: target, size: metadata.size };
+}
+
+function parseDuration(stdout, label) {
+  const duration = Number(String(stdout).trim());
+  if (!Number.isFinite(duration) || duration <= 0 || duration > MAX_AUDIO_DURATION_SECONDS) {
+    throw new Error(`${label} duration is invalid or exceeds ${MAX_AUDIO_DURATION_SECONDS} seconds`);
+  }
+  return duration;
+}
+
+async function runMediaCommand(command, args, timeout = AUDIO_SPLIT_TIMEOUT_MS) {
+  try {
+    return await execFileAsync(command, args, {
+      timeout,
+      maxBuffer: 1024 * 1024,
+      windowsHide: true,
+    });
+  } catch (error) {
+    const detail = String(error?.stderr || error?.message || error).trim().split("\n").at(-1);
+    throw new Error(`${command} failed${detail ? `: ${detail}` : ""}`);
+  }
+}
+
+async function probeAudioDuration(path, runner = runMediaCommand) {
+  const { stdout } = await runner("ffprobe", [
+    "-v", "error",
+    "-select_streams", "a:0",
+    "-show_entries", "format=duration",
+    "-of", "default=noprint_wrappers=1:nokey=1",
+    path,
+  ]);
+  return parseDuration(stdout, "audio");
+}
+
+export async function splitAudioFile(inputPath, options = {}) {
+  const roots = options.readRoots || DEFAULT_READ_ROOTS;
+  const outputRoot = options.outputRoot || DEFAULT_AUDIO_OUTPUT_ROOT;
+  const runner = options.runner || runMediaCommand;
+  const segmentSeconds = integer(
+    options.segmentSeconds ?? DEFAULT_AUDIO_SEGMENT_SECONDS,
+    "segmentSeconds",
+    MIN_AUDIO_SEGMENT_SECONDS,
+    MAX_AUDIO_SEGMENT_SECONDS,
+  );
+  const source = await confinedMediaFile(inputPath, roots);
+  const durationSeconds = await probeAudioDuration(source.path, runner);
+  if (durationSeconds <= segmentSeconds) {
+    return { jobId: null, durationSeconds, segmentSeconds, chunks: [source.path] };
+  }
+
+  await mkdir(outputRoot, { recursive: true, mode: 0o700 });
+  const jobId = randomUUID();
+  const outputDirectory = join(outputRoot, jobId);
+  await mkdir(outputDirectory, { mode: 0o700 });
+  try {
+    await runner("ffmpeg", [
+      "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+      "-i", source.path,
+      "-map", "0:a:0",
+      "-ac", "1",
+      "-ar", "16000",
+      "-c:a", "libopus",
+      "-b:a", "32k",
+      "-vbr", "on",
+      "-f", "segment",
+      "-segment_time", String(segmentSeconds),
+      "-reset_timestamps", "1",
+      join(outputDirectory, "part-%03d.ogg"),
+    ]);
+    const names = (await readdir(outputDirectory))
+      .filter((name) => /^part-[0-9]{3}\.ogg$/.test(name))
+      .sort();
+    if (names.length < 2 || names.length > 96) throw new Error("ffmpeg returned an invalid chunk count");
+    const chunks = names.map((name) => join(outputDirectory, name));
+    for (const chunk of chunks) {
+      const metadata = await stat(chunk);
+      if (!metadata.isFile() || metadata.size < 1024 || metadata.size > MAX_INPUT_BYTES) {
+        throw new Error("ffmpeg returned an invalid audio chunk");
+      }
+    }
+    return { jobId, durationSeconds, segmentSeconds, chunks };
+  } catch (error) {
+    await rm(outputDirectory, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+export async function cleanupAudioChunks(jobId, outputRoot = DEFAULT_AUDIO_OUTPUT_ROOT) {
+  if (typeof jobId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(jobId)) {
+    throw new Error("invalid audio split job id");
+  }
+  await rm(join(outputRoot, jobId), { recursive: true, force: true });
 }
 
 function transformSchemaShape() {
@@ -290,6 +392,13 @@ function internalTransformOptions(url) {
 }
 
 export function createImageToolsHttpServer(options = {}) {
+  const audioOutputRoot = options.audioOutputRoot || DEFAULT_AUDIO_OUTPUT_ROOT;
+  const splitAudio = options.splitAudio || ((path, splitOptions = {}) => splitAudioFile(path, {
+    readRoots: options.readRoots || DEFAULT_READ_ROOTS,
+    outputRoot: audioOutputRoot,
+    ...splitOptions,
+  }));
+  const cleanupAudio = options.cleanupAudio || ((jobId) => cleanupAudioChunks(jobId, audioOutputRoot));
   return createHttpServer(async (request, response) => {
     const url = new URL(request.url || "/", "http://localhost");
     try {
@@ -319,6 +428,23 @@ export function createImageToolsHttpServer(options = {}) {
           "cache-control": "no-store",
         });
         response.end(JSON.stringify(metadata));
+        return;
+      }
+      if (request.method === "POST" && url.pathname === "/v1/audio/split") {
+        const input = JSON.parse((await readBoundedBody(request, MAX_JSON_REQUEST_BYTES)).toString("utf8"));
+        const result = await splitAudio(input.path, { segmentSeconds: input.segmentSeconds });
+        response.writeHead(200, {
+          "content-type": "application/json",
+          "cache-control": "no-store",
+        });
+        response.end(JSON.stringify(result));
+        return;
+      }
+      if (request.method === "DELETE" && url.pathname.startsWith("/v1/audio/split/")) {
+        const jobId = decodeURIComponent(url.pathname.slice("/v1/audio/split/".length));
+        await cleanupAudio(jobId);
+        response.writeHead(204, { "cache-control": "no-store" });
+        response.end();
         return;
       }
       if (request.method === "POST" && url.pathname === "/mcp") {

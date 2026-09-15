@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import sharp from "sharp";
-import { confinedMediaFile, createImageToolsHttpServer, transformBuffer } from "./server.js";
+import { cleanupAudioChunks, confinedMediaFile, createImageToolsHttpServer, splitAudioFile, transformBuffer } from "./server.js";
 
 async function fixture() {
   return sharp({ create: { width: 32, height: 24, channels: 4, background: "#3b82f6" } }).avif().toBuffer();
@@ -98,6 +98,74 @@ test("serves bounded metadata for raw browser-upload bytes", async () => {
       channels: 4,
       hasAlpha: true,
     });
+  } finally {
+    await new Promise((resolvePromise) => server.close(resolvePromise));
+  }
+});
+
+test("splits long confined audio into ordered temporary chunks and cleans them", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "audio-split-"));
+  try {
+    const root = join(directory, "inbound");
+    const outputRoot = join(directory, "chunks");
+    await mkdir(root);
+    const input = join(root, "long.ogg");
+    await writeFile(input, Buffer.alloc(2048, 1));
+    const calls = [];
+    const runner = async (command, args) => {
+      calls.push({ command, args });
+      if (command === "ffprobe") return { stdout: "3246.9\n", stderr: "" };
+      const pattern = args.at(-1);
+      await Promise.all([0, 1, 2].map((index) => writeFile(
+        pattern.replace("%03d", String(index).padStart(3, "0")),
+        Buffer.alloc(2048, index + 1),
+      )));
+      return { stdout: "", stderr: "" };
+    };
+    const result = await splitAudioFile(input, {
+      readRoots: [root],
+      outputRoot,
+      segmentSeconds: 1200,
+      runner,
+    });
+    assert.equal(result.durationSeconds, 3246.9);
+    assert.match(result.jobId, /^[0-9a-f-]{36}$/);
+    assert.deepEqual(result.chunks.map((path) => path.slice(-12)), ["part-000.ogg", "part-001.ogg", "part-002.ogg"]);
+    assert.equal(calls[1].command, "ffmpeg");
+    assert.ok(calls[1].args.includes("libopus"));
+    await cleanupAudioChunks(result.jobId, outputRoot);
+    await assert.rejects(realpath(join(outputRoot, result.jobId)), /ENOENT/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("serves bounded audio split and cleanup endpoints", async () => {
+  const jobId = "123e4567-e89b-42d3-a456-426614174000";
+  const calls = [];
+  const server = createImageToolsHttpServer({
+    splitAudio: async (path, options) => {
+      calls.push({ operation: "split", path, options });
+      return { jobId, durationSeconds: 3246.9, segmentSeconds: 1200, chunks: ["/state/media/generated/audio-chunks/part-000.ogg"] };
+    },
+    cleanupAudio: async (value) => calls.push({ operation: "cleanup", jobId: value }),
+  });
+  await new Promise((resolvePromise) => server.listen(0, "127.0.0.1", resolvePromise));
+  try {
+    const address = server.address();
+    const split = await fetch(`http://127.0.0.1:${address.port}/v1/audio/split`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ path: "/state/media/inbound/long.ogg", segmentSeconds: 1200 }),
+    });
+    assert.equal(split.status, 200);
+    assert.equal((await split.json()).jobId, jobId);
+    const cleanup = await fetch(`http://127.0.0.1:${address.port}/v1/audio/split/${jobId}`, { method: "DELETE" });
+    assert.equal(cleanup.status, 204);
+    assert.deepEqual(calls, [
+      { operation: "split", path: "/state/media/inbound/long.ogg", options: { segmentSeconds: 1200 } },
+      { operation: "cleanup", jobId },
+    ]);
   } finally {
     await new Promise((resolvePromise) => server.close(resolvePromise));
   }
