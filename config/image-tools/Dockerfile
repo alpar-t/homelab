@@ -1,10 +1,16 @@
 FROM docker.io/library/node:22.18.0-alpine@sha256:1b2479dd35a99687d6638f5976fd235e26c5b37e8122f786fcd5fe231d63de5b
 
+RUN apk add --no-cache font-dejavu \
+    && fc-match -f '%{family}\n' 'DejaVu Sans' | grep -q 'DejaVu Sans' \
+    && fc-match -f '%{family}\n' 'DejaVu Serif' | grep -q 'DejaVu Serif'
+
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts=false \
     && npm cache clean --force
-COPY server.js ./
+COPY server.js server.test.js ./
+RUN npm test \
+    && rm server.test.js
 
 ENV NODE_ENV=production \
     IMAGE_TOOLS_HOST=127.0.0.1 \

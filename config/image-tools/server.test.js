@@ -10,6 +10,14 @@ async function fixture() {
   return sharp({ create: { width: 32, height: 24, channels: 4, background: "#3b82f6" } }).avif().toBuffer();
 }
 
+async function renderedGlyph(glyph) {
+  const svg = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="100">
+    <rect width="100%" height="100%" fill="#fff"/>
+    <text x="12" y="76" font-family="DejaVu Sans, sans-serif" font-size="72" fill="#111">${glyph}</text>
+  </svg>`);
+  return (await transformBuffer(svg, { format: "png" })).data;
+}
+
 test("normalizes AVIF input to visible bounded JPEG", async () => {
   const result = await transformBuffer(await fixture(), { format: "jpeg", width: 16, height: 16, fit: "inside" });
   const metadata = await sharp(result.data).metadata();
@@ -17,6 +25,19 @@ test("normalizes AVIF input to visible bounded JPEG", async () => {
   assert.equal(metadata.format, "jpeg");
   assert.equal(metadata.width, 16);
   assert.equal(metadata.height, 12);
+});
+
+test("rasterizes distinct Romanian glyphs with the packaged preview font", async () => {
+  const [blank, breve, circumflex, commaS, commaT] = await Promise.all([
+    renderedGlyph(" "),
+    renderedGlyph("ă"),
+    renderedGlyph("â"),
+    renderedGlyph("ș"),
+    renderedGlyph("ț"),
+  ]);
+  assert.notDeepEqual(breve, blank);
+  assert.notDeepEqual(breve, circumflex);
+  assert.notDeepEqual(commaS, commaT);
 });
 
 test("confines source paths to configured media roots and rejects symlink escapes", async () => {
