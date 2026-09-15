@@ -1364,6 +1364,30 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: openclaw-homeassistant
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: openclaw
+    app.kubernetes.io/component: homeassistant-gateway
+  annotations:
+    metallb.universe.tf/address-pool: lan-pool
+    metallb.universe.tf/loadBalancerIPs: 192.168.1.209
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Cluster
+  loadBalancerSourceRanges:
+    - 192.168.1.102/32
+  selector:
+    app.kubernetes.io/name: openclaw
+  ports:
+    - name: gateway
+      port: 18789
+      targetPort: gateway
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
   name: openclaw-image-api
   namespace: baloo
   labels:
