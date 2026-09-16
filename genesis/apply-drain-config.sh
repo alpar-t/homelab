@@ -34,7 +34,7 @@ echo "Draining node ${NODE_NAME}..."
 $KUBECTL drain "${NODE_NAME}" \
   --ignore-daemonsets \
   --delete-emptydir-data \
-  --force \
+  --pod-selector='"'"'!cnpg.io/cluster'"'"' \
   --timeout=120s \
   --skip-wait-for-delete-timeout=30 \
   2>&1 || echo "Drain timed out or had errors, proceeding with reboot"
