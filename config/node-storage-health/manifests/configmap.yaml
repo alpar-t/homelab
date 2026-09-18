@@ -64,7 +64,8 @@ data:
       counter=$2
       value=$3
       severity=$4
-      key=$(safe_name "${device}_${counter}")
+      identity=${5:-$device}
+      key=$(safe_name "${identity}_${counter}")
       baseline="$state_dir/${key}.baseline"
 
       case "$value" in
@@ -149,9 +150,9 @@ data:
       esac
 
       command_timeouts=$(ata_attribute Command_Timeout)
-      [ -n "$command_timeouts" ] && check_counter_increase "$serial" Command_Timeout "$command_timeouts" CRITICAL
+      [ -n "$command_timeouts" ] && check_counter_increase "$device" Command_Timeout "$command_timeouts" CRITICAL "$serial"
       crc_errors=$(ata_attribute UDMA_CRC_Error_Count)
-      [ -n "$crc_errors" ] && check_counter_increase "$serial" UDMA_CRC_Error_Count "$crc_errors" WARNING
+      [ -n "$crc_errors" ] && check_counter_increase "$device" UDMA_CRC_Error_Count "$crc_errors" WARNING "$serial"
 
       mount_line=$(df -PT "$quarantine_mount" 2>/dev/null | awk 'NR == 2 {print $1, $2}')
       set -- $mount_line
