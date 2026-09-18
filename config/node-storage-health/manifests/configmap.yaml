@@ -25,6 +25,11 @@ data:
     wear_warn_pct=80
     wear_critical_pct=95
 
+    quarantine_node=${QUARANTINE_NODE:-}
+    quarantine_serial=${QUARANTINE_SERIAL:-}
+    quarantine_mount=${QUARANTINE_MOUNT:-}
+    quarantine_marker=${QUARANTINE_MARKER:-}
+
     mkdir -p "$health_dir" "$state_dir"
 
     number() {
@@ -90,6 +95,90 @@ data:
       printf '%s\n' "$smart_output" | awk -v name="$attribute" '$2 == name {print $10; exit}' | tr -d ', '
     }
 
+    check_quarantine_kernel_events() {
+      device=$1
+      serial=$2
+      block_name=${device#/dev/}
+      ata_port=$(readlink -f "$sys_block/$block_name/device" 2>/dev/null \
+        | sed -n 's#.*\(ata[0-9][0-9]*\)/host.*#\1#p')
+      device_pattern="\\[$block_name\\]|dev $block_name([ ,:]|$)|\\($block_name\\)"
+      [ -z "$ata_port" ] || device_pattern="$device_pattern|$ata_port([.: ]|$)"
+
+      kernel_output=$(dmesg 2>&1)
+      if [ "$?" -ne 0 ]; then
+        add_issue CRITICAL "$device quarantined disk kernel log is unreadable"
+        return
+      fi
+
+      latest_event=$(printf '%s\n' "$kernel_output" \
+        | grep -E "$device_pattern" \
+        | grep -Ei 'I/O error|medium error|uncorrectable|UNC at|failed command|resetting link|hard resetting link|softreset failed|link is slow to respond|SATA link down|Buffer I/O|blk_update_request|EXT4-fs.*(error|warning|abort|read-only)|rejecting I/O' \
+        | tail -n 1)
+      baseline="$state_dir/quarantine_$(safe_name "$serial")_kernel_event.baseline"
+
+      if [ -z "$latest_event" ]; then
+        # Record that the first clean scan completed. A later first error must
+        # alert rather than being silently accepted as the initial baseline.
+        [ -s "$baseline" ] || printf '%s\n' NONE > "$baseline"
+        return
+      fi
+
+      if [ ! -s "$baseline" ]; then
+        # Preserve pre-existing boot-history errors on first deployment. After
+        # a clean scan the baseline contains NONE, so a new error alerts.
+        printf '%s\n' "$latest_event" > "$baseline"
+        return
+      fi
+
+      old_event=$(cat "$baseline" 2>/dev/null || true)
+      if [ "$latest_event" != "$old_event" ]; then
+        add_issue CRITICAL "$device quarantined disk has a new kernel storage error: $latest_event; acknowledge by removing $baseline after investigation"
+      fi
+    }
+
+    check_quarantined_device() {
+      device=$1
+      serial=$2
+
+      temperature=$(ata_attribute Temperature_Celsius)
+      [ -n "$temperature" ] || temperature=$(ata_attribute Airflow_Temperature_Cel)
+      case "$temperature" in
+        '') add_issue WARNING "$device quarantined disk temperature is unreadable" ;;
+        *[!0-9]*) add_issue WARNING "$device quarantined disk temperature is unreadable" ;;
+        *) check_threshold "$device quarantined disk temperature" "$temperature" "$temperature_warn_c" "$temperature_critical_c" C ;;
+      esac
+
+      command_timeouts=$(ata_attribute Command_Timeout)
+      [ -n "$command_timeouts" ] && check_counter_increase "$serial" Command_Timeout "$command_timeouts" CRITICAL
+      crc_errors=$(ata_attribute UDMA_CRC_Error_Count)
+      [ -n "$crc_errors" ] && check_counter_increase "$serial" UDMA_CRC_Error_Count "$crc_errors" WARNING
+
+      mount_line=$(df -PT "$quarantine_mount" 2>/dev/null | awk 'NR == 2 {print $1, $2}')
+      set -- $mount_line
+      if [ "$#" -ne 2 ]; then
+        add_issue CRITICAL "$device quarantined disk mount $quarantine_mount is unavailable"
+      else
+        mount_source=$1
+        mount_fstype=$2
+        if [ "$mount_source" != "$device" ]; then
+          add_issue CRITICAL "$device quarantined disk mount $quarantine_mount uses unexpected source $mount_source"
+        fi
+        if [ "$mount_fstype" != ext4 ]; then
+          add_issue CRITICAL "$device quarantined disk mount $quarantine_mount uses unexpected filesystem $mount_fstype"
+        fi
+      fi
+      if [ -n "$quarantine_marker" ] && [ ! -r "$quarantine_marker" ]; then
+        add_issue CRITICAL "$device quarantined disk Longhorn marker is unreadable at $quarantine_marker"
+      fi
+
+      check_quarantine_kernel_events "$device" "$serial"
+
+      pending=$(ata_attribute Current_Pending_Sector)
+      offline_uncorrectable=$(ata_attribute Offline_Uncorrectable)
+      reallocated=$(ata_attribute Reallocated_Sector_Ct)
+      quarantine_summary="quarantine=${serial}:${device},pending=${pending:-unknown},offline_uncorrectable=${offline_uncorrectable:-unknown},reallocated=${reallocated:-unknown},temp=${temperature:-unknown}C"
+    }
+
     check_device() {
       device=$1
       model=$2
@@ -105,6 +194,13 @@ data:
 
       if printf '%s\n' "$smart_output" | grep -Eq 'overall-health.*FAILED|SMART Health Status:.*(BAD|FAILED)'; then
         add_issue CRITICAL "$device ($model) SMART overall health is failing"
+      fi
+
+      serial=$(printf '%s\n' "$smart_output" | awk -F: '/^Serial Number:/ {sub(/^[[:space:]]*/, "", $2); print $2; exit}')
+      if [ "${NODE_NAME:-}" = "$quarantine_node" ] && [ -n "$quarantine_serial" ] && [ "$serial" = "$quarantine_serial" ]; then
+        quarantine_seen=1
+        check_quarantined_device "$device" "$serial"
+        return
       fi
 
       case "$device" in
@@ -177,6 +273,8 @@ data:
 
     run_check() {
       : > "$issues"
+      quarantine_seen=0
+      quarantine_summary=
 
       var_line=$(df -Pk "$var_path" | awk 'NR == 2 {gsub(/%/, "", $5); print $4, $5}')
       set -- $var_line
@@ -220,6 +318,10 @@ data:
         check_device "$device" "${model:-unknown model}"
       done
 
+      if [ "${NODE_NAME:-}" = "$quarantine_node" ] && [ -n "$quarantine_serial" ] && [ "$quarantine_seen" -ne 1 ]; then
+        add_issue CRITICAL "expected quarantined disk serial $quarantine_serial is missing or unreadable"
+      fi
+
       if [ "$device_count" -eq 0 ]; then
         add_issue CRITICAL "no physical NVMe/SATA devices were discovered"
       fi
@@ -234,9 +336,9 @@ data:
         printf '%s node=%s %s\n' "$level" "${NODE_NAME:-unknown}" "$details" > "$health_dir/status"
         rm -f "$health_dir/ready"
       else
-        printf 'OK node=%s /var=%s%% inodes=%s%% free=%sGiB physical_devices=%s\n' \
+        printf 'OK node=%s /var=%s%% inodes=%s%% free=%sGiB physical_devices=%s %s\n' \
           "${NODE_NAME:-unknown}" "$var_used_pct" "$inode_used_pct" \
-          "$((var_available_kib / 1048576))" "$device_count" > "$health_dir/status"
+          "$((var_available_kib / 1048576))" "$device_count" "$quarantine_summary" > "$health_dir/status"
         : > "$health_dir/ready"
       fi
 

@@ -44,3 +44,19 @@ sector, unreadable physical drive, or increase in NVMe media errors is critical.
 Other newly increased SMART error counters are warnings. Both warning and
 critical states make that node's collector pod NotReady so the Baloo
 `cluster-health` job can page with the probe's exact status.
+
+## Quarantined Frigate disk
+
+The 3 TB WD Purple on `pamacs`, serial `WD-WMC4N0J6E7EE`, is intentionally
+restricted to disposable Frigate recordings. Its accepted pending,
+uncorrectable, and reallocated-sector values are reported in the healthy status
+line but do not make the generic collector NotReady.
+
+The serial-specific quarantine policy still makes the collector NotReady when
+the disk disappears, SMART cannot be read, SMART overall health fails, its
+temperature is unsafe, `/var/mnt/disk1` is missing or is not the expected ext4
+filesystem, the Longhorn disk marker is unreadable, command timeouts or SATA
+CRC errors increase, or a new kernel I/O, SATA-reset, or ext4 error appears for
+the disk. Kernel errors remain latched until their serial-specific baseline is
+removed after investigation. All other physical disks continue to use the
+strict generic SMART policy.

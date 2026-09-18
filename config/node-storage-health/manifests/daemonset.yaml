@@ -40,6 +40,17 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            # This old WD Purple is restricted to disposable Frigate media.
+            # Its existing media errors are accepted; operational retirement
+            # signals remain part of this pod's readiness status.
+            - name: QUARANTINE_NODE
+              value: pamacs
+            - name: QUARANTINE_SERIAL
+              value: WD-WMC4N0J6E7EE
+            - name: QUARANTINE_MOUNT
+              value: /host-var/mnt/disk1
+            - name: QUARANTINE_MARKER
+              value: /host-var/mnt/disk1/longhorn-disk.cfg
           securityContext:
             privileged: true
             runAsUser: 0

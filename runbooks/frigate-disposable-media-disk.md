@@ -29,9 +29,10 @@ configuration and database.
 At the decision point the disk had 105 pending sectors, a failed SMART read
 self-test, and inconsistent historical SMART counters. Its generic Longhorn
 health condition still said Ready because filesystem availability does not
-prove physical media health. The node-storage-health pod therefore remains
-intentionally NotReady while this disk is installed; do not clear or baseline
-the pending-sector alert.
+prove physical media health. `node-storage-health` now identifies this disk by
+node and serial and reports its accepted media-error counters without applying
+the generic pending-sector alert. It instead alerts on the retirement signals
+listed below. Do not extend this exception to another disk or serial.
 
 The old remote backup from 2026-04-28 is not part of the recovery plan. The
 volume uses `longhorn-hdd-noreplica` and the `excluded` recurring-job marker, so
@@ -316,9 +317,9 @@ Longhorn should create missing replicas without changing the PVCs. Wait until
 every affected volume is `healthy` with two running replicas on distinct nodes;
 then finish the bring-up and uncordon steps in `node-maintenance.md`. Verify the
 new disk's SMART state, Longhorn capacity, application health, and current
-backups. The node-storage-health DaemonSet may remain NotReady because the
-separate 3 TB Frigate disk is still deliberately degraded; confirm any remaining
-alert names that disk and serial, not the replacement.
+backups. `node-storage-health` should become Ready even though the separate 3 TB
+Frigate disk retains accepted media errors. If it remains NotReady, treat the
+reported dedicated-quarantine condition as a retirement or investigation signal.
 
 ## Monitoring and retirement boundary
 
@@ -331,6 +332,14 @@ Remove or power down the disk if any of these occur:
 - SMART can no longer be read reliably or the drive repeatedly disconnects;
 - temperature becomes unsafe, the filesystem turns read-only, or the mount
   disappears.
+
+The serial-specific monitor enforces these signals through the same readiness
+probe used by cluster-health. Current pending, offline-uncorrectable, and
+reallocated-sector counts remain visible in the healthy status line for trend
+inspection but do not alert. A new command timeout or disk-specific kernel
+error is latched against a persistent baseline; remove the named baseline file
+only after investigation to acknowledge it. SATA CRC growth is a warning to
+inspect the cable and link before assuming the drive itself worsened.
 
 Inspect without starting another self-test:
 
