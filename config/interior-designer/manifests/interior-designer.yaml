@@ -185,7 +185,7 @@ spec:
             - name: IMAGE_GENERATION_ENGINE
               value: openai
             - name: IMAGE_GENERATION_MODEL
-              value: gpt-image-2
+              value: gpt-image-2.5-sunburst
             - name: IMAGES_OPENAI_API_BASE_URL
               value: http://openclaw-image-api.baloo.svc.cluster.local:18801/v1
             - name: IMAGES_OPENAI_API_KEY
@@ -198,7 +198,7 @@ spec:
             - name: IMAGE_EDIT_ENGINE
               value: openai
             - name: IMAGE_EDIT_MODEL
-              value: gpt-image-2
+              value: gpt-image-2.5-sunburst
             - name: IMAGES_EDIT_OPENAI_API_BASE_URL
               value: http://openclaw-image-api.baloo.svc.cluster.local:18801/v1
             - name: IMAGES_EDIT_OPENAI_API_KEY

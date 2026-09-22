@@ -1203,7 +1203,7 @@ spec:
             - name: OPENCLAW_STATE_DIR
               value: /state
             - name: OPENCLAW_IMAGE_MODEL
-              value: openai/gpt-image-2
+              value: openai/gpt-image-2.5-sunburst
             - name: OPENCLAW_IMAGE_TIMEOUT_MS
               value: "180000"
             - name: IMAGE_TOOLS_URL
