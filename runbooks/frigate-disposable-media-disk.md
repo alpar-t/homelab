@@ -321,6 +321,15 @@ backups. `node-storage-health` should become Ready even though the separate 3 TB
 Frigate disk retains accepted media errors. If it remains NotReady, treat the
 reported dedicated-quarantine condition as a retirement or investigation signal.
 
+On 2026-09-22, seven large volumes were still degraded because repeated
+file-sync connection resets caused full rebuild attempts onto the replacement
+drive to be discarded and recreated. Five simultaneous rebuilds were allowed
+per node, competing for the 1 Gb/s storage link and one HDD. The cluster-wide
+per-node limit is now two, declared both as a Helm default and as a live
+Longhorn Setting in `config/longhorn/`. Monitor whether the seven volumes
+converge; a lower concurrency is a controlled mitigation, not proof that load
+was the underlying cause of the resets.
+
 ## Monitoring and retirement boundary
 
 Continuing to use the disk accepts loss of recordings, not loss of the node.

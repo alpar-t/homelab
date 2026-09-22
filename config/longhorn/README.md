@@ -68,6 +68,7 @@ Helm values are in `config/longhorn/values.yaml`. Key settings:
 - `defaultClassReplicaCount: 3` - Each volume has 3 replicas (one per node)
 - `defaultDataPath: /var/mnt/disk1` - Default storage location
 - `replicaAutoBalance: best-effort` - Automatically balance replicas across nodes
+- `concurrentReplicaRebuildPerNodeLimit: 2` - Cap simultaneous rebuilds on each node; the live Setting is also managed in `manifests/rebuild-concurrency.yaml`
 - `storageNetwork: longhorn-system/longhorn-storage-network` - Dedicated network for replica traffic
 
 ## Storage Network

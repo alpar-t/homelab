@@ -5,6 +5,9 @@ defaultSettings:
   storageMinimalAvailablePercentage: 10
   # Clean up stale replica data without automatically deleting orphan instances.
   orphanResourceAutoDeletion: "replica-data"
+  # One per-node cap shared by all disks: avoid saturating the 1 Gb/s storage
+  # link and HDD when several large replicas need rebuilding at once.
+  concurrentReplicaRebuildPerNodeLimit: 2
   # Upgrade no more than three attached V1 engines concurrently on each node.
   concurrentAutomaticEngineUpgradePerNodeLimit: 3
   # Create default disk on labeled nodes only
