@@ -29,7 +29,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: maintainerr
-          image: ghcr.io/maintainerr/maintainerr:latest@sha256:dcfd3f0862c31fced3a28ad2ae58c232a53d786b8c5b062cfc986570da8cb89f
+          image: ghcr.io/maintainerr/maintainerr:latest@sha256:7487d374290e59add65407ec295629e489f9057dbf18e2a9dff70d6201ffb6f9
           ports:
             - containerPort: 6246
               name: http
