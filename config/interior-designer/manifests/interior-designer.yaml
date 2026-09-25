@@ -172,6 +172,12 @@ spec:
                 {"capabilities":{"image_generation":true,"file_upload":true},"defaultFeatureIds":["image_generation"],"builtinTools":{"image_generation":true},"toolIds":["server:technical-plans-preview"]}
             - name: OPENAI_API_BASE_URLS
               value: http://openclaw.baloo.svc.cluster.local:18789/v1
+            # OpenClaw advertises every configured agent as a model. Keep the
+            # organiser and its internal subagents out of the WebUI picker.
+            # This is a dashboard list, not an OpenClaw agent permission rule.
+            - name: OPENAI_API_CONFIGS
+              value: >-
+                {"0":{"model_ids":["openclaw","openclaw/default","openclaw/alpar","openclaw/cooking","openclaw/court-case","openclaw/garden","openclaw/home-voice","openclaw/interior-designer","openclaw/kinga","openclaw/main","openclaw/newjoy-technical-drafter","openclaw/newjoy-website-manager","openclaw/nora","openclaw/rebeka","openclaw/trips"]}}
             - name: OPENAI_API_KEYS
               valueFrom:
                 secretKeyRef:
