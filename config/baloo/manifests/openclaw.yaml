@@ -327,6 +327,9 @@ spec:
             - sh
             - -c
             - |
+              umask 077
+              mkdir -p /state/home/tmp
+              chmod 0700 /state/home/tmp
               if ! node /app/dist/index.js plugins inspect pinchtab >/dev/null 2>&1; then
                 node /app/dist/index.js plugins install npm:@pinchtab/pinchtab@0.15.1 --pin
               fi
@@ -342,6 +345,8 @@ spec:
               value: /rendered/openclaw.json
             - name: OPENCLAW_STATE_DIR
               value: /state
+            - name: TMPDIR
+              value: /state/home/tmp
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
@@ -364,6 +369,9 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
+            - name: stable-workspaces
+              mountPath: /workspace
+              readOnly: true
       containers:
         # Continuous sync sidecar — keeps /git/link up to date with main.
         - name: git-sync
