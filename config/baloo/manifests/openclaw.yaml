@@ -1016,6 +1016,9 @@ spec:
               value: http://vikunja.vikunja.svc.cluster.local/api/v2
             - name: VIKUNJA_DEFAULT_PROJECT
               value: Household Inbox
+            # Vikunja API tokens can assign numeric IDs but cannot search users.
+            - name: VIKUNJA_USER_IDS
+              value: '{"alpar":1,"alpar torok":1,"kinga":35,"kinga torok":35}'
             - name: VIKUNJA_API_TOKEN
               valueFrom:
                 secretKeyRef:
