@@ -46,11 +46,12 @@ OpenCloud is a community fork of ownCloud Infinite Scale (oCIS).
 
 ## Deployment
 
-Uses the [OpenCloud Community Helm Chart](https://github.com/opencloud-eu/helm).
+Uses a local copy of the archived [OpenCloud Community Helm Chart](https://github.com/opencloud-eu/helm).
+The local chart changes are documented in [chart/LOCAL-CHANGES.md](chart/LOCAL-CHANGES.md).
 
 Key configuration:
 - **External OIDC**: Pocket ID at `auth.newjoy.ro`
-- **Storage**: PosixFS with Longhorn HDD (3TB)
+- **Storage**: PosixFS with Longhorn HDD; generated thumbnails on a separate local SSD PVC
 - **Keycloak**: Disabled (using Pocket ID instead)
 - **MinIO/S3**: Disabled (using PosixFS for simplicity)
 - **OnlyOffice**: Built-in (managed by the Helm chart)
@@ -214,6 +215,14 @@ Since data is not being migrated, simply:
 6. Wait for files to re-upload
 
 ## Storage state — manual posixfs PV binding
+
+Generated thumbnails use the `opencloud-opencloud-thumbnails` local-ssd PVC,
+mounted at OpenCloud's default `/var/lib/opencloud/thumbnails` path. On the first
+start with this volume, the init container copies the existing cache from the
+Longhorn HDD data PVC. A marker in the cache PVC skips the copy on later starts.
+The cache can be regenerated from source files; the original HDD copy is left
+untouched for rollback. OpenCloud does not prune old thumbnails automatically,
+and local-path PVC requests are not disk quotas, so watch pufi's free SSD space.
 
 The `opencloud-opencloud-posixfs` PVC is **manually bound** to the
 Longhorn volume `opencloud-posixfs-restored`, which was restored from

@@ -12,10 +12,11 @@ spec:
       path: config/opencloud/manifests
       directory:
         recurse: true
-    # OpenCloud Helm chart
-    - repoURL: https://github.com/opencloud-eu/helm
+    # The archived upstream chart is vendored locally to mount a separate
+    # thumbnail cache PVC; see config/opencloud/chart/LOCAL-CHANGES.md.
+    - repoURL: https://github.com/alpar-t/homelab
       targetRevision: main
-      path: charts/opencloud
+      path: config/opencloud/chart
       helm:
         valueFiles:
           - values.yaml
@@ -144,7 +145,8 @@ spec:
           image:
             registry: docker.io
             repository: opencloudeu/opencloud-rolling
-            tag: "7.2.0"
+            # Full OpenCloud 8.0.1 server, including preview performance fixes.
+            tag: "8.0.1@sha256:1e78144071ab3fc20d2533dd4c5709d24b7e1669c96439fdf7c73cb2808a5d5e"
             pullPolicy: IfNotPresent
 
           opencloud:
@@ -193,6 +195,12 @@ spec:
                 enabled: true
                 size: 1000Gi
                 storageClass: "longhorn-hdd"
+                accessMode: ReadWriteOnce
+            thumbnails:
+              persistence:
+                enabled: true
+                size: 20Gi
+                storageClass: "local-ssd"
                 accessMode: ReadWriteOnce
             config:
               theme: "owncloud"
