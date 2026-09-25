@@ -36,6 +36,28 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       initContainers:
+        # EmptyDir /tmp is writable by every container. Make it a standard
+        # sticky temp directory before plugin installation validates it.
+        - name: prepare-tmp
+          image: busybox:1.37@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
+          command: [sh, -c, "chmod 1777 /tmp"]
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 5m
+              memory: 8Mi
+            limits:
+              cpu: 50m
+              memory: 32Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
         # One-shot clone so the repo is on disk before render-config runs.
         - name: git-sync-init
           image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
@@ -327,9 +349,6 @@ spec:
             - sh
             - -c
             - |
-              umask 077
-              mkdir -p /state/home/tmp
-              chmod 0700 /state/home/tmp
               if ! node /app/dist/index.js plugins inspect pinchtab >/dev/null 2>&1; then
                 node /app/dist/index.js plugins install npm:@pinchtab/pinchtab@0.15.1 --pin
               fi
@@ -345,8 +364,6 @@ spec:
               value: /rendered/openclaw.json
             - name: OPENCLAW_STATE_DIR
               value: /state
-            - name: TMPDIR
-              value: /state/home/tmp
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
