@@ -23,7 +23,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: nginx
-          image: ghcr.io/alpar-t/newjoy-website:sha-b429fa39932bee3c309adc5f6501451fcfb2f09e-run-133-1@sha256:f74647370051dc777c8272a36ea4cd44ebdc0c51d4c3ca02efdc5fe54b0d8574
+          image: ghcr.io/alpar-t/newjoy-website:sha-4c5379b061c1df58478a5d61f9813d827594b298-run-134-1@sha256:f74647370051dc777c8272a36ea4cd44ebdc0c51d4c3ca02efdc5fe54b0d8574
           imagePullPolicy: IfNotPresent
           ports:
             - {name: http, containerPort: 8080}
