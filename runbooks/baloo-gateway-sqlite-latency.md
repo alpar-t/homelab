@@ -17,8 +17,13 @@ on the 134 MiB state database took 1,568 ms; `foreign_key_check` took under
 so the observed 1.5-second holds were integrity scan work, not raw storage
 latency. The 948 MiB Alpar agent database also took 4.4 seconds to verify at
 cold open. The state database was 71% full at the filesystem level, with only
-8 MiB of freelist pages; `audit_events` held about 99,700 unexpired records,
-so a simple vacuum or retention pass cannot materially shrink it.
+8 MiB of freelist pages; `audit_events` held about 99,700 records, with about
+53,700 from the past seven days. OpenClaw 2026.9.6 hard codes a 30-day audit
+window and a 100,000-row cap. A seven-day window would reduce the audit row
+count by roughly 46%, but would still leave full integrity scans on every
+maintenance admission. Do not delete audit rows while the live Gateway owns
+this SQLite file; use a supported retention and maintenance path when OpenClaw
+provides one.
 
 The deployment now uses kubelet HTTP probes directly on the Gateway's pod IP
 and allows six failed liveness checks, avoiding an extra Node startup per
