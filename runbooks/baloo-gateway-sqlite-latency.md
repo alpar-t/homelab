@@ -35,6 +35,27 @@ kubectl -n baloo get deployment openclaw -o yaml
 kubectl -n baloo logs deployment/openclaw -c openclaw --since=15m
 ```
 
+After the 2026-09-29 organizer run completed, the Gateway container had
+10.7 GiB charged to its cgroup against a 12 GiB limit: 7.9 GiB anonymous
+memory and 2.4 GiB file cache. The gateway process itself was about 2.9 GiB
+RSS, but 26 Codex app servers (for 19 configured agents) and their MCP
+children remained resident. Seven agents had duplicate app servers. The
+deployment reserves 10 GiB and limits this container to 16 GiB as temporary
+headroom; this does not shorten SQLite integrity scans. Watch both the cgroup
+and the process count, because the gateway's own RSS understates usage.
+
+OpenClaw 2026.9.6 also has a [prepared model catalog worker registry rebuild](https://github.com/openclaw/openclaw/issues/159514)
+that can retain modules after repeated requests. The [fix was merged on
+2026-09-28](https://github.com/openclaw/openclaw/pull/160055), after the
+latest 2026.9.6 release. Upgrade only once a tagged release includes it;
+check whether catalog worker heap and container usage stabilize afterward.
+Separate upstream reports describe [Codex app-server client eviction across
+agents](https://github.com/openclaw/openclaw/issues/79495) and [one-shot
+cleanup leaving app servers alive](https://github.com/openclaw/openclaw/issues/101788).
+These match the process shape but have not been proven as this pod's exact
+cause. An off-peak gateway restart clears accumulated children if memory
+approaches the limit; check active sessions first because it interrupts turns.
+
 The upstream redundant full-check issue is
 [openclaw/openclaw#118885](https://github.com/openclaw/openclaw/issues/118885).
 OpenClaw documents that these checks protect database trust boundaries; do
