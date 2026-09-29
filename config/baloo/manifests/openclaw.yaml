@@ -664,29 +664,28 @@ spec:
             - name: GITHUB_APP_INSTALLATION_ID
               value: "142711366"
           startupProbe:
-            exec:
-              command:
-                - node
-                - -e
-                - "require('http').get('http://127.0.0.1:18789/healthz', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
+            # Kubelet can check the gateway directly; starting a fresh Node
+            # process for each probe stalled under concurrent image reviews.
+            httpGet:
+              path: /healthz
+              port: gateway
             failureThreshold: 180
             periodSeconds: 10
             timeoutSeconds: 10
           livenessProbe:
-            exec:
-              command:
-                - node
-                - -e
-                - "require('http').get('http://127.0.0.1:18789/healthz', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
+            httpGet:
+              path: /healthz
+              port: gateway
             initialDelaySeconds: 60
             periodSeconds: 30
             timeoutSeconds: 10
+            # Let brief SQLite/event-loop stalls recover without cutting off
+            # an active WebUI response.
+            failureThreshold: 6
           readinessProbe:
-            exec:
-              command:
-                - node
-                - -e
-                - "require('http').get('http://127.0.0.1:18789/readyz', r => process.exit(r.statusCode < 400 ? 0 : 1)).on('error', () => process.exit(1))"
+            httpGet:
+              path: /readyz
+              port: gateway
             initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 5
