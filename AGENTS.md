@@ -21,6 +21,9 @@ or debugging a subsystem.
 Baloo's source-controlled recurring jobs and reconciliation procedure:
 `runbooks/baloo-recurring-jobs.md`.
 
+Baloo Gateway SQLite startup latency and probe incident:
+`runbooks/baloo-gateway-sqlite-latency.md`.
+
 Whole-cluster shutdown and startup for planned power maintenance:
 `runbooks/cluster-power-maintenance.md`.
 
