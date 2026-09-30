@@ -21,6 +21,9 @@ or debugging a subsystem.
 Baloo's source-controlled recurring jobs and reconciliation procedure:
 `runbooks/baloo-recurring-jobs.md`.
 
+Baloo's one-at-a-time Blender product-model service and OpenCloud warehouse:
+`runbooks/baloo-product-models.md`.
+
 Baloo Gateway SQLite startup latency and probe incident:
 `runbooks/baloo-gateway-sqlite-latency.md`.
 
