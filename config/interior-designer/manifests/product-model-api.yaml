@@ -86,8 +86,8 @@ spec:
               value: /work/product-models
             - name: PRODUCT_MODEL_BUILD_TIMEOUT_SECONDS
               value: "900"
-            - name: BLENDER_BINARY
-              value: /home/headless/blender/blender
+            - name: PRODUCT_MODEL_RUNNER_URL
+              value: http://product-model-renderer.baloo.svc.cluster.local:18811
             - name: HOME
               value: /work
             - name: PYTHONDONTWRITEBYTECODE
@@ -126,11 +126,11 @@ spec:
             periodSeconds: 10
           resources:
             requests:
-              cpu: 500m
-              memory: 1Gi
+              cpu: 100m
+              memory: 256Mi
             limits:
-              cpu: "2"
-              memory: 4Gi
+              cpu: "1"
+              memory: 1Gi
           securityContext:
             runAsNonRoot: true
             runAsUser: 1001
@@ -208,3 +208,22 @@ spec:
     - name: http
       port: 18810
       targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: product-model-api-ingress
+  namespace: baloo
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: product-model-api
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: openclaw
+      ports:
+        - protocol: TCP
+          port: 18810
