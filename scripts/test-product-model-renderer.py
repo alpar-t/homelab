@@ -58,7 +58,7 @@ class RendererContract(unittest.TestCase):
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
             try:
-                body = json.dumps({"runnerScript": "pass", "builderScript": "pass",
+                body = json.dumps({"runnerScript": "pass",
                                    "spec": {"slug": "example"},
                                    "referenceImage": base64.b64encode(b"\x89PNG\r\n\x1a\nphoto").decode()}).encode()
                 request = Request(f"http://127.0.0.1:{server.server_port}/render", data=body,

@@ -54,11 +54,9 @@ data:
                 request = json.loads(self.rfile.read(length))
                 spec = request["spec"]
                 runner = request["runnerScript"]
-                builder = request["builderScript"]
                 photo = base64.b64decode(request["referenceImage"], validate=True)
                 if (not isinstance(spec, dict) or not isinstance(runner, str) or
-                        not isinstance(builder, str) or len(runner) > 100000 or
-                        len(builder) > 100000 or not 0 < len(photo) <= 10 * 1024 * 1024):
+                        len(runner) > 100000 or not 0 < len(photo) <= 10 * 1024 * 1024):
                     raise ValueError("invalid renderer input")
                 if photo.startswith(b"\x89PNG\r\n\x1a\n"):
                     extension = "png"
@@ -72,7 +70,6 @@ data:
                     root = Path(path)
                     (root / "input.json").write_text(json.dumps(spec), encoding="utf-8")
                     (root / "runner.py").write_text(runner, encoding="utf-8")
-                    (root / "builder.py").write_text(builder, encoding="utf-8")
                     (root / ("reference." + extension)).write_bytes(photo)
                     with (root / "blender.log").open("wb") as log:
                         process = subprocess.Popen([
