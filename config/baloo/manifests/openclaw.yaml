@@ -389,6 +389,40 @@ spec:
             - name: stable-workspaces
               mountPath: /workspace
               readOnly: true
+        # OpenClaw 2026.9.7's WhatsApp plugin omits the handoff callback needed
+        # after a Gateway runtime generation change. Patch only the reviewed
+        # artifact in an ephemeral volume; leave the installed plugin intact.
+        - name: prepare-whatsapp-delivery-fix
+          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          command:
+            - node
+            - /git/link/openclaw/tools/patch-whatsapp-durable-handoff.mjs
+            - /state/extensions/whatsapp/dist/.setup/monitor-CGpV2VNN.mjs
+            - /whatsapp-fix/monitor-CGpV2VNN.mjs
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+              readOnly: true
+            - name: state
+              mountPath: /state
+              readOnly: true
+            - name: whatsapp-delivery-fix
+              mountPath: /whatsapp-fix
       containers:
         # Continuous sync sidecar — keeps /git/link up to date with main.
         - name: git-sync
@@ -718,6 +752,10 @@ spec:
               mountPath: /rendered
             - name: state
               mountPath: /state
+            - name: whatsapp-delivery-fix
+              mountPath: /state/extensions/whatsapp/dist/.setup/monitor-CGpV2VNN.mjs
+              subPath: monitor-CGpV2VNN.mjs
+              readOnly: true
             - name: tmp
               mountPath: /tmp
             - name: codex-plugin-deps
@@ -1366,6 +1404,8 @@ spec:
         - name: stable-workspaces
           emptyDir: {}
         - name: codex-plugin-deps
+          emptyDir: {}
+        - name: whatsapp-delivery-fix
           emptyDir: {}
         - name: rendered
           emptyDir: {}
