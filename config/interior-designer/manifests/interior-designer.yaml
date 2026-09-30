@@ -341,6 +341,9 @@ spec:
         - name: github-app-key
           secret:
             secretName: baloo-github-app
+            items:
+              - key: private-key
+                path: private-key.pem
 ---
 apiVersion: v1
 kind: Service
