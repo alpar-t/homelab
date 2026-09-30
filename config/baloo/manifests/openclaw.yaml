@@ -399,6 +399,8 @@ spec:
             - /git/link/openclaw/tools/patch-whatsapp-durable-handoff.mjs
             - /state/extensions/whatsapp/dist/.setup/monitor-CGpV2VNN.mjs
             - /whatsapp-fix/monitor-CGpV2VNN.mjs
+            - /app/dist/durable-delivery-BAHt3SwQ.mjs
+            - /whatsapp-fix/durable-delivery-BAHt3SwQ.mjs
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
@@ -755,6 +757,10 @@ spec:
             - name: whatsapp-delivery-fix
               mountPath: /state/extensions/whatsapp/dist/.setup/monitor-CGpV2VNN.mjs
               subPath: monitor-CGpV2VNN.mjs
+              readOnly: true
+            - name: whatsapp-delivery-fix
+              mountPath: /app/dist/durable-delivery-BAHt3SwQ.mjs
+              subPath: durable-delivery-BAHt3SwQ.mjs
               readOnly: true
             - name: tmp
               mountPath: /tmp
