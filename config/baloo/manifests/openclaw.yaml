@@ -28,7 +28,6 @@ spec:
         app.kubernetes.io/name: openclaw
       annotations:
         homelab/config-rev: "2026-08-25a"
-        baloo/whatsapp-diagnostic-rev: "fields"
         secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo,paperless-baloo-token,olx-baloo,court-case-baloo,pinchtab-baloo"
     spec:
       automountServiceAccountToken: false
@@ -390,9 +389,9 @@ spec:
             - name: stable-workspaces
               mountPath: /workspace
               readOnly: true
-        # OpenClaw 2026.9.7's WhatsApp plugin omits the handoff callback needed
-        # after a Gateway runtime generation change. Patch only the reviewed
-        # artifact in an ephemeral volume; leave the installed plugin intact.
+        # OpenClaw 2026.9.7's WhatsApp plugin omits the handoff callback and
+        # adds undefined fields to the admitted config snapshot. Patch only the
+        # reviewed artifact in an ephemeral volume; leave the plugin intact.
         - name: prepare-whatsapp-delivery-fix
           image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
           command:
@@ -400,8 +399,6 @@ spec:
             - /git/link/openclaw/tools/patch-whatsapp-durable-handoff.mjs
             - /state/extensions/whatsapp/dist/.setup/monitor-CGpV2VNN.mjs
             - /whatsapp-fix/monitor-CGpV2VNN.mjs
-            - /app/dist/durable-delivery-BAHt3SwQ.mjs
-            - /whatsapp-fix/durable-delivery-BAHt3SwQ.mjs
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
@@ -758,10 +755,6 @@ spec:
             - name: whatsapp-delivery-fix
               mountPath: /state/extensions/whatsapp/dist/.setup/monitor-CGpV2VNN.mjs
               subPath: monitor-CGpV2VNN.mjs
-              readOnly: true
-            - name: whatsapp-delivery-fix
-              mountPath: /app/dist/durable-delivery-BAHt3SwQ.mjs
-              subPath: durable-delivery-BAHt3SwQ.mjs
               readOnly: true
             - name: tmp
               mountPath: /tmp
