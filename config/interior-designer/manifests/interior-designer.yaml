@@ -37,6 +37,8 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: interior-designer
+      annotations:
+        secret.reloader.stakater.com/reload: "interior-designer-webui"
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -250,6 +252,81 @@ spec:
               mountPath: /app/backend/open_webui/static/favicon.png
               subPath: favicon.png
               readOnly: true
+        # Keep the WebUI Function stored on its PVC in sync with Baloo source.
+        - name: progress-filter-sync
+          image: ghcr.io/open-webui/open-webui:0.11.3@sha256:41daa0cf2561a5d4c8d1ff31ee2a98d93ab4d3ac2605cac69366ff6a3374a933
+          command:
+            - sh
+            - -c
+            - |
+              until [ -f /git/link/openclaw/scripts/install-webui-progress-filter.py ]; do sleep 2; done
+              exec python3 /git/link/openclaw/scripts/install-webui-progress-filter.py \
+                /git/link/openclaw/webui/newjoy_website_progress.py --watch
+          env:
+            - name: WEBUI_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: interior-designer-webui
+                  key: webui-secret-key
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          volumeMounts:
+            - name: data
+              mountPath: /app/backend/data
+              readOnly: true
+            - name: git-repo
+              mountPath: /git
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+        - name: git-sync
+          image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
+          args:
+            - --repo=https://github.com/alpar-t/baloo.git
+            - --root=/git
+            - --link=link
+            - --depth=1
+            - --period=60s
+            - --github-app-application-id=4150403
+            - --github-app-installation-id=142711366
+            - --github-app-private-key-file=/var/run/secrets/github-app/private-key.pem
+          securityContext:
+            runAsUser: 65533
+            runAsGroup: 65533
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+            - name: tmp
+              mountPath: /tmp
+            - name: github-app-key
+              mountPath: /var/run/secrets/github-app
+              readOnly: true
       volumes:
         - name: data
           persistentVolumeClaim:
@@ -257,6 +334,13 @@ spec:
         - name: branding
           configMap:
             name: interior-designer-branding
+        - name: git-repo
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: github-app-key
+          secret:
+            secretName: baloo-github-app
 ---
 apiVersion: v1
 kind: Service
