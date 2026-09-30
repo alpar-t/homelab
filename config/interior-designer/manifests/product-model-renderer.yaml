@@ -1,0 +1,230 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: product-model-renderer
+  namespace: baloo
+data:
+  server.py: |
+    import base64
+    import io
+    import json
+    import os
+    import signal
+    import subprocess
+    import tempfile
+    import threading
+    import zipfile
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from pathlib import Path
+
+    MAX_REQUEST = 14 * 1024 * 1024
+    MAX_GLB = 64 * 1024 * 1024
+    MAX_PREVIEW = 2 * 1024 * 1024
+    VIEWS = ("front", "side", "top", "underside")
+    lock = threading.Lock()
+
+    class Handler(BaseHTTPRequestHandler):
+        def send(self, status, content, content_type):
+            self.send_response(status)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(content)))
+            self.end_headers()
+            self.wfile.write(content)
+
+        def error(self, status, message):
+            self.send(status, json.dumps({"error": message[:1200]}).encode(), "application/json")
+
+        def do_GET(self):
+            if self.path != "/health":
+                return self.error(404, "not found")
+            self.send(200, b'{"ok":true}', "application/json")
+
+        def do_POST(self):
+            if self.path != "/render":
+                return self.error(404, "not found")
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if not 0 < length <= MAX_REQUEST:
+                return self.error(413, "request exceeds 14 MiB")
+            if not lock.acquire(blocking=False):
+                return self.error(429, "renderer is busy")
+            try:
+                request = json.loads(self.rfile.read(length))
+                spec = request["spec"]
+                runner = request["runnerScript"]
+                builder = request["builderScript"]
+                photo = base64.b64decode(request["referenceImage"], validate=True)
+                if (not isinstance(spec, dict) or not isinstance(runner, str) or
+                        not isinstance(builder, str) or len(runner) > 100000 or
+                        len(builder) > 100000 or not 0 < len(photo) <= 10 * 1024 * 1024):
+                    raise ValueError("invalid renderer input")
+                if photo.startswith(b"\x89PNG\r\n\x1a\n"):
+                    extension = "png"
+                elif photo.startswith(b"\xff\xd8\xff"):
+                    extension = "jpg"
+                elif photo.startswith(b"RIFF") and photo[8:12] == b"WEBP":
+                    extension = "webp"
+                else:
+                    raise ValueError("reference is not a supported image")
+                with tempfile.TemporaryDirectory(dir="/work") as path:
+                    root = Path(path)
+                    (root / "input.json").write_text(json.dumps(spec), encoding="utf-8")
+                    (root / "runner.py").write_text(runner, encoding="utf-8")
+                    (root / "builder.py").write_text(builder, encoding="utf-8")
+                    (root / ("reference." + extension)).write_bytes(photo)
+                    with (root / "blender.log").open("wb") as log:
+                        process = subprocess.Popen([
+                            "/home/headless/blender/blender", "--background", "--factory-startup",
+                            "--disable-autoexec", "--python", str(root / "runner.py"), "--",
+                            str(root / "input.json"), str(root / "model.glb"), str(root / "metrics.json")],
+                            stdout=log, stderr=subprocess.STDOUT, cwd=root, start_new_session=True)
+                        try:
+                            returncode = process.wait(timeout=900)
+                        finally:
+                            try:
+                                os.killpg(process.pid, signal.SIGKILL)
+                            except ProcessLookupError:
+                                pass
+                            process.wait()
+                    if returncode:
+                        raise RuntimeError("Blender exited with code " + str(returncode) + ": " +
+                                           (root / "blender.log").read_text(errors="replace")[-900:])
+                    names = ["model.glb", "metrics.json"] + ["preview-" + view + ".png" for view in VIEWS]
+                    archive = io.BytesIO()
+                    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_STORED) as bundle:
+                        for name in names:
+                            content = (root / name).read_bytes()
+                            limit = MAX_GLB if name == "model.glb" else (MAX_PREVIEW if name.endswith(".png") else 128 * 1024)
+                            if not content or len(content) > limit:
+                                raise RuntimeError(name + " is missing or too large")
+                            bundle.writestr(name, content)
+                    self.send(200, archive.getvalue(), "application/zip")
+            except (ValueError, KeyError, TypeError, json.JSONDecodeError) as error:
+                self.error(400, str(error))
+            except subprocess.TimeoutExpired:
+                self.error(504, "Blender exceeded 15 minutes")
+            except Exception as error:
+                self.error(500, str(error))
+            finally:
+                lock.release()
+
+    ThreadingHTTPServer(("0.0.0.0", 18811), Handler).serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-model-renderer
+  namespace: baloo
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: product-model-renderer
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: product-model-renderer
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      nodeSelector:
+        workload/cpu-intensive: "true"
+      securityContext:
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: renderer
+          image: docker.io/blenderkit/headless-blender:blender-4.5@sha256:06cc9c5b70c81ac603d779a0415f3353131b9391d94f791240399cb3ef5d462c
+          command: [python3, /app/server.py]
+          ports:
+            - name: http
+              containerPort: 18811
+          env:
+            - name: HOME
+              value: /tmp
+            - name: PYTHONDONTWRITEBYTECODE
+              value: "1"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            runAsGroup: 1001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: code
+              mountPath: /app
+              readOnly: true
+            - name: work
+              mountPath: /work
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: code
+          configMap:
+            name: product-model-renderer
+        - name: work
+          emptyDir:
+            sizeLimit: 512Mi
+        - name: tmp
+          emptyDir:
+            sizeLimit: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: product-model-renderer
+  namespace: baloo
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: product-model-renderer
+  ports:
+    - name: http
+      port: 18811
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: product-model-renderer-isolation
+  namespace: baloo
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: product-model-renderer
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: product-model-api
+      ports:
+        - protocol: TCP
+          port: 18811
+  egress: []
