@@ -1,7 +1,7 @@
 # Dedicated PinchTab service for general public-web browsing.
 # Agent sessions track each trusted caller; the OLX PinchTab deployment and its
-# persistent authenticated profile remain separate. Browserless remains for
-# the court-case monitor until its migration is validated.
+# persistent authenticated profile remain separate. The court monitor uses a
+# separate persistent profile and Chromium instance within this service.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -50,7 +50,7 @@ data:
         }
       },
       "security": {
-        "allowEvaluate": false,
+        "allowEvaluate": true,
         "allowMacro": false,
         "allowScreencast": false,
         "allowDownload": false,
@@ -90,7 +90,7 @@ data:
         "instancePortEnd": 9887
       },
       "timeouts": {
-        "actionSec": 30,
+        "actionSec": 120,
         "navigateSec": 90,
         "shutdownSec": 15,
         "waitNavMs": 1000
@@ -151,7 +151,7 @@ spec:
               memory: 512Mi
             limits:
               cpu: "2"
-              memory: 4Gi
+              memory: 6Gi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

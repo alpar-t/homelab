@@ -1024,6 +1024,13 @@ spec:
               containerPort: 18804
               protocol: TCP
           env:
+            - name: COURT_CASE_PINCHTAB_URL
+              value: http://pinchtab-web.baloo.svc.cluster.local:9867
+            - name: PINCHTAB_WEB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: pinchtab-web-baloo
+                  key: token
             - name: OPENCLAW_GATEWAY_TOKEN
               valueFrom:
                 secretKeyRef:
