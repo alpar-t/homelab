@@ -19,7 +19,7 @@ jobs:
         env:
           AGENT_TOOLSDIRECTORY: ${{ runner.temp }}/python-tool-cache
         with:
-          python-version: '3.12'
+          python-version: '3.14'
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
