@@ -28,9 +28,17 @@ modeler reviews the actual deliverable. The controller checks declared bounds
 and GLB structure. It publishes immutable model, source image,
 source script, four previews, and manifest paths under `3D Warehouse/` only
 after output verification. A failed revision retains the previous files.
+After accepting a final model, the interior designer calls
+`product-models__keep_latest_product_model`. The API verifies that this job is
+the newest completed build for its exact slug and source URL, checks its saved
+OpenCloud artifacts, then removes older completed duplicates and marks their
+job IDs superseded. The agent reports the removed IDs. A pending build or
+missing retained artifact blocks cleanup.
 
 The API and wrappers are loaded from Baloo via git-sync. Merge and verify the
-Baloo source before promoting this Homelab manifest. The outer API gets its
+Baloo source before promoting this Homelab manifest; a Python API change also
+needs an API pod-template revision so the running controller reloads the code.
+The outer API gets its
 renderer URL from `PRODUCT_MODEL_RUNNER_URL`; the renderer has no Baloo
 repository credentials. Submit and review a test product from Open WebUI, wait
 for completion, inspect all four preview images and the GLB in SketchUp 2026,
