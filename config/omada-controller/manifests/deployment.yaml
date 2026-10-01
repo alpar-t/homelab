@@ -26,7 +26,7 @@ spec:
         kubernetes.io/hostname: pufi
       containers:
         - name: omada-controller
-          image: docker.io/mbentley/omada-controller:6.1@sha256:c1ccad7e3278875cddcb41dc284759f966f43239790d894bf4d5739ecb2dc2e1
+          image: docker.io/mbentley/omada-controller:6.1@sha256:687874cc111ab2c139d5c4da6915a526bdf2c7425793bd22041439777b75e8f8
           env:
             - name: TZ
               value: "Europe/Bucharest"
