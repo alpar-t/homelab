@@ -275,14 +275,6 @@ spec:
                 secretKeyRef:
                   name: baloo-secrets
                   key: OPENCLAW_GATEWAY_TOKEN
-            # CDP token for the isolated browser pod (config/baloo/manifests/browser.yaml).
-            # Optional so the pod still renders before the secret key is created.
-            - name: BROWSER_CDP_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: baloo-secrets
-                  key: BROWSER_CDP_TOKEN
-                  optional: true
             # Control-plane token for the isolated PinchTab canary. It is
             # rendered into the plugin config, never into an agent prompt.
             - name: PINCHTAB_TOKEN
@@ -590,12 +582,6 @@ spec:
                 secretKeyRef:
                   name: baloo-secrets
                   key: OPENCLAW_GATEWAY_TOKEN
-            - name: BROWSER_CDP_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: baloo-secrets
-                  key: BROWSER_CDP_TOKEN
-                  optional: true
             - name: PINCHTAB_TOKEN
               valueFrom:
                 secretKeyRef:

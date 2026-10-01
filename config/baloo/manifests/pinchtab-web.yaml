@@ -213,7 +213,8 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  # General browser session state is replaceable and must not enter recurring backups.
+  # Browser profiles survive pod restarts; the court helper can reauthenticate
+  # if this replaceable profile data is lost. Do not put it in recurring backups.
   storageClassName: longhorn-ssd-noreplica
   resources:
     requests:

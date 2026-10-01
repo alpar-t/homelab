@@ -1,7 +1,7 @@
 # PinchTab canary for authenticated, profile-persistent browser workflows.
 #
-# Browserless remains Baloo's general browser backend during evaluation.
-# PinchTab is exposed to the OpenClaw pod only and initially permits top-level
+# General public-web browsing uses pinchtab-web. This service remains dedicated
+# to authenticated OLX workflows and initially permits top-level
 # navigation only to OLX. Its /data PVC holds Chromium profiles and service
 # state; disposable instances use temporary profiles that PinchTab removes on
 # stop, while the OLX-only `default` profile survives instance and pod restarts.
