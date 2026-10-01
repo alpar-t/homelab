@@ -752,6 +752,9 @@ spec:
             capabilities:
               drop: [ALL]
           volumeMounts:
+            - name: radarr-api-key
+              mountPath: /var/run/secrets/radarr
+              readOnly: true
             - name: git-repo
               mountPath: /git
               readOnly: true
@@ -1409,6 +1412,11 @@ spec:
               readOnly: true
 
       volumes:
+        - name: radarr-api-key
+          secret:
+            secretName: radarr-baloo
+            optional: true
+            defaultMode: 0440
         - name: git-repo
           emptyDir: {}
         - name: stable-workspaces
