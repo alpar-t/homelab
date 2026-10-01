@@ -106,7 +106,9 @@ widen the ClusterRole, keep it read-only; never add write verbs or Secret read.
 The `web_browser` tool drives general public-web browsing through the dedicated
 PinchTab pod (`config/baloo/manifests/pinchtab-web.yaml`). The OLX `pinchtab`
 tool keeps its separate service, token, and persistent authenticated profile.
-PinchTab agent sessions isolate general browsing state between Baloo agents.
+PinchTab agent sessions provide separate authentication and activity tracking
+for trusted Baloo agents; they share the general browser profile and are not
+a security boundary between those agents.
 Both browser pods have no ServiceAccount token and NetworkPolicies that allow
 ingress only from OpenClaw and egress only to DNS and the public internet.
 The `general-browser` plugin logs failed operations with agent, action, tab,

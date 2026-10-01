@@ -1,5 +1,5 @@
 # Dedicated PinchTab service for general public-web browsing.
-# Agent sessions isolate each caller; the OLX PinchTab deployment and its
+# Agent sessions track each trusted caller; the OLX PinchTab deployment and its
 # persistent authenticated profile remain separate. Browserless remains for
 # the court-case monitor until its migration is validated.
 apiVersion: v1
@@ -52,7 +52,7 @@ data:
       "security": {
         "allowEvaluate": false,
         "allowMacro": false,
-        "allowScreencast": true,
+        "allowScreencast": false,
         "allowDownload": false,
         "allowCookies": false,
         "allowNetworkIntercept": false,
