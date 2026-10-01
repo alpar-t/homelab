@@ -21,6 +21,9 @@ or debugging a subsystem.
 Baloo's source-controlled recurring jobs and reconciliation procedure:
 `runbooks/baloo-recurring-jobs.md`.
 
+Baloo's Radarr movie tools, watched exclusions, weekly picks, and credential
+provisioning: `runbooks/baloo-radarr-movies.md`.
+
 Baloo's one-at-a-time Blender product-model service and OpenCloud warehouse:
 `runbooks/baloo-product-models.md`.
 
