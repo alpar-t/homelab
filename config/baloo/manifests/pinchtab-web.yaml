@@ -1,0 +1,286 @@
+# Dedicated PinchTab service for general public-web browsing.
+# Agent sessions track each trusted caller; the OLX PinchTab deployment and its
+# persistent authenticated profile remain separate. Browserless remains for
+# the court-case monitor until its migration is validated.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pinchtab-web-config
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: pinchtab-web
+data:
+  # PinchTab 0.15.1 detects container mode through this Docker-compatible
+  # marker. containerd does not create it, so mount the empty key at
+  # /.dockerenv and let PinchTab add Chromium's intended --no-sandbox flag.
+  # Container isolation remains non-root + no-new-privileges + dropped caps +
+  # RuntimeDefault seccomp + read-only root filesystem.
+  .dockerenv: ""
+  config.json: |
+    {
+      "configVersion": "0.8.0",
+      "server": {
+        "bind": "0.0.0.0",
+        "port": "9867",
+        "stateDir": "/data/state",
+        "logLevel": "info",
+        "trustProxyHeaders": false
+      },
+      "sessions": {
+        "agent": {
+          "enabled": true,
+          "mode": "preferred",
+          "idleTimeoutSec": 1800,
+          "maxLifetimeSec": 86400
+        }
+      },
+      "instanceDefaults": {
+        "mode": "headless",
+        "timezone": "Europe/Bucharest",
+        "blockImages": false,
+        "blockMedia": false,
+        "blockAds": false,
+        "maxTabs": 12,
+        "humanize": true,
+        "stealthLevel": "full",
+        "tabEvictionPolicy": "close_lru",
+        "tabPolicy": {
+          "lifecycle": "keep",
+          "restore": false
+        }
+      },
+      "security": {
+        "allowEvaluate": false,
+        "allowMacro": false,
+        "allowScreencast": false,
+        "allowDownload": false,
+        "allowCookies": false,
+        "allowNetworkIntercept": false,
+        "allowFileScheme": false,
+        "allowUpload": false,
+        "allowClipboard": false,
+        "allowStateExport": false,
+        "enableActionGuards": true,
+        "allowedDomains": [],
+        "trustedProxyCIDRs": [],
+        "trustedResolveCIDRs": [],
+        "attach": {
+          "enabled": false,
+          "allowHosts": ["127.0.0.1", "localhost", "::1"],
+          "allowSchemes": ["ws", "wss", "http", "https"],
+          "forwardProxyAuth": false
+        },
+        "idpi": {
+          "enabled": true,
+          "strictMode": true,
+          "scanContent": true,
+          "wrapContent": true,
+          "scanTimeoutSec": 5
+        }
+      },
+      "profiles": {
+        "baseDir": "/data/profiles",
+        "defaultProfile": "default",
+        "quarantineKeep": 1
+      },
+      "multiInstance": {
+        "strategy": "simple",
+        "allocationPolicy": "fcfs",
+        "instancePortStart": 9868,
+        "instancePortEnd": 9887
+      },
+      "timeouts": {
+        "actionSec": 30,
+        "navigateSec": 90,
+        "shutdownSec": 15,
+        "waitNavMs": 1000
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pinchtab-web
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: pinchtab-web
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pinchtab-web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pinchtab-web
+      annotations:
+        homelab/config-rev: "2026-08-16a"
+        secret.reloader.stakater.com/reload: "pinchtab-web-baloo"
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: pinchtab-web
+          image: docker.io/pinchtab/pinchtab:0.15.1@sha256:114e5a1ba54f4c542d0c00c3a1d20e1962db2b04b1da04a465255143e1801a0b
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PINCHTAB_CONFIG
+              value: /config/config.json
+            - name: PINCHTAB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: pinchtab-web-baloo
+                  key: token
+          ports:
+            - name: http
+              containerPort: 9867
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          startupProbe:
+            # /health is bearer-authenticated when PINCHTAB_TOKEN is set;
+            # Kubernetes probes cannot interpolate a Secret into HTTP headers.
+            tcpSocket:
+              port: 9867
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            tcpSocket:
+              port: 9867
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            tcpSocket:
+              port: 9867
+            periodSeconds: 30
+            timeoutSeconds: 5
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: config
+              mountPath: /.dockerenv
+              subPath: .dockerenv
+              readOnly: true
+            - name: data
+              mountPath: /data
+            - name: dshm
+              mountPath: /dev/shm
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: pinchtab-web-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: pinchtab-web-data
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pinchtab-web-data
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: pinchtab-web
+spec:
+  accessModes:
+    - ReadWriteOnce
+  # General browser session state is replaceable and must not enter recurring backups.
+  storageClassName: longhorn-ssd-noreplica
+  resources:
+    requests:
+      storage: 4Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pinchtab-web
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: pinchtab-web
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: pinchtab-web
+  ports:
+    - name: http
+      port: 9867
+      targetPort: 9867
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pinchtab-web
+  namespace: baloo
+  labels:
+    app.kubernetes.io/name: pinchtab-web
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: pinchtab-web
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: openclaw
+      ports:
+        - protocol: TCP
+          port: 9867
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+        - ipBlock:
+            cidr: 10.43.0.10/32
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+              - 100.64.0.0/10
+              - 127.0.0.0/8
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443

@@ -28,7 +28,7 @@ spec:
         app.kubernetes.io/name: openclaw
       annotations:
         homelab/config-rev: "2026-08-25a"
-        secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo,paperless-baloo-token,olx-baloo,court-case-baloo,pinchtab-baloo"
+        secret.reloader.stakater.com/reload: "vikunja-baloo-token,opencloud-baloo,paperless-baloo-token,olx-baloo,court-case-baloo,pinchtab-baloo,pinchtab-web-baloo"
     spec:
       automountServiceAccountToken: false
       securityContext:
@@ -289,6 +289,11 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: pinchtab-baloo
+                  key: token
+            - name: PINCHTAB_WEB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: pinchtab-web-baloo
                   key: token
             # Dedicated, non-admin OpenCloud account. Keep these optional while
             # staging: creating the Secret triggers Reloader and makes the
@@ -595,6 +600,11 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: pinchtab-baloo
+                  key: token
+            - name: PINCHTAB_WEB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: pinchtab-web-baloo
                   key: token
             - name: OPENCLOUD_WEBDAV_URL
               valueFrom:
