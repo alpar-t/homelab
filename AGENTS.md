@@ -39,6 +39,9 @@ Baloo's read-only OpenCloud/Newjoy MCP credential setup and validation:
 Baloo's public Kubernetes deployment checks for OLX integration:
 `runbooks/baloo-olx-account.md`.
 
+Baloo's general PinchTab browser deployment and failure diagnostics:
+`runbooks/baloo-general-browser.md`.
+
 Baloo's Paperless document MCP account, credential, and validation procedure:
 `runbooks/baloo-paperless-mcp.md`.
 
@@ -98,23 +101,23 @@ verbs). It is `k8s__*` allowed **only on `alpar`** and explicitly
 `interior-designer`, `main`). If you
 widen the ClusterRole, keep it read-only; never add write verbs or Secret read.
 
-### Browser tool (`browser`)
+### Browser tools
 
-The `browser` tool drives an **isolated headless Chromium** (Browserless v2) in
-its own pod (`config/baloo/manifests/browser.yaml`), which OpenClaw attaches to
-over remote CDP (`browser` block in `openclaw.json`, profile `cluster`,
-`attachOnly`). The browser pod renders untrusted web content, so it is locked
-down: no ServiceAccount token, non-root, and a **NetworkPolicy** that allows
-ingress only from the openclaw pod and egress only to DNS + the public internet
-(every private range — cluster, LAN incl. HA `192.168.x`, link-local, tailnet —
-is blocked). Because that NetworkPolicy caps the blast radius to the public
-internet regardless of caller, `browser` is allowed **wherever `web_fetch` +
-`searxng__*` are** (the conversational agents: `alpar`, `kinga`, `cooking`,
-`garden`, `trips`) — it is just a JS-capable fetch with the same reach. It is
-denied only on `main` (the auth root, which has no web tools). Attaching to the
-pod's private CDP address relies on `browser.ssrfPolicy.allowedHostnames` (do
-**not** enable `dangerouslyAllowPrivateNetwork` — that would weaken navigation
-SSRF).
+The `web_browser` tool drives general public-web browsing through the dedicated
+PinchTab pod (`config/baloo/manifests/pinchtab-web.yaml`). The OLX `pinchtab`
+tool keeps its separate service, token, and persistent authenticated profile.
+PinchTab agent sessions isolate general browsing state between Baloo agents.
+Both browser pods have no ServiceAccount token and NetworkPolicies that allow
+ingress only from OpenClaw and egress only to DNS and the public internet.
+The `general-browser` plugin logs failed operations with agent, action, tab,
+public target host, timing, and error while omitting credentials and page data.
+
+The built-in `browser` tool and Browserless pod remain solely for the court-case
+monitor pending its dedicated PinchTab migration. Keep the court profile and
+PDF helper functional until that migration is validated; then retire
+Browserless. The CDP address still depends on
+`browser.ssrfPolicy.allowedHostnames`. Do not enable
+`dangerouslyAllowPrivateNetwork`.
 
 For an authenticated browser workflow, create a dedicated named browser
 profile and require its skill to specify that profile on every browser call.
