@@ -30,6 +30,9 @@ Baloo's one-at-a-time Blender product-model service and OpenCloud warehouse:
 Baloo Gateway SQLite startup latency and probe incident:
 `runbooks/baloo-gateway-sqlite-latency.md`.
 
+Newjoy processed-render attempt limits, persistent failure records, and explicit retries:
+`runbooks/newjoy-processed-render-failures.md`.
+
 Whole-cluster shutdown and startup for planned power maintenance:
 `runbooks/cluster-power-maintenance.md`.
 
