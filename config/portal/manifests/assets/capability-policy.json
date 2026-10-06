@@ -118,5 +118,9 @@
   "newjoy.ro": {
     "maturity": "stable",
     "baloo": {"available": false}
+  },
+  "Zabbix": {
+    "maturity": "experimental",
+    "baloo": {"available": true, "detail": "Alpar only"}
   }
 }

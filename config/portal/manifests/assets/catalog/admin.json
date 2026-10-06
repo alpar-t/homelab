@@ -228,6 +228,17 @@
           "tags": ["cluster", "GitOps", "deployments"]
         },
         {
+          "name": "Monitoring & alerts",
+          "product": "Zabbix",
+          "description": "Review cluster and service health, active problems, recovery history, and planned maintenance.",
+          "url": "https://monitor.newjoy.ro",
+          "icon": "deploy",
+          "accent": "#d75b59",
+          "network": "anywhere",
+          "auth": "Pocket ID, then Zabbix sign-in",
+          "tags": ["monitoring", "health", "alerts", "backups"]
+        },
+        {
           "name": "Storage & backups",
           "product": "Longhorn",
           "description": "Inspect volumes, replicas, snapshots, and off-site backup status.",
