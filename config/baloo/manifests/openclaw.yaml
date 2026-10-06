@@ -212,6 +212,11 @@ spec:
               const out = src.replace(/\$\{([^}]+)\}/g, (_, k) => process.env[k] ?? _);
               fs.writeFileSync('/rendered/openclaw.json', out);
           env:
+            - name: MONITORING_HOOK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: MONITORING_HOOK_TOKEN
             - name: BALOO_OWNER_PHONE
               valueFrom:
                 secretKeyRef:
@@ -421,6 +426,40 @@ spec:
             - name: whatsapp-delivery-fix
               mountPath: /whatsapp-fix
       containers:
+        # HOME-3 exposes only a curated Zabbix surface on pod loopback. API
+        # credentials are mounted here, not in the gateway or agent workspaces.
+        - name: zabbix-mcp
+          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          command: [node, /git/link/openclaw/tools/zabbix-mcp.js]
+          env:
+            - name: ZABBIX_API_URL
+              value: http://zabbix-web.zabbix.svc/api_jsonrpc.php
+          readinessProbe:
+            exec:
+              command: [node, -e, "require('http').get('http://127.0.0.1:18812/health', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 10m
+              memory: 48Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: git-repo
+              mountPath: /git
+              readOnly: true
+            - name: zabbix-api-tokens
+              mountPath: /credentials
+              readOnly: true
         # Continuous sync sidecar — keeps /git/link up to date with main.
         - name: git-sync
           image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
@@ -521,6 +560,11 @@ spec:
               render();
               setInterval(render, 2000);
           env:
+            - name: MONITORING_HOOK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: baloo-secrets
+                  key: MONITORING_HOOK_TOKEN
             - name: BALOO_OWNER_PHONE
               valueFrom:
                 secretKeyRef:
@@ -1405,6 +1449,10 @@ spec:
               readOnly: true
 
       volumes:
+        - name: zabbix-api-tokens
+          secret:
+            secretName: zabbix-mcp
+            defaultMode: 0444
         - name: radarr-api-key
           secret:
             secretName: radarr-baloo

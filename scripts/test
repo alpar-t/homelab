@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 
 usage() {
   cat <<'EOF'
-Usage: scripts/test [all|image-tools|newjoy-staging|portal|access-policy|access-policy-live ...]
+Usage: scripts/test [all|image-tools|newjoy-staging|portal|access-policy|access-policy-live|zabbix ...]
 
 With no targets, runs every local test. Pass one or more target names for a
 focused run. Use `scripts/test list` to print the targets.
@@ -16,6 +16,9 @@ EOF
 
 run_target() {
   case "$1" in
+    zabbix)
+      PYTHONPYCACHEPREFIX=/tmp/home-3-python-cache python3 scripts/test-zabbix.py
+      ;;
     image-tools)
       (cd config/image-tools && npm test)
       ;;
@@ -65,14 +68,14 @@ PY
 }
 
 if [[ ${1:-all} == list ]]; then
-  printf '%s\n' image-tools newjoy-staging portal access-policy access-policy-live
+  printf '%s\n' image-tools newjoy-staging portal access-policy access-policy-live zabbix
   exit 0
 fi
 
 targets=("$@")
 if [[ ${#targets[@]} -eq 0 || ${targets[0]} == all ]]; then
   [[ ${#targets[@]} -le 1 ]] || { usage >&2; exit 2; }
-  targets=(image-tools newjoy-staging portal access-policy)
+  targets=(image-tools newjoy-staging portal access-policy zabbix)
 fi
 for target in "${targets[@]}"; do
   run_target "$target"

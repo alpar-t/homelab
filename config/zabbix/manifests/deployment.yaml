@@ -1,0 +1,164 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zabbix
+  namespace: zabbix
+  annotations:
+    secret.reloader.stakater.com/reload: zabbix-db-app
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: zabbix
+  template:
+    metadata:
+      labels:
+        app: zabbix
+    spec:
+      automountServiceAccountToken: false
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: workload/cpu-intensive
+                    operator: In
+                    values: ["true"]
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: server
+          image: docker.io/zabbix/zabbix-server-pgsql:7.0.31-alpine@sha256:bdfe90847bd259a6da448db1e6ae83f5f439224654ed767296a8d57a088975b9
+          env:
+            - name: DB_SERVER_HOST
+              value: zabbix-db-rw.zabbix.svc
+            - name: POSTGRES_DB
+              value: zabbix
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: zabbix-db-app
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zabbix-db-app
+                  key: password
+            - name: ZBX_CACHESIZE
+              value: 32M
+            - name: ZBX_HISTORYCACHESIZE
+              value: 8M
+            - name: ZBX_HISTORYINDEXCACHESIZE
+              value: 4M
+            - name: ZBX_TRENDCACHESIZE
+              value: 4M
+            - name: ZBX_VALUECACHESIZE
+              value: 16M
+            - name: ZBX_STARTPOLLERS
+              value: "1"
+            - name: ZBX_STARTHTTPPOLLERS
+              value: "1"
+            - name: ZBX_STARTHTTPAGENTPOLLERS
+              value: "1"
+            - name: ZBX_STARTPREPROCESSORS
+              value: "2"
+            - name: ZBX_STARTTRAPPERS
+              value: "1"
+            - name: ZBX_STARTPINGERS
+              value: "0"
+            - name: ZBX_STARTDISCOVERERS
+              value: "0"
+            - name: ZBX_STARTVMWARECOLLECTORS
+              value: "0"
+            - name: ZBX_STARTSNMPPOLLERS
+              value: "0"
+            - name: ZBX_STARTAGENTPOLLERS
+              value: "0"
+          ports:
+            - name: server
+              containerPort: 10051
+          startupProbe:
+            tcpSocket:
+              port: server
+            periodSeconds: 10
+            failureThreshold: 90
+          readinessProbe:
+            tcpSocket:
+              port: server
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 384Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+        - name: web
+          image: docker.io/zabbix/zabbix-web-nginx-pgsql:7.0.31-alpine@sha256:d9ce0774cb6036ce5d49c9c8d46bf1474dad98aae810350de0d5068dd679b92d
+          env:
+            - name: DB_SERVER_HOST
+              value: zabbix-db-rw.zabbix.svc
+            - name: POSTGRES_DB
+              value: zabbix
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: zabbix-db-app
+                  key: username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zabbix-db-app
+                  key: password
+            - name: ZBX_SERVER_HOST
+              value: 127.0.0.1
+            - name: PHP_TZ
+              value: Europe/Bucharest
+            - name: ZBX_SERVER_NAME
+              value: HomePBP
+          ports:
+            - name: http
+              containerPort: 8080
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            failureThreshold: 90
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zabbix-web
+  namespace: zabbix
+spec:
+  selector:
+    app: zabbix
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

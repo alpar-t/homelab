@@ -1,0 +1,66 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: zabbix-db
+  namespace: zabbix
+  labels:
+    data-criticality: critical
+spec:
+  instances: 2
+  enablePDB: true
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.10-202608030910-system-bookworm@sha256:8561d04754c2caf8ed203b52e96163a24ff045782ca726d01b01bbcb0649222c
+  bootstrap:
+    initdb:
+      database: zabbix
+      owner: zabbix
+  storage:
+    size: 10Gi
+    storageClass: local-ssd
+    resizeInUseVolumes: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 768Mi
+  postgresql:
+    parameters:
+      shared_buffers: 64MB
+      max_connections: "60"
+      archive_timeout: 1h
+      max_slot_wal_keep_size: 1GB
+  # Matches the currently deployed CNPG backup backend. Migrate with the other
+  # databases before CNPG 1.31; see migrate-cnpg-to-barman-cloud-plugin.md.
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://homelab-longhorn-backup/cnpg/zabbix-db
+      endpointURL: https://s3.eu-central-003.backblazeb2.com
+      s3Credentials:
+        accessKeyId:
+          name: cnpg-backup-credentials
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: cnpg-backup-credentials
+          key: SECRET_ACCESS_KEY
+      wal:
+        compression: gzip
+      data:
+        compression: gzip
+    retentionPolicy: 30d
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: zabbix-db-daily
+  namespace: zabbix
+spec:
+  schedule: "0 45 3 * * *"
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: zabbix-db

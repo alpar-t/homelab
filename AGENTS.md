@@ -48,6 +48,9 @@ Baloo's public Kubernetes deployment checks for OLX integration:
 Baloo's general PinchTab browser deployment and failure diagnostics:
 `runbooks/baloo-general-browser.md`.
 
+Zabbix monitoring architecture, restricted Baloo access, deployment gates,
+and recovery: `runbooks/zabbix-monitoring.md`.
+
 Baloo's Paperless document MCP account, credential, and validation procedure:
 `runbooks/baloo-paperless-mcp.md`.
 

@@ -1,0 +1,40 @@
+{
+  "nodes": ["buksi", "pamacs", "pufi"],
+  "deployments": [
+    ["argocd", "argocd-server"], ["baloo", "openclaw"],
+    ["cloudflared", "cloudflared"], ["pocket-id", "pocket-id"],
+    ["stalwart-mail", "stalwart"], ["roundcube", "roundcube"],
+    ["immich", "immich-server"], ["paperless-ngx", "paperless-ngx"],
+    ["opencloud", "opencloud-opencloud"], ["vaultwarden", "vaultwarden"],
+    ["vikunja", "vikunja"], ["tandoor", "tandoor"],
+    ["actual-budget", "actual-budget"], ["portal", "portal"],
+    ["zabbix", "zabbix"], ["zabbix", "collector"]
+  ],
+  "databases": [
+    ["homeassistant", "homeassistant-db"], ["immich", "immich-db"],
+    ["paperless-ngx", "paperless-db"], ["pocket-id", "pocket-id-db"],
+    ["roundcube", "roundcube-db"], ["stalwart-mail", "stalwart-db"],
+    ["tandoor", "tandoor-db"], ["vaultwarden", "vaultwarden-db"],
+    ["vikunja", "vikunja-db"], ["zabbix", "zabbix-db"]
+  ],
+  "probes": [
+    {"name": "Pocket ID internal", "url": "http://pocket-id.pocket-id.svc/healthz", "codes": [204]},
+    {"name": "Immich internal", "url": "http://immich-server.immich.svc:2283/api/server/ping"},
+    {"name": "Paperless internal", "url": "http://paperless-ngx.paperless-ngx.svc:8000/", "codes": [200]},
+    {"name": "OpenCloud internal", "url": "http://opencloud-opencloud.opencloud.svc:9200/", "codes": [200]},
+    {"name": "Vaultwarden internal", "url": "http://vaultwarden.vaultwarden.svc/alive"},
+    {"name": "Vikunja internal", "url": "http://vikunja.vikunja.svc/api/v2/health"},
+    {"name": "Recipes internal", "url": "http://tandoor.tandoor.svc/", "codes": [200]},
+    {"name": "Budget internal", "url": "http://actual-budget.actual-budget.svc:5006/"},
+    {"name": "Webmail internal", "url": "http://roundcube.roundcube.svc/", "codes": [200]},
+    {"name": "Portal internal", "url": "http://portal.portal.svc/"},
+    {"name": "Home Assistant appliance", "url": "http://192.168.1.102:8123/"},
+    {"name": "Public landing page", "url": "https://newjoy.ro/", "family": "public"},
+    {"name": "Public Pocket ID", "url": "https://auth.newjoy.ro/", "family": "public"},
+    {"name": "Public portal sign-in", "url": "https://portal.newjoy.ro/", "codes": [200, 401, 403], "family": "public"},
+    {"name": "Stalwart SMTP", "host": "stalwart.stalwart-mail.svc", "port": 25, "family": "mail"},
+    {"name": "Stalwart IMAPS", "host": "stalwart.stalwart-mail.svc", "port": 993, "family": "mail"},
+    {"name": "Migadu inbound IMAPS", "host": "imap.migadu.com", "port": 993, "family": "mail"},
+    {"name": "Migadu outbound SMTP TLS", "host": "smtp.migadu.com", "port": 465, "family": "mail"}
+  ]
+}
