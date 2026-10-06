@@ -110,5 +110,8 @@
   "newjoy-website-staging": [
     "family_users",
     "advanced_apps"
+  ],
+  "zabbix": [
+    "advanced_apps"
   ]
 }

@@ -6,6 +6,9 @@ resources:
   - deployment.yaml
   - collector.yaml
   - network-policy.yaml
+  - oidc-client.yaml
+  - oauth2-proxy.yaml
+  - ingress.yaml
 configMapGenerator:
   - name: collector
     namespace: zabbix

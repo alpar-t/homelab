@@ -148,5 +148,11 @@
     "client": "33064a51-cb32-4d2f-b5cf-a2d37682c529",
     "namespace": "media",
     "service": "oauth2-proxy-media"
+  },
+  "monitor.newjoy.ro": {
+    "mode": "proxy",
+    "client": "zabbix",
+    "namespace": "zabbix",
+    "service": "oauth2-proxy"
   }
 }

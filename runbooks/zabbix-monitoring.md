@@ -52,7 +52,16 @@ active backup group. CNPG schedules require six fields; supported daily/weekly
 schedules get the same freshness limits. Missing archive/backup conditions fail
 closed.
 
-The UI is private; no Ingress or public hostname is created:
+The web UI is at `https://monitor.newjoy.ro`, gated by the `zabbix` Pocket ID
+client and an oauth2-proxy allowing only `advanced_apps`. Both the root and
+public API paths require Pocket ID; only `/oauth2` serves the sign-in flow.
+Zabbix keeps its own application login after Pocket ID authentication.
+The proxy does not grant Zabbix roles or administrative access.
+The shared provisioner creates a denied-by-default client; reconcile its group
+policy with `scripts/reconcile-pocket-id-access.py --apply` after provisioning.
+OIDC and cookie secrets are generated in-cluster and never committed.
+
+For private administrative API work:
 
 ```bash
 kubectl -n zabbix port-forward service/zabbix-web 18080:80
@@ -61,7 +70,9 @@ kubectl -n zabbix port-forward service/zabbix-web 18080:80
 Open `http://127.0.0.1:18080`. The bootstrap script replaces the default Admin
 password and stores it only in `zabbix/zabbix-admin`. Retrieve credentials
 privately when needed. Namespace ingress policy permits Baloo/monitoring HTTP,
-namespace-local PostgreSQL, and CNPG operator management traffic.
+namespace-local PostgreSQL, CNPG operator management traffic, and ingress-nginx
+traffic to the frontend and authentication proxy. Collector snapshots have no
+public route. Baloo uses the internal Service and does not pass through SSO.
 
 ## Baloo boundary
 

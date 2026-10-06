@@ -1,0 +1,144 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth2-proxy
+  namespace: zabbix
+  annotations:
+    secret.reloader.stakater.com/reload: zabbix-oidc,zabbix-cookie
+  labels:
+    app.kubernetes.io/name: oauth2-proxy
+    app.kubernetes.io/part-of: zabbix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: oauth2-proxy
+      app.kubernetes.io/part-of: zabbix
+  template:
+    metadata:
+      annotations:
+        monitor.newjoy.ro/cookie-secret-format: hex-32-v1
+      labels:
+        app.kubernetes.io/name: oauth2-proxy
+        app.kubernetes.io/part-of: zabbix
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: oauth2-proxy
+          image: quay.io/oauth2-proxy/oauth2-proxy:v7.15.3@sha256:10a1165743a192e1940b4708fb9647027185ce11a681a1c5519b442ff7f1f561
+          args:
+            - --http-address=0.0.0.0:4180
+            - --reverse-proxy=true
+            - --trusted-proxy-ip=10.42.0.0/16
+            - --upstream=static://200
+            - --provider=oidc
+            - --oidc-issuer-url=https://auth.newjoy.ro
+            - --skip-oidc-discovery=true
+            - --login-url=https://auth.newjoy.ro/authorize
+            - --redeem-url=http://pocket-id.pocket-id.svc.cluster.local/api/oidc/token
+            - --oidc-jwks-url=http://pocket-id.pocket-id.svc.cluster.local/.well-known/jwks.json
+            - --scope=openid profile email groups
+            - --oidc-groups-claim=groups
+            - --allowed-group=advanced_apps
+            - --set-xauthrequest=true
+            - --email-domain=*
+            - --insecure-oidc-allow-unverified-email=true
+            - --cookie-secure=true
+            - --cookie-samesite=lax
+            - --cookie-name=_newjoy_zabbix
+            - --cookie-domain=monitor.newjoy.ro
+            - --redirect-url=https://monitor.newjoy.ro/oauth2/callback
+            - --whitelist-domain=monitor.newjoy.ro
+            - --backend-logout-url=https://auth.newjoy.ro/api/oidc/end-session?id_token_hint={id_token}&post_logout_redirect_uri=https%3A%2F%2Fmonitor.newjoy.ro
+            - --skip-auth-route=^/ping$
+          env:
+            - name: OAUTH2_PROXY_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: zabbix-oidc
+                  key: client_id
+            - name: OAUTH2_PROXY_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: zabbix-oidc
+                  key: client_secret
+            - name: OAUTH2_PROXY_COOKIE_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: zabbix-cookie
+                  key: cookie_secret
+          ports:
+            - name: http
+              containerPort: 4180
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oauth2-proxy
+  namespace: zabbix
+  labels:
+    app.kubernetes.io/name: oauth2-proxy
+    app.kubernetes.io/part-of: zabbix
+spec:
+  selector:
+    app.kubernetes.io/name: oauth2-proxy
+    app.kubernetes.io/part-of: zabbix
+  ports:
+    - name: http
+      port: 4180
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: zabbix-oauth2-proxy
+  namespace: zabbix
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-buffer-size: 16k
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: monitor.newjoy.ro
+      http:
+        paths:
+          - path: /oauth2
+            pathType: Prefix
+            backend:
+              service:
+                name: oauth2-proxy
+                port:
+                  number: 4180
