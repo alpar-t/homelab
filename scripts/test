@@ -18,6 +18,7 @@ run_target() {
   case "$1" in
     zabbix)
       PYTHONPYCACHEPREFIX=/tmp/home-3-python-cache python3 scripts/test-zabbix.py
+      PYTHONPYCACHEPREFIX=/tmp/home-3-python-cache python3 scripts/test-mail-activity.py
       ;;
     image-tools)
       (cd config/image-tools && npm test)

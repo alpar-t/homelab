@@ -95,6 +95,8 @@ metadata:
     configmap.reloader.stakater.com/reload: collector
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: collector
@@ -108,6 +110,7 @@ spec:
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
+        fsGroup: 1000
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -138,10 +141,29 @@ spec:
             - name: config
               mountPath: /config
               readOnly: true
+            - name: arrival-state
+              mountPath: /state
       volumes:
         - name: config
           configMap:
             name: collector
+        - name: arrival-state
+          persistentVolumeClaim:
+            claimName: collector-arrival-state
+---
+# Replaceable, timestamp-only history. Rebuild from retained Stalwart logs if
+# lost; the storage class excludes this cache from recurring off-site backups.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: collector-arrival-state
+  namespace: zabbix
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn-ssd-noreplica
+  resources:
+    requests:
+      storage: 512Mi
 ---
 apiVersion: v1
 kind: Service

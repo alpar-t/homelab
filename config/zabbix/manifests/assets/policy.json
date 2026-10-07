@@ -1,5 +1,14 @@
 {
   "nodes": ["buksi", "pamacs", "pufi"],
+  "mail_activity": {
+    "timezone": "Europe/Bucharest",
+    "baseline_days": 7,
+    "initial_silence_hours": 24,
+    "minimum_silence_hours": 6,
+    "maximum_silence_hours": 48,
+    "gap_multiplier": 1.5,
+    "minimum_gap_samples": 10
+  },
   "deployments": [
     ["argocd", "argocd-server"], ["baloo", "openclaw"],
     ["cloudflared", "cloudflared"], ["pocket-id", "pocket-id"],

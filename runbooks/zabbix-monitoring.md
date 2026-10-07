@@ -18,9 +18,11 @@ confirmed both problem and recovery messages arrived in WhatsApp; a bounded
 hook test independently returned completed execution and `delivered: true`.
 The old periodic LLM `cluster-health` job is disabled in source. Its replacement
 is the native command watchdog every five minutes; a healthy manual run completed
-in 369 ms with `NO_REPLY` and silent delivery suppression. Synthetic mail remains
-disabled. At final validation the only active collector problem is the
-intentionally missing mail round-trip coverage.
+in 369 ms with `NO_REPLY` and silent delivery suppression. Per the user's chosen
+mail policy, incoming activity monitoring replaces the synthetic round-trip
+gate: check continuously, start at 24 hours of silence, then adapt from actual
+completed arrival gaps. No synthetic messages or additional mailbox credentials
+are required.
 
 The protected web UI and administrator portal card are deployed through GitOps.
 Pocket ID's live inventory has 30 explicitly restricted clients; live tests
@@ -194,24 +196,50 @@ LLM. Other unrelated Baloo scheduled jobs retain their own behavior.
    server/frontend/collector/two DB instances total 800 MiB, plus 48 MiB for
    the Baloo sidecar. These are scheduling requests, not measured usage.
 
-## Mail coverage and remaining gates
+## Incoming-mail activity
 
 The collector checks Stalwart SMTP/IMAPS, Migadu IMAPS/SMTP connectivity,
-fetchmail errors, Stalwart delivery failures, and mail workload readiness.
-These checks do not prove message delivery. A visible Warning reports missing
-round-trip coverage until synthetic sending is approved and dedicated credentials
-are provisioned. Do not describe mail as end-to-end monitored before that gate.
+fetchmail errors, Stalwart delivery failures, and mail workload readiness. The
+`Mail incoming activity` check additionally observes actual receiving activity
+across the configured Migadu mailboxes, 24 hours a day.
 
-Use a dedicated monitoring mailbox and an external forwarding destination that
-Stalwart does not consider a local domain. Stalwart routes its own domains
-locally, so a message sent directly to another `@newjoy.ro` mailbox bypasses
-Migadu and cannot prove the external path. Use a bounded flow through Stalwart
-submission → Migadu outbound → external forwarding destination → Migadu inbound
-→ fetchmail → Stalwart IMAP. Match unique probe IDs,
-measure delivery age, and remove only test messages after confirmation. Keep
-credentials out of collector snapshots, logs, skills, and repository files.
-Configure a second independent external probe if separate inbound/outbound
-diagnosis is required. Mailbox provisioning and synthetic sending are pending.
+It matches a `queue.queue-message` SMTP submission on port 25 from loopback
+(fetchmail in the same pod) to a successful `message-ingest.ham` or
+`message-ingest.spam` record. Internal app mail, outbound relay success, IMAP
+imports, and failed ingestion do not qualify. Queue IDs are hashed and
+deduplicated, including messages delivered to multiple recipients. Only hashed
+identifiers and timestamps are retained; mail contents, addresses, subjects,
+and Message-IDs are not stored or sent to Baloo.
+
+The user selected an initial 24-hour silence threshold with adaptation. The
+policy lives in `config/zabbix/manifests/assets/policy.json`. After at least ten
+completed gaps are available, use 1.5 times the 90th-percentile gap from a rolling
+seven-day history, rounded up to a whole hour and bounded to 6–48 hours. The
+current silent interval does not train the model. Recalibrate on new arrivals
+or an explicit policy change; freeze the threshold between arrivals. A gap
+that already crossed the alert deadline is excluded from normal-rate training
+after recovery. This prevents a stopped receiving path from extending its own
+deadline or recovering just because its training samples aged out.
+
+Count today's arrivals from midnight in Europe/Bucharest, but carry elapsed
+silence continuously across midnight. The check runs once a minute and uses
+the existing three-failing-sample Zabbix trigger and Baloo problem/recovery
+delivery. A log-query or state-persistence failure reports monitoring
+unavailability rather than a healthy receiving path. A silence problem is a
+traffic anomaly; it does not establish that mail was sent during the interval
+or prove outbound end-to-end delivery.
+
+`collector-arrival-state` is a 512Mi single-replica SSD PVC containing this
+replaceable timestamp cache. Its `longhorn-ssd-noreplica` class uses the supported
+`excluded` recurring-job group. Seed from retained Stalwart logs at startup and
+rescan seven days every six hours; between full scans, query overlapping recent
+logs and cover any poll gap. Bounded log responses fail visibly if truncated.
+The collector keeps its read-only Kubernetes RBAC and receives no mail secrets.
+
+Initial measurements on 2026-10-07 found two external messages by 10:25
+Bucharest time, at 07:13 and 10:02 (a 2h49m gap). Retained weekly history held 27
+arrivals, with a median gap of 2h33m and a longest normal gap of 20h03m. Later
+validation found four arrivals that day and an adaptive threshold of 24 hours.
 
 ## Validation and recovery
 

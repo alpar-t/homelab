@@ -15,6 +15,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from mail_activity import MailActivity
 
 UTC = dt.timezone.utc
 SA = Path('/var/run/secrets/kubernetes.io/serviceaccount')
@@ -70,12 +71,20 @@ class Kubernetes:
             if not token:
                 return result
 
-    def logs(self, ns, pod, container):
-        path = f'/api/v1/namespaces/{ns}/pods/{pod}/log?container={container}&sinceSeconds=600&tailLines=1000&limitBytes=200000'
+    def logs(self, ns, pod, container, since_seconds=600, limit_bytes=200000,
+             tail_lines=1000, timestamps=False):
+        query = {'container': container, 'sinceSeconds': since_seconds, 'limitBytes': limit_bytes,
+                 'timestamps': str(timestamps).lower()}
+        if tail_lines is not None:
+            query['tailLines'] = tail_lines
+        path = f'/api/v1/namespaces/{ns}/pods/{pod}/log?' + urllib.parse.urlencode(query)
         req = urllib.request.Request(self.base + path, headers={
             'Authorization': 'Bearer ' + (SA / 'token').read_text().strip()})
         with urllib.request.urlopen(req, context=self.context, timeout=15) as response:
-            return response.read(200000).decode(errors='replace')
+            value = response.read(limit_bytes + 1)
+            if timestamps and len(value) >= limit_bytes:
+                raise ValueError('Mail event log response was truncated')
+            return value.decode(errors='replace')
 
 
 def evaluate(data, policy, now):
@@ -237,7 +246,7 @@ def probe(target):
         return check(name, target.get('family', 'reachability'), True, type(error).__name__)
 
 
-def collect(kube, policy):
+def collect(kube, policy, activity=None):
     now = time.time()
     data, failures = {}, []
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
@@ -269,14 +278,26 @@ def collect(kube, policy):
         except Exception as error:
             bad, detail = True, 'log query failed: ' + type(error).__name__
         checks.append(check('Mail ' + container + ' failures', 'mail', bad, detail))
-    checks.append(check('Mail round-trip coverage', 'mail', True,
-                        'Synthetic sending disabled until a dedicated mailbox and sending approval are supplied', 2))
+    if 'mail_activity' in policy:
+        try:
+            if not mail_pods:
+                raise ValueError('Mail workload is missing')
+            activity = activity or MailActivity()
+            options, full = activity.query_options(now, policy['mail_activity'])
+            logs = [kube.logs('stalwart-mail', pod['metadata']['name'], 'stalwart', **options)
+                    for pod in mail_pods]
+            result = activity.observe(logs, now, policy['mail_activity'], full)
+            checks.append(check('Mail incoming activity', 'mail', result['bad'], result['detail'], 3))
+        except Exception as error:
+            checks.append(check('Mail incoming activity', 'mail', True,
+                                'Arrival monitoring unavailable: ' + type(error).__name__, 3))
     return {'collected_at': int(now), 'checks': checks}
 
 
 def main():
     policy = json.loads(Path(os.environ.get('POLICY_FILE', '/config/policy.json')).read_text())
     kube = Kubernetes()
+    activity = MailActivity(os.environ.get('MAIL_ACTIVITY_STATE', '/state/mail-activity.json'))
     snapshot = {'collected_at': 0, 'checks': []}
     lock = threading.Lock()
 
@@ -285,7 +306,7 @@ def main():
         while True:
             started = time.monotonic()
             try:
-                result = collect(kube, policy)
+                result = collect(kube, policy, activity)
                 with lock:
                     snapshot = result
             except Exception as error:
