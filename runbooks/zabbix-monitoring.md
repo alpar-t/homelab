@@ -1,6 +1,6 @@
 # HOME-3: Zabbix monitoring
 
-## Current deployment (2026-10-06)
+## Current deployment (2026-10-07)
 
 The reviewed `scripts/deploy-zabbix.py --apply` was run with explicit approval.
 Zabbix server/frontend and the collector are Ready. CNPG has two Ready replicas
@@ -11,10 +11,23 @@ the Actual Budget probe to port 5006.
 
 The Zabbix check/role bootstrap is applied. Live validation confirms 205
 discovered checks, no unsupported items, and API-role rejection of forbidden
-methods for both identities. Baloo cutover and alert delivery validation are
-pending; synthetic mail remains disabled. Remaining
-collector failures are the build-runner PVC's missing completed Longhorn backup
-and the intentionally missing mail round-trip coverage.
+methods for both identities. Baloo's ten-tool MCP catalog and live read,
+history, acknowledgement, bounded suppression/unsuppression, and scoped
+maintenance/cancellation tests passed against a disposable check. The user
+confirmed both problem and recovery messages arrived in WhatsApp; a bounded
+hook test independently returned completed execution and `delivered: true`.
+The old periodic LLM `cluster-health` job is disabled in source. Its replacement
+is the native command watchdog every five minutes; a healthy manual run completed
+in 369 ms with `NO_REPLY` and silent delivery suppression. Synthetic mail remains
+disabled. At final validation the only active collector problem is the
+intentionally missing mail round-trip coverage.
+
+The protected web UI and administrator portal card are deployed through GitOps.
+Pocket ID's live inventory has 30 explicitly restricted clients; live tests
+confirmed no-group and kids denial for monitoring. The user verified browser
+access. A fresh post-configuration CNPG base backup completed. Measured server,
+frontend, collector, proxy, and two database pods used about 430 MiB combined;
+the Baloo bridge is additional. Measurements are a point-in-time sample.
 
 ## Architecture
 
@@ -41,6 +54,14 @@ also monitors unsupported items. Expected nodes, core Deployments, and database
 clusters stay in the inventory even when missing. Newly created infrastructure
 must be added to the expected inventory. Longhorn volumes and DaemonSets are
 discovered dynamically.
+
+Lost discovered resources are disabled immediately and deleted after one day.
+Dependent preprocessing first selects the check object, discarding absent
+retired checks, then extracts each field with normal error handling. Malformed
+fields on an active check remain unsupported. This prevents replaced pod names
+from producing false preprocessing alarms while preserving schema-failure
+detection. Live verification and Baloo current-item queries exclude disabled
+historical items; check count varies with pod and resource inventory.
 
 Physical storage uses the existing `node-storage-health` readiness result and
 failure events. It preserves that collector's disk quarantine and latched-error
@@ -114,6 +135,15 @@ model completion or delivery; validate the actual channel result during cutover.
 
 BetterStack remains the independent external outage detector. Zabbix and Baloo
 cannot notify while their cluster or internet connection is completely down.
+
+Routine collector polling and the five-minute `managed: monitoring-watchdog`
+command do not invoke an LLM. The watchdog reads the Zabbix API and collector
+freshness through the bridge's `/watchdog` endpoint, stays silent on healthy or
+single failed checks, alerts after two consecutive failures, reminds at most
+every six hours, and reports recovery once. It cannot report if Baloo itself is
+down; independent external monitoring covers that case. Zabbix invokes Alpar
+on problem/recovery events, and interactive monitoring requests also invoke an
+LLM. Other unrelated Baloo scheduled jobs retain their own behavior.
 
 ## Deployment and cutover
 
@@ -204,6 +234,14 @@ Run `zabbix-mcp.integration-test.js` inside the pinned OpenClaw image to validat
 the actual SDK HTTP contract using fake API credentials and no messages or LLM.
 It exercises initialization, tool discovery, rendered/structured results,
 credential separation, and rejection of unsupported fields.
+
+Wait for actual Zabbix suppression state before testing unsuppression: those
+updates are asynchronous, and an immediate unsuppress can be reduced to a comment
+before suppression is effective. Maintenance validation queries only requested
+check keys; avoid fetching a capped whole-host inventory as the check set grows.
+The webhook bootstrap uses Zabbix 7.0's `maxattempts` field and explicitly enables
+the media type with `status: 0`; see the
+[media type API reference](https://www.zabbix.com/documentation/7.0/en/manual/api/reference/mediatype/object).
 
 For bad check configuration, correct `policy.json`/collector code, sync, and
 verify fresh state plus Zabbix recovery. For a dead collector, inspect its API

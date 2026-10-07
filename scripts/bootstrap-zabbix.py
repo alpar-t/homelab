@@ -83,7 +83,7 @@ def configure_checks(api):
     }, query={'hostids': [host], 'filter': {'key_': 'homelab.snapshot'}, 'output': ['itemid']})
     discovery = api.ensure('discoveryrule', 'key_', 'homelab.discovery', {
         'hostid': host, 'name': 'Homelab checks', 'type': 18, 'master_itemid': master, 'delay': '0',
-        'lifetime': '1d', 'enabled_lifetime_type': 0, 'enabled_lifetime': '1h',
+        'lifetime': '1d', 'enabled_lifetime_type': 2,
         'preprocessing': [{'type': 12, 'params': '$.checks', 'error_handler': 0}],
         'lld_macro_paths': [{'lld_macro': '{#' + macro + '}', 'path': '$.' + field} for macro, field in
                             [('ID', 'id'), ('NAME', 'name'), ('FAMILY', 'family')]],
@@ -95,7 +95,13 @@ def configure_checks(api):
             'type': 18, 'master_itemid': master, 'value_type': value_type, 'delay': '0',
             'history': history, 'trends': '0',
             'tags': [{'tag': 'family', 'value': '{#FAMILY}'}, {'tag': 'check_id', 'value': '{#ID}'}],
-            'preprocessing': [{'type': 12, 'params': '$.checks[?(@.id == "{#ID}")].' + field + '.first()', 'error_handler': 0}],
+            # A retired discovered resource has no matching object. Discard its
+            # value while LLD disables it; missing fields on present checks
+            # still become unsupported so genuine schema faults remain visible.
+            'preprocessing': [
+                {'type': 12, 'params': '$.checks[?(@.id == "{#ID}")].first()', 'error_handler': 1},
+                {'type': 12, 'params': '$.' + field, 'error_handler': 0},
+            ],
         }, 'itemid', query={'discoveryids': [discovery], 'filter': {'key_': key}, 'output': ['itemid']})
     for severity in (2, 3, 4):
         name = '{#NAME}: persistent failure (severity ' + str(severity) + ')'
@@ -159,8 +165,8 @@ request.post('http://openclaw.baloo.svc:18789/hooks/zabbix', JSON.stringify({
 }));
 if (request.getStatus() !== 200) { throw 'Baloo alert admission failed: HTTP ' + request.getStatus(); }
 return 'accepted';'''
-    media = api.ensure('mediatype', 'name', 'Baloo monitoring', {'type': 4, 'script': script, 'timeout': '30s',
-        'attempts': 3, 'attempt_interval': '30s', 'parameters': [
+    media = api.ensure('mediatype', 'name', 'Baloo monitoring', {'type': 4, 'status': 0, 'script': script, 'timeout': '30s',
+        'maxattempts': 3, 'attempt_interval': '30s', 'parameters': [
             {'name': 'token', 'value': token}, {'name': 'event_id', 'value': '{EVENT.ID}'},
             {'name': 'state', 'value': '{EVENT.VALUE}'}, {'name': 'name', 'value': '{EVENT.NAME}'}],
         'message_templates': [{'eventsource': 0, 'recovery': mode, 'subject': '{EVENT.NAME}', 'message': '{EVENT.ID}'} for mode in (0, 1)],

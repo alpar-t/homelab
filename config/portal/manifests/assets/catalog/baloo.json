@@ -98,6 +98,16 @@
           "tags": ["k3s", "logs", "health"]
         },
         {
+          "name": "Review monitoring & manage alerts",
+          "product": "Zabbix",
+          "description": "Read problems and history; acknowledge, suppress, adjust severity, or schedule scoped maintenance when Alpar asks. Cannot change workloads or Zabbix configuration.",
+          "url": "https://monitor.newjoy.ro",
+          "icon": "deploy",
+          "accent": "#d75b59",
+          "scope": "Read + requested operations",
+          "tags": ["monitoring", "alerts", "maintenance", "Alpar only"]
+        },
+        {
           "name": "Schedule reminders",
           "product": "OpenClaw cron",
           "description": "Create source-controlled scheduled reminders only when Alpar explicitly asks for one at a specific time.",

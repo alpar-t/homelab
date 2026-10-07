@@ -12,7 +12,11 @@ this file and are never edited or deleted by the reconciler.
 
 ## Managed jobs
 
-- `cluster-health` — read-only outage probe every 15 minutes.
+- `cluster-health` — disabled legacy LLM outage probe, retained for rollback.
+- `managed: monitoring-watchdog` — deterministic command every five minutes;
+  verifies Zabbix API availability and collector freshness without an LLM.
+  Zabbix problem/recovery webhooks provide the event-driven alerts; see
+  [Zabbix monitoring](zabbix-monitoring.md).
 - `managed: dm-due-reminders` — checks explicit `@remind` tags in
   `life/TODO.md` hourly from 08:00 through 22:00 Europe/Bucharest.
 - `managed: trips-morning-briefing` — 08:00 Europe/Bucharest.

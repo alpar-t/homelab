@@ -1,5 +1,13 @@
 # Baloo cluster-health cron (outage pager)
 
+Retired on 2026-10-07 after the user confirmed Zabbix problem and recovery
+notifications arrived in WhatsApp. `cluster-health` remains source-controlled
+with `enabled: false` for rollback. Routine checks now run deterministically in
+Zabbix; `managed: monitoring-watchdog` runs a native command every five minutes
+without an LLM. See [Zabbix monitoring](zabbix-monitoring.md).
+
+The remainder documents the previous configuration.
+
 The 24/7 homelab outage check is an **isolated cron job** named `cluster-health`
 on the `alpar` agent — *not* a heartbeat task.
 
@@ -13,7 +21,7 @@ overrides, so moving the check there lets it run cheap without lowering the
 reasoning of interactive DM conversations (a per-agent `thinkingDefault` would
 have dropped those too).
 
-## Current configuration
+## Previous configuration
 
 - **Schedule:** every 15m (isolated session, fresh each run)
 - **Model:** explicit `openai/gpt-5.6-terra` (in-plan) → fallback
