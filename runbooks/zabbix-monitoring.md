@@ -215,7 +215,7 @@ The user selected an initial 24-hour silence threshold with adaptation. The
 policy lives in `config/zabbix/manifests/assets/policy.json`. After at least ten
 completed gaps are available, use 1.5 times the 90th-percentile gap from a rolling
 seven-day history, rounded up to a whole hour and bounded to 6–48 hours. The
-current silent interval does not train the model. Recalibrate on new arrivals
+current silent interval does not enter the baseline. Recalibrate on new arrivals
 or an explicit policy change; freeze the threshold between arrivals. A gap
 that already crossed the alert deadline is excluded from normal-rate training
 after recovery. This prevents a stopped receiving path from extending its own
@@ -235,6 +235,18 @@ replaceable timestamp cache. Its `longhorn-ssd-noreplica` class uses the support
 rescan seven days every six hours; between full scans, query overlapping recent
 logs and cover any poll gap. Bounded log responses fail visibly if truncated.
 The collector keeps its read-only Kubernetes RBAC and receives no mail secrets.
+
+After the replacement check is fresh and healthy, retire the old gate through
+the private API port-forward:
+
+```bash
+python3 scripts/bootstrap-zabbix.py --apply --retire-synthetic-mail-check
+```
+
+The guarded helper requests closure of only the HOME-3 synthetic mail warning,
+with an audit comment identifying the policy change. Verify it leaves the
+current problem list after Zabbix processes the asynchronous task. Disabling a
+lost discovery item alone does not close its existing problem.
 
 Initial measurements on 2026-10-07 found two external messages by 10:25
 Bucharest time, at 07:13 and 10:02 (a 2h49m gap). Retained weekly history held 27

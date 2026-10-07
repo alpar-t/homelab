@@ -9,6 +9,7 @@ import base64
 import json
 import secrets
 import subprocess
+import time
 import urllib.request
 
 READ = ['problem.get', 'event.get', 'host.get', 'trigger.get', 'item.get', 'history.get', 'maintenance.get']
@@ -180,11 +181,36 @@ return 'accepted';'''
     })
 
 
+def retire_synthetic_mail_check(api):
+    hosts = api.call('host.get', {'filter': {'host': 'HomePBP'}, 'output': ['hostid']})
+    if len(hosts) != 1:
+        raise RuntimeError('Managed HomePBP host is missing or ambiguous')
+    hostid = hosts[0]['hostid']
+    replacement = api.call('item.get', {'hostids': [hostid],
+        'filter': {'key_': 'homelab.state[28535fcadaa7928644a0]', 'status': 0},
+        'output': ['state', 'lastvalue', 'lastclock']})
+    if (len(replacement) != 1 or replacement[0]['state'] != '0'
+            or replacement[0]['lastvalue'] != '0'
+            or time.time() - int(replacement[0]['lastclock']) > 180):
+        raise RuntimeError('Replacement mail activity check must be fresh and healthy before retiring the old gate')
+    problems = api.call('problem.get', {'hostids': [hostid], 'output': ['eventid', 'name'], 'selectTags': 'extend'})
+    for problem in problems:
+        tags = {(tag['tag'], tag['value']) for tag in problem['tags']}
+        if (problem['name'].startswith('Mail round-trip coverage:')
+                and ('managed_by', 'HOME-3') in tags
+                and ('check_id', '66d4360851afd8a530ee') in tags):
+            api.call('event.acknowledge', {'eventids': [problem['eventid']], 'action': 5,
+                'message': 'Retired the synthetic-coverage gate per Alpar: replaced by normal incoming-mail activity monitoring, continuously, initially 24h and adaptive. This policy change does not certify outbound delivery.'})
+            print('Requested closure of superseded synthetic mail warning:', problem['eventid'])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--url', default='http://127.0.0.1:18080')
     parser.add_argument('--apply', action='store_true', help='Reconcile monitoring configuration and bootstrap credentials')
     parser.add_argument('--enable-alerts', action='store_true', help='Enable delivery after the Baloo hook is configured and verified')
+    parser.add_argument('--retire-synthetic-mail-check', action='store_true',
+                        help='Close only the superseded synthetic coverage warning after the replacement check is fresh and healthy')
     args = parser.parse_args()
     api = API(args.url)
     print('Zabbix API version:', api.call('apiinfo.version', {}))
@@ -215,6 +241,8 @@ def main():
                 value=json.dumps({'stringData': {'MONITORING_HOOK_TOKEN': token}}))
     if args.enable_alerts:
         configure_alerts(api, group, user, token)
+    if args.retire_synthetic_mail_check:
+        retire_synthetic_mail_check(api)
     print('Reconciled HOME-3 checks and restricted read/operations identities. No credentials printed.')
 
 
