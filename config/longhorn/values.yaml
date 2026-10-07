@@ -1,6 +1,9 @@
 defaultSettings:
   defaultDataPath: /var/mnt/disk1
   # Backup target configured via BackupTarget CRD (see manifests/backuptarget.yaml)
+  # Ephemeral runners release their state PVC between builds. Attach opted-in
+  # volumes for scheduled backups even when no workload currently mounts them.
+  allowRecurringJobWhileVolumeDetached: true
   replicaAutoBalance: best-effort
   storageMinimalAvailablePercentage: 10
   # Clean up stale replica data without automatically deleting orphan instances.

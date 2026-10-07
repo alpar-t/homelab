@@ -42,6 +42,20 @@ and source fingerprints, project snapshots, media derivatives, and publication s
 ephemeral runner pods. The PVC opts out of Argo pruning. Watch usage; orphan
 cache/snapshot pruning is not implemented yet.
 
+The build volume remains in Longhorn's `default` recurring-job group: weekly
+backups run Tuesday at 03:00 UTC and retain four copies. Longhorn's global
+`allowRecurringJobWhileVolumeDetached` setting is enabled in
+`config/longhorn/values.yaml`, so the volume can be backed up between runner
+pods. Longhorn temporarily attaches the volume for the recurring job; a new
+runner may wait for that job to finish. Existing backup exclusions still apply.
+
+On 7 October 2026, Zabbix reported no completed backup for this PVC. The weekly
+job had skipped it while detached because the setting was disabled. Keep this
+volume covered: it retains accepted snapshots and publication state, in
+addition to rebuildable media derivatives. Verify completed Backup objects
+and Zabbix freshness after changing this policy; recurring-job labels alone
+do not prove that a backup succeeded.
+
 The website workflow is enabled by repository variable
 NEWJOY_CONTENT_SYNC_ENABLED=true. It checks every immediate project folder under
 the configured 2021–2026 year roots so a new story can be detected anywhere.
