@@ -24,7 +24,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: nginx
-          image: ghcr.io/alpar-t/newjoy-portal:sha-f7a54be864dd41e20210ceaf2916449d23abf704@sha256:aef2c05820f14597b0a6c0010887dca65b6e275651170ab1affe6994f0c7bf41
+          image: ghcr.io/alpar-t/newjoy-portal:sha-afb52e976b8bf5067399661265e2bc5182732bee@sha256:5d046e384da06d70a8bb61cf75b1dd747d1a2836a0bea83bec57030801f83040
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
