@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+import http.server
+import json
+from pathlib import Path
+import sys
+import tempfile
+import threading
+import time
+import unittest
+from unittest.mock import patch
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'config/zabbix/manifests/assets'))
+from functional import Context, FunctionalChecks, SafeError
+from collector import check
+
+
+class Tests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.directory = Path(self.temp.name)
+        self.runner = FunctionalChecks(None, self.directory, check)
+
+    def service(self, code, config=None):
+        (self.directory / 'service_test.py').write_text(code)
+        (self.directory / 'service_test.json').write_text(json.dumps(config or {}))
+
+    def finish(self):
+        self.runner.jobs.join()
+        return self.runner.collect()
+
+    def test_discovery_result_and_stable_ids(self):
+        self.service("def run(ctx, config): return [ctx.check('Test read', False, 'ok')]")
+        self.assertEqual(self.runner.collect()[0]['status'], 1)
+        rows = self.finish()
+        self.assertEqual([r['status'] for r in rows], [0, 0])
+        self.assertEqual(rows[1]['id'], check('Test read', 'x', False, '')['id'])
+        self.assertEqual(rows[1]['family'], 'functional/test')
+        self.assertIn('sample age=', rows[1]['detail'])
+
+    def test_missing_and_invalid_results_fail_closed(self):
+        for code in ("def run(ctx, config): return []", "def run(ctx, config): return [{'name':'x', 'status':False, 'detail':'x'}]", "def run(ctx, config): raise ValueError('secret-token')"):
+            self.service(code)
+            self.runner.states.clear()
+            self.runner.collect()
+            rows = self.finish()
+            self.assertEqual(rows[0]['status'], 1)
+            self.assertNotIn('secret-token', str(rows))
+        (self.directory / 'service_test.py').unlink()
+        self.assertEqual(self.runner.collect()[0]['status'], 1)
+
+    def test_cached_checks_fail_on_missed_deadline(self):
+        self.service("def run(ctx, config): return [ctx.check('Test read', False, 'ok')]")
+        self.runner.collect()
+        self.finish()
+        state = self.runner.states['test']
+        state.update(pending=True, deadline=time.monotonic() - 1)
+        rows = self.runner.collect()
+        self.assertEqual([r['status'] for r in rows], [1, 1])
+
+    def test_late_result_cannot_recover_deadline(self):
+        self.service("import time\ndef run(ctx, config):\n time.sleep(1.05)\n return [ctx.check('Test read', False, 'ok')]", {'deadline': 1})
+        self.runner.collect()
+        rows = self.finish()
+        self.assertEqual(rows[0]['status'], 1)
+        self.assertIsNone(self.runner.states['test']['result'])
+        self.assertIn('deadline exceeded', rows[0]['detail'])
+
+    def test_secret_keys_and_missing_secret(self):
+        ctx = Context(None, time.monotonic() + 5, self.directory)
+        (self.directory / 'token').write_text(' private\n')
+        self.assertEqual(ctx.secret('token'), 'private')
+        for key in ('../token', 'absent'):
+            with self.assertRaises(SafeError): ctx.secret(key)
+
+    def test_http_error_bounds_and_redirect_credentials(self):
+        captured = []
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                captured.append(self.headers.get('Authorization'))
+                if self.path == '/redirect':
+                    self.send_response(302)
+                    self.send_header('Location', 'http://localhost:' + str(self.server.server_port) + '/ok')
+                    self.end_headers()
+                else:
+                    self.send_response(401)
+                    self.end_headers()
+                    self.wfile.write(b'12345')
+            def log_message(self, *args): pass
+        server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        ctx = Context(None, time.monotonic() + 10)
+        url = f'http://127.0.0.1:{server.server_port}'
+        self.assertEqual(ctx.http(url).status, 401)
+        with self.assertRaises(SafeError): ctx.http(url, max_bytes=4)
+        self.assertEqual(ctx.http(url + '/redirect').status, 302)
+        with self.assertRaises(SafeError):
+            ctx.http(url + '/redirect', headers={'Authorization':'private'}, follow_redirects=True)
+        self.assertEqual(captured.count('private'), 1)
+
+if __name__ == '__main__': unittest.main()

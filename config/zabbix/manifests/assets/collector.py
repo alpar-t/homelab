@@ -16,6 +16,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from mail_activity import MailActivity
+from functional import FunctionalChecks
 
 UTC = dt.timezone.utc
 SA = Path('/var/run/secrets/kubernetes.io/serviceaccount')
@@ -246,7 +247,7 @@ def probe(target):
         return check(name, target.get('family', 'reachability'), True, type(error).__name__)
 
 
-def collect(kube, policy, activity=None):
+def collect(kube, policy, activity=None, functional=None):
     now = time.time()
     data, failures = {}, []
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
@@ -291,6 +292,8 @@ def collect(kube, policy, activity=None):
         except Exception as error:
             checks.append(check('Mail incoming activity', 'mail', True,
                                 'Arrival monitoring unavailable: ' + type(error).__name__, 3))
+    if functional is not None:
+        checks.extend(functional.collect())
     return {'collected_at': int(now), 'checks': checks}
 
 
@@ -298,6 +301,7 @@ def main():
     policy = json.loads(Path(os.environ.get('POLICY_FILE', '/config/policy.json')).read_text())
     kube = Kubernetes()
     activity = MailActivity(os.environ.get('MAIL_ACTIVITY_STATE', '/state/mail-activity.json'))
+    functional = FunctionalChecks(kube, Path(os.environ.get('POLICY_FILE', '/config/policy.json')).parent, check)
     snapshot = {'collected_at': 0, 'checks': []}
     lock = threading.Lock()
 
@@ -306,7 +310,7 @@ def main():
         while True:
             started = time.monotonic()
             try:
-                result = collect(kube, policy, activity)
+                result = collect(kube, policy, activity, functional)
                 with lock:
                     snapshot = result
             except Exception as error:

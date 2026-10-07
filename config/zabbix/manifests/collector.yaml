@@ -141,12 +141,19 @@ spec:
             - name: config
               mountPath: /config
               readOnly: true
+            - name: functional-credentials
+              mountPath: /credentials
+              readOnly: true
             - name: arrival-state
               mountPath: /state
       volumes:
         - name: config
           configMap:
             name: collector
+        - name: functional-credentials
+          secret:
+            secretName: zabbix-functional-credentials
+            optional: true
         - name: arrival-state
           persistentVolumeClaim:
             claimName: collector-arrival-state
