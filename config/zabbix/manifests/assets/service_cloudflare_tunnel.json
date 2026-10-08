@@ -1,0 +1,7 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "expected_replicas": 3,
+  "public_url": "https://newjoy.ro/",
+  "markers": ["<html", "newjoy.ro", "<title"]
+}
