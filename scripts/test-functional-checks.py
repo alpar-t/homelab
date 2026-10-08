@@ -91,6 +91,34 @@ class Tests(unittest.TestCase):
         self.runner.collect()
         self.assertTrue(all(row['status'] == 0 for row in self.finish()))
 
+    def test_failed_checks_retry_after_one_minute_healthy_keep_cadence(self):
+        for failure in ("return [ctx.check('Test read', True, 'unavailable')]",
+                        "raise ValueError('unavailable')"):
+            self.service('def run(ctx, config): ' + failure)
+            self.runner.states.clear()
+            with patch('functional.time.monotonic', return_value=1000):
+                self.runner.collect()
+                self.finish()
+            original = self.runner.states['test']
+            with patch('functional.time.monotonic', return_value=1059):
+                self.runner.collect()
+            self.assertIs(self.runner.states['test'], original)
+            # A healthy second attempt replaces the cached failure at minute one.
+            self.service("def run(ctx, config): return [ctx.check('Test read', False, 'ok')]")
+            with patch('functional.time.monotonic', return_value=1060):
+                self.runner.collect()
+                rows = self.finish()
+            self.assertIsNot(self.runner.states['test'], original)
+            self.assertTrue(all(row['status'] == 0 for row in rows))
+            healthy = self.runner.states['test']
+            with patch('functional.time.monotonic', return_value=1120):
+                self.runner.collect()
+            self.assertIs(self.runner.states['test'], healthy)
+            with patch('functional.time.monotonic', return_value=1360):
+                self.runner.collect()
+                self.finish()
+            self.assertIsNot(self.runner.states['test'], healthy)
+
     def test_secret_keys_and_missing_secret(self):
         ctx = Context(None, time.monotonic() + 5, self.directory)
         (self.directory / 'token').write_text(' private\n')

@@ -35,7 +35,15 @@ read access; do not widen permissions to retrieve credentials.
 
 JSON is an object passed unchanged to the module. Reserved keys: `interval`
 (seconds, default 300, range 60–86400) and `deadline` (seconds, default 30,
-range 1–30). Three daemon workers bound service concurrency independently of
+range 1–30). Failed records and module errors retry after 60 seconds instead of waiting
+for the normal interval; healthy results retain the configured interval. The
+one-minute collector cadence may delay admission to the next poll. This gives
+a transient failure another real attempt before the existing three-sample
+trigger, but queue congestion or a hung worker can delay recovery. Cached
+failures remain failures until a successful retry; this is not a guarantee of
+three independent failed executions before paging.
+
+Three daemon workers bound service concurrency independently of
 infrastructure collection. Deadline begins when a worker starts a service. FIFO queue waiting does not
 consume its execution budget; initial pending results remain unavailable and
 cached results expire after interval plus deadline while awaiting a worker.

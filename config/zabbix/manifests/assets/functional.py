@@ -157,7 +157,10 @@ class FunctionalChecks:
                     if not module_path.is_file():
                         raise SafeError('service module missing')
                     state = self.states.get(slug)
-                    if state is None or (not state['pending'] and now >= state['started'] + interval):
+                    failed = state is not None and (state['error'] is not None or
+                                                     any(row['status'] for row in state['result'] or []))
+                    retry_interval = min(interval, 60) if failed else interval
+                    if state is None or (not state['pending'] and now >= state['started'] + retry_interval):
                         previous = state
                         state = dict(started=now, deadline=None,
                                      result=state['result'] if state else None,
