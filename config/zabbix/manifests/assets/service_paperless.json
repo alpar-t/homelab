@@ -1,0 +1,8 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "documents_url": "http://paperless-ngx.paperless-ngx.svc.cluster.local:8000/api/documents/?page_size=1&fields=id",
+  "token_key": "paperless_monitor_token",
+  "redis_host": "redis.paperless-ngx.svc.cluster.local",
+  "redis_port": 6379
+}
