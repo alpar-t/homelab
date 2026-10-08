@@ -143,6 +143,8 @@ spec:
       app.kubernetes.io/name: product-model-renderer
   template:
     metadata:
+      annotations:
+        monitoring.homepbp.io/renderer-contract: "1"
       labels:
         app.kubernetes.io/name: product-model-renderer
     spec:
