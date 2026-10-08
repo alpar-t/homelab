@@ -82,6 +82,15 @@ class Tests(unittest.TestCase):
         self.assertEqual(len(rows), 98)
         self.assertTrue(all(row['status'] == 0 for row in rows))
 
+    def test_queue_full_does_not_leave_unqueued_pending_state(self):
+        import queue
+        self.service("def run(ctx, config): return [ctx.check('Test read', False, 'ok')]")
+        with patch.object(self.runner.jobs, 'put_nowait', side_effect=queue.Full):
+            self.assertEqual(self.runner.collect()[0]['status'], 1)
+        self.assertNotIn('test', self.runner.states)
+        self.runner.collect()
+        self.assertTrue(all(row['status'] == 0 for row in self.finish()))
+
     def test_secret_keys_and_missing_secret(self):
         ctx = Context(None, time.monotonic() + 5, self.directory)
         (self.directory / 'token').write_text(' private\n')

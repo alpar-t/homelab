@@ -158,12 +158,20 @@ class FunctionalChecks:
                         raise SafeError('service module missing')
                     state = self.states.get(slug)
                     if state is None or (not state['pending'] and now >= state['started'] + interval):
+                        previous = state
                         state = dict(started=now, deadline=None,
                                      result=state['result'] if state else None,
                                      completed=state.get('completed', now) if state else now,
                                      error=None, pending=True)
                         self.states[slug] = state
-                        self.jobs.put_nowait((slug, module_path, config, state, duration))
+                        try:
+                            self.jobs.put_nowait((slug, module_path, config, state, duration))
+                        except queue.Full:
+                            if previous is None:
+                                self.states.pop(slug, None)
+                            else:
+                                self.states[slug] = previous
+                            raise
                     expired = state['result'] is None or state['error'] is not None or (state['pending'] and state['deadline'] is not None and now >= state['deadline']) or now - state['completed'] >= interval + duration
                     error = state['error'] or ('service deadline exceeded' if state['deadline'] is not None and now >= state['deadline'] else 'awaiting first service result')
                     output.append(self.check(monitor_name, family, expired,
