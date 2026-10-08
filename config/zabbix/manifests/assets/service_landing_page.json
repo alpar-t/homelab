@@ -1,0 +1,8 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "endpoints": [
+    {"name": "internal", "url": "http://landing-page.landing-page.svc.cluster.local/"},
+    {"name": "public", "url": "https://newjoy.ro/"}
+  ]
+}
