@@ -1,0 +1,6 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "base_url": "http://opencloud-opencloud.opencloud.svc.cluster.local:9200",
+  "workspace_path": ""
+}
