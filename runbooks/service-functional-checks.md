@@ -36,7 +36,10 @@ read access; do not widen permissions to retrieve credentials.
 JSON is an object passed unchanged to the module. Reserved keys: `interval`
 (seconds, default 300, range 60–86400) and `deadline` (seconds, default 30,
 range 1–30). Three daemon workers bound service concurrency independently of
-infrastructure collection. Deadline includes queue time. Late results are
+infrastructure collection. Deadline begins when a worker starts a service. FIFO queue waiting does not
+consume its execution budget; initial pending results remain unavailable and
+cached results expire after interval plus deadline while awaiting a worker.
+Late results are
 ignored. Healthy cached results carry visible sample age; a missed deadline
 fails the monitoring check and any prior service records. Initial pending,
 missing module/config, malformed configuration, empty/invalid output, and
@@ -51,6 +54,9 @@ separately using the approved credential workflow. Never commit secret values
 or print them. Missing Secret permits pod startup and produces visible service
 failures where credentials are required. Creating/changing mounted credentials
 does not grant API Secret read permissions.
+
+Add service unit tests in `scripts/tests/test_service_<slug>.py`;
+`scripts/test zabbix` discovers these automatically.
 
 Keep checks modest and read-only: prove a useful application operation beyond
 readiness (for example authenticated catalog/query reads), bound work and avoid

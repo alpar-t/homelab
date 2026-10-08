@@ -99,7 +99,10 @@ class FunctionalChecks:
 
     def _worker(self):
         while True:
-            slug, module_path, config, state, deadline = self.jobs.get()
+            slug, module_path, config, state, duration = self.jobs.get()
+            deadline = time.monotonic() + duration
+            with self.lock:
+                state['deadline'] = deadline
             try:
                 if time.monotonic() >= deadline:
                     raise SafeError('service deadline exceeded')
@@ -124,7 +127,9 @@ class FunctionalChecks:
             except Exception as exc:
                 result, error = None, ('functional check unavailable: ' + type(exc).__name__)
             with self.lock:
-                if self.states.get(slug) is state and time.monotonic() < deadline:
+                if self.states.get(slug) is state:
+                    if time.monotonic() >= deadline:
+                        result, error = None, 'service deadline exceeded'
                     state.update(error=error, pending=False)
                     if result is not None:
                         state.update(result=result, completed=time.monotonic())
@@ -152,15 +157,15 @@ class FunctionalChecks:
                     if not module_path.is_file():
                         raise SafeError('service module missing')
                     state = self.states.get(slug)
-                    if state is None or now >= state['started'] + interval:
-                        state = dict(started=now, deadline=now + duration,
+                    if state is None or (not state['pending'] and now >= state['started'] + interval):
+                        state = dict(started=now, deadline=None,
                                      result=state['result'] if state else None,
                                      completed=state.get('completed', now) if state else now,
                                      error=None, pending=True)
                         self.states[slug] = state
-                        self.jobs.put_nowait((slug, module_path, config, state, now + duration))
-                    expired = state['result'] is None or state['error'] is not None or (state['pending'] and now >= state['deadline']) or now - state['completed'] >= interval + duration
-                    error = state['error'] or ('service deadline exceeded' if now >= state['deadline'] else 'awaiting first service result')
+                        self.jobs.put_nowait((slug, module_path, config, state, duration))
+                    expired = state['result'] is None or state['error'] is not None or (state['pending'] and state['deadline'] is not None and now >= state['deadline']) or now - state['completed'] >= interval + duration
+                    error = state['error'] or ('service deadline exceeded' if state['deadline'] is not None and now >= state['deadline'] else 'awaiting first service result')
                     output.append(self.check(monitor_name, family, expired,
                                              error if expired else f"fresh; sample age={int(now - state['completed'])}s; interval={interval}s", 3))
                     for row in state['result'] or []:

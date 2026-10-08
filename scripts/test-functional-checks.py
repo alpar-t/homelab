@@ -65,6 +65,23 @@ class Tests(unittest.TestCase):
         self.assertIsNone(self.runner.states['test']['result'])
         self.assertIn('deadline exceeded', rows[0]['detail'])
 
+    def test_large_inventory_does_not_expire_queued_jobs(self):
+        # A synthetic clock advances faster than the old enqueue deadline.
+        # All 49 services still get a fresh execution budget in FIFO order.
+        for index in range(49):
+            (self.directory / f'service_s{index:02}.py').write_text(
+                "import time\ndef run(ctx, config):\n time.sleep(.01)\n return [ctx.check(config['name'], False, 'ok')]"
+            )
+            (self.directory / f'service_s{index:02}.json').write_text(
+                json.dumps({'name': f'Check {index}', 'deadline': 1}))
+        real = time.monotonic
+        anchor = real()
+        with patch('functional.time.monotonic', side_effect=lambda: anchor + (real() - anchor) * 20):
+            self.runner.collect()
+            rows = self.finish()
+        self.assertEqual(len(rows), 98)
+        self.assertTrue(all(row['status'] == 0 for row in rows))
+
     def test_secret_keys_and_missing_secret(self):
         ctx = Context(None, time.monotonic() + 5, self.directory)
         (self.directory / 'token').write_text(' private\n')
