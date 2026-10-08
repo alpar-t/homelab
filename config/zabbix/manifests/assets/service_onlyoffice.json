@@ -1,0 +1,9 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "editor": "http://opencloud-onlyoffice.opencloud.svc.cluster.local",
+  "editor_hosts": ["opencloud-onlyoffice", "opencloud-onlyoffice.opencloud.svc.cluster.local", "office.newjoy.ro"],
+  "registry": "http://opencloud-opencloud.opencloud.svc.cluster.local:9200",
+  "collaboration": "http://opencloud-collaboration.opencloud.svc.cluster.local:9300",
+  "extensions": ["docx", "xlsx", "pptx"]
+}
