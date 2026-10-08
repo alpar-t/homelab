@@ -35,7 +35,7 @@ def run(ctx, config):
                 enabled.add(item["id"])
         errors = 0
         for item in health:
-            if not isinstance(item, dict) or item.get("type") not in ("ok", "warning", "error") or not isinstance(item.get("source"), str):
+            if not isinstance(item, dict) or item.get("type") not in ("ok", "notice", "warning", "error") or not isinstance(item.get("source"), str):
                 raise ValueError()
             # Indexer failures are checked from cached status, with disabled/empty
             # configuration filtered explicitly. Warnings remain advisory.

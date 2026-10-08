@@ -53,6 +53,8 @@ class Checks(unittest.TestCase):
         ctx = Context(indexers=[{"id": 1, "enable": True}], statuses=[{"indexerId": 1, "disabledTill": "2000-01-01T00:00:00Z"}])
         self.assertEqual(module.run(ctx, CONFIG)[1]["status"], 0)
     def test_health_errors_and_empty_warning(self):
+        notice = Context(health=[{"source": "UpdateCheck", "type": "notice"}])
+        self.assertEqual([r["status"] for r in module.run(notice, CONFIG)], [0, 0])
         ctx = Context(health=[{"source": "DatabaseCheck", "type": "error", "message": "secret-marker"}])
         result = module.run(ctx, CONFIG)
         self.assertEqual(result[0]["status"], 1)
