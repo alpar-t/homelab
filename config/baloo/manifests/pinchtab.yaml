@@ -249,6 +249,16 @@ spec:
     - Egress
   ingress:
     - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: zabbix
+          podSelector:
+            matchLabels:
+              app: collector
+      ports:
+        - protocol: TCP
+          port: 9867
+    - from:
         - podSelector:
             matchLabels:
               app.kubernetes.io/name: openclaw

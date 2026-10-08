@@ -1,0 +1,8 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "targets": [
+    {"name": "general web", "url": "http://pinchtab-web.baloo.svc.cluster.local:9867", "credential": "pinchtab_web_token", "sessions": true},
+    {"name": "OLX", "url": "http://pinchtab.baloo.svc.cluster.local:9867", "credential": "pinchtab_olx_token", "sessions": false}
+  ]
+}
