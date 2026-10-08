@@ -19,7 +19,7 @@ A failure means one instance cannot perform these resolutions, local DNS has
 drifted, TCP DNS is broken, or discovery/query execution is unavailable. Check
 [Pi-hole redundancy](../pihole-dns-redundancy.md) for diagnosis. Update the
 monitor configuration with intentional changes to the controlled local record.
-No credentials, new RBAC, network-policy changes, or rollout prerequisites are
+No credentials, new RBAC, or network-policy changes are
 needed: Pi-hole currently has no ingress-isolating NetworkPolicy and the
 collector has no egress isolation. No HTTP/admin API or user query logs are read.
 
@@ -32,3 +32,21 @@ have no application mutations and do not simulate outages.
 
 Validation uses protocol fixtures and mocked transport/discovery in
 `scripts/tests/test_service_pihole.py`; fixtures alone are not live validation.
+
+## Existing failure found before rollout (2026-10-08)
+
+Transient read-only probes from the existing collector confirmed public
+resolution on both instances but failed local resolution on both UDP and TCP.
+A subsequent UDP diagnostic returned primary `SERVFAIL` (rcode 2) and secondary
+`NXDOMAIN` (rcode 3). The read-only `/api/config/dns/hosts` response on both
+instances contains a hosts list but no `ha-db.local` entry. No host contents
+were printed and no configuration was changed.
+
+The manifests still mount the v5-style `/etc/pihole/custom.list`, whereas the
+[official v6 configuration](https://docs.pi-hole.net/ftldns/configfile/#hosts)
+uses `dns.hosts` / `FTLCONF_dns_hosts`. This is a likely configuration migration
+cause, not a repair validated by these probes. A separate GitOps change should
+provision the declared custom entries through v6 `dns.hosts` on both deployments,
+then verify the local query over UDP and TCP. This monitoring PR intentionally
+retains the failing declared-record assertion; rollout will alert until that
+existing DNS defect is corrected.

@@ -140,20 +140,23 @@ def run(ctx, config):
                    and p['metadata']['labels'].get('instance') == instance
                    and not p['metadata'].get('deletionTimestamp')]
         detail, bad = 'UDP upstream/local and TCP local DNS answers verified', False
+        stage = 'instance discovery'
         try:
             if len(matches) != 1:
                 raise ValueError('instance unavailable')
             host = matches[0].get('status', {}).get('podIP')
             ipaddress.ip_address(host)
+            stage = 'UDP upstream resolution'
             external = query(ctx, host, config['upstream_name'])
             if any(not ipaddress.ip_address(ip).is_global for ip in external):
                 raise ValueError('blocked upstream response')
             for tcp in (False, True):
+                stage = 'TCP local resolution' if tcp else 'UDP local resolution'
                 if query(ctx, host, config['local_name'], tcp) != [config['local_address']]:
                     raise ValueError('local DNS mismatch')
         except Exception as exc:
             bad = True
             # Never include response contents or exception messages.
-            detail = 'DNS functionality unavailable: ' + type(exc).__name__
+            detail = stage + ' unavailable: ' + type(exc).__name__
         output.append(ctx.check('Pi-hole ' + instance + ' DNS', bad, detail))
     return output
