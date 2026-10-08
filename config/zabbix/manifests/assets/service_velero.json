@@ -1,0 +1,9 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "locations": ["default"],
+  "validation_max_age": 900,
+  "daily_schedules": {
+    "velero-daily-resources": {"hour_utc": 4, "minute": 0, "grace_seconds": 7200}
+  }
+}
