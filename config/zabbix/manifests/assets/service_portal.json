@@ -1,0 +1,6 @@
+{
+  "interval": 600,
+  "deadline": 30,
+  "internal_url": "http://portal.portal.svc.cluster.local",
+  "public_url": "https://portal.newjoy.ro"
+}
