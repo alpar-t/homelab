@@ -1,0 +1,48 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "grace_seconds": 600,
+  "lag_seconds": 300,
+  "clusters": [
+    [
+      "homeassistant",
+      "homeassistant-db"
+    ],
+    [
+      "immich",
+      "immich-db"
+    ],
+    [
+      "paperless-ngx",
+      "paperless-db"
+    ],
+    [
+      "pocket-id",
+      "pocket-id-db"
+    ],
+    [
+      "roundcube",
+      "roundcube-db"
+    ],
+    [
+      "stalwart-mail",
+      "stalwart-db"
+    ],
+    [
+      "tandoor",
+      "tandoor-db"
+    ],
+    [
+      "vaultwarden",
+      "vaultwarden-db"
+    ],
+    [
+      "vikunja",
+      "vikunja-db"
+    ],
+    [
+      "zabbix",
+      "zabbix-db"
+    ]
+  ]
+}

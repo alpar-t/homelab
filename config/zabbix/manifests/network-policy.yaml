@@ -72,3 +72,27 @@ spec:
       ports:
         - port: 4180
           protocol: TCP
+
+---
+# Native SQL exporter: only the monitoring collector, never database TCP.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cnpg-metrics-monitoring
+  namespace: zabbix
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: zabbix-db
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: zabbix
+          podSelector:
+            matchLabels:
+              app: collector
+      ports:
+        - port: 9187
+          protocol: TCP
