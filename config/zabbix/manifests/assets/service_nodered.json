@@ -1,0 +1,5 @@
+{
+  "interval": 300,
+  "deadline": 15,
+  "url": "http://nodered.nodered.svc.cluster.local:1880/flows/state"
+}
