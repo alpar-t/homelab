@@ -15,6 +15,8 @@ configMapGenerator:
     files:
       - assets/collector.py
       - assets/functional.py
+      - assets/service_emby.py
+      - assets/service_emby.json
       - assets/mail_activity.py
       - assets/policy.json
 generatorOptions:

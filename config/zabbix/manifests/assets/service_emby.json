@@ -1,0 +1,7 @@
+{
+  "interval": 300,
+  "deadline": 20,
+  "base_url": "http://emby.media.svc.cluster.local:8096/emby",
+  "token_key": "emby_monitor_token",
+  "user_id_key": "emby_monitor_user_id"
+}
