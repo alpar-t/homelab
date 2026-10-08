@@ -141,6 +141,11 @@ spec:
   selector:
     app: omada-controller
   ports:
+    # Anonymous bootstrap probe; existing HTTP listener, internal service only.
+    - name: http
+      port: 8088
+      targetPort: 8088
+      protocol: TCP
     - name: https
       port: 8043
       targetPort: 8043

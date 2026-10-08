@@ -1,0 +1,6 @@
+{
+  "interval": 300,
+  "deadline": 15,
+  "url": "http://omada-controller.omada-controller.svc.cluster.local:8088/api/info",
+  "api_version": "3"
+}
