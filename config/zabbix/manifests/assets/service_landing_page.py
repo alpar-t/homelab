@@ -40,7 +40,7 @@ def content_type(response):
 
 def verify(ctx, endpoint):
     url = endpoint['url']
-    response = ctx.http(url, timeout=min(6, ctx.remaining()), max_bytes=262144)
+    response = ctx.http(url, headers={'User-Agent': 'HomePBP-monitor/1'}, timeout=min(6, ctx.remaining()), max_bytes=262144)
     if response.status != 200 or content_type(response) != 'text/html':
         return 'homepage HTTP status or content type invalid'
     page = Page()
@@ -56,7 +56,7 @@ def verify(ctx, endpoint):
     if not assets:
         return None if page.inline_style else 'homepage has no usable inline or first-party styling'
     target, kind = assets[0]
-    response = ctx.http(target, timeout=min(6, ctx.remaining()), max_bytes=524288)
+    response = ctx.http(target, headers={'User-Agent': 'HomePBP-monitor/1'}, timeout=min(6, ctx.remaining()), max_bytes=524288)
     types = {'css': {'text/css'}, 'js': {'application/javascript', 'text/javascript', 'application/x-javascript'}}
     body = response.body.strip()
     if response.status != 200 or content_type(response) not in types[kind] or not body or body.lower().startswith((b'<!doctype html', b'<html')):

@@ -33,6 +33,7 @@ class LandingTests(unittest.TestCase):
         row, ctx = self.run_check([response()])
         self.assertEqual(row['status'], 0)
         self.assertEqual(len(ctx.calls), 1)
+        self.assertEqual(ctx.calls[0][1]['headers']['User-Agent'], 'HomePBP-monitor/1')
     def test_wrong_site_status_mime_and_timeout(self):
         for res in [response(b'<html>nginx</html>'), response(status=401), response(mime='text/plain'), TimeoutError('private detail')]:
             row, _ = self.run_check([res])

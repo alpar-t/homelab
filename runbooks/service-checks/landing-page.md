@@ -25,8 +25,8 @@ replacing the placeholder site. This does not execute JavaScript, render pixels,
 check all replicas/assets, follow outbound links, or prove availability from an
 external internet location. It performs at most four GETs per five-minute run.
 
-Implementation evidence: public curl retrieved the expected placeholder HTML on
-2026-10-08; this workstation's Python HTTP client received 403 text/plain.
-Verify the collector's public route at rollout and adjust a narrowly scoped
-Cloudflare monitoring policy if it is denied. No Cloudflare policy was changed.
-Internal live delivery was not exercised from this workstation.
+Live validation on 2026-10-08 ran this exact module and shared HTTP Context
+transiently through stdin in the collector pod; internal and public checks
+passed. Requests explicitly use `User-Agent: HomePBP-monitor/1`: the default
+Python user agent received a public 403, while this monitor identity succeeds.
+No Cloudflare policy or persistent collector files were changed.
