@@ -1,0 +1,47 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "endpoints": [
+    {
+      "name": "Stalwart incoming SMTP",
+      "host": "stalwart.stalwart-mail.svc.cluster.local",
+      "port": 25,
+      "protocol": "smtp",
+      "tls": "none"
+    },
+    {
+      "name": "Stalwart submission STARTTLS",
+      "host": "stalwart.stalwart-mail.svc.cluster.local",
+      "port": 587,
+      "protocol": "smtp",
+      "tls": "starttls",
+      "server_name": "mail.newjoy.ro",
+      "ca_key": "stalwart_mail_ca"
+    },
+    {
+      "name": "Stalwart IMAPS capability",
+      "host": "stalwart.stalwart-mail.svc.cluster.local",
+      "port": 993,
+      "protocol": "imap",
+      "tls": "implicit",
+      "server_name": "mail.newjoy.ro",
+      "ca_key": "stalwart_mail_ca"
+    },
+    {
+      "name": "Migadu fetchmail IMAPS capability",
+      "host": "imap.migadu.com",
+      "port": 993,
+      "protocol": "imap",
+      "tls": "implicit",
+      "server_name": "imap.migadu.com"
+    },
+    {
+      "name": "Migadu relay SMTP capability",
+      "host": "smtp.migadu.com",
+      "port": 465,
+      "protocol": "smtp",
+      "tls": "implicit",
+      "server_name": "smtp.migadu.com"
+    }
+  ]
+}
