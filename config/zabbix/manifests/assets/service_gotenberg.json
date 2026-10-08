@@ -1,0 +1,5 @@
+{
+  "interval": 300,
+  "deadline": 20,
+  "url": "http://gotenberg.paperless-ngx.svc.cluster.local:3000/forms/chromium/convert/html"
+}
