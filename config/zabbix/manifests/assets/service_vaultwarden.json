@@ -1,0 +1,6 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "base_url": "http://vaultwarden.vaultwarden.svc.cluster.local",
+  "public_url": "https://vault.newjoy.ro"
+}
