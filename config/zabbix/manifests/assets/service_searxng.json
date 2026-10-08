@@ -1,0 +1,7 @@
+{
+  "interval": 1800,
+  "deadline": 30,
+  "query": "Kubernetes",
+  "search_url": "http://searxng.baloo.svc.cluster.local:8080/search",
+  "mcp_url": "http://mcp-searxng.baloo.svc.cluster.local:3000/mcp"
+}
