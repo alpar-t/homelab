@@ -1,0 +1,9 @@
+{
+  "interval": 300,
+  "deadline": 20,
+  "expected_nodes": ["buksi", "pamacs", "pufi"],
+  "plugin_node_selector": {"kubernetes.io/arch": "amd64"},
+  "resource": "gpu.intel.com/i915",
+  "minimum_allocatable": 10,
+  "ready_grace_seconds": 600
+}
