@@ -1,0 +1,7 @@
+{
+  "interval": 300,
+  "deadline": 20,
+  "base_url": "http://vikunja.vikunja.svc.cluster.local/api/v2",
+  "frontend_url": "https://tasks.newjoy.ro/",
+  "token_key": "vikunja_read_token"
+}
