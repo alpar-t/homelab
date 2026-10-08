@@ -1,0 +1,6 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "max_age_seconds": 180,
+  "timezone": "Europe/Bucharest"
+}

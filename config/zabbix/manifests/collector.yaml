@@ -86,6 +86,30 @@ subjects:
     name: collector
     namespace: zabbix
 ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zabbix-otmonitor-logs
+  namespace: otmonitor
+rules:
+  - apiGroups: [""]
+    resources: [pods/log]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zabbix-otmonitor-logs
+  namespace: otmonitor
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zabbix-otmonitor-logs
+subjects:
+  - kind: ServiceAccount
+    name: collector
+    namespace: zabbix
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
