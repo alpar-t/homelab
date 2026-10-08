@@ -15,6 +15,8 @@ configMapGenerator:
     files:
       - assets/collector.py
       - assets/functional.py
+      - assets/service_whisper.py
+      - assets/service_whisper.json
       - assets/mail_activity.py
       - assets/policy.json
 generatorOptions:

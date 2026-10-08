@@ -1,0 +1,8 @@
+{
+  "interval": 300,
+  "deadline": 20,
+  "host": "whisper.baloo.svc.cluster.local",
+  "port": 10300,
+  "bridge_url": "http://whisper.baloo.svc.cluster.local:10301/capabilities",
+  "languages": ["hu", "ro", "en"]
+}
