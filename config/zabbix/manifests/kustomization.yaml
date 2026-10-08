@@ -5,6 +5,7 @@ resources:
   - postgres.yaml
   - deployment.yaml
   - collector.yaml
+  - coredns-rbac.yaml
   - network-policy.yaml
   - oidc-client.yaml
   - oauth2-proxy.yaml
@@ -15,6 +16,8 @@ configMapGenerator:
     files:
       - assets/collector.py
       - assets/functional.py
+      - assets/service_coredns.py
+      - assets/service_coredns.json
       - assets/mail_activity.py
       - assets/policy.json
 generatorOptions:

@@ -1,0 +1,1 @@
+{"interval":300,"deadline":30,"services":[{"namespace":"default","service":"kubernetes"},{"namespace":"kube-system","service":"kube-dns"}]}
