@@ -1,0 +1,8 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "instances": [
+    {"name": "Paperless", "url": "http://tika.paperless-ngx.svc.cluster.local:9998/tika"},
+    {"name": "OpenCloud", "url": "http://opencloud-tika.opencloud.svc.cluster.local:9998/tika"}
+  ]
+}
