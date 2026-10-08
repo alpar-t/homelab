@@ -37,8 +37,8 @@ def run(ctx, config):
         result = _get(ctx, base, "/Users/" + user + "/Items?Limit=1&Recursive=false&EnableImages=false&EnableUserData=false",
                       {"X-Emby-Token": token})
         items, count = result.get("Items"), result.get("TotalRecordCount")
-        valid = (isinstance(items, list) and len(items) <= 1
-                 and type(count) is int and count >= len(items)
+        valid = (isinstance(items, list) and type(count) is int and count >= 0
+                 and len(items) == min(count, 1)
                  and all(isinstance(item, dict) and isinstance(item.get("Id"), str)
                          and bool(item["Id"]) and isinstance(item.get("Type"), str)
                          and bool(item["Type"]) for item in items))

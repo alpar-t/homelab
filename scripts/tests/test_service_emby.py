@@ -45,7 +45,7 @@ class EmbyTests(unittest.TestCase):
         for public in ({}, {"Version": "html", "Id": "x"}, {"Version": "4.9.3.0", "Id": None}, []):
             self.assertEqual(module.run(Context(public=public), CONFIG)[0]["status"], 1)
     def test_library_malformed(self):
-        for library in ({}, {"Items": [], "TotalRecordCount": True}, {"Items": [{"Name": "private"}], "TotalRecordCount": 1}, {"Items": [], "TotalRecordCount": -1}):
+        for library in ({}, {"Items": [], "TotalRecordCount": 2}, {"Items": [], "TotalRecordCount": True}, {"Items": [{"Name": "private"}], "TotalRecordCount": 1}, {"Items": [], "TotalRecordCount": -1}):
             self.assertEqual(module.run(Context(library=library), CONFIG)[1]["status"], 1)
     def test_unauthorized_and_errors(self):
         for status in (401, 403, 500, 302):
