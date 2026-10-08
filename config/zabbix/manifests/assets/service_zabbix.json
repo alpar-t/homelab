@@ -1,0 +1,5 @@
+{
+  "interval": 300,
+  "deadline": 25,
+  "base_url": "http://zabbix-web.zabbix.svc/"
+}
