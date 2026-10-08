@@ -1,0 +1,5 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "max_sync_age_seconds": 7200
+}
