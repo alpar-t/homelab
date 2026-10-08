@@ -1,0 +1,7 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "url": "http://maintainerr.media.svc.cluster.local:6246",
+  "radarr_id": 1,
+  "sonarr_id": 1
+}
