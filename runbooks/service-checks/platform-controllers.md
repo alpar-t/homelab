@@ -22,15 +22,17 @@ placement or sharing changes. This verifies kubelet registration, not a working
 GPU kernel or a successful workload execution; no device is allocated or used.
 
 The remaining inventory deliberately relies on existing infrastructure checks.
-Support-controller Deployments are not in the current expected-deployment list:
-pod checks detect unready discovered pods, but do not prove that a deleted
-controller still exists. DaemonSet discovery has the same deletion limitation:
+The expected-deployment inventory now explicitly includes the live-verified
+`kube-system/local-path-provisioner`, `reloader/reloader-reloader` and
+`system-upgrade/system-upgrade-controller`. Existing checks detect missing or
+unavailable Deployments without adding competing functional readiness records.
+Dynamic DaemonSet discovery still does not detect a deleted DaemonSet:
 
 | Component | Existing coverage and passive limit |
 | --- | --- |
-| k3s local-path provisioner | Discovered pod readiness; workload/DB readiness exposes unusable existing storage. No synthetic PVC or proof of future provisioning. |
-| Stakater Reloader | Discovered pod and managed workload readiness. No synthetic Secret/ConfigMap changes; idle reconciliation is normal. |
-| system-upgrade controller | Discovered pod and node readiness. No synthetic upgrade, cordon or reboot; completion of an intended upgrade still needs operator verification. |
+| k3s local-path provisioner | Expected Deployment presence/readiness; workload/DB readiness exposes unusable existing storage. No synthetic PVC or proof of future provisioning. |
+| Stakater Reloader | Expected Deployment presence/readiness and managed workload readiness. No synthetic Secret/ConfigMap changes; idle reconciliation is normal. |
+| system-upgrade controller | Expected Deployment presence/readiness and node readiness. No synthetic upgrade, cordon or reboot; completion of an intended upgrade still needs operator verification. |
 | Multus | DaemonSet readiness and Longhorn workload/volume health. No synthetic network attachment. |
 | Whereabouts | CRDs installed by its ArgoCD app; IPAM is invoked by CNI rather than an independently monitored Deployment here. Longhorn health exposes downstream failures; no synthetic allocations or claim that readiness proves IPAM correctness. |
 | node-config | DaemonSet readiness; dedicated node-storage-health readiness/events retain disk quarantine and latched errors. Host configuration parity is not inferred from a sleeping pod. |
