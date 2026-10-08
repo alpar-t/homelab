@@ -126,6 +126,25 @@ class Tests(unittest.TestCase):
         for key in ('../token', 'absent'):
             with self.assertRaises(SafeError): ctx.secret(key)
 
+    def test_http_monitor_user_agent_default_and_case_insensitive_override(self):
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.code, response.headers = 200, {}
+        response.read.return_value = b''
+        opener = SimpleNamespace(open=MagicMock(return_value=response))
+        ctx = Context(None, time.monotonic() + 10)
+        with patch('functional.urllib.request.build_opener', return_value=opener):
+            ctx.http('http://example.test')
+            request = opener.open.call_args.args[0]
+            self.assertEqual(request.get_header('User-agent'), 'HomePBP-monitor/1')
+            for key in ('User-Agent', 'user-agent', 'USER-AGENT'):
+                ctx.http('http://example.test', headers={key: 'Service-specific/2'})
+                request = opener.open.call_args.args[0]
+                self.assertEqual(request.get_header('User-agent'), 'Service-specific/2')
+                self.assertEqual(sum(k.lower() == 'user-agent' for k in request.headers), 1)
+
     def test_http_error_bounds_and_redirect_credentials(self):
         captured = []
         class Handler(http.server.BaseHTTPRequestHandler):

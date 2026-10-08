@@ -60,8 +60,11 @@ class Context:
                 raise SafeError('invalid HTTP URL')
             if not 0 < max_bytes <= 1048576 or not 0 < timeout <= 30 or not self.remaining():
                 raise SafeError('HTTP bounds exceeded')
+            request_headers = dict(headers or {})
+            if not any(key.lower() == 'user-agent' for key in request_headers):
+                request_headers['User-Agent'] = 'HomePBP-monitor/1'
             request = urllib.request.Request(url, data=data, method=method,
-                                            headers=headers or {})
+                                            headers=request_headers)
             opener = urllib.request.build_opener(Redirects(follow_redirects))
             try:
                 response = opener.open(request, timeout=min(timeout, self.remaining()))
