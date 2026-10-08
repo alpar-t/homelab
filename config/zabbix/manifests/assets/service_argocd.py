@@ -58,8 +58,8 @@ def run(ctx, config):
         for key in list(_since):
             if key not in active:
                 _since.pop(key, None)
-        return [ctx.check('Application inventory', False, f'{len(apps)} applications; {paused} paused'),
-                ctx.check('Repository and comparison', errors > 0, f'{errors} applications with persistent comparison/spec/sync errors'),
-                ctx.check('Reconciliation progress', stalled > 0, f'{stalled} applications persistently unhealthy, unsynced or stale')]
+        return [ctx.check('ArgoCD Application inventory', False, f'{len(apps)} applications; {paused} paused'),
+                ctx.check('ArgoCD Repository and comparison', errors > 0, f'{errors} applications with persistent comparison/spec/sync errors'),
+                ctx.check('ArgoCD Reconciliation progress', stalled > 0, f'{stalled} applications persistently unhealthy, unsynced or stale')]
     except Exception:
-        return [ctx.check('Application inventory', True, 'Application API unavailable, incomplete or malformed')]
+        return [ctx.check('ArgoCD Application inventory', True, 'Application API unavailable, incomplete or malformed')]
