@@ -1,0 +1,39 @@
+# Frigate functional monitoring
+
+Every five minutes the collector reads `/api/stats` and `/api/config` from the
+internal unauthenticated port 5000. No credentials, Kubernetes permissions or
+new network rules are needed: Frigate currently has no ingress NetworkPolicy.
+Keep this API private. Config responses can contain camera credentials; the
+check retains no response and emits only aggregate counts and fixed messages.
+
+The three signals detect stale native stats (120 seconds), enabled cameras with
+zero capture/process FPS or missing capture/process/ffmpeg PIDs, and an absent
+recording worker while any enabled camera has recording enabled. A 180-second
+startup grace permits camera/worker initialization; the shared runner also
+debounces alerts for three failed samples. Requests have six-second timeouts,
+256 KiB limits and a 20-second service deadline.
+
+Runtime camera `enabled` and `record.enabled` settings are authoritative.
+Disabled cameras are excluded. Object detection FPS, motion and the age of the
+last retained recording are deliberately ignored: detection can be disabled,
+and motion-only retention permits indefinitely idle scenes. Empty/all-disabled
+camera configurations pass when native telemetry is fresh.
+
+Version 0.17.2's deployed `frigate.stats.emitter.stats_snapshot` supplies these
+fields. Its recording maintainer loops every five seconds, but the exposed stats
+provide a PID rather than a worker heartbeat. Fresh stats plus a PID prove
+worker registration only; they cannot prove an unblocked recording worker,
+successful disk writes, retained footage or playable media. Capture rates detect
+a stuck capture path even when ffmpeg still has a PID. No snapshots, footage,
+recording lists, settings writes or storage probes are requested.
+
+The intentionally quarantined disposable HDD and single-replica media PVC keep
+their policy in [the disk runbook](../frigate-disposable-media-disk.md). This
+check adds no SMART/backup/replica assertions and does not reinterpret accepted
+disk counters. A functional recording/capture failure still needs investigation;
+accepting disposable footage does not mean a broken NVR is healthy.
+
+Read-only rollout evidence on 2026-10-08: deployed stats/config schemas matched;
+front and gate had roughly 12 FPS, while enabled back had zero capture/process
+FPS. The camera check is expected to alert on that existing condition until
+the camera is repaired or intentionally disabled. Monitoring does not change it.
