@@ -1,0 +1,6 @@
+{
+  "interval": 300,
+  "deadline": 25,
+  "url": "http://mcp-k8s.baloo.svc.cluster.local:3000/mcp",
+  "required_tools": ["kubectl_get", "kubectl_describe", "kubectl_logs", "list_api_resources"]
+}
