@@ -1,0 +1,8 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "base_url": "http://192.168.1.102:8123",
+  "credential_key": "homeassistant_monitor_token",
+  "required_components": ["api", "recorder", "automation"],
+  "numeric_entities": ["sensor.victron_system_grid_l1", "sensor.victron_system_grid_l2", "sensor.victron_system_grid_l3"]
+}
