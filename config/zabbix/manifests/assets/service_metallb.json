@@ -1,0 +1,57 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "services": [
+    {
+      "namespace": "baloo",
+      "name": "mcp-searxng",
+      "ip": "192.168.1.207"
+    },
+    {
+      "namespace": "baloo",
+      "name": "openclaw-homeassistant",
+      "ip": "192.168.1.209"
+    },
+    {
+      "namespace": "baloo",
+      "name": "whisper",
+      "ip": "192.168.1.206"
+    },
+    {
+      "namespace": "homeassistant",
+      "name": "homeassistant-db-external",
+      "ip": "192.168.1.200"
+    },
+    {
+      "namespace": "immich",
+      "name": "immich-server-lan",
+      "ip": "192.168.1.203"
+    },
+    {
+      "namespace": "media",
+      "name": "emby",
+      "ip": "192.168.1.204"
+    },
+    {
+      "namespace": "media",
+      "name": "qbittorrent-bt",
+      "ip": "192.168.1.205"
+    },
+    {
+      "namespace": "paperless-ngx",
+      "name": "paperless-ftp",
+      "ip": "192.168.1.201"
+    },
+    {
+      "namespace": "pihole",
+      "name": "pihole-dns",
+      "ip": "192.168.1.202"
+    },
+    {
+      "namespace": "wireguard",
+      "name": "wireguard-home",
+      "ip": "192.168.1.208"
+    }
+  ],
+  "probe_url": "http://192.168.1.204:8096/emby/System/Info/Public"
+}
