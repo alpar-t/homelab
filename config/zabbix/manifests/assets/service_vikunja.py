@@ -49,9 +49,9 @@ def run(ctx, config):
                  and type(data.get("total_pages")) is int and data["total_pages"] >= 0
                  and ((items is None and total == 0)
                       or (isinstance(items, list) and len(items) <= 1
-                          and len(items) <= total
+                          and len(items) == min(total, 1)
                           and all(isinstance(p, dict) and type(p.get("id")) is int
-                                  and isinstance(p.get("title"), str) for p in items))))
+                                  and p["id"] > 0 and isinstance(p.get("title"), str) for p in items))))
         results.append(ctx.check("Vikunja authenticated project query", not valid,
                                  "authenticated paginated project read succeeded" if valid
                                  else "authenticated project response schema invalid"))

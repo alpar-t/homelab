@@ -47,7 +47,7 @@ class Tests(unittest.TestCase):
         for info in ({}, dict(INFO, frontend_url='wrong'), 302, TimeoutError('PRIVATE'), ['wrong']):
             self.assertEqual(1, MODULE.run(Context(info=info), CONFIG)[0]['status'])
     def test_bad_project_response(self):
-        for page in (401, 403, 500, [], {}, dict(PAGE, total=True), dict(PAGE, items=[{'id': '7'}]), TimeoutError('PRIVATE')):
+        for page in (401, 403, 500, [], {}, dict(PAGE, total=True), dict(PAGE, total=1, total_pages=1), dict(PAGE, items=[{"id": 0, "title": "PRIVATE"}], total=1, total_pages=1), dict(PAGE, items=[{'id': '7'}]), TimeoutError('PRIVATE')):
             rows = MODULE.run(Context(page=page), CONFIG)
             self.assertEqual(1, rows[1]['status'])
             self.assertNotIn('PRIVATE', str(rows))
