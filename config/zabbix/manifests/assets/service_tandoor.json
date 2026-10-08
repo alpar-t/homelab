@@ -1,0 +1,6 @@
+{
+  "interval": 300,
+  "deadline": 25,
+  "base_url": "http://tandoor.tandoor.svc.cluster.local",
+  "token_key": "tandoor_read_token"
+}
