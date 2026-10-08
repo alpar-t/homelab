@@ -1,0 +1,8 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "runner_namespace": "arc-runners",
+  "controller_namespace": "arc-systems",
+  "sets": ["homelab-runners", "newjoy-website-runners", "baloo-export-runners"],
+  "grace_seconds": 900
+}
