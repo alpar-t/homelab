@@ -87,9 +87,13 @@ def configure_checks(api):
         'lifetime': '1d', 'enabled_lifetime_type': 2,
         'preprocessing': [{'type': 12, 'params': '$.checks', 'error_handler': 0}],
         'lld_macro_paths': [{'lld_macro': '{#' + macro + '}', 'path': '$.' + field} for macro, field in
-                            [('ID', 'id'), ('NAME', 'name'), ('FAMILY', 'family')]],
+                            [('ID', 'id'), ('NAME', 'name'), ('FAMILY', 'family'),
+                             ('NOTIFY_DELAY', 'notify_delay'), ('GRACE_SAMPLES', 'grace_samples'),
+                             ('FAILURE_SAMPLES', 'failure_samples')]],
     }, 'itemid', query={'hostids': [host], 'filter': {'key_': 'homelab.discovery'}, 'output': ['itemid']})
-    for suffix, field, value_type, history in [('state', 'status', 3, '7d'), ('detail', 'detail', 4, '3d'), ('severity', 'severity', 3, '1d')]:
+    for suffix, field, value_type, history in [('state', 'status', 3, '7d'), ('detail', 'detail', 4, '3d'),
+                                              ('severity', 'severity', 3, '1d'),
+                                              ('parent_available', 'parent_available', 3, '3d')]:
         key = 'homelab.' + suffix + '[{#ID}]'
         api.ensure('itemprototype', 'key_', key, {
             'hostid': host, 'ruleid': discovery, 'name': '{#NAME}: ' + suffix,
@@ -107,13 +111,22 @@ def configure_checks(api):
     for severity in (2, 3, 4):
         name = '{#NAME}: persistent failure (severity ' + str(severity) + ')'
         api.ensure('triggerprototype', 'description', name, {
-            'expression': 'count(/HomePBP/homelab.state[{#ID}],#3)=3 and min(/HomePBP/homelab.state[{#ID}],#3)=1 and last(/HomePBP/homelab.severity[{#ID}])=' + str(severity),
+            'expression': ('count(/HomePBP/homelab.state[{#ID}],#{#FAILURE_SAMPLES})={#FAILURE_SAMPLES}'
+                           ' and min(/HomePBP/homelab.state[{#ID}],#{#FAILURE_SAMPLES})=1'
+                           ' and count(/HomePBP/homelab.parent_available[{#ID}],#{#GRACE_SAMPLES})={#GRACE_SAMPLES}'
+                           ' and min(/HomePBP/homelab.parent_available[{#ID}],#{#GRACE_SAMPLES})=1'
+                           ' and last(/HomePBP/homelab.severity[{#ID}])=' + str(severity)),
             'priority': severity, 'manual_close': 1,
+            'recovery_mode': 1,
+            'recovery_expression': 'count(/HomePBP/homelab.state[{#ID}],#5)=5 and max(/HomePBP/homelab.state[{#ID}],#5)=0',
             'opdata': '{?last(/HomePBP/homelab.detail[{#ID}])}',
-            'tags': [{'tag': 'family', 'value': '{#FAMILY}'}, {'tag': 'check_id', 'value': '{#ID}'}, {'tag': 'managed_by', 'value': 'HOME-3'}],
+            'tags': [{'tag': 'family', 'value': '{#FAMILY}'}, {'tag': 'check_id', 'value': '{#ID}'},
+                     {'tag': 'managed_by', 'value': 'HOME-3'}, {'tag': 'notify_delay', 'value': '{#NOTIFY_DELAY}'}],
         }, 'triggerid', query={'discoveryids': [discovery], 'filter': {'description': name}, 'output': ['triggerid']})
     api.ensure('trigger', 'description', 'Monitoring collector has no fresh data', {
         'expression': 'nodata(/HomePBP/homelab.snapshot,3m)=1', 'priority': 4,
+        'recovery_mode': 1,
+        'recovery_expression': 'count(/HomePBP/homelab.snapshot,5m)>=5 and nodata(/HomePBP/homelab.snapshot,90s)=0',
         'tags': [{'tag': 'family', 'value': 'monitoring'}, {'tag': 'managed_by', 'value': 'HOME-3'}],
     }, query={'hostids': [host], 'filter': {'description': 'Monitoring collector has no fresh data'}, 'output': ['triggerid']})
     # Detect preprocessing/configuration faults even while the master is healthy.
@@ -123,6 +136,8 @@ def configure_checks(api):
     }, query={'hostids': [host], 'filter': {'key_': 'zabbix[host,,items_unsupported]'}, 'output': ['itemid']})
     api.ensure('trigger', 'description', 'Monitoring has unsupported items', {
         'expression': 'min(/HomePBP/zabbix[host,,items_unsupported],3m)>0', 'priority': 3,
+        'recovery_mode': 1,
+        'recovery_expression': 'count(/HomePBP/zabbix[host,,items_unsupported],#5)=5 and max(/HomePBP/zabbix[host,,items_unsupported],#5)=0',
         'tags': [{'tag': 'family', 'value': 'monitoring'}, {'tag': 'managed_by', 'value': 'HOME-3'}],
     }, query={'hostids': [host], 'filter': {'description': 'Monitoring has unsupported items'}, 'output': ['triggerid']})
     return group
@@ -174,11 +189,28 @@ return 'accepted';'''
     })
     api.call('user.update', {'userid': user, 'medias': [{'mediatypeid': media, 'sendto': ['Baloo'], 'active': 0, 'severity': 60, 'period': '1-7,00:00-24:00'}]})
     operation = {'operationtype': 0, 'opmessage': {'default_msg': 1, 'mediatypeid': media}, 'opmessage_usr': [{'userid': user}]}
-    api.ensure('action', 'name', 'HomePBP problems to Baloo', {'eventsource': 0, 'status': 0,
-        'filter': {'evaltype': 0, 'conditions': [{'conditiontype': 0, 'operator': 0, 'value': group}]},
-        'operations': [{**operation, 'esc_step_from': 1, 'esc_step_to': 1}],
-        'recovery_operations': [operation], 'pause_suppressed': 1,
-    })
+    configure_notification_actions(api, group, operation)
+
+
+def configure_notification_actions(api, group, operation):
+    for delay in ('immediate', '5m', '10m'):
+        conditions = [{'conditiontype': 0, 'operator': 0, 'value': group}]
+        if delay == 'immediate':
+            # Untagged monitoring triggers retain immediate delivery.
+            conditions += [{'conditiontype': 26, 'operator': 1, 'value2': 'notify_delay', 'value': value}
+                           for value in ('5m', '10m')]
+        else:
+            conditions.append({'conditiontype': 26, 'operator': 0, 'value2': 'notify_delay', 'value': delay})
+        step = 1 if delay == 'immediate' else 2
+        name = 'HomePBP problems to Baloo' + ('' if delay == 'immediate' else ' after ' + delay)
+        api.ensure('action', 'name', name, {'eventsource': 0, 'status': 0,
+            'esc_period': '1m' if delay == 'immediate' else delay,
+            'filter': {'evaltype': 1, 'conditions': conditions},
+            'operations': [{**operation, 'esc_step_from': step, 'esc_step_to': step}],
+            # No recovery-only messages for incidents that ended before notification.
+            'recovery_operations': [{'operationtype': 11}], 'pause_suppressed': 1,
+            'notify_if_canceled': 0,
+        })
 
 
 def retire_synthetic_mail_check(api):
