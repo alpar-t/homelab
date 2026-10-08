@@ -5,7 +5,8 @@ _since = {}  # At most one timestamp per configured scale set; reset on recovery
 
 
 def items(ctx, namespace, resource):
-    if ctx.remaining() < 1:
+    # Kubernetes.get has a fixed 15-second transport timeout.
+    if ctx.remaining() < 16:
         raise ValueError('deadline')
     page = ctx.kube.get('/apis/actions.github.com/v1alpha1/namespaces/' +
                         namespace + '/' + resource + '?limit=500')
@@ -32,6 +33,9 @@ def owned(obj, kind, name):
 
 
 def run(ctx, config):
+    for name in list(_since):
+        if name not in config['sets']:
+            _since.pop(name, None)
     sets = items(ctx, config['runner_namespace'], 'autoscalingrunnersets')
     ephemeral = items(ctx, config['runner_namespace'], 'ephemeralrunnersets')
     runners = items(ctx, config['runner_namespace'], 'ephemeralrunners')
