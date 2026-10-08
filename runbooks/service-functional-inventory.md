@@ -2,7 +2,7 @@
 
 Inventory taken from live Deployments, StatefulSets, DaemonSets, Services, CronJobs, Ingresses and ArgoCD Applications on 2026-10-08, cross-checked against repository manifests. Home Assistant is a separate appliance. Multiple instances and tightly coupled dependencies are grouped under their operational service.
 
-Each service has an isolated Sol implementation agent and PR. Keep the first baseline small: semantic API reads, protocol transactions or small in-memory conversions; use passive reconciliation evidence for controllers where a synthetic transaction would be disruptive. The common runner executes bounded deterministic checks without invoking an LLM. The existing Zabbix three-failure trigger applies.
+Each service is assigned an isolated Sol implementation agent and PR. Keep the first baseline small: semantic API reads, protocol transactions or small in-memory conversions; use passive reconciliation evidence for controllers where a synthetic transaction would be disruptive. The common runner executes bounded deterministic checks without invoking an LLM. The existing Zabbix three-failure trigger applies.
 
 PRs target the shared framework branch `feat/monitoring-functional-foundation` until that foundation is merged. Service PRs must then be retargeted to `main`; they are not deployed by this implementation task. Credential and network prerequisites are documented in each PR and service runbook.
 
@@ -58,6 +58,16 @@ PRs target the shared framework branch `feat/monitoring-functional-foundation` u
 | GitHub Actions runners and controller | Passive controller/listener/runner registration/reconciliation/queue-age checks across homelab, Newjoy and Baloo export runner sets. Scale-to-zero idle is healthy; no GitHub dispatches or workflow runs. Prefer AutoscalingRunnerSet/EphemeralRunner CR status with narrow read RBAC. No PAT/admin tokens. |
 | Cluster support controllers | Inventory remaining support components: local-path provisioner, reloader, system-upgrade, multus/whereabouts, intel GPU plugin, node-config. Existing generic readiness is baseline; add at most a few actionable semantic reconciliation/capacity/allocation failure signals where source proves meaning. Avoid busy synthetic upgrades, PVC allocations, reboots, device use or broad event-log matching. Document components intentionally covered by existing checks versus new functional signals. |
 
+## Live findings and rollout prerequisites
+
+- Pi-hole resolves external names, but the configured local `ha-db.local` record failed on both instances. The check exposes this existing configuration issue; it does not repair DNS.
+- Frigate reports zero capture/process frame activity for the enabled back camera. No footage was retrieved and no camera settings were changed.
+- Local Stalwart TLS currently uses a self-signed certificate. Its monitoring trust anchor must be provisioned explicitly; hostname verification stays enabled.
+- MetalLB's WireGuard `status.node` lagged current speaker metadata. The check uses the current native speaker label and live owner rather than turning the stale field into an outage alarm.
+- Authenticated checks require the dedicated credentials/configuration described in their service runbooks. Some native APIs have no read-only token scope; their actual token permissions are explicitly documented. No credentials were provisioned as part of these PRs.
+- Whisper's decoder capability route and the product renderer's dependency/activity route require their included application changes and pod rollouts before their checks become healthy.
+- No PR was merged or deployed. Live evidence is distinguished from fixture-only validation in each PR; several network paths and authenticated workflows remain rollout checks.
+
 ## Scope boundaries
 
 - OAuth sign-in proxies are covered with Pocket ID and their application routes; caches, databases, worker sidecars and MCP adapters are dependencies of their owning service. Tika, Gotenberg, OnlyOffice/WOPI, Whisper and browser services have separate checks because several user workflows depend on them.
@@ -68,3 +78,65 @@ PRs target the shared framework branch `feat/monitoring-functional-foundation` u
 - Catalog entries and chart templates absent from the live deployment, such as unused OpenCloud optional components, are not treated as running services. Provisioning-only Jobs and retired applications do not get permanent availability alarms.
 
 This inventory records the planned baseline. Per-service runbooks and PR validation sections record what was implemented and the exact evidence/limitations; do not infer complete end-to-end coverage from this table.
+
+## Review index
+
+All 49 service PRs are open. Shared runner: [PR #124](https://github.com/alpar-t/homelab/pull/124). Each service PR records its evidence, limits and rollout prerequisites.
+
+| Service | PR | Runbook |
+| --- | --- | --- |
+| Actual Budget and its MCP adapter | [#135](https://github.com/alpar-t/homelab/pull/135) | `runbooks/service-checks/actual-budget.md` |
+| ArgoCD GitOps reconciliation | [#162](https://github.com/alpar-t/homelab/pull/162) | `runbooks/service-checks/argocd.md` |
+| Baloo OpenClaw and shared MCP tool integrations | [#153](https://github.com/alpar-t/homelab/pull/153) | `runbooks/service-checks/baloo.md` |
+| PinchTab browser services | [#154](https://github.com/alpar-t/homelab/pull/154) | `runbooks/service-checks/pinchtab.md` |
+| SearXNG search and MCP adapter | [#144](https://github.com/alpar-t/homelab/pull/144) | `runbooks/service-checks/searxng.md` |
+| Whisper speech transcription | [#156](https://github.com/alpar-t/homelab/pull/156) | `runbooks/service-checks/whisper.md` |
+| Product-model API and Blender renderer | [#157](https://github.com/alpar-t/homelab/pull/157) | `runbooks/service-checks/product-models.md` |
+| Technical-plan generation API | [#158](https://github.com/alpar-t/homelab/pull/158) | `runbooks/service-checks/technical-plans.md` |
+| Interior Designer Open WebUI | [#160](https://github.com/alpar-t/homelab/pull/160) | `runbooks/service-checks/interior-designer.md` |
+| Cloudflare Tunnel | [#161](https://github.com/alpar-t/homelab/pull/161) | `runbooks/service-checks/cloudflare-tunnel.md` |
+| Frigate camera recording | [#133](https://github.com/alpar-t/homelab/pull/133) | `runbooks/service-checks/frigate.md` |
+| Immich photos and ML dependencies | [#129](https://github.com/alpar-t/homelab/pull/129) | `runbooks/service-checks/immich.md` |
+| Ingress routing | [#159](https://github.com/alpar-t/homelab/pull/159) | `runbooks/service-checks/ingress-nginx.md` |
+| Newjoy public website | [#145](https://github.com/alpar-t/homelab/pull/145) | `runbooks/service-checks/landing-page.md` |
+| Newjoy website staging | [#147](https://github.com/alpar-t/homelab/pull/147) | `runbooks/service-checks/website-staging.md` |
+| Longhorn storage service | [#164](https://github.com/alpar-t/homelab/pull/164) | `runbooks/service-checks/longhorn.md` |
+| Radarr movies | [#140](https://github.com/alpar-t/homelab/pull/140) | `runbooks/service-checks/radarr.md` |
+| Sonarr TV | [#138](https://github.com/alpar-t/homelab/pull/138) | `runbooks/service-checks/sonarr.md` |
+| Prowlarr indexers | [#139](https://github.com/alpar-t/homelab/pull/139) | `runbooks/service-checks/prowlarr.md` |
+| qBittorrent downloads | [#141](https://github.com/alpar-t/homelab/pull/141) | `runbooks/service-checks/qbittorrent.md` |
+| Emby media playback service | [#142](https://github.com/alpar-t/homelab/pull/142) | `runbooks/service-checks/emby.md` |
+| Maintainerr media cleanup | [#148](https://github.com/alpar-t/homelab/pull/148) | `runbooks/service-checks/maintainerr.md` |
+| MetalLB load balancer | [#163](https://github.com/alpar-t/homelab/pull/163) | `runbooks/service-checks/metallb.md` |
+| Node-RED automation runtime | [#152](https://github.com/alpar-t/homelab/pull/152) | `runbooks/service-checks/nodered.md` |
+| Omada network controller | [#155](https://github.com/alpar-t/homelab/pull/155) | `runbooks/service-checks/omada.md` |
+| OpenCloud files | [#131](https://github.com/alpar-t/homelab/pull/131) | `runbooks/service-checks/opencloud.md` |
+| OnlyOffice and OpenCloud collaboration | [#149](https://github.com/alpar-t/homelab/pull/149) | `runbooks/service-checks/onlyoffice.md` |
+| Apache Tika text extraction | [#146](https://github.com/alpar-t/homelab/pull/146) | `runbooks/service-checks/tika.md` |
+| Gotenberg PDF conversion | [#123](https://github.com/alpar-t/homelab/pull/123) | `runbooks/service-checks/gotenberg.md` |
+| OpenTherm monitor | [#150](https://github.com/alpar-t/homelab/pull/150) | `runbooks/service-checks/otmonitor.md` |
+| Paperless documents and ingestion dependencies | [#128](https://github.com/alpar-t/homelab/pull/128) | `runbooks/service-checks/paperless.md` |
+| Pi-hole DNS | [#125](https://github.com/alpar-t/homelab/pull/125) | `runbooks/service-checks/pihole.md` |
+| Pocket ID and application sign-in proxies | [#126](https://github.com/alpar-t/homelab/pull/126) | `runbooks/service-checks/pocket-id.md` |
+| Household portal | [#143](https://github.com/alpar-t/homelab/pull/143) | `runbooks/service-checks/portal.md` |
+| Roundcube webmail | [#137](https://github.com/alpar-t/homelab/pull/137) | `runbooks/service-checks/roundcube.md` |
+| Stalwart and fetchmail mail delivery | [#151](https://github.com/alpar-t/homelab/pull/151) | `runbooks/service-checks/stalwart-mail.md` |
+| Tandoor recipes | [#134](https://github.com/alpar-t/homelab/pull/134) | `runbooks/service-checks/tandoor.md` |
+| TREK trip planner | [#136](https://github.com/alpar-t/homelab/pull/136) | `runbooks/service-checks/trek.md` |
+| Vaultwarden password vault | [#130](https://github.com/alpar-t/homelab/pull/130) | `runbooks/service-checks/vaultwarden.md` |
+| Vikunja task management | [#127](https://github.com/alpar-t/homelab/pull/127) | `runbooks/service-checks/vikunja.md` |
+| Home Assistant appliance | [#132](https://github.com/alpar-t/homelab/pull/132) | `runbooks/service-checks/homeassistant.md` |
+| Travel WireGuard connectivity | [#165](https://github.com/alpar-t/homelab/pull/165) | `runbooks/service-checks/wireguard.md` |
+| Zabbix monitoring pipeline | [#171](https://github.com/alpar-t/homelab/pull/171) | `runbooks/service-checks/zabbix.md` |
+| CloudNativePG database platform | [#168](https://github.com/alpar-t/homelab/pull/168) | `runbooks/service-checks/cnpg.md` |
+| Velero Kubernetes backups | [#166](https://github.com/alpar-t/homelab/pull/166) | `runbooks/service-checks/velero.md` |
+| Kubernetes service DNS | [#167](https://github.com/alpar-t/homelab/pull/167) | `runbooks/service-checks/coredns.md` |
+| Kubernetes resource metrics | [#169](https://github.com/alpar-t/homelab/pull/169) | `runbooks/service-checks/metrics-server.md` |
+| GitHub Actions runners and controller | [#170](https://github.com/alpar-t/homelab/pull/170) | `runbooks/service-checks/github-runners.md` |
+| Cluster support controllers | [#172](https://github.com/alpar-t/homelab/pull/172) | `runbooks/service-checks/platform-controllers.md` |
+
+## Combined validation
+
+All 49 service changes were assembled with the current foundation in a temporary integration checkout. `scripts/test zabbix access-policy` passed 319 monitoring tests and 11 access-policy tests (330 total). Zabbix Kustomize rendered; all 49 module/config pairs were registered; manifest identities were unique; collector RBAC remained read-only without Secret access. The collector ConfigMap payload is approximately 223 KiB, below its 1 MiB limit. Modified embedded application Python compiled successfully.
+
+Merge the foundation first, then retarget service PRs to `main`. Shared ConfigMap-generator and RBAC additions must be combined as a union when resolving merge conflicts; preserve previously merged services. The integration check validates that combined configuration, not that Git will merge every shared-file edit without conflicts. Provision each service prerequisite before enabling its check.

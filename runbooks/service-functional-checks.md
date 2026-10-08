@@ -28,7 +28,8 @@ max_bytes=262144, follow_redirects=False)` returns `status`, `headers`, and
 refused. Responses are bounded (maximum 1 MiB); timeouts are bounded by the
 remaining service deadline. Redirects are disabled by default; opted-in
 redirects must remain on the same origin, including when no explicit auth
-header is present. Do not bypass this helper for service HTTP calls.
+header is present. The default User-Agent is `HomePBP-monitor/1`; callers may override it.
+Do not bypass this helper for service HTTP calls.
 `ctx.now` is Unix time, `ctx.remaining()` reports remaining seconds, and
 `ctx.kube` is the existing read-only Kubernetes client. Its RBAC has no Secret
 read access; do not widen permissions to retrieve credentials.
@@ -42,6 +43,11 @@ a transient failure another real attempt before the existing three-sample
 trigger, but queue congestion or a hung worker can delay recovery. Cached
 failures remain failures until a successful retry; this is not a guarantee of
 three independent failed executions before paging.
+
+Modules retain in-memory observation history between polls. Changing module source
+or restarting the collector resets that history and any observation-based grace
+period. Keep state bounded and clear entries for removed resources; never retain
+credentials or response bodies. Config is reread for each scheduled execution.
 
 Three daemon workers bound service concurrency independently of
 infrastructure collection. Deadline begins when a worker starts a service. FIFO queue waiting does not
