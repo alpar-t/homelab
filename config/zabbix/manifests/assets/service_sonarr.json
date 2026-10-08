@@ -1,0 +1,6 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "base_url": "http://sonarr.media.svc.cluster.local:8989",
+  "credential_key": "sonarr_read_api_key"
+}
