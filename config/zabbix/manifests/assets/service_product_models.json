@@ -1,0 +1,7 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "api_url": "http://product-model-api.baloo.svc.cluster.local:18810",
+  "renderer_url": "http://product-model-renderer.baloo.svc.cluster.local:18811",
+  "render_grace_seconds": 300
+}
