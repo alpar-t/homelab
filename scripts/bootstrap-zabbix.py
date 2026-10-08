@@ -7,6 +7,7 @@ This changes only integration-owned objects, except initial Admin password setup
 import argparse
 import base64
 import json
+from pathlib import Path
 import secrets
 import subprocess
 import time
@@ -73,7 +74,22 @@ class API:
         return result[idfield + 's'][0]
 
 
+def sample_gate(key, macro, windows):
+    # Zabbix 7.0 accepts an LLD macro in a period parameter at prototype creation
+    # but rejects a quoted "#N" after discovery. Use literal sample windows and
+    # let the discovery macro select a branch instead.
+    return '(' + ' or '.join(
+        f'({macro}={n} and count(/HomePBP/{key}[{{#ID}}],#{n})={n}'
+        f' and min(/HomePBP/{key}[{{#ID}}],#{n})=1)'
+        for n in sorted(set(windows))) + ')'
+
+
 def configure_checks(api):
+    policy = json.loads((Path(__file__).resolve().parents[1] / 'config/zabbix/manifests/assets/policy.json').read_text())
+    grace = policy.get('reboot_grace', {'service_samples': 10, 'replica_samples': 30})
+    windows = [1, grace['service_samples'], grace['replica_samples']]
+    if any(type(n) is not int or n < 1 or n > 120 for n in windows):
+        raise ValueError('Reboot grace must be 1–120 samples')
     group = api.ensure('hostgroup', 'name', 'HomePBP', {}, 'groupid')
     host = api.ensure('host', 'host', 'HomePBP', {'name': 'HomePBP', 'groups': [{'groupid': group}],
                       'tags': [{'tag': 'managed_by', 'value': 'HOME-3'}], 'status': 0})
@@ -111,11 +127,9 @@ def configure_checks(api):
     for severity in (2, 3, 4):
         name = '{#NAME}: persistent failure (severity ' + str(severity) + ')'
         api.ensure('triggerprototype', 'description', name, {
-            'expression': ('count(/HomePBP/homelab.state[{#ID}],#{#FAILURE_SAMPLES})={#FAILURE_SAMPLES}'
-                           ' and min(/HomePBP/homelab.state[{#ID}],#{#FAILURE_SAMPLES})=1'
-                           ' and count(/HomePBP/homelab.parent_available[{#ID}],#{#GRACE_SAMPLES})={#GRACE_SAMPLES}'
-                           ' and min(/HomePBP/homelab.parent_available[{#ID}],#{#GRACE_SAMPLES})=1'
-                           ' and last(/HomePBP/homelab.severity[{#ID}])=' + str(severity)),
+            'expression': (sample_gate('homelab.state', '{#FAILURE_SAMPLES}', [3, 5]) + ' and '
+                           + sample_gate('homelab.parent_available', '{#GRACE_SAMPLES}', windows)
+                           + ' and last(/HomePBP/homelab.severity[{#ID}])=' + str(severity)),
             'priority': severity, 'manual_close': 1,
             'recovery_mode': 1,
             'recovery_expression': 'count(/HomePBP/homelab.state[{#ID}],#5)=5 and max(/HomePBP/homelab.state[{#ID}],#5)=0',
@@ -208,7 +222,7 @@ def configure_notification_actions(api, group, operation):
             'filter': {'evaltype': 1, 'conditions': conditions},
             'operations': [{**operation, 'esc_step_from': step, 'esc_step_to': step}],
             # No recovery-only messages for incidents that ended before notification.
-            'recovery_operations': [{'operationtype': 11}], 'pause_suppressed': 1,
+            'recovery_operations': [{'operationtype': 11, 'opmessage': {'default_msg': 1}}], 'pause_suppressed': 1,
             'notify_if_canceled': 0,
         })
 

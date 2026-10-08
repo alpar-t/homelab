@@ -358,3 +358,15 @@ cleanup, filter only those verified stale event IDs at the webhook to avoid a
 recovery-message burst; restore the original webhook after their recoveries have
 been processed. Never disable all alerts or blanket-suppress all services for a
 node reboot.
+
+Live validation confirmed reboot grace, delayed failure detection, resistance to
+one-sample recovery, preservation of open incidents through a renewed parent
+outage, and recovery on the fifth healthy sample. The disposable test host was
+outside all notification groups, produced exactly one problem, sent no messages,
+and was removed. All 22 verified stale pod/API incidents were reconciled.
+
+Zabbix 7.0's parser accepts some macro-based sample periods on a prototype but
+rejects them during discovery. `sample_gate()` therefore generates literal
+sample-window branches selected by the discovery macro. Validate actual discovered
+expressions and `discoveryrule.error`, not just a successful prototype API update.
+`Notify all involved` also requires `opmessage: {default_msg: 1}` in this version.

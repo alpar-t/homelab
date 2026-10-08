@@ -231,14 +231,15 @@ class TriggerTests(unittest.TestCase):
             step = action['operations'][0]['esc_step_from']
             self.assertEqual(step, 2 if delay in ('5m', '10m') else 1)
             self.assertEqual(action['operations'][0]['esc_step_to'], step)
-            self.assertEqual(action['recovery_operations'], [{'operationtype': 11}])
+            self.assertEqual(action['recovery_operations'], [{'operationtype': 11, 'opmessage': {'default_msg': 1}}])
             self.assertEqual(action['notify_if_canceled'], 0)
 
     def test_parent_grace_blocks_new_incidents_without_clearing_existing_ones(self):
         api = self.configuration()
         prototype = next(p for kind, name, p in api.objects if kind == 'triggerprototype')
-        self.assertIn('min(/HomePBP/homelab.parent_available[{#ID}],#{#GRACE_SAMPLES})=1', prototype['expression'])
-        self.assertIn('count(/HomePBP/homelab.parent_available[{#ID}],#{#GRACE_SAMPLES})={#GRACE_SAMPLES}', prototype['expression'])
+        for n in (1, 10, 30):
+            self.assertIn(f'{{#GRACE_SAMPLES}}={n} and count(/HomePBP/homelab.parent_available[{{#ID}}],#{n})={n}', prototype['expression'])
+            self.assertIn(f'min(/HomePBP/homelab.parent_available[{{#ID}}],#{n})=1', prototype['expression'])
         self.assertNotIn('parent_available', prototype['recovery_expression'])
         def eligible(history, grace):
             return len(history[-grace:]) == grace and min(history[-grace:]) == 1
