@@ -1,4 +1,4 @@
-"""Read-only editor discovery and OpenCloud collaboration contracts."""
+"""Read-only editor discovery and OnlyOffice OpenCloud collaboration contracts."""
 import json
 import xml.etree.ElementTree as ET
 from urllib.parse import urlsplit
@@ -12,10 +12,10 @@ def run(ctx, config):
     try:
         response = get(config['editor'] + '/healthcheck', 1024)
         healthy = response.status == 200 and response.body.strip() == b'true'
-        checks.append(ctx.check('Document server dependencies', not healthy,
+        checks.append(ctx.check('OnlyOffice document server dependencies', not healthy,
                                 'Native dependency health is true' if healthy else 'Native dependency health failed'))
     except Exception:
-        checks.append(ctx.check('Document server dependencies', True, 'Dependency health request unavailable'))
+        checks.append(ctx.check('OnlyOffice document server dependencies', True, 'Dependency health request unavailable'))
     try:
         response = get(config['editor'] + '/hosting/discovery')
         if response.status != 200 or b'<!DOCTYPE' in response.body.upper() or b'<!ENTITY' in response.body.upper():
@@ -41,9 +41,9 @@ def run(ctx, config):
                 or capabilities['convert-to'].get('available') is not True
                 or capabilities['convert-to'].get('endpoint') != '/lool/convert-to'):
             raise ValueError()
-        checks.append(ctx.check('Editor WOPI capabilities', False, 'Office edit actions and conversion capability advertised'))
+        checks.append(ctx.check('OnlyOffice WOPI capabilities', False, 'Office edit actions and conversion capability advertised'))
     except Exception:
-        checks.append(ctx.check('Editor WOPI capabilities', True, 'Editor discovery or capabilities unavailable or invalid'))
+        checks.append(ctx.check('OnlyOffice WOPI capabilities', True, 'Editor discovery or capabilities unavailable or invalid'))
     try:
         response = get(config['registry'] + '/app/list')
         registry = json.loads(response.body)
@@ -63,7 +63,7 @@ def run(ctx, config):
         response = get(config['collaboration'] + '/wopi/files/monitoring-nonexistent', 1024)
         if response.status != 401 or response.body.strip() != b'Unauthorized':
             raise ValueError()
-        checks.append(ctx.check('OpenCloud collaboration contract', False, 'Office formats registered and WOPI rejects unauthenticated metadata'))
+        checks.append(ctx.check('OnlyOffice OpenCloud collaboration contract', False, 'Office formats registered and WOPI rejects unauthenticated metadata'))
     except Exception:
-        checks.append(ctx.check('OpenCloud collaboration contract', True, 'Collaboration registration or WOPI authentication contract failed'))
+        checks.append(ctx.check('OnlyOffice OpenCloud collaboration contract', True, 'Collaboration registration or WOPI authentication contract failed'))
     return checks
