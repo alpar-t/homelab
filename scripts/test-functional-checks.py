@@ -119,6 +119,20 @@ class Tests(unittest.TestCase):
                 self.finish()
             self.assertIsNot(self.runner.states['test'], healthy)
 
+    def test_module_observation_state_survives_polls_and_resets_on_source_change(self):
+        self.service("count = 0\ndef run(ctx, config):\n global count\n count += 1\n return [ctx.check('Stateful check', count > 1, str(count))]")
+        self.runner.collect()
+        self.assertEqual(self.finish()[1]['detail'].split(';')[0], '1')
+        self.runner.states['test']['started'] -= 301
+        self.runner.collect()
+        self.assertEqual(self.finish()[1]['status'], 1)
+        self.service("count = 0\ndef run(ctx, config):\n global count\n count += 2\n return [ctx.check('Stateful check', count > 2, str(count))]")
+        self.runner.states['test']['started'] -= 301
+        self.runner.collect()
+        rows = self.finish()
+        self.assertEqual(rows[1]['status'], 0)
+        self.assertEqual(rows[1]['detail'].split(';')[0], '2')
+
     def test_secret_keys_and_missing_secret(self):
         ctx = Context(None, time.monotonic() + 5, self.directory)
         (self.directory / 'token').write_text(' private\n')

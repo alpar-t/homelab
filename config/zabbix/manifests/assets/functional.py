@@ -97,6 +97,7 @@ class FunctionalChecks:
         self.jobs = queue.Queue(maxsize=64)
         self.lock = threading.Lock()
         self.states = {}
+        self.modules = {}
         for _ in range(3):
             threading.Thread(target=self._worker, daemon=True).start()
 
@@ -109,9 +110,17 @@ class FunctionalChecks:
             try:
                 if time.monotonic() >= deadline:
                     raise SafeError('service deadline exceeded')
-                spec = importlib.util.spec_from_file_location('functional_service_' + slug, module_path)
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
+                source = module_path.read_bytes()
+                cached = self.modules.get(slug)
+                if cached is None or cached[0] != source:
+                    spec = importlib.util.spec_from_file_location('functional_service_' + slug, module_path)
+                    module = importlib.util.module_from_spec(spec)
+                    # Preserve bounded in-memory observation windows between polls.
+                    # Compile exact bytes so ConfigMap updates cannot reuse stale pyc.
+                    exec(compile(source, str(module_path), 'exec'), module.__dict__)
+                    self.modules[slug] = (source, module)
+                else:
+                    module = cached[1]
                 records = module.run(Context(self.kube, deadline, self.credentials), config)
                 if not isinstance(records, list) or not records:
                     raise SafeError('invalid or empty service results')
