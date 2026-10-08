@@ -1,0 +1,9 @@
+{
+  "interval": 300,
+  "deadline": 25,
+  "url": "http://roundcube.roundcube.svc.cluster.local/",
+  "authorize": "https://auth.newjoy.ro/authorize",
+  "callback": "https://webmail.newjoy.ro/index.php/login/oauth",
+  "imap_host": "stalwart.stalwart-mail.svc.cluster.local",
+  "imap_port": 143
+}
