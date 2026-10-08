@@ -1,0 +1,5 @@
+{
+  "interval": 300,
+  "deadline": 25,
+  "url": "http://technical-plan-api.baloo.svc.cluster.local:18809"
+}
