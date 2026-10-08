@@ -24,7 +24,7 @@ class Context:
         if self.broken == 'timeout':
             raise TimeoutError('PRIVATE URL AND DATA')
         if url == CONFIG['public_url']:
-            return SimpleNamespace(status=200 if self.broken == 'gate' else 302, headers={'Location': CONFIG['public_url'] + '/oauth2/start?rd=' + CONFIG['public_url'] + '/'}, body=b'')
+            return SimpleNamespace(status=200 if self.broken == 'gate' else 302, headers={'Location': CONFIG['public_url'] + '/oauth2/start?rd=' + ('/' if self.broken == 'relative' else CONFIG['public_url'] + '/')}, body=b'')
         path = url.removeprefix(CONFIG['internal_url'])
         if path == '/catalog/admin.json':
             return SimpleNamespace(status=404, headers={}, body=b'')
@@ -46,7 +46,10 @@ class Tests(unittest.TestCase):
     def test_healthy_shipped_assets(self):
         ctx = Context()
         self.assertEqual([0,0,0], [x['status'] for x in module.run(ctx, CONFIG)])
-        self.assertTrue(all(not args.get('headers') for url,args in ctx.calls if url == CONFIG['public_url']))
+        self.assertEqual(['Portal frontend assets', 'Portal catalog contract', 'Portal public sign-in gate'], [x['name'] for x in module.run(ctx, CONFIG)])
+        self.assertTrue(all(args.get('headers') == {'User-Agent': 'HomePBP-monitor/1'} for url,args in ctx.calls if url == CONFIG['public_url']))
+    def test_relative_return_url(self):
+        self.assertEqual(0, module.run(Context('relative'), CONFIG)[2]['status'])
     def test_broken_contracts(self):
         for broken, index in [('asset',0), ('catalog',1), ('gate',2)]:
             with self.subTest(broken=broken):

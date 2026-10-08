@@ -45,9 +45,9 @@ def run(ctx, config):
         for path, types in [('theme.js', ['javascript']), ('app.js', ['javascript']), ('styles.css', ['text/css'])]:
             if ('/' + path).encode() not in shell.body or not content(get(ctx, base + '/' + path), types):
                 raise ValueError()
-        checks.append(ctx.check('entry_assets', False, 'Portal shell and required scripts/styles are served'))
+        checks.append(ctx.check('Portal frontend assets', False, 'Portal shell and required scripts/styles are served'))
     except Exception:
-        checks.append(ctx.check('entry_assets', True, 'Portal shell or required asset contract unavailable'))
+        checks.append(ctx.check('Portal frontend assets', True, 'Portal shell or required asset contract unavailable'))
     try:
         policy_response = get(ctx, base + '/capability-policy.json')
         if not content(policy_response, ['application/json']):
@@ -64,18 +64,18 @@ def run(ctx, config):
                 raise ValueError()
         if get(ctx, base + '/catalog/admin.json').status != 404:
             raise ValueError()
-        checks.append(ctx.check('catalog_contract', False, 'Role catalogs, capability policy and referenced icons are valid'))
+        checks.append(ctx.check('Portal catalog contract', False, 'Role catalogs, capability policy and referenced icons are valid'))
     except Exception:
-        checks.append(ctx.check('catalog_contract', True, 'Role catalog/schema/asset or internal-file protection contract failed'))
+        checks.append(ctx.check('Portal catalog contract', True, 'Role catalog/schema/asset or internal-file protection contract failed'))
     try:
-        response = get(ctx, config['public_url'])
+        response = get(ctx, config['public_url'], {'User-Agent': 'HomePBP-monitor/1'})
         location = next((v for k, v in response.headers.items() if k.lower() == 'location'), '')
         target = urlsplit(location)
         portal = urlsplit(config['public_url'])
-        allowed = (target.scheme in ('', 'https') and target.hostname in (None, portal.hostname) and target.path == '/oauth2/start' and parse_qs(target.query).get('rd') == [config['public_url'].rstrip('/') + '/'])
+        allowed = (target.scheme in ('', 'https') and target.hostname in (None, portal.hostname) and target.path == '/oauth2/start' and parse_qs(target.query).get('rd') in (['/'], [config['public_url'].rstrip('/') + '/']))
         if response.status not in (302, 303, 307, 308) or not allowed:
             raise ValueError()
-        checks.append(ctx.check('public_signin_gate', False, 'Anonymous entry redirects to portal sign-in'))
+        checks.append(ctx.check('Portal public sign-in gate', False, 'Anonymous entry redirects to portal sign-in'))
     except Exception:
-        checks.append(ctx.check('public_signin_gate', True, 'Anonymous portal sign-in redirect contract failed'))
+        checks.append(ctx.check('Portal public sign-in gate', True, 'Anonymous portal sign-in redirect contract failed'))
     return checks
