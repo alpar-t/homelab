@@ -1,0 +1,8 @@
+{
+  "interval": 300,
+  "deadline": 30,
+  "instances": ["primary", "secondary"],
+  "upstream_name": "cloudflare.com",
+  "local_name": "ha-db.local",
+  "local_address": "192.168.1.200"
+}
