@@ -1,0 +1,6 @@
+{
+  "interval": 300,
+  "deadline": 20,
+  "base_url": "http://radarr.media.svc.cluster.local:7878",
+  "credential_key": "radarr-monitor-api-key"
+}
