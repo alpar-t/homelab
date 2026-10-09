@@ -1,6 +1,20 @@
 # Frigate functional monitoring
 
-Every five minutes the collector reads `/api/stats` and `/api/config` from the
+## Polling and incident confirmation
+
+Poll every 600 seconds (10 minutes); shared failure grace is 900 seconds.
+A new problem needs both that elapsed grace and at least two independent failed
+executions; at this cadence an ordinary continuous failure normally requires
+three runs. Recovery needs two independent healthy executions. The first
+candidate failure can remain pending while confirmation accumulates. Cached
+minute snapshots do not count as new executions, and failures keep the same
+slow cadence. Combined with notification confirmation, a new persistent page
+incident normally appears about 32–42 minutes after the outage, before queue
+or referenced-workload reboot/rescheduling grace and maintenance delays.
+See [the shared framework](../service-functional-checks.md) for unknown/deferred
+observations, startup and incident persistence.
+
+Every ten minutes the collector reads `/api/stats` and `/api/config` from the
 internal unauthenticated port 5000. No credentials, Kubernetes permissions or
 new network rules are needed: Frigate currently has no ingress NetworkPolicy.
 Keep this API private. Config responses can contain camera credentials; the
@@ -10,7 +24,7 @@ The three signals detect stale native stats (120 seconds), enabled cameras with
 zero capture/process FPS or missing capture/process/ffmpeg PIDs, and an absent
 recording worker while any enabled camera has recording enabled. A 180-second
 startup grace permits camera/worker initialization; the shared runner also
-debounces alerts for three failed samples. Requests have six-second timeouts,
+requires distinct failed executions plus the configured elapsed grace. Requests have six-second timeouts,
 256 KiB limits and a 20-second service deadline.
 
 Runtime camera `enabled` and `record.enabled` settings are authoritative.
