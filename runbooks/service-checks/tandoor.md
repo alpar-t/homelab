@@ -20,7 +20,7 @@ Bearer-authenticated `GET /api/recipe/?page_size=1`. The latter exercises
 space selection, permissions, recipe search, PostgreSQL pagination and the
 list serializer. An empty library is healthy. Only fixed diagnostic strings
 are emitted; recipe names, identifiers, counts and response bodies never enter
-Zabbix. Each request has an eight-second maximum and 128 KiB response cap;
+Zabbix. Each request has an five-second maximum and 128 KiB response cap;
 redirects are refused. Normal collector execution-based debounce applies.
 
 A configuration failure means the application API is unreachable or its
