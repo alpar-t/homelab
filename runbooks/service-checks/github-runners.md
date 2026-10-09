@@ -1,22 +1,28 @@
 # GitHub Actions runner functional checks
 
-The collector samples ARC's three repository scale sets every five minutes:
+The collector samples ARC's three repository scale sets every 15 minutes:
 `homelab-runners`, `newjoy-website-runners`, and `baloo-export-runners`.
-One stable check per set covers its Running reconciliation phase, linked
-EphemeralRunnerSet and AutoscalingListener, failed runner startup, and runners
-that have not become online within 15 minutes of creation. It also catches a
-continuous desired/current replica deficit when no runner is running. Missing
-or outdated reconciliation objects and replica deficits receive a continuous
-15-minute observation grace. The foundation preserves that bounded in-memory
-window across polls; collector restart or module update resets it. Native runner
-creation timestamps preserve registration-age evidence across those resets.
-Normal startup remains healthy during grace. Explicit failed startup is bad
-immediately, followed by Zabbix's existing three-failing-sample debounce.
+Each stable check covers its Running reconciliation phase, the listener's current
+EphemeralRunnerSet, and desired versus running capacity. Missing reconciliation
+objects or capacity deficits receive a continuous 15-minute observation grace;
+a current runner's creation time identifies registration stalled beyond that
+window. The worker then applies the shared 30-minute failure grace and at least
+two independent failed executions before confirming an incident. Recovery needs
+two independent healthy executions. Cached snapshots never advance these counters;
+failures retain the same 15-minute cadence. Referenced workload reboot grace and
+notification timing are described in [the framework](../service-functional-checks.md).
 
-Zero desired/current runners with Running sets and a linked listener is healthy.
-Long workflows and a busy one-runner capacity do not trigger a queue-age alarm.
-Succeeded ephemeral runners are ignored. Details contain only booleans and
-counts, never workflow names, job identifiers, status messages or log content.
+Historical failed counters and terminal runners remain diagnostic counts and do
+not cause an outage when current capacity is healthy. Retained prior runner sets
+and deleting runners are ignored. A replacement that restores current capacity
+can recover despite retained failures. Zero desired runners with Running sets and
+a linked listener are healthy; long workflows do not cause queue-age alarms.
+Details contain only booleans and counts, never workflow names, job identifiers,
+status messages or log content. Sustained current-capacity failures page.
+
+Four bounded inventory reads use five-second Kubernetes transport limits, a
+30-second worker deadline and at most 500 objects per inventory; continuation
+is rejected rather than silently truncating evidence.
 
 Deploy the namespace-local `arc-readonly.yaml` Roles and bindings with the
 collector module/config. Access is get/list of runner CRs in `arc-runners` and

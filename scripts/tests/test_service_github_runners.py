@@ -36,17 +36,21 @@ class ARC(unittest.TestCase):
         self.assertEqual(self.run_check(), 0)
         self.assertEqual(arc._since, {})
 
-    def test_failed_runner(self):
+    def test_historical_failure_does_not_page(self):
         self.data['ephemeralrunners'] = [dict(metadata={'ownerReferences': [{'kind': 'EphemeralRunnerSet', 'name': 'ers'}]}, status={'phase': 'Failed', 'message': 'private'})]
         result = arc.run(self.ctx, self.config)[0]
-        self.assertEqual(result['status'], 1)
+        self.assertEqual(result['status'], 0)
+        self.assertIn('historical_failed=1', result['detail'])
         self.assertNotIn('private', result['detail'])
 
     def test_stalled_registration_and_online(self):
         runner = dict(metadata={'creationTimestamp': '1970-01-01T00:00:00Z', 'ownerReferences': [{'kind': 'EphemeralRunnerSet', 'name': 'ers'}]}, status={'phase': 'Running', 'ready': False})
         self.data['ephemeralrunners'] = [runner]
+        ers = self.data['ephemeralrunnersets'][0]
+        ers['spec']['replicas'] = 1
         self.assertEqual(self.run_check(), 1)
         runner['status']['ready'] = True
+        ers['status']['runningEphemeralRunners'] = 1
         self.assertEqual(self.run_check(), 0)
 
     def test_capacity_deficit_and_busy_queue(self):
@@ -57,6 +61,27 @@ class ARC(unittest.TestCase):
         self.assertEqual(self.run_check(), 1)
         ers['status']['runningEphemeralRunners'] = 1
         self.assertEqual(self.run_check(), 0)
+
+    def test_historical_sets_and_deleting_runners_are_ignored(self):
+        old = dict(metadata={'name': 'retired', 'ownerReferences': [{'kind': 'AutoscalingRunnerSet', 'name': 'test'}]},
+                   spec={'replicas': 10}, status={'phase': 'Failed', 'failedEphemeralRunners': 10})
+        self.data['ephemeralrunnersets'].append(old)
+        self.data['ephemeralrunners'] = [dict(metadata={'deletionTimestamp': 'now',
+            'ownerReferences': [{'kind': 'EphemeralRunnerSet', 'name': 'ers'}]}, status={'phase': 'Running', 'ready': False})]
+        self.assertEqual(self.run_check(), 0)
+        self.ctx.now += 1000
+        self.assertEqual(self.run_check(), 0)
+
+    def test_replacement_capacity_recovers_with_retained_failures(self):
+        ers = self.data['ephemeralrunnersets'][0]
+        ers['spec']['replicas'] = 2
+        ers['status'].update(runningEphemeralRunners=1, currentReplicas=2, failedEphemeralRunners=5)
+        self.assertEqual(self.run_check(), 0)
+        self.ctx.now += 901
+        self.assertEqual(self.run_check(), 1)
+        ers['status']['runningEphemeralRunners'] = 2
+        self.assertEqual(self.run_check(), 0)
+        self.assertEqual(arc._since, {})
 
     def test_malformed_counter(self):
         self.data['ephemeralrunnersets'][0]['spec']['replicas'] = '1'
