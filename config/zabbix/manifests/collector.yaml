@@ -159,8 +159,6 @@ spec:
             items:
               - key: immich-api-key
                 path: immich-api-key
-              - key: paperless_monitor_token
-                path: paperless_monitor_token
               - key: vikunja_read_token
                 path: vikunja_read_token
               - key: tandoor_read_token
