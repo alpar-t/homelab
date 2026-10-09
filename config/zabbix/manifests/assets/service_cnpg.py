@@ -47,7 +47,7 @@ def scrape(ctx, ip):
 
 def run(ctx, config):
     # Exactly one API request, no pagination loop or per-cluster API fanout.
-    if ctx.remaining() < 16:
+    if ctx.remaining() < 6:
         raise TimeoutError('inventory deadline')
     page = ctx.kube.get('/apis/postgresql.cnpg.io/v1/clusters?limit=100')
     if page.get('metadata', {}).get('continue') or len(page['items']) > 100:
@@ -67,21 +67,22 @@ def run(ctx, config):
                 cluster['metadata'].get('annotations', {}).get('cnpg.io/hibernation') == 'on' or
                 recent(status.get('targetPrimaryTimestamp'), ctx.now, grace) or
                 recent(ready.get('lastTransitionTime'), ctx.now, grace)):
-            checks.append(ctx.check(label, False, 'Maintenance or recent transition: SQL/replication observation deferred'))
+            checks.append(ctx.check(label, False, 'Maintenance or recent transition: SQL/replication observation deferred', observation='unknown'))
             continue
         reported = status.get('instancesReportedState', {})
         expected = spec['instances']
-        if not 1 <= expected <= 8 or len(reported) != expected or status.get('currentPrimary') not in reported:
+        if not 1 <= expected <= 8 or status.get('currentPrimary') not in reported:
             checks.append(ctx.check(label, True, 'Expected instance SQL coverage unavailable'))
             continue
         entry = {'label': label, 'primary': status.get('currentPrimary'),
-                 'replica': spec.get('replica', {}).get('enabled', False), 'samples': [], 'failed': False, 'expected': expected}
+                 'replica': spec.get('replica', {}).get('enabled', False), 'samples': [], 'failed_instances': set(), 'coverage_degraded': len(reported) != expected, 'deferred': False, 'expected': expected}
         clusters.append(entry)
         for instance, state in reported.items():
             jobs.append((entry, instance, state['ip']))
     if len(jobs) > 80:
         raise ValueError('instance limit exceeded')
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=8)
+    # Joined workers never survive a poll; foundation bounds each body read.
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=3)
     pending = {pool.submit(scrape, ctx, ip): (entry, instance) for entry, instance, ip in jobs}
     try:
         done, unfinished = concurrent.futures.wait(pending, timeout=ctx.remaining())
@@ -90,16 +91,20 @@ def run(ctx, config):
             try:
                 entry['samples'].append((instance, future.result()))
             except Exception:
-                entry['failed'] = True
+                entry['failed_instances'].add(instance)
         for future in unfinished:
-            pending[future][0]['failed'] = True
+            entry, instance = pending[future]
+            entry['failed_instances'].add(instance)
             future.cancel()
     finally:
-        pool.shutdown(wait=False, cancel_futures=True)
+        pool.shutdown(wait=True, cancel_futures=True)
     for entry in clusters:
-        bad, failures = entry['failed'], []
-        if bad:
+        failures = []
+        critical = entry['primary'] in entry['failed_instances']
+        if entry['failed_instances']:
             failures.append('instance metrics unavailable')
+        if entry['coverage_degraded']:
+            failures.append('expected replica coverage incomplete')
         for instance, values in entry['samples']:
             try:
                 recovery = scalar(values, 'cnpg_pg_replication_in_recovery')
@@ -111,10 +116,12 @@ def run(ctx, config):
                 if not database or any(v < 0 for v in database) or recovery not in (0, 1) or lag < 0:
                     raise ValueError('SQL metric schema')
                 if 0 <= ctx.now - start < config['grace_seconds']:
+                    entry['deferred'] = True
                     continue
                 expected_role = int(entry['replica'] or instance != entry['primary'])
                 if recovery != expected_role:
                     failures.append('SQL recovery role disagrees with designated primary')
+                    critical |= instance == entry['primary']
                 if recovery and receiver != 1:
                     failures.append('standby WAL receiver disconnected')
                 if not recovery and streaming < entry['expected'] - 1:
@@ -123,7 +130,11 @@ def run(ctx, config):
                     failures.append('unapplied WAL replay lag exceeds threshold')
             except Exception:
                 failures.append('required SQL metrics invalid or missing')
-        bad = bad or bool(failures)
+                critical |= instance == entry['primary']
+        bad = bool(failures)
         checks.append(ctx.check(entry['label'], bad, '; '.join(sorted(set(failures))) if bad else
-                                'SQL database/recovery queries succeeded; roles and replay lag within policy'))
+                                'SQL database/recovery queries succeeded; roles and replay lag within policy',
+                                severity=3 if critical or not bad else 2,
+                                notification='page' if critical or not bad else 'dashboard',
+                                observation='unknown' if entry['deferred'] and not bad else 'known'))
     return checks

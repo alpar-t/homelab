@@ -26,9 +26,9 @@ checks continue independently. Use Zabbix maintenance for other planned work.
 No database credentials, Secret reads, writes, pod exec, or new RBAC are required.
 A single existing cluster-list GET obtains instance IPs from
 `status.instancesReportedState`; incomplete instance coverage fails visibly.
-Its existing API timeout is 15 seconds and it is admitted only with at least
-16 seconds remaining. Responses with pagination fail rather than fetching
-unbounded pages. At most 100 CRs / 80 instance scrapes / eight workers are
+Its existing API timeout is five seconds and it is admitted only with at least
+six seconds remaining. Responses with pagination fail rather than fetching
+unbounded pages. At most 100 CRs / 80 instance scrapes / three workers are
 allowed, and each HTTP scrape has a maximum three-second timeout, 256 KiB body
 limit and the shared 30-second module deadline. Non-200, timeout, missing,
 ambiguous and nonfinite required metrics fail without emitting response bodies,
@@ -55,3 +55,19 @@ live Kubernetes API proxy scrapes confirmed the deployed primary and standby's
 exact required metric names: primary recovery=0/streaming=1 and standby
 recovery=1/receiver=1/lag=0. This uses the operator exporter's
 SQL privileges; it does not demonstrate the collector's future network path.
+
+
+## Combined collector load bounds
+
+The review caps this module at three concurrent requests. Workers are joined
+before a poll returns, so running scrape threads are never abandoned for a later
+execution to multiply. The shared foundation enforces elapsed body-read budgets
+with read1 and remaining socket timeouts; Kubernetes transport uses five seconds
+and a 4 MiB JSON cap. Synchronous DNS and response header parsing remain platform
+resolver / socket inactivity limits. No retry threads or broader RBAC are added.
+
+Maintenance, hibernation and recent Ready/primary transitions emit an unknown
+observation, preserving the last confirmed incident instead of manufacturing a
+recovery. Primary SQL unavailability or a wrong primary role pages at severity3;
+replica-only scrape/schema/receiver/lag/capacity degradation is severity2 and
+dashboard-only. Base primary/cluster availability checks remain complementary.

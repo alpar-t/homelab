@@ -34,8 +34,8 @@ class Context:
         if isinstance(value, Exception):
             raise value
         return SimpleNamespace(status=self.http_status, body=value)
-    def check(self, name, bad, detail, severity=3):
-        return {'name': name, 'status': int(bool(bad)), 'detail': detail}
+    def check(self, name, bad, detail, severity=3, **kwargs):
+        return {'name': name, 'status': int(bool(bad)), 'detail': detail, 'severity': severity, **kwargs}
 
 
 class Tests(unittest.TestCase):
@@ -44,6 +44,56 @@ class Tests(unittest.TestCase):
         self.config = {'clusters': [['test', 'db']], 'grace_seconds': 600, 'lag_seconds': 300}
     def run_check(self):
         return module.run(self.ctx, self.config)[0]
+    def test_twenty_scrapes_have_three_workers_and_join_before_return(self):
+        import copy
+        import threading
+        import time
+        clusters = []
+        for index in range(10):
+            obj = copy.deepcopy(self.ctx.cluster)
+            obj['metadata']['name'] = 'db' + str(index)
+            clusters.append(obj)
+        self.config['clusters'] = [['test', obj['metadata']['name']] for obj in clusters]
+        self.ctx.kube.get = lambda path: {'items': clusters}
+        original = self.ctx.http
+        lock = threading.Lock()
+        active = peak = calls = 0
+        workers = set()
+        def scrape(*args, **kwargs):
+            nonlocal active, peak, calls
+            with lock:
+                active += 1
+                calls += 1
+                peak = max(peak, active)
+                workers.add(threading.current_thread())
+            try:
+                time.sleep(.002)  # Offline work permits concurrency to overlap.
+                return original(*args, **kwargs)
+            finally:
+                with lock: active -= 1
+        self.ctx.http = scrape
+        rows = module.run(self.ctx, self.config)
+        self.assertEqual(calls, 20)
+        self.assertLessEqual(peak, 3)
+        self.assertEqual(active, 0)
+        self.assertTrue(all(not worker.is_alive() for worker in workers))
+        self.assertTrue(all(row['status'] == 0 for row in rows))
+
+    def test_primary_failure_pages_but_replica_degradation_is_dashboard(self):
+        self.ctx.responses['10.0.0.2'] = TimeoutError()
+        row = self.run_check()
+        self.assertEqual((row['status'], row['severity'], row['notification']), (1, 2, 'dashboard'))
+        self.ctx.responses['10.0.0.1'] = TimeoutError()
+        row = self.run_check()
+        self.assertEqual((row['status'], row['severity'], row['notification']), (1, 3, 'page'))
+
+    def test_explicit_maintenance_is_unknown_not_confirmed_recovery(self):
+        self.ctx.cluster['spec']['nodeMaintenanceWindow'] = {'inProgress': True}
+        self.assertEqual(self.run_check()['observation'], 'unknown')
+        del self.ctx.cluster['spec']['nodeMaintenanceWindow']
+        self.ctx.cluster['metadata']['annotations'] = {'cnpg.io/hibernation': 'on'}
+        self.assertEqual(self.run_check()['observation'], 'unknown')
+
     def test_healthy_idle_zero_database(self):
         self.assertEqual(self.run_check()['status'], 0)
     def test_broken_roles_and_lag(self):
@@ -74,7 +124,7 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.run_check()['status'], 0)
     def test_postgres_restart_grace(self):
         self.ctx.responses['10.0.0.1'] = body(role=1, start=self.ctx.now - 5)
-        self.assertEqual(self.run_check()['status'], 0)
+        self.assertEqual(self.run_check()['observation'], 'unknown')
     def test_missing_instance_and_primary(self):
         del self.ctx.cluster['status']['instancesReportedState']['db-1']
         self.assertEqual(self.run_check()['status'], 1)
