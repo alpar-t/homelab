@@ -64,6 +64,10 @@ class PodCheckLifecycle:
     def __init__(self, path):
         self.path = Path(path)
         self.records = json.loads(self.path.read_text()) if self.path.exists() else {}
+        # Older snapshots cached raw crash messages. Keep incident state/identity,
+        # but never replay those private payloads after an inventory failure.
+        for record in self.records.values():
+            record['check']['detail'] = 'prior pod state retained; inventory unavailable, inspect privately'
 
     def reconcile(self, checks, inventory_ok, now):
         current = {c['id']: c for c in checks if c['name'].startswith('Pod ')}

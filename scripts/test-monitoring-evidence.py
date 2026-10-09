@@ -4,6 +4,7 @@ import importlib.util
 import json
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -61,6 +62,24 @@ class SnapshotEvidenceTests(unittest.TestCase):
         self.assertIn('Unhealthy storage readiness event',check['detail'])
         pod['status']['conditions'][0]['status']='True'
         self.assertEqual(self.checks()['Physical storage pufi']['status'],0)
+    def test_legacy_pod_cache_cannot_replay_secret_on_inventory_failure(self):
+        check = collector.check('Pod test/retained-1', 'cluster', True, CANARY, 3)
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp, 'pod-checks.json')
+            path.write_text(json.dumps({check['id']:{'check':check, 'last_seen':NOW}}))
+            lifecycle = collector.PodCheckLifecycle(path)
+            result = lifecycle.reconcile([], False, NOW + 60)
+            self.assertNotIn(CANARY, json.dumps(result))
+            self.assertNotIn(CANARY, path.read_text())
+            self.assertEqual(result[0]['id'], check['id'])
+            self.assertEqual(result[0]['status'], 1)
+            self.assertEqual(lifecycle.records[check['id']]['last_seen'], NOW)
+            self.assertIn('prior pod state retained', result[0]['detail'])
+            # A successful inventory still retires/recoveries with the original semantics.
+            retired = lifecycle.reconcile([], True, NOW + 120)
+            self.assertEqual(retired[0]['status'], 0)
+            self.assertIn('Pod retired', retired[0]['detail'])
+
     def test_longhorn_remote_conditions_do_not_enter_snapshot(self):
         target={'metadata':{'name':'default'},'status':{'available':False,'conditions':[
             {'type':'Unavailable','message':'URL?access_token='+CANARY,'reason':CANARY}]}}

@@ -3,6 +3,7 @@
 
 Usage: python3 scripts/test-monitoring-security.py --root /path/to/integrated/tree --expected-services 49 --self-test --output /tmp/security-result.json
 No API requests, secret reads, writes to the checkout, or production probes occur.
+The source redaction/cache migration does not purge historical Zabbix database evidence.
 """
 import argparse
 import ast
