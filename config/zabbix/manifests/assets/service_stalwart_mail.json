@@ -48,5 +48,31 @@
   "minimum_failure_observations": 2,
   "minimum_recovery_observations": 2,
   "severity": 3,
-  "notification": "page"
+  "notification": "page",
+  "workloads": [],
+  "check_workloads": {
+    "Stalwart incoming SMTP": [
+      {
+        "namespace": "stalwart-mail",
+        "kind": "Deployment",
+        "name": "stalwart"
+      }
+    ],
+    "Stalwart submission STARTTLS": [
+      {
+        "namespace": "stalwart-mail",
+        "kind": "Deployment",
+        "name": "stalwart"
+      }
+    ],
+    "Stalwart IMAPS capability": [
+      {
+        "namespace": "stalwart-mail",
+        "kind": "Deployment",
+        "name": "stalwart"
+      }
+    ],
+    "Migadu fetchmail IMAPS capability": [],
+    "Migadu relay SMTP capability": []
+  }
 }
