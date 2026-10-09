@@ -1,6 +1,19 @@
 # Travel WireGuard ingress monitoring
 
-The functional collector checks every five minutes, with the shared three-failure
+## Polling and incident confirmation
+
+Poll every 600 seconds (10 minutes); shared failure grace is 900 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+The functional collector checks every 10 minutes, with the shared execution-based
 debounce. It validates the UDP/41641 LoadBalancer mapping, reserved VIP
 192.168.1.208, Local traffic policy and dedicated selector. A second check requires
 exactly one ready, non-terminating EndpointSlice endpoint with UDP/41641 and
