@@ -1,7 +1,12 @@
 {
-  "interval": 300,
+  "interval": 900,
   "deadline": 30,
   "url": "http://maintainerr.media.svc.cluster.local:6246",
   "radarr_id": 1,
-  "sonarr_id": 1
+  "sonarr_id": 1,
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
 }
