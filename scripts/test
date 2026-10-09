@@ -22,6 +22,7 @@ run_target() {
       PYTHONPYCACHEPREFIX=/tmp/home-3-python-cache python3 scripts/test-functional-checks.py
       PYTHONPYCACHEPREFIX=/tmp/home-3-python-cache python3 scripts/test-bounded-transport.py
       PYTHONPYCACHEPREFIX=/tmp/home-3-python-cache python3 scripts/test-monitoring-evidence.py
+      PYTHONPYCACHEPREFIX=/tmp/home-3-python-cache python3 scripts/test-monitoring-kubernetes-redirects.py
       if compgen -G 'scripts/tests/test_service_*.py' >/dev/null; then
         PYTHONPYCACHEPREFIX=/tmp/home-3-python-cache python3 -m unittest discover -s scripts/tests -p 'test_service_*.py'
       fi

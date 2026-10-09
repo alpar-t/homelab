@@ -16,7 +16,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from mail_activity import MailActivity
-from functional import FunctionalChecks, SafeError, read_response
+from functional import FunctionalChecks, Redirects, SafeError, read_response
 
 UTC = dt.timezone.utc
 SA = Path('/var/run/secrets/kubernetes.io/serviceaccount')
@@ -95,6 +95,9 @@ class Kubernetes:
     def __init__(self):
         self.context = ssl.create_default_context(cafile=str(SA / 'ca.crt'))
         self.base = 'https://kubernetes.default.svc'
+        # Never forward the ServiceAccount bearer through API/aggregator redirects.
+        self.opener = urllib.request.build_opener(
+            Redirects(False), urllib.request.HTTPSHandler(context=self.context))
 
     def get(self, path, timeout=5, deadline=None, max_bytes=4 * 1024 * 1024):
         # Re-read projected tokens, which Kubernetes rotates automatically.
@@ -104,7 +107,7 @@ class Kubernetes:
             raise SafeError('Kubernetes request bounds exceeded')
         req = urllib.request.Request(self.base + path, headers={
             'Authorization': 'Bearer ' + (SA / 'token').read_text().strip()})
-        with urllib.request.urlopen(req, context=self.context, timeout=end - time.monotonic()) as response:
+        with self.opener.open(req, timeout=end - time.monotonic()) as response:
             return json.loads(read_response(response, end, max_bytes))
 
     def items(self, path, timeout=5, deadline=None):
@@ -135,7 +138,7 @@ class Kubernetes:
         path = f'/api/v1/namespaces/{ns}/pods/{pod}/log?' + urllib.parse.urlencode(query)
         req = urllib.request.Request(self.base + path, headers={
             'Authorization': 'Bearer ' + (SA / 'token').read_text().strip()})
-        with urllib.request.urlopen(req, context=self.context, timeout=end - time.monotonic()) as response:
+        with self.opener.open(req, timeout=end - time.monotonic()) as response:
             value = read_response(response, end, limit_bytes)
             if timestamps and len(value) >= limit_bytes:
                 raise ValueError('Mail event log response was truncated')
