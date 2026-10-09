@@ -18,5 +18,34 @@
   "minimum_failure_observations": 2,
   "minimum_recovery_observations": 2,
   "severity": 3,
-  "notification": "page"
+  "notification": "page",
+  "workloads": [],
+  "check_workloads": {
+    "OnlyOffice document server dependencies": [
+      {
+        "namespace": "opencloud",
+        "kind": "Deployment",
+        "name": "opencloud-onlyoffice"
+      }
+    ],
+    "OnlyOffice WOPI capabilities": [
+      {
+        "namespace": "opencloud",
+        "kind": "Deployment",
+        "name": "opencloud-onlyoffice"
+      }
+    ],
+    "OnlyOffice OpenCloud collaboration contract": [
+      {
+        "namespace": "opencloud",
+        "kind": "Deployment",
+        "name": "opencloud-opencloud"
+      },
+      {
+        "namespace": "opencloud",
+        "kind": "Deployment",
+        "name": "opencloud-collaboration"
+      }
+    ]
+  }
 }
