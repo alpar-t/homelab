@@ -32,7 +32,7 @@ speed for low load; two recovery observations also delay recovery notifications.
 ## Review coverage and policy
 
 All three reviewers inspected every original PR head and re-reviewed the fixes.
-The combined 49-service tree passes 365 monitoring/access-policy tests and the
+The combined 49-service tree passes 367 monitoring/access-policy tests and the
 rendered boundary regression: 19 read-only bindings, four projected keys, five
 allowed and fifteen denied egress cases, four private-ingress denials, and six
 adversarial permission/network mutations. These are offline checks, not production
