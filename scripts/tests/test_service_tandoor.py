@@ -49,6 +49,8 @@ class Tests(unittest.TestCase):
         rows = service_tandoor.run(ctx, self.config)
         self.assertEqual([r['status'] for r in rows], [0, 1])
         self.assertEqual(len(ctx.calls), 1)
+        self.assertEqual(rows[1]["observation"], "deferred")
+        self.assertEqual(rows[1]["notification"], "dashboard")
     def test_malformed_public_config(self):
         ctx = Context(dict(count=0, results=[], next=None, previous=None))
         original = ctx.http

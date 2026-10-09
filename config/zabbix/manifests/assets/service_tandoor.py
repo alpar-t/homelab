@@ -4,7 +4,7 @@ import re
 
 
 def fetch(ctx, url, headers=None):
-    response = ctx.http(url, headers=headers, timeout=min(8, ctx.remaining()),
+    response = ctx.http(url, headers=headers, timeout=min(5, ctx.remaining()),
                         max_bytes=131072, follow_redirects=False)
     if response.status != 200:
         raise ValueError('unexpected HTTP status')
@@ -28,7 +28,7 @@ def run(ctx, config):
     try:
         token = ctx.secret(config['token_key'])
     except Exception:
-        rows.append(ctx.check('Tandoor recipe backend', True, 'read-only monitor credential unavailable'))
+        rows.append(dict(ctx.check('Tandoor recipe backend', True, 'coverage deferred: dedicated read-only credential unavailable', 1), observation='deferred', notification='dashboard'))
         return rows
     try:
         page = fetch(ctx, base + '/api/recipe/?page_size=1',
