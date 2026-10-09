@@ -42,14 +42,14 @@ def evaluate(text, now, max_age, timezone):
 
 def run(ctx, config):
     try:
-        if ctx.remaining() < 15:
+        if ctx.remaining() < 5:
             raise TimeoutError()
         pods = ctx.kube.get("/api/v1/namespaces/otmonitor/pods?labelSelector=app%3Dotmonitor&limit=10")["items"]
         active = [pod for pod in pods if not pod.get("metadata", {}).get("deletionTimestamp")
                   and pod.get("status", {}).get("phase") == "Running"]
         if len(active) != 1:
             return [ctx.check(NAME, True, "expected one running telemetry source")]
-        if ctx.remaining() < 15:
+        if ctx.remaining() < 5:
             raise TimeoutError()
         text = ctx.kube.logs("otmonitor", active[0]["metadata"]["name"], "log-tailer",
                              since_seconds=180, limit_bytes=131072, tail_lines=600, timestamps=True)
