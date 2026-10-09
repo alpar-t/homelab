@@ -1,6 +1,11 @@
 {
-  "interval": 300,
+  "interval": 900,
   "deadline": 30,
   "base_url": "http://vaultwarden.vaultwarden.svc.cluster.local",
-  "public_url": "https://vault.newjoy.ro"
+  "public_url": "https://vault.newjoy.ro",
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
 }
