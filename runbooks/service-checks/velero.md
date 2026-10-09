@@ -55,3 +55,7 @@ production backups or restores are initiated to validate monitoring.
 Field semantics: [Schedule API](https://velero.io/docs/v1.16/api-types/schedule/),
 [Backup API](https://velero.io/docs/v1.16/api-types/backup/), and
 [BackupStorageLocation API](https://velero.io/docs/v1.16/api-types/backupstoragelocation/).
+
+A paused schedule reports unknown completion evidence. Pausing therefore
+suppresses new schedule-freshness conclusions without recovering an already
+failed backup incident. A real later completion is needed for recovery.

@@ -50,7 +50,9 @@ def run(ctx, config):
     for name, policy in expected.items():
         obj = schedules.get(name)
         detail, bad = evaluate(ctx.now, obj, backups, name, policy)
-        checks.append(ctx.check('Velero schedule ' + name, bad, detail))
+        paused = obj is not None and obj.get('spec', {}).get('paused') is True
+        checks.append(ctx.check('Velero schedule ' + name, bad, detail,
+                                observation='unknown' if paused else 'known'))
     return checks
 
 

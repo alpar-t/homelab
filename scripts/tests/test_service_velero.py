@@ -30,8 +30,8 @@ class Context:
         if isinstance(value, Exception):
             raise value
         return value
-    def check(self, name, bad, detail, severity=3):
-        return dict(name=name, status=int(bad), detail=detail, severity=severity)
+    def check(self, name, bad, detail, severity=3, **kwargs):
+        return dict(name=name, status=int(bad), detail=detail, severity=severity, **kwargs)
 
 
 class VeleroTests(unittest.TestCase):
@@ -48,6 +48,17 @@ class VeleroTests(unittest.TestCase):
                             'schedules': {'items': [self.schedule]}, 'backups': {'items': [self.backup]}})
     def run_checks(self):
         return service.run(self.ctx, self.config)
+    def test_paused_failed_schedule_does_not_prove_backup_recovery(self):
+        self.backup['status']['phase'] = 'Failed'
+        self.assertEqual(self.run_checks()[1]['status'], 1)
+        self.schedule['spec']['paused'] = True
+        row = self.run_checks()[1]
+        self.assertEqual(row['observation'], 'unknown')
+        self.assertEqual(row['status'], 0)
+        self.schedule['spec']['paused'] = False
+        self.backup['status']['phase'] = 'Completed'
+        self.assertEqual(self.run_checks()[1]['observation'], 'known')
+
     def test_healthy(self):
         self.assertEqual([0, 0], [x['status'] for x in self.run_checks()])
         self.assertEqual(3, len(self.ctx.paths))
