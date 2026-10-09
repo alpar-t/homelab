@@ -23,8 +23,8 @@ conversion files normally; no persistent monitoring artifacts are created.
 The service deadline is 20 seconds; the request timeout is at most 15 seconds
 and bounded by the remaining deadline. Oversized responses, timeouts, errors,
 redirects, and malformed PDFs fail the stable `Gotenberg HTML to PDF` check.
-The foundation uses the normal execution-based Zabbix debounce, so cached
-failures may alert before three separate conversions have run.
+Only completed conversions count toward failure confirmation; cached snapshots
+never advance the observation counters.
 
 Failure means the Chromium HTML conversion path is unusable from the collector,
 even if `/health` and pod readiness remain healthy. Inspect Gotenberg logs,
