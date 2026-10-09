@@ -3,82 +3,106 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = importlib.util.spec_from_file_location('product_models', ROOT / 'config/zabbix/manifests/assets/service_product_models.py')
-SERVICE = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(SERVICE)
-CONFIG = json.loads((ROOT / 'config/zabbix/manifests/assets/service_product_models.json').read_text())
+ASSET = ROOT / 'config/zabbix/manifests/assets/service_product_models.py'
+spec = importlib.util.spec_from_file_location('security_product_models', ASSET)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+CONFIG = json.loads(ASSET.with_suffix('.json').read_text())
+FIXTURES = {}
 
 
 class Context:
-    def __init__(self, health=None, info=None, auth=401, error=None):
-        self.health = {'ok': True} if health is None else health
-        self.info = dict(schema=1, blenderAvailable=True, scratchWritable=True,
-                         busy=False, activeSeconds=None, renderTimeoutSeconds=900) if info is None else info
-        self.auth, self.error = auth, error
-        self.requests = []
-
+    def __init__(self, fault=None, remaining=30):
+        self.fault, self.budget, self.calls = fault, remaining, []
+        self.kube = self
+        self.secret_reads = []
     def remaining(self):
-        return 20
-
+        return self.budget
+    def secret(self, key):
+        self.secret_reads.append(key)
+        raise AssertionError('unsafe credential read attempted')
     def check(self, name, bad, detail, severity=3):
         return dict(name=name, status=int(bool(bad)), detail=detail, severity=severity)
-
     def http(self, url, **kwargs):
-        self.requests.append((url, kwargs))
-        if self.error:
-            raise self.error
-        status, payload = (200, self.info) if url.endswith('/capabilities') else ((200, self.health) if url.endswith('/health') else (self.auth, {'error': 'unauthorized'}))
-        return SimpleNamespace(status=status, body=json.dumps(payload).encode())
+        if not 0 < kwargs['timeout'] <= self.remaining():
+            raise TimeoutError('PRIVATE-CREDENTIAL')
+        self.calls.append((url, kwargs))
+        if (kwargs.get('headers') or {}).get('Authorization') or (kwargs.get('headers') or {}).get('X-Api-Key') or (kwargs.get('headers') or {}).get('X-Actual-Token'):
+            raise AssertionError('unsafe authentication header')
+        path = urlsplit(url).path
+        if path not in FIXTURES:
+            raise AssertionError('unexpected HTTP path: ' + path)
+        status, value = FIXTURES[path]
+        if self.fault == 'timeout':
+            raise TimeoutError('PRIVATE-CREDENTIAL')
+        if self.fault in (200, 302, 401, 403, 500):
+            status, value = self.fault, {'error':'PRIVATE-CREDENTIAL'}
+        if self.fault == 'malformed':
+            value = 'PRIVATE-CREDENTIAL'
+        body = value.encode() if isinstance(value, str) else json.dumps(value).encode()
+        return SimpleNamespace(status=status, body=body, headers={'Content-Type':'text/html' if path == '/' else 'application/json'})
+    def get(self, path):
+        self.calls.append((path, {}))
+        if self.fault == 'timeout':
+            raise TimeoutError('PRIVATE-CREDENTIAL')
+        if '/pods?' in path:
+            assert path.startswith('/api/v1/namespaces/media/pods?')
+            states = [dict(name='product_models',ready=self.fault != 'not-ready',state={'running':{}})]
+            return {'items':[dict(metadata={'name':'unused'},status={'phase':'Running','containerStatuses':states})],
+                    'metadata':{'continue':'private' if self.fault == 'truncated' else ''}}
+        assert path == '/apis/apps/v1/namespaces/baloo/deployments?limit=100'
+        names = ['pinchtab-web','pinchtab'] if 'product_models' == 'pinchtab' else ['product-model-api','product-model-renderer']
+        items = [dict(metadata={'name':n,'generation':2},spec={'replicas':1},
+                      status={'observedGeneration':1 if self.fault == 'stale-generation' else 2,
+                              'availableReplicas':0 if self.fault == 'not-ready' else 1,'readyReplicas':1}) for n in names]
+        return {'items':[] if self.fault == 'missing' else items,
+                'metadata':{'continue':'private' if self.fault == 'truncated' else ''}}
 
 
-class ProductModelsTests(unittest.TestCase):
-    def test_idle_and_long_legitimate_render(self):
+class SecurityBaselineTests(unittest.TestCase):
+    def test_useful_baseline_is_distinct_from_deferred_coverage(self):
         ctx = Context()
-        self.assertEqual([0, 0, 0], [r['status'] for r in SERVICE.run(ctx, CONFIG)])
-        ctx.info.update(busy=True, activeSeconds=1150)
-        self.assertEqual([0, 0, 0], [r['status'] for r in SERVICE.run(ctx, CONFIG)])
-        self.assertTrue(all(k['max_bytes'] == 4096 and k['timeout'] <= 5 for _, k in ctx.requests))
-
-    def test_stuck_render(self):
-        ctx = Context()
-        ctx.info.update(busy=True, activeSeconds=1201)
-        self.assertEqual([0, 0, 1], [r['status'] for r in SERVICE.run(ctx, CONFIG)])
-
-    def test_missing_dependencies_and_worker_failure(self):
-        ctx = Context(health={'ok': False})
-        ctx.info['blenderAvailable'] = False
-        self.assertEqual([1, 1, 0], [r['status'] for r in SERVICE.run(ctx, CONFIG)])
-
-    def test_broken_contracts_and_auth_bypass(self):
-        for info in ({}, [], {'schema': True}, {'schema': 1, 'busy': True, 'activeSeconds': float('nan')}):
-            with self.subTest(info=info):
-                rows = SERVICE.run(Context(info=info, auth=200), CONFIG)
-                self.assertEqual([1, 1, 1], [r['status'] for r in rows])
-
-    def test_timeouts_redact(self):
-        rows = SERVICE.run(Context(error=TimeoutError('private credentials')), CONFIG)
-        self.assertEqual([1, 1, 1], [r['status'] for r in rows])
-        self.assertNotIn('private', str(rows))
-
-    def test_renderer_snapshot_handler(self):
-        source = (ROOT / 'config/interior-designer/manifests/product-model-renderer.yaml').read_text().split('  server.py: |\n', 1)[1].split('\n---', 1)[0]
-        source = '\n'.join(line[4:] for line in source.splitlines())
-        source = source.rsplit('ThreadingHTTPServer(', 1)[0]
-        namespace = {}
-        exec(compile(source, '<renderer>', 'exec'), namespace)
-        handler = object.__new__(namespace['Handler'])
-        handler.path = '/capabilities'
-        replies = []
-        handler.send = lambda status, content, mime: replies.append((status, json.loads(content), mime))
-        handler.do_GET()
-        self.assertEqual(200, replies[0][0])
-        self.assertEqual(False, replies[0][1]['busy'])
-        namespace['active_since'] = namespace['time'].monotonic() - 100
-        handler.do_GET()
-        self.assertTrue(replies[-1][1]['busy'])
-        self.assertGreaterEqual(replies[-1][1]['activeSeconds'], 100)
+        rows = module.run(ctx, CONFIG)
+        active = [r for r in rows if r['severity'] > 1]
+        deferred = [r for r in rows if r['severity'] == 1]
+        self.assertTrue(active)
+        self.assertTrue(all(r['status'] == 0 for r in active), rows)
+        self.assertTrue(deferred)
+        self.assertTrue(all(r['status'] == 1 and r['observation'] == 'deferred' and r['notification'] == 'dashboard' and 'deferred' in r['detail'] for r in deferred), rows)
+        self.assertTrue(ctx.calls)
+        self.assertEqual([], ctx.secret_reads)
+        for url, args in ctx.calls:
+            self.assertNotIn('Authorization', (args.get('headers') or {}))
+            self.assertNotIn('X-Api-Key', (args.get('headers') or {}))
+            self.assertNotIn('X-Actual-Token', (args.get('headers') or {}))
+            if url.startswith('http'):
+                self.assertLessEqual(args['timeout'], 8)
+                self.assertLessEqual(args['max_bytes'], 65536)
+                if args.get('method') == 'POST':
+                    self.assertEqual('actual_budget', 'product_models')
+                    self.assertEqual('tools/list', json.loads(args['data'])['method'])
+                else:
+                    self.assertNotIn('method', args)
+    def test_bad_baseline_never_claims_health_or_leaks_responses(self):
+        faults = ['timeout','malformed',302,401,403,500] if FIXTURES else ['timeout','missing','not-ready','truncated','stale-generation']
+        if 'product_models' in ('radarr','prowlarr'):
+            faults = ['timeout','not-ready','truncated']
+        for fault in faults:
+            with self.subTest(fault=fault):
+                rows = module.run(Context(fault), CONFIG)
+                self.assertTrue(any(r['status'] for r in rows if r['severity'] > 1), rows)
+                self.assertNotIn('PRIVATE-CREDENTIAL', json.dumps(rows))
+    def test_legacy_credentials_cannot_reenable_privileged_access(self):
+        legacy = dict(CONFIG,credential_key='admin',session_secret='admin',workspace_path='/dav/spaces/private/',
+                      token_key='admin',api_url='http://renderer:18811',renderer_url='http://renderer:18811')
+        rows = module.run(Context(), legacy)
+        self.assertTrue(all(r['status'] == 1 for r in rows if r['severity'] == 1))
+    def test_deadline_fails_without_authenticated_fallback(self):
+        rows = module.run(Context(remaining=0), CONFIG)
+        self.assertTrue(all(r['status'] == 1 for r in rows))
 
 
 if __name__ == '__main__':

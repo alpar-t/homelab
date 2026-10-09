@@ -1,11 +1,43 @@
-# Product-model functional checks
+# Product models safe monitoring baseline
 
-Every five minutes the collector reads the controller's `/health`, an unauthenticated fixed nonexistent internal model route, and the renderer's `/capabilities`. The usual three-failure debounce applies. Requests have five-second timeouts, 4 KiB body limits, and a 30-second overall worker deadline. No credentials, renders, model downloads, queue submissions, or user changes occur.
+One existing read-only Kubernetes Deployment list checks product-model-api and product-model-renderer observed generation, desired replicas and available/ready replicas. Worker contracts, renderer dependencies and render-deadline coverage are explicitly deferred.
 
-The worker contract requires `ok: true` (the controller has not recorded a fatal worker error) and the protected model route's exact 401 unauthorized response. The renderer contract verifies executable access to the configured Blender binary and write/search access to its existing scratch directory. Its read-only capability endpoint reports only schema, dependency booleans, busy state, elapsed monotonic render seconds and the existing 900-second child deadline. It exposes no paths, scripts, job identities, or results.
+Coverage that cannot be obtained with native enforced read-only authority stays
+visible as advisory records with severity1, `observation: deferred`, `notification: dashboard` and a `coverage deferred`
+detail. These records must not be mistaken for completed functional validation.
+The ordinary operational checks use the shared framework's normal severity and
+transient grace. Existing Kubernetes/native signals continue independently.
 
-A render alerts only after 1200 seconds: the 15-minute Blender deadline plus five minutes for process cleanup and archive handling. Idle and legitimately long renders pass. The timer covers the complete renderer request and resets in `finally`; the monitoring GET never acquires the render lock or starts a subprocess. The capability schema deliberately fixes the 900-second contract so deadline changes require a corresponding monitor review.
+## Access and credential boundary
 
-Roll out the updated renderer ConfigMap and collector together; before that, a 404 capability response is correctly unavailable. Narrow NetworkPolicy rules permit only `zabbix` namespace pods with `app: collector` to reach ports 18810/18811; renderer egress remains denied. Because NetworkPolicies filter ports rather than HTTP verbs, a compromised collector could reach the existing renderer POST handler, just as the trusted controller can. No monitoring credential or RBAC expansion is required.
+Both original private NetworkPolicies remain unchanged. No collector ingress to18810/18811, gateway token, queue request, render, download, script or user job is accessed. The unused renderer capabilities route/activity instrumentation has been removed. Renderer POST executes caller-supplied scripts; permitting its port would grant execution authority. Readiness does not prove Blender execution, scratch capacity, worker progress, deadlines, OpenCloud publication or output validation.
 
-Limits: file permissions do not prove Blender can successfully render, enough scratch space remains, output validation works, or OpenCloud publishing works. The controller's current health contract does not expose worker heartbeat, queue counts, queue age, or a stalled controller thread. Those cannot be proven safely without a separate aggregate read-only controller endpoint in Baloo. Do not copy the broad OpenClaw gateway token into monitoring to read job metadata. No alerts depend on historical user job failures or absence of activity.
+No broad native token is an acceptable rollout prerequisite. No proxy is added.
+The foundation projects only approved native read-only credential keys and the
+public mail TLS CA; legacy unsafe keys are not mounted. If unsafe credentials
+were provisioned separately before this change, an authorized operator should
+remove/revoke them through the existing private credential workflow; this PR
+does not retrieve, provision or rotate any production credential.
+
+## Collection and validation
+
+The shared framework samples at a 15-minute healthy cadence. Operational
+failures require two real failed observations and a 30-minute grace;
+recovery requires two real healthy observations. Cached snapshots are not new
+observations. Failure retries follow the same bounded source-controlled cadence,
+with shared jitter and overload limits. Deferred checks remain severity1,
+observation deferred and dashboard-only; they never assert functional success.
+
+The JSON interval/deadline policy remains source-controlled and the service uses
+bounded requests within that deadline. The shared service deadline remains bounded by its JSON policy. HTTP requests use only fixed
+anonymous paths and the shared redirect/TLS/body-limit helper; no response bodies,
+credential values or exception strings enter snapshot evidence. Kubernetes reads
+use existing read-only RBAC, one bounded inventory page, and refuse pagination.
+
+Run `python3 -m unittest discover -s scripts/tests -p test_service_product_models.py`
+and `kubectl kustomize config/zabbix/manifests`. Fixtures cover normal operational
+evidence, explicit deferred records, rejected/malformed/unavailable evidence,
+redaction, deadline expiry and ignored legacy credential config. No production
+request or deployment is performed by these tests. Validate actual anonymous
+contracts/readiness after the normal reviewed GitOps rollout; this change does
+not claim new live functional validation.

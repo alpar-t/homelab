@@ -1,7 +1,11 @@
 {
-  "interval": 300,
+  "interval": 900,
   "deadline": 30,
-  "api_url": "http://product-model-api.baloo.svc.cluster.local:18810",
-  "renderer_url": "http://product-model-renderer.baloo.svc.cluster.local:18811",
-  "render_grace_seconds": 300
+  "render_grace_seconds": 300,
+  "namespace": "baloo",
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
 }
