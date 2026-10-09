@@ -14,7 +14,7 @@ See [the shared framework](../service-functional-checks.md) for startup,
 unknown/deferred observations and queue freshness.
 
 Every 15 minutes, the collector reads the anonymous `/api/info` endpoint,
-with an eight-second request timeout, 15-second worker deadline and 16 KiB
+with an five-second request timeout, 15-second worker deadline and 16 KiB
 response limit. It requires HTTP 200, integer `errorCode=0`, a numeric controller
 version, API version 3, and both `configured=true` and `registeredRoot=true`.
 This catches backend errors, HTML login/redirect responses, missing controller
