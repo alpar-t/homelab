@@ -7,5 +7,22 @@
   "minimum_failure_observations": 2,
   "minimum_recovery_observations": 2,
   "severity": 3,
-  "notification": "page"
+  "notification": "page",
+  "workloads": [],
+  "check_workloads": {
+    "Product models workload product-model-api": [
+      {
+        "namespace": "baloo",
+        "kind": "Deployment",
+        "name": "product-model-api"
+      }
+    ],
+    "Product models workload product-model-renderer": [
+      {
+        "namespace": "baloo",
+        "kind": "Deployment",
+        "name": "product-model-renderer"
+      }
+    ]
+  }
 }
