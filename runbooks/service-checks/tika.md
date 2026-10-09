@@ -1,10 +1,23 @@
 # Tika functional checks
 
-Every five minutes the Zabbix collector sends a fixed 52-byte plain-text body
+## Polling and incident confirmation
+
+Poll every 1800 seconds (30 minutes); shared failure grace is 3600 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+Every 30 minutes the Zabbix collector sends a fixed 52-byte plain-text body
 with PUT `/tika` to both Paperless's `tika:9998` and OpenCloud's
 `opencloud-tika:9998`. It requires HTTP 200, `text/plain`, and an exact decoded
 text match after trimming surrounding whitespace. Each instance has its own
-stable check under `functional/tika`; the usual three-failure debounce applies.
+stable check under `functional/tika`; the usual execution-based debounce applies.
 Requests take at most eight seconds each, share a thirty-second worker deadline,
 and cap responses at 4 KiB. No documents, credentials, files, or returned content
 are retained or included in evidence. Request bodies are constructed in memory;
