@@ -1,6 +1,19 @@
 # Cluster support controllers
 
-The functional baseline reads the node API every five minutes and verifies
+## Polling and incident confirmation
+
+Poll every 600 seconds (10 minutes); shared failure grace is 900 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+The functional baseline reads the node API every 10 minutes and verifies
 `gpu.intel.com/i915` allocatable remains at least 10 on buksi, pamacs and pufi.
 The Intel GPU plugin source selects amd64 nodes and configures
 `-shared-dev-num=10`; live read-only validation on 2026-10-08 confirmed 10 on
@@ -12,10 +25,9 @@ Nodes outside the configured plugin selector are explicitly skipped. Not-Ready
 nodes rely on infrastructure availability checks; newly Ready nodes receive ten
 minutes to register devices. Missing expected nodes fail. Malformed, incomplete,
 unauthorized or timed-out API reads become framework monitoring failures.
-The framework retries failures after one minute and uses the existing three
-failing-sample debounce. No credentials, extra RBAC or NetworkPolicy are needed;
+The framework retains the configured polling interval and uses the existing execution-based confirmation. No credentials, extra RBAC or NetworkPolicy are needed;
 the collector already has node get/list access. One API request uses the existing
-15-second Kubernetes client timeout within a 20-second worker deadline.
+five-second timeout within a 20-second worker deadline.
 
 Keep expected nodes, selector and capacity synchronized with intentional plugin
 placement or sharing changes. This verifies kubelet registration, not a working
