@@ -1,6 +1,19 @@
 # SearXNG functional checks
 
-Depends on the shared functional collector in foundation PR #124. Every 30 minutes,
+## Polling and incident confirmation
+
+Poll every 3600 seconds (1 hour); shared failure grace is 7200 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+Depends on the shared functional collector in foundation PR #124. Every 1 hour,
 `functional/searxng` makes one fixed General search for `Kubernetes` through the
 internal service. It requires the echoed query and at least one nonempty titled
 HTTP(S) link. This catches the previous HTTP-200/empty-results failure described in
@@ -17,7 +30,7 @@ LLM or user job. The deployed 1.14.0 adapter's `/app/dist/http-server.js` is the
 protocol authority; its default transport requires initialization before listing.
 
 Requests have 12-second search and 4-second MCP limits, bounded response sizes,
-and the common 30-second deadline. Existing three-failure debounce applies. No
+and the common 30-second deadline. Existing execution-based debounce applies. No
 credentials or new Kubernetes RBAC are required. SearXNG and its MCP adapter have
 no destination ingress NetworkPolicy; collector egress is unrestricted, so no
 network access change is necessary. Public Pocket ID protection stays intact.
