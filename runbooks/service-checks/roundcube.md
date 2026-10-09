@@ -1,7 +1,19 @@
 # Roundcube functional baseline
 
-Depends on the shared functional-check runner (foundation PR #124). Every five
-minutes, within a 25-second worker deadline, two checks run:
+## Polling and incident confirmation
+
+Poll every 900 seconds (15 minutes); shared failure grace is 1800 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+Depends on the shared functional-check runner (foundation PR #124). Every 15 minutes, within a 25-second worker deadline, two checks run:
 
 - **Roundcube OAuth bootstrap** requests the internal service anonymously with
   the configured public Host and HTTPS proxy header. It requires a Roundcube
@@ -14,7 +26,7 @@ minutes, within a 25-second worker deadline, two checks run:
   tagged success, IMAP4rev1 or IMAP4rev2, and `AUTH=OAUTHBEARER`. This checks the
   actual configured mail protocol rather than duplicating the existing TCP probe.
 
-The runner applies existing three-failure alert debounce and stale-result checks.
+The runner applies existing execution-based alert debounce and stale-result checks.
 HTTP is capped at 32 KiB/6 seconds; IMAP at twelve response lines, 4096 bytes per
 line and four seconds per operation, additionally bounded by remaining time.
 Output contains only fixed descriptions, never cookies, redirect parameters,
