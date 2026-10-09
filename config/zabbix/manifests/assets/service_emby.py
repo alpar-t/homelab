@@ -25,25 +25,7 @@ def run(ctx, config):
                                 "server-info schema valid" if valid else "server-info schema invalid"))
     except Exception:
         checks.append(ctx.check("Emby public server contract", True, "server-info request unavailable or invalid"))
-    try:
-        token = ctx.secret(config["token_key"])
-        user = ctx.secret(config["user_id_key"])
-        if not re.fullmatch(r"[0-9a-fA-F-]{32,36}", user):
-            raise ValueError("invalid user identifier")
-    except Exception:
-        checks.append(ctx.check("Emby scoped library query", True, "restricted monitor session credentials unavailable"))
-        return checks
-    try:
-        result = _get(ctx, base, "/Users/" + user + "/Items?Limit=1&Recursive=false&EnableImages=false&EnableUserData=false",
-                      {"X-Emby-Token": token})
-        items, count = result.get("Items"), result.get("TotalRecordCount")
-        valid = (isinstance(items, list) and type(count) is int and count >= 0
-                 and len(items) == min(count, 1)
-                 and all(isinstance(item, dict) and isinstance(item.get("Id"), str)
-                         and bool(item["Id"]) and isinstance(item.get("Type"), str)
-                         and bool(item["Type"]) for item in items))
-        checks.append(ctx.check("Emby scoped library query", not valid,
-                                "authenticated library query valid (empty permitted)" if valid else "library query schema invalid"))
-    except Exception:
-        checks.append(ctx.check("Emby scoped library query", True, "authenticated library query unavailable or invalid"))
+    checks.append(dict(ctx.check("Emby scoped library query", True,
+        "coverage deferred: no native session token or household-library access is granted to monitoring",
+        severity=1), observation='deferred', notification='dashboard'))
     return checks

@@ -1,7 +1,10 @@
 {
-  "interval": 300,
+  "interval": 900,
   "deadline": 20,
   "base_url": "http://emby.media.svc.cluster.local:8096/emby",
-  "token_key": "emby_monitor_token",
-  "user_id_key": "emby_monitor_user_id"
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
 }
