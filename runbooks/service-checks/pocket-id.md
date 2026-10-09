@@ -1,6 +1,19 @@
 # Pocket ID functional checks
 
-Every five minutes, within a 25-second service deadline, the collector fetches
+## Polling and incident confirmation
+
+Poll every 600 seconds (10 minutes); shared failure grace is 900 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+Every 10 minutes, within a 25-second service deadline, the collector fetches
 internal OIDC discovery and JWKS metadata. It requires the configured public
 issuer, authorization/token/JWKS endpoints, authorization-code and openid
 support, and at least one public RSA RS256 verification key with a key ID,
@@ -20,7 +33,7 @@ these internal Services have no matching ingress isolation policy, and the
 collector has unrestricted egress. Requests cap bodies at 64 KiB and timeouts
 at five seconds (also constrained by remaining deadline). Evidence contains
 only fixed descriptions, never cookies, redirect query values or key material.
-Existing three-sample debounce applies.
+Existing execution-based debounce applies.
 
 Read-only checks from the existing OpenClaw pod confirmed the deployed discovery
 contract, RSA RS256 key shape and both redirect/client/callback/CSRF contracts.
