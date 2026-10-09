@@ -7,5 +7,23 @@
   "minimum_failure_observations": 2,
   "minimum_recovery_observations": 2,
   "severity": 3,
-  "notification": "page"
+  "notification": "page",
+  "workloads": [],
+  "check_workloads": {
+    "ArgoCD Application inventory": [],
+    "ArgoCD Repository and comparison": [
+      {
+        "namespace": "argocd",
+        "kind": "Deployment",
+        "name": "argocd-repo-server"
+      }
+    ],
+    "ArgoCD Reconciliation progress": [
+      {
+        "namespace": "argocd",
+        "kind": "StatefulSet",
+        "name": "argocd-application-controller"
+      }
+    ]
+  }
 }
