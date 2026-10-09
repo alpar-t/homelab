@@ -1,6 +1,19 @@
 # Velero resource-backup functional checks
 
-The collector reads Velero CRs every five minutes. It checks `default` storage
+## Polling and incident confirmation
+
+Poll every 600 seconds (10 minutes); shared failure grace is 900 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+The collector reads Velero CRs every 10 minutes. It checks `default` storage
 availability and a validation timestamp within 15 minutes, then verifies the
 expected `velero-daily-resources` schedule and its completed Kubernetes-resource
 backup. The live inventory on 2026-10-08 confirmed `Enabled`, daily `0 4 * * *`
@@ -28,13 +41,11 @@ The namespace-local `zabbix-velero-readonly` Role grants only get/list on
 backupstoragelocations, schedules and backups in `velero` to `zabbix/collector`.
 There are no credentials to provision, Secret reads, writes, backup creation,
 restores, or direct B2 traffic. Sync the Role/RoleBinding together with the
-collector ConfigMap. Reads use the shared Kubernetes client's fixed 15-second
-request timeout and the runner's 30-second deadline; each request checks the
+collector ConfigMap. Reads use the shared Kubernetes client's fixed five-second timeout and the runner's 30-second deadline; each request checks the
 remaining deadline. Lists stop at one 500-object page, failing visibly if more
 pages exist instead of looping indefinitely. API errors report only exception
 class through the runner, without storage errors, private paths or object data.
-The existing three-sample Zabbix debounce applies; failed checks retry after
-60 seconds.
+The existing execution-based Zabbix debounce applies; Failures retain the configured polling interval.
 
 These checks prove controller-reported resource backup completion and storage
 validation, not restorability, object integrity or volume/database protection.
