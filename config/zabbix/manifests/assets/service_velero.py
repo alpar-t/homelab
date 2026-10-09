@@ -15,7 +15,7 @@ def timestamp(value):
 
 def read(ctx, path, listing=False):
     # Shared Kubernetes transport can consume up to 15 seconds.
-    if ctx.remaining() < 16:
+    if ctx.remaining() < 6:
         raise TimeoutError('deadline')
     result = ctx.kube.get(BASE + path + ('?limit=500' if listing else ''))
     if not listing:
