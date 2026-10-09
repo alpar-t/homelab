@@ -154,6 +154,19 @@ spec:
           secret:
             secretName: zabbix-functional-credentials
             optional: true
+            # Project only native-enforced read-only credentials and public TLS trust.
+            # Legacy browser/HA/arr/file/financial/admin keys must never be mounted.
+            items:
+              - key: immich-api-key
+                path: immich-api-key
+              - key: paperless_monitor_token
+                path: paperless_monitor_token
+              - key: vikunja_read_token
+                path: vikunja_read_token
+              - key: tandoor_read_token
+                path: tandoor_read_token
+              - key: stalwart_mail_ca
+                path: stalwart_mail_ca
         - name: arrival-state
           persistentVolumeClaim:
             claimName: collector-arrival-state
