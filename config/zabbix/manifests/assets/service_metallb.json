@@ -1,5 +1,5 @@
 {
-  "interval": 300,
+  "interval": 600,
   "deadline": 30,
   "services": [
     {
@@ -53,5 +53,10 @@
       "ip": "192.168.1.208"
     }
   ],
-  "probe_url": "http://192.168.1.204:8096/emby/System/Info/Public"
+  "probe_url": "http://192.168.1.204:8096/emby/System/Info/Public",
+  "failure_grace_seconds": 900,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
 }
