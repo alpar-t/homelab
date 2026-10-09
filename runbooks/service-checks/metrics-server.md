@@ -16,7 +16,7 @@ unknown/deferred observations and queue freshness.
 `Metrics-server fresh node coverage` reads the Kubernetes NodeList and
 metrics.k8s.io/v1beta1 NodeMetricsList every ten minutes. It rejects empty,
 incomplete/paginated, duplicate, unknown-node, or malformed responses. Each
-sample must contain CPU/memory quantities, a positive seconds window of at
+required sample must contain CPU/memory quantities, a positive seconds window of at
 most 180 seconds, and a timezone-aware timestamp no older than 180 seconds
 and no more than 15 seconds in the future.
 
