@@ -1,55 +1,43 @@
-# Sonarr functional baseline
+# Sonarr safe monitoring baseline
 
-Depends on functional-monitoring foundation PR #124. Every 300 seconds, within
-a 30-second worker deadline, the collector issues four bounded GET requests:
-`/ping`, `/api/v3/system/status`, `/api/v3/health`, `/api/v3/rootfolder`.
-Each request has at most five seconds and 256 KiB. No redirects are followed.
-Contracts were checked against the [deployed Sonarr 4.0.17.2952 OpenAPI](https://github.com/Sonarr/Sonarr/blob/v4.0.17.2952/src/Sonarr.Api.V3/openapi.json);
-Sonarr v4 uses API v3.
+The previously verified anonymous /ping must return JSON statusOK. Native health/download-client/root checks are explicitly deferred.
 
-Three checks cover the application/authenticated system contract, native cached
-health warnings/errors (including download-client and root-folder diagnostics),
-and configured root accessibility. Notices do not alert. Empty health and root
-lists pass; an empty library does not alert. Details contain counts and fixed
-strings only, never health messages, filesystem paths, titles, or keys.
-Missing credentials, HTTP denial, HTML login pages, malformed responses and
-timeouts fail explicitly. The foundation applies its existing alert debounce
-and freshness checks.
+Coverage that cannot be obtained with native enforced read-only authority stays
+visible as advisory records with severity1, `observation: deferred`, `notification: dashboard` and a `coverage deferred`
+detail. These records must not be mistaken for completed functional validation.
+The ordinary operational checks use the shared framework's normal severity and
+transient grace. Existing Kubernetes/native signals continue independently.
 
-## Credential prerequisite
+## Access and credential boundary
 
-No credentials are copied or provisioned by this change. Sonarr exposes one
-application API key with broad read/write authority; it cannot be restricted to
-these GETs or to a monitoring account. The service-specific Secret key name
-`sonarr_read_api_key` describes intended use, not an application-enforced scope.
-No existing read-only facade was found in the media manifests. The implementation
-targets the actual Sonarr Service and uses fixed GET paths exclusively. The
-rollout prerequisite is operator acceptance of the native key's inherent broad
-permissions and provisioning through the approved secret-management workflow.
-No existing administrator credential is copied by this implementation. An
-independent read-only facade is possible future hardening, not a required new
-component of this baseline.
+Sonarr has an application-wide API key, not a native read-only key. A key named sonarr_read_api_key has no narrower authority. No key is read/provisioned. Existing Kubernetes workload/storage monitoring continues; ping does not prove media import, root-folder accessibility or download-client connectivity.
 
-Provision the approved native key under `sonarr_read_api_key` in the existing
-`zabbix/zabbix-functional-credentials` Secret using the approved secret-management
-workflow, preserving other keys. It is mounted as an optional file; there is no
-Secret API access. Remove collector access by deleting only this key, or rotate
-Sonarr's application API key in Settings > General > Security when using direct
-access (rotation also affects other integrations). Coordinate those integrations.
-Until a credential path is approved/provisioned, the anonymous ping is evaluated
-but authenticated checks explicitly report unavailable; they never claim health.
+No broad native token is an acceptable rollout prerequisite. No proxy is added.
+The foundation projects only approved native read-only credential keys and the
+public mail TLS CA; legacy unsafe keys are not mounted. If unsafe credentials
+were provisioned separately before this change, an authorized operator should
+remove/revoke them through the existing private credential workflow; this PR
+does not retrieve, provision or rotate any production credential.
 
-## Limits and diagnosis
+## Collection and validation
 
-Use Sonarr's System > Status UI to investigate warning/error counts; no message
-content enters Zabbix. Health is Sonarr's cached native assessment; the collector
-does not invoke client tests, searches, scans, downloads, imports, or mutations.
-It does not prove a download/import can complete, indexer search quality, media
-integrity, or end-to-end playback. Root GET may enumerate unmapped folder metadata
-internally, bounded by the response cap; none is output. An oversized response
-fails and needs review rather than increasing bounds automatically.
+The shared framework samples at a 15-minute healthy cadence. Operational
+failures require two real failed observations and a 30-minute grace;
+recovery requires two real healthy observations. Cached snapshots are not new
+observations. Failure retries follow the same bounded source-controlled cadence,
+with shared jitter and overload limits. Deferred checks remain severity1,
+observation deferred and dashboard-only; they never assert functional success.
 
-The media manifests have no ingress NetworkPolicy selecting arr-stack, and the
-collector has no egress policy, so no network-access or RBAC expansion is needed.
-There was no authenticated live validation; fixtures and render checks validate
-the implementation pending the credential prerequisite.
+The JSON interval/deadline policy remains source-controlled and the service uses
+bounded requests within that deadline. The shared service deadline remains bounded by its JSON policy. HTTP requests use only fixed
+anonymous paths and the shared redirect/TLS/body-limit helper; no response bodies,
+credential values or exception strings enter snapshot evidence. Kubernetes reads
+use existing read-only RBAC, one bounded inventory page, and refuse pagination.
+
+Run `python3 -m unittest discover -s scripts/tests -p test_service_sonarr.py`
+and `kubectl kustomize config/zabbix/manifests`. Fixtures cover normal operational
+evidence, explicit deferred records, rejected/malformed/unavailable evidence,
+redaction, deadline expiry and ignored legacy credential config. No production
+request or deployment is performed by these tests. Validate actual anonymous
+contracts/readiness after the normal reviewed GitOps rollout; this change does
+not claim new live functional validation.

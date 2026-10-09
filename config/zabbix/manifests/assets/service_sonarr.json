@@ -1,6 +1,10 @@
 {
-  "interval": 300,
+  "interval": 900,
   "deadline": 30,
   "base_url": "http://sonarr.media.svc.cluster.local:8989",
-  "credential_key": "sonarr_read_api_key"
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
 }
