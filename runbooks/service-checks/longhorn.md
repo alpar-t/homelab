@@ -1,7 +1,20 @@
 # Longhorn functional baseline
 
+## Polling and incident confirmation
+
+Poll every 900 seconds (15 minutes); shared failure grace is 1800 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
 The `functional/longhorn` check reads the named `default` BackupTarget CR
-through the Kubernetes API every five minutes. It requires a parseable,
+through the Kubernetes API every 15 minutes. It requires a parseable,
 timezone-aware `status.lastSyncedAt` and a nonempty controller `ownerID`.
 Synchronization older than two hours fails, allowing four missed configured
 30-minute polls; timestamps more than five minutes in the future also fail.
@@ -19,8 +32,7 @@ confirms the timer advances `spec.syncRequestedAt` and reconciliation updates
 `status.lastSyncedAt`; failure to create a backup client leaves it unchanged.
 
 The worker deadline is 30 seconds with one existing Kubernetes-client GET
-bounded to 15 seconds. Standard Zabbix three-failure debounce applies to
-cached samples; it does not imply three distinct five-minute executions.
+bounded to five seconds. Confirmation uses actual completed executions; cached snapshots never count as new observations.
 Existing collector `get` permission on `backuptargets.longhorn.io` suffices.
 No new credential, network access, RBAC, or application sign-in is required.
 
