@@ -1,7 +1,20 @@
 # Maintainerr functional checks
 
-Every five minutes the collector makes four bounded internal GET requests and
-reports three checks, with the standard three-failure alert debounce:
+## Polling and incident confirmation
+
+Poll every 900 seconds (15 minutes); shared failure grace is 1800 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+Every 15 minutes the collector makes four bounded internal GET requests and
+reports three checks, with the standard execution-based alert debounce:
 
 - Database/media integration: `/api/health/ready` must report `status: ok` and
   `database: ok` (SQLite `SELECT 1`), and `/api/media-server` must return a
