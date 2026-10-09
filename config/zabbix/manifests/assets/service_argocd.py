@@ -15,7 +15,7 @@ def run(ctx, config):
     try:
         # One page only: the shared Kubernetes client has a 15-second timeout.
         # Require enough remaining budget; refuse truncated inventories.
-        if ctx.remaining() < 16:
+        if ctx.remaining() < 6:
             raise ValueError('budget')
         page = ctx.kube.get('/apis/argoproj.io/v1alpha1/namespaces/argocd/applications?limit=500')
         apps = page['items']

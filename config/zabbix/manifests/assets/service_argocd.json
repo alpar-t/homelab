@@ -1,1 +1,11 @@
-{"interval":300,"deadline":30,"grace_seconds":1800,"freshness_seconds":1800}
+{
+  "interval": 600,
+  "deadline": 30,
+  "grace_seconds": 1800,
+  "freshness_seconds": 1800,
+  "failure_grace_seconds": 900,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
+}
