@@ -1,6 +1,19 @@
 # Whisper functional checks
 
-The Zabbix functional worker runs every five minutes with a 20-second deadline.
+## Polling and incident confirmation
+
+Poll every 1800 seconds (30 minutes); shared failure grace is 3600 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+The Zabbix functional worker runs every 30 minutes with a 20-second deadline.
 `Whisper ASR capabilities` sends only Wyoming `describe` and requires an
 installed ASR program/model advertising Hungarian, Romanian and English.
 `Whisper HTTP decoder contract` reads `/capabilities`; that bridge endpoint
@@ -29,7 +42,7 @@ Deployment sets `WHISPER_MODEL=small`. Its `installed` flag is advertisement,
 not an inference test. Silence inference was intentionally omitted: it can
 occupy the single HTTP bridge/GPU and its output is not a reliable speech assertion.
 The single-threaded bridge can also time out during legitimate long transcription;
-the standard three-failure alert debounce limits transient alerts.
+the standard execution-based alert debounce limits transient alerts.
 
 Protocol framing and schema reference:
 [Wyoming event implementation](https://github.com/rhasspy/wyoming/blob/master/wyoming/event.py)
