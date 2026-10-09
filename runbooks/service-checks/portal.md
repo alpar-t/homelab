@@ -1,7 +1,20 @@
 # Portal functional checks
 
-The collector samples every 10 minutes with a 30-second deadline and three-second
-HTTP timeouts. Three failed samples trigger the existing Zabbix alert debounce.
+## Polling and incident confirmation
+
+Poll every 1800 seconds (30 minutes); shared failure grace is 3600 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+The collector samples every 30 minutes with a 30-second deadline and three-second
+HTTP timeouts. execution-baseds trigger the existing Zabbix alert debounce.
 No credentials or additional Kubernetes permissions are required. The portal has
 no destination NetworkPolicy restricting the collector; no access policy changes
 are introduced.
