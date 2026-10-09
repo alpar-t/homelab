@@ -1,7 +1,19 @@
 # Vaultwarden functional baseline
 
-The Zabbix functional runner samples the internal Vaultwarden service every five
-minutes with a 30-second worker deadline and the existing three-failure alert
+## Polling and incident confirmation
+
+Poll every 900 seconds (15 minutes); shared failure grace is 1800 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+The Zabbix functional runner samples the internal Vaultwarden service every 15 minutes with a 30-second worker deadline and the existing execution-based alert
 debounce. Four requests produce three signals:
 
 - `/api/config` must advertise the Vaultwarden client config schema, a version,
