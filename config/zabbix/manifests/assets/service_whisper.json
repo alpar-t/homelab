@@ -1,8 +1,17 @@
 {
-  "interval": 300,
+  "interval": 1800,
   "deadline": 20,
   "host": "whisper.baloo.svc.cluster.local",
   "port": 10300,
   "bridge_url": "http://whisper.baloo.svc.cluster.local:10301/capabilities",
-  "languages": ["hu", "ro", "en"]
+  "languages": [
+    "hu",
+    "ro",
+    "en"
+  ],
+  "failure_grace_seconds": 3600,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
 }
