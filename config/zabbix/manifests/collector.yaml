@@ -19,7 +19,7 @@ rules:
     resources: [nodes]
     verbs: [get, list]
   - apiGroups: [longhorn.io]
-    resources: [volumes, backups, backuptargets]
+    resources: [volumes, replicas, backups, backuptargets]
     verbs: [get, list]
   - apiGroups: [postgresql.cnpg.io]
     resources: [clusters, scheduledbackups]

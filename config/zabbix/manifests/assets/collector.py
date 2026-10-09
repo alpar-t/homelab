@@ -45,9 +45,46 @@ def quantity(value):
 
 def check(name, family, bad, detail, severity=4):
     # IDs are safe for both Zabbix item keys and JSONPath literals.
+    delay = '5m'
+    if family in ('longhorn', 'backup', 'cluster') or severity <= 3:
+        delay = '10m'
+    if family in ('monitoring', 'storage') or (family == 'node' and name.count(' ') == 1):
+        delay = 'immediate'
+    if family == 'longhorn' and 'robustness=faulted' in str(detail):
+        delay = 'immediate'
     return {'id': hashlib.sha256(name.encode()).hexdigest()[:20], 'name': name,
             'family': family, 'status': int(bool(bad)), 'detail': str(detail)[:1800],
-            'severity': severity}
+            'severity': severity, 'notify_delay': delay,
+            'failure_samples': 5 if family == 'node' and name.count(' ') == 1 else 3}
+
+
+class PodCheckLifecycle:
+    """Keep recovery samples for retired pods, including across collector restarts."""
+
+    def __init__(self, path):
+        self.path = Path(path)
+        self.records = json.loads(self.path.read_text()) if self.path.exists() else {}
+
+    def reconcile(self, checks, inventory_ok, now):
+        current = {c['id']: c for c in checks if c['name'].startswith('Pod ')}
+        for key, value in current.items():
+            self.records[key] = {'check': value, 'last_seen': now}
+        for key, record in list(self.records.items()):
+            if key in current:
+                continue
+            if not inventory_ok:
+                # An API failure cannot prove a pod has recovered or disappeared.
+                checks.append(record['check'])
+            elif now - record['last_seen'] < 86400:
+                record['check'] = {**record['check'], 'status': 0,
+                                   'detail': 'Pod retired from the monitored inventory; not a service recovery'}
+                checks.append(record['check'])
+            else:
+                del self.records[key]
+        temp = self.path.with_suffix('.tmp')
+        temp.write_text(json.dumps(self.records))
+        temp.replace(self.path)
+        return checks
 
 
 class Kubernetes:
@@ -146,10 +183,10 @@ def evaluate(data, policy, now):
             continue
         if age(p['metadata']['creationTimestamp'], now) < 600:
             continue  # Startup/rollout grace; infrastructure is checked separately.
-        if not ready(p):
-            name = p['metadata']['namespace'] + '/' + p['metadata']['name']
-            states = [s.get('state', {}) for s in p.get('status', {}).get('containerStatuses', [])]
-            checks.append(check(f'Pod {name}', 'cluster', True, json.dumps(states), 3))
+        name = p['metadata']['namespace'] + '/' + p['metadata']['name']
+        states = [s.get('state', {}) for s in p.get('status', {}).get('containerStatuses', [])]
+        checks.append(check(f'Pod {name}', 'cluster', not ready(p),
+                            'Ready' if ready(p) else json.dumps(states), 3))
 
     completed = {}
     for b in data['longhorn_backups']:
@@ -213,12 +250,85 @@ def evaluate(data, policy, now):
     return checks
 
 
+def add_reboot_dependencies(checks, data, policy):
+    """Expose placement to Zabbix; its history expressions own the grace period.
+
+    Keep raw failure state intact. A reboot must not close an existing incident,
+    and a service on an unrelated node must remain independently alertable.
+    """
+    nodes = {n['metadata']['name']: ready(n) for n in data['nodes']}
+    pods = data['pods']
+    grace = policy.get('reboot_grace', {})
+    dependencies = {}
+
+    def pod_nodes(selected):
+        return {p.get('spec', {}).get('nodeName') for p in selected} - {None, ''}
+
+    def matches(pod, selector):
+        labels = pod['metadata'].get('labels', {})
+        if any(labels.get(k) != v for k, v in selector.get('matchLabels', {}).items()):
+            return False
+        for requirement in selector.get('matchExpressions', []):
+            key, op = requirement['key'], requirement['operator']
+            values = requirement.get('values', [])
+            if ((op == 'In' and labels.get(key) not in values)
+                    or (op == 'NotIn' and labels.get(key) in values)
+                    or (op == 'Exists' and key not in labels)
+                    or (op == 'DoesNotExist' and key in labels)):
+                return False
+        return bool(selector)
+
+    workloads = {}
+    for resource, prefix in [('deployments', 'Application '), ('daemonsets', 'DaemonSet ')]:
+        for obj in data[resource]:
+            ns, name = obj['metadata']['namespace'], obj['metadata']['name']
+            parents = pod_nodes(p for p in pods if p['metadata']['namespace'] == ns
+                                and matches(p, obj.get('spec', {}).get('selector', {})))
+            dependencies[prefix + ns + '/' + name] = parents
+            if resource == 'deployments':
+                workloads[(ns, name)] = parents
+    metrics_nodes = workloads.get(('kube-system', 'metrics-server'), set())
+    dependencies['Collector API metrics'] = metrics_nodes
+    for name in policy['nodes']:
+        dependencies['Physical storage ' + name] = {name}
+        for metric in ('cpu', 'memory'):
+            dependencies[f'Node {name} {metric}'] = {name} | metrics_nodes
+    for pod in pods:
+        dependencies['Pod ' + pod['metadata']['namespace'] + '/' + pod['metadata']['name']] = pod_nodes([pod])
+    for ns, name in policy['databases']:
+        parents = pod_nodes(p for p in pods if p['metadata']['namespace'] == ns
+                            and p['metadata'].get('labels', {}).get('cnpg.io/cluster') == name)
+        dependencies[f'CNPG health {ns}/{name}'] = parents
+    for volume in data['volumes']:
+        status = volume.get('status', {})
+        ks = status.get('kubernetesStatus', {})
+        name = volume['metadata']['name']
+        parents = {status.get('currentNodeID')} - {None, ''}
+        parents |= {r.get('spec', {}).get('nodeID') for r in data['replicas']
+                    if r.get('spec', {}).get('volumeName') == name} - {None, ''}
+        dependencies[f"Longhorn volume {ks.get('namespace', '')}/{ks.get('pvcName', name)}"] = parents
+    for probe in policy['probes']:
+        if probe.get('workloads'):
+            dependencies[probe['name']] = set().union(*(workloads.get(tuple(w), set()) for w in probe['workloads']))
+    for name in ('Mail fetchmail failures', 'Mail stalwart failures', 'Mail incoming activity'):
+        dependencies[name] = workloads.get(('stalwart-mail', 'stalwart'), set())
+    for value in checks:
+        parents = dependencies.get(value['name'], set())
+        value['parent_nodes'] = sorted(parents)
+        value['parent_available'] = int(all(nodes.get(name, False) for name in parents))
+        rebuilding = value['family'] == 'longhorn' and 'robustness=faulted' not in value['detail']
+        value['grace_samples'] = (grace.get('replica_samples', 30) if rebuilding
+                                  else grace.get('service_samples', 10) if value['name'] in dependencies else 1)
+    return checks
+
+
 PATHS = {
     'nodes': '/api/v1/nodes', 'pods': '/api/v1/pods',
     'events': '/api/v1/namespaces/node-config/events',
     'metrics': '/apis/metrics.k8s.io/v1beta1/nodes',
     'deployments': '/apis/apps/v1/deployments', 'daemonsets': '/apis/apps/v1/daemonsets',
     'volumes': '/apis/longhorn.io/v1beta2/namespaces/longhorn-system/volumes',
+    'replicas': '/apis/longhorn.io/v1beta2/namespaces/longhorn-system/replicas',
     'longhorn_backups': '/apis/longhorn.io/v1beta2/namespaces/longhorn-system/backups',
     'backup_targets': '/apis/longhorn.io/v1beta2/namespaces/longhorn-system/backuptargets',
     'clusters': '/apis/postgresql.cnpg.io/v1/clusters',
@@ -247,9 +357,9 @@ def probe(target):
         return check(name, target.get('family', 'reachability'), True, type(error).__name__)
 
 
-def collect(kube, policy, activity=None, functional=None):
+def collect(kube, policy, activity=None, pod_lifecycle=None, functional=None):
     now = time.time()
-    data, failures = {}, []
+    data, api_checks, failed_apis = {}, [], set()
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
         futures = {pool.submit(kube.items, path): name for name, path in PATHS.items()}
         for future in concurrent.futures.as_completed(futures):
@@ -258,11 +368,15 @@ def collect(kube, policy, activity=None, functional=None):
                 data[name] = future.result()
                 if name in ('nodes', 'volumes', 'clusters', 'backup_targets') and not data[name]:
                     raise ValueError('empty inventory')
+                api_checks.append(check('Collector API ' + name, 'monitoring', False, 'Inventory query succeeded'))
             except Exception as error:
                 data[name] = []
-                failures.append(check('Collector API ' + name, 'monitoring', True, type(error).__name__))
+                failed_apis.add(name)
+                api_checks.append(check('Collector API ' + name, 'monitoring', True, type(error).__name__))
         reachability = list(pool.map(probe, policy['probes']))
-    checks = evaluate(data, policy, now) + failures + reachability
+    checks = evaluate(data, policy, now) + api_checks + reachability
+    if pod_lifecycle is not None:
+        checks = pod_lifecycle.reconcile(checks, 'pods' not in failed_apis, now)
     mail_pods = [p for p in data['pods'] if p['metadata']['namespace'] == 'stalwart-mail'
                  and p['metadata'].get('labels', {}).get('app') == 'stalwart'
                  and not p['metadata'].get('deletionTimestamp')]
@@ -294,7 +408,7 @@ def collect(kube, policy, activity=None, functional=None):
                                 'Arrival monitoring unavailable: ' + type(error).__name__, 3))
     if functional is not None:
         checks.extend(functional.collect())
-    return {'collected_at': int(now), 'checks': checks}
+    return {'collected_at': int(now), 'checks': add_reboot_dependencies(checks, data, policy)}
 
 
 def main():
@@ -302,6 +416,7 @@ def main():
     kube = Kubernetes()
     activity = MailActivity(os.environ.get('MAIL_ACTIVITY_STATE', '/state/mail-activity.json'))
     functional = FunctionalChecks(kube, Path(os.environ.get('POLICY_FILE', '/config/policy.json')).parent, check)
+    pod_lifecycle = PodCheckLifecycle(os.environ.get('POD_CHECK_STATE', '/state/pod-checks.json'))
     snapshot = {'collected_at': 0, 'checks': []}
     lock = threading.Lock()
 
@@ -310,7 +425,7 @@ def main():
         while True:
             started = time.monotonic()
             try:
-                result = collect(kube, policy, activity, functional)
+                result = collect(kube, policy, activity, pod_lifecycle=pod_lifecycle, functional=functional)
                 with lock:
                     snapshot = result
             except Exception as error:
