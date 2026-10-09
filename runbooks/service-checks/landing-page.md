@@ -25,7 +25,7 @@ Third-party assets are never fetched. Current source declares no first-party
 JS/CSS files, so inline stylesheet syntax is the styling baseline. Cloudflare
 may rewrite public fonts into inline CSS; font files are outside this baseline.
 Requests cap homepage at 256 KiB and the selected asset at 512 KiB, each with
-at most six seconds and remaining worker time. Redirects fail visibly.
+at most five seconds and remaining worker time. Redirects fail visibly.
 
 No credentials, new RBAC, or access policy changes are needed. Landing-page has
 no ingress NetworkPolicy and collector has no egress isolation in source.
