@@ -1,9 +1,22 @@
 # Pi-hole functional DNS monitoring
 
+## Polling and incident confirmation
+
+Poll every 600 seconds (10 minutes); shared failure grace is 900 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
 The Zabbix collector samples both `primary` and `secondary` Pi-hole instances
-in namespace `pihole` every 300 seconds, under a 30-second service deadline.
+in namespace `pihole` every 600 seconds, under a 30-second service deadline.
 Each has its own stable `Pi-hole <instance> DNS` check in `functional/pihole`.
-Normal Zabbix three-failure debounce applies.
+Normal Zabbix execution-based debounce applies.
 
 The collector discovers pod addresses using its existing read-only pod RBAC,
 then sends an A query directly to each address on UDP port 53 for
