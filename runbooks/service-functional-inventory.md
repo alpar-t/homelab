@@ -2,7 +2,7 @@
 
 Inventory taken from live Deployments, StatefulSets, DaemonSets, Services, CronJobs, Ingresses and ArgoCD Applications on 2026-10-08, cross-checked against repository manifests. Home Assistant is a separate appliance. Multiple instances and tightly coupled dependencies are grouped under their operational service.
 
-Each service is assigned an isolated Sol implementation agent and PR. Keep the first baseline small: semantic API reads, protocol transactions or small in-memory conversions; use passive reconciliation evidence for controllers where a synthetic transaction would be disruptive. The common runner executes bounded deterministic checks without invoking an LLM. The existing Zabbix three-failure trigger applies.
+Each service is assigned an isolated Sol implementation agent and PR. Keep the first baseline small: semantic API reads, protocol transactions or small in-memory conversions; use passive reconciliation evidence for controllers where a synthetic transaction would be disruptive. The common runner executes bounded deterministic checks without invoking an LLM. Independent execution gates, recovery grace and notification routing are described in [the review decisions](service-monitoring-self-review.md).
 
 PRs target the shared framework branch `feat/monitoring-functional-foundation` until that foundation is merged. Service PRs must then be retargeted to `main`; they are not deployed by this implementation task. Credential and network prerequisites are documented in each PR and service runbook.
 
@@ -64,8 +64,8 @@ PRs target the shared framework branch `feat/monitoring-functional-foundation` u
 - Frigate reports zero capture/process frame activity for the enabled back camera. No footage was retrieved and no camera settings were changed.
 - Local Stalwart TLS currently uses a self-signed certificate. Its monitoring trust anchor must be provisioned explicitly; hostname verification stays enabled.
 - MetalLB's WireGuard `status.node` lagged current speaker metadata. The check uses the current native speaker label and live owner rather than turning the stale field into an outage alarm.
-- Authenticated checks require the dedicated credentials/configuration described in their service runbooks. Some native APIs have no read-only token scope; their actual token permissions are explicitly documented. No credentials were provisioned as part of these PRs.
-- Whisper's decoder capability route and the product renderer's dependency/activity route require their included application changes and pod rollouts before their checks become healthy.
+- Authenticated checks require the dedicated credentials/configuration described in their service runbooks. Native APIs without safe read-only credentials are explicitly deferred; their write-capable tokens must not be provisioned. No credentials were provisioned as part of these PRs.
+- Whisper's decoder capability route requires its included application change and a pod rollout before its check becomes healthy. Privileged browser and product-renderer functional access is deferred.
 - No PR was merged or deployed. Live evidence is distinguished from fixture-only validation in each PR; several network paths and authenticated workflows remain rollout checks.
 
 ## Scope boundaries
