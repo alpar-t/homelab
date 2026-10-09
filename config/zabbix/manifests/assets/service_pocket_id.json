@@ -1,5 +1,5 @@
 {
-  "interval": 300,
+  "interval": 600,
   "deadline": 25,
   "internal_url": "http://pocket-id.pocket-id.svc.cluster.local",
   "issuer": "https://auth.newjoy.ro",
@@ -9,7 +9,22 @@
     "jwks_uri": "https://auth.newjoy.ro/.well-known/jwks.json"
   },
   "proxies": [
-    {"name": "portal", "url": "http://oauth2-proxy.portal.svc.cluster.local:4180", "client_id": "portal", "callback": "https://portal.newjoy.ro/oauth2/callback"},
-    {"name": "search", "url": "http://oauth2-proxy-search.baloo.svc.cluster.local:4180", "client_id": "searxng-search", "callback": "https://search.newjoy.ro/oauth2/callback"}
-  ]
+    {
+      "name": "portal",
+      "url": "http://oauth2-proxy.portal.svc.cluster.local:4180",
+      "client_id": "portal",
+      "callback": "https://portal.newjoy.ro/oauth2/callback"
+    },
+    {
+      "name": "search",
+      "url": "http://oauth2-proxy-search.baloo.svc.cluster.local:4180",
+      "client_id": "searxng-search",
+      "callback": "https://search.newjoy.ro/oauth2/callback"
+    }
+  ],
+  "failure_grace_seconds": 900,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
 }
