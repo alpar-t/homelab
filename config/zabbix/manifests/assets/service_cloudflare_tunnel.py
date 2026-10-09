@@ -39,10 +39,15 @@ def run(ctx, config):
                 unavailable += 1
     except Exception:
         inventory_failed = True
+    if inventory_failed:
+        # No connector observation was made; shared runner owns telemetry failure.
+        raise ValueError('connector inventory unavailable')
     expected = config['expected_replicas']
     result = [ctx.check('Cloudflare tunnel connected replicas', inventory_failed or connected < expected,
                         f'connected={connected}; expected={expected}; sampled={sampled}; unavailable={unavailable}' +
-                        ('; inventory unavailable' if inventory_failed else ''))]
+                        ('; inventory unavailable' if inventory_failed else ''),
+                        severity=2 if 0 < connected < expected else 3,
+                        notification='dashboard' if 0 < connected < expected else 'page')]
     try:
         response = ctx.http(config['public_url'], headers={'User-Agent': 'HomePBP-monitor/1'},
                             timeout=min(4, ctx.remaining()), max_bytes=262144)

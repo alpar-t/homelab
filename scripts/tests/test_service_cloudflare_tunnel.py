@@ -28,8 +28,8 @@ class Context:
     def remaining(self):
         return 30
 
-    def check(self, name, bad, detail, severity=3):
-        return dict(name=name, status=int(bad), detail=detail)
+    def check(self, name, bad, detail, severity=3, **kwargs):
+        return dict(name=name, status=int(bad), detail=detail, severity=severity, **kwargs)
 
     def http(self, url, **kwargs):
         self.calls.append(kwargs)
@@ -58,7 +58,8 @@ class Tests(unittest.TestCase):
 
     def test_insufficient_inventory_and_api_error(self):
         self.assertEqual(module.run(Context((4, 4)), CONFIG)[0]['status'], 1)
-        self.assertEqual(module.run(Context(inventory=TimeoutError('secret')), CONFIG)[0]['status'], 1)
+        with self.assertRaises(ValueError):
+            module.run(Context(inventory=TimeoutError('secret')), CONFIG)
 
     def test_public_semantics_and_unauthorized(self):
         for ctx in (Context(public=403), Context(public=530), Context(body=b'<html>login</html>')):
@@ -67,7 +68,14 @@ class Tests(unittest.TestCase):
     def test_expired_budget(self):
         ctx = Context()
         ctx.remaining = lambda: 0
-        self.assertEqual(module.run(ctx, CONFIG)[0]['status'], 1)
+        with self.assertRaises(ValueError):
+            module.run(ctx, CONFIG)
+
+    def test_partial_redundancy_is_dashboard_but_total_loss_pages(self):
+        partial = module.run(Context((4, 4, 0)), CONFIG)[0]
+        self.assertEqual((partial['status'], partial['severity'], partial['notification']), (1, 2, 'dashboard'))
+        total = module.run(Context((0, 0, 0)), CONFIG)[0]
+        self.assertEqual((total['status'], total['severity'], total['notification']), (1, 3, 'page'))
 
     def test_ambiguous_metric(self):
         with self.assertRaises(ValueError):

@@ -41,3 +41,9 @@ connector gauge reported four connections and the public homepage returned
 200 HTML with the expected markers. The full module was subsequently checked
 against all live connectors as recorded in the PR. No outage was simulated.
 See [availability history](../cloudflare-tunnel-availability.md) for recovery.
+
+Partial connector loss is a Warning dashboard problem while at least one
+connector remains connected; complete observed loss is Average and page-eligible.
+Unreadable Kubernetes inventory raises one shared telemetry incident rather than
+inventing zero connected replicas. Public semantic failure remains actionable
+with its own independent-observation grace; it also depends on the website.
