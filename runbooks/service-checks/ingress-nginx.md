@@ -1,6 +1,19 @@
 # Ingress nginx functional routing
 
-Every 300 seconds, the collector requests `/` on the internal
+## Polling and incident confirmation
+
+Poll every 600 seconds (10 minutes); shared failure grace is 900 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+Every 600 seconds, the collector requests `/` on the internal
 `ingress-nginx-controller.ingress-nginx.svc.cluster.local` service with
 `Host: newjoy.ro`. A healthy result requires HTTP 200, HTML content type,
 an HTML document and a title containing `newjoy.ro`. This is the public
@@ -10,7 +23,7 @@ Redirects, authentication responses, default-backend HTML and upstream errors
 fail. The foundation supplies the `HomePBP-monitor/1` User-Agent.
 
 Requests are read-only, capped at 64 KiB and eight seconds (or the remaining
-30-second service deadline). Existing three-failure alert debounce applies.
+30-second service deadline). Existing execution-based alert debounce applies.
 No credentials, extra Kubernetes RBAC, ingress changes or NetworkPolicy
 changes are required: the controller and public backend have no destination
 NetworkPolicy isolation. No user response data is included in evidence.
