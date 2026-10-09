@@ -1,5 +1,10 @@
 {
-  "interval": 300,
+  "interval": 3600,
   "deadline": 20,
-  "url": "http://gotenberg.paperless-ngx.svc.cluster.local:3000/forms/chromium/convert/html"
+  "url": "http://gotenberg.paperless-ngx.svc.cluster.local:3000/forms/chromium/convert/html",
+  "failure_grace_seconds": 7200,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
 }
