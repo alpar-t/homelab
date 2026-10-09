@@ -42,7 +42,7 @@ class TikaTests(unittest.TestCase):
         for _, call in ctx.calls:
             self.assertEqual(call['method'], 'PUT')
             self.assertEqual(call['data'], tika.PAYLOAD)
-            self.assertEqual(call['timeout'], 6)
+            self.assertEqual(call['timeout'], 5)
             self.assertEqual(call['max_bytes'], 4096)
 
     def test_broken_responses_are_independent(self):

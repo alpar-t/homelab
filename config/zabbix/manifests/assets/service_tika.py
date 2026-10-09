@@ -12,7 +12,7 @@ def run(ctx, config):
                 instance['url'], method='PUT',
                 headers={'Content-Type': 'text/plain; charset=UTF-8',
                          'Accept': 'text/plain'}, data=PAYLOAD,
-                timeout=min(8, ctx.remaining()), max_bytes=4096)
+                timeout=min(5, ctx.remaining()), max_bytes=4096)
             content_type = next((v for k, v in response.headers.items()
                                  if k.lower() == 'content-type'), '')
             if response.status != 200:
