@@ -1,8 +1,21 @@
 # Interior Designer Open WebUI functional baseline
 
-Every 300 seconds, the collector makes five anonymous bounded GET requests to
+## Polling and incident confirmation
+
+Poll every 1800 seconds (30 minutes); shared failure grace is 3600 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+Every 1800 seconds, the collector makes five anonymous bounded GET requests to
 `interior-designer.baloo.svc.cluster.local:8080`, with a 30-second execution
-budget. Failure retries and three-sample alert behavior follow
+budget. Failure retries and execution-based alert behavior follow
 [the shared framework](../service-functional-checks.md).
 
 `Interior Designer backend contract` compares `/api/version` and `/api/config`
