@@ -200,6 +200,23 @@ class Tests(unittest.TestCase):
         self.runner._observe(state, [dict(name='Capacity', status=0, detail='restored', severity=3)], policy, 2800)
         self.assertEqual(self.runner._render(state, policy)[0]['status'], 0)
 
+    def test_restored_healthy_cache_is_not_new_recovery_evidence(self):
+        path = self.directory / 'healthy-state.json'
+        runner = FunctionalChecks(None, self.directory, check, state_path=path)
+        state = self.state()
+        runner.states['test'] = state
+        self.observe(state, False, 1000)
+        self.observe(state, False, 1900)
+        runner._persist()
+        restored = FunctionalChecks(None, self.directory, check, state_path=path)
+        state = self.state()
+        state['rows'] = restored.saved['test']
+        self.assertEqual(restored._render(state, {}), [])
+        restored._observe(state, [dict(name='Test read', status=0, detail='ok')], {}, 2800)
+        self.assertEqual(restored._render(state, {}), [])
+        restored._observe(state, [dict(name='Test read', status=0, detail='ok')], {}, 3700)
+        self.assertEqual(restored._render(state, {})[0]['status'], 0)
+
     def test_source_reload_preserves_confirmed_incident(self):
         self.service("def run(ctx, config): return [ctx.check('Test read', True, 'failed')]",
                      dict(failure_grace_seconds=0))

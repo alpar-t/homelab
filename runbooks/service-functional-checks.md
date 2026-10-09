@@ -65,7 +65,8 @@ the module telemetry detail.
 `/state/functional-checks.json` atomically persists only bounded safe check names,
 confirmed states, counters, timestamps, severity and notification policy; never
 bodies, credentials or module diagnostic details. Valid saved failures survive
-collector restart/source reload. Missing/corrupt state requires an independent
+collector restart/source reload. Restored healthy history requires new independent
+healthy observations before it can supply recovery samples. Missing/corrupt state requires an independent
 baseline before healthy publication. Corruption remains a visible persistence
 problem across restart until real baselines have been restored. Persistence failures
 also report explicitly. State is a replaceable monitoring cache, not application
