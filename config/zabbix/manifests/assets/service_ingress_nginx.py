@@ -31,7 +31,7 @@ def run(ctx, config):
         if remaining <= 0:
             raise TimeoutError()
         response = ctx.http(config['url'], headers={'Host': config['host']},
-                            timeout=min(8, remaining), max_bytes=65536,
+                            timeout=min(5, remaining), max_bytes=65536,
                             follow_redirects=False)
         if response.status != 200:
             return [ctx.check(name, True, f'backend route HTTP {response.status}')]
