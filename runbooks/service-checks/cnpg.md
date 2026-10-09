@@ -1,9 +1,22 @@
 # CloudNativePG functional baseline
 
+## Polling and incident confirmation
+
+Poll every 900 seconds (15 minutes); shared failure grace is 1800 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
 The `functional/cnpg` module observes all ten explicitly configured database
-clusters every five minutes. Each cluster has one stable `CNPG SQL and
-replication <namespace>/<cluster>` check. Failures retry after one minute and
-use the existing three-failing-sample Zabbix trigger.
+clusters every 15 minutes. Each cluster has one stable `CNPG SQL and
+replication <namespace>/<cluster>` check. Failures retain the configured polling interval and
+use the existing execution-based Zabbix trigger.
 
 The native instance exporter on TCP 9187 executes SQL queries. Required finite
 metrics prove database-size and recovery-state queries work, compare SQL
