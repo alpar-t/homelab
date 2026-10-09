@@ -25,8 +25,15 @@ exception class names. Modules own interpretation of successful responses.
 `ctx.http(url, method='GET', headers=None, data=None, timeout=8,
 max_bytes=262144, follow_redirects=False)` returns `status`, `headers`, and
 `body` bytes, including HTTP error responses. HTTP(S) only; URL userinfo is
-refused. Responses are bounded (maximum 1 MiB); timeouts are bounded by the
-remaining service deadline. Redirects are disabled by default; opted-in
+refused. Responses are bounded (maximum 1 MiB). Each HTTP request has an elapsed body-read
+budget capped by its timeout and remaining service deadline; bounded read1 chunks
+reset the socket timeout to the remaining budget so trickled bodies cannot keep a
+worker occupied. Synchronous DNS resolution and response-header parsing remain
+subject to platform resolver / socket inactivity limits; no resolver threads are
+created. Kubernetes requests use five-second transport budgets and 4 MiB JSON
+caps; inventory pagination stops at four pages / 2000 objects / 20 seconds and
+fails visibly instead of returning incomplete inventory. Historical mail logs
+retain their 2 MiB cap and truncation detection. Redirects are disabled by default; opted-in
 redirects must remain on the same origin, including when no explicit auth
 header is present. The default User-Agent is `HomePBP-monitor/1`; callers may override it.
 Do not bypass this helper for service HTTP calls.

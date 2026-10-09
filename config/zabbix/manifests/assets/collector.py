@@ -16,7 +16,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from mail_activity import MailActivity
-from functional import FunctionalChecks
+from functional import FunctionalChecks, SafeError, read_response
 
 UTC = dt.timezone.utc
 SA = Path('/var/run/secrets/kubernetes.io/serviceaccount')
@@ -92,25 +92,38 @@ class Kubernetes:
         self.context = ssl.create_default_context(cafile=str(SA / 'ca.crt'))
         self.base = 'https://kubernetes.default.svc'
 
-    def get(self, path):
+    def get(self, path, timeout=5, deadline=None, max_bytes=4 * 1024 * 1024):
         # Re-read projected tokens, which Kubernetes rotates automatically.
+        end = min(deadline if deadline is not None else float('inf'),
+                  time.monotonic() + timeout)
+        if end <= time.monotonic() or not 0 < timeout <= 5 or not 0 < max_bytes <= 4 * 1024 * 1024:
+            raise SafeError('Kubernetes request bounds exceeded')
         req = urllib.request.Request(self.base + path, headers={
             'Authorization': 'Bearer ' + (SA / 'token').read_text().strip()})
-        with urllib.request.urlopen(req, context=self.context, timeout=15) as response:
-            return json.load(response)
+        with urllib.request.urlopen(req, context=self.context, timeout=end - time.monotonic()) as response:
+            return json.loads(read_response(response, end, max_bytes))
 
-    def items(self, path):
+    def items(self, path, timeout=5, deadline=None):
+        # A finite inventory prevents pagination from monopolizing collection.
+        end = min(deadline if deadline is not None else float('inf'), time.monotonic() + 20)
         result, token = [], ''
-        while True:
+        for _ in range(4):
             query = '?limit=500' + ('&continue=' + urllib.parse.quote(token) if token else '')
-            page = self.get(path + query)
+            page = self.get(path + query, timeout=timeout, deadline=end)
             result.extend(page['items'])
+            if len(result) > 2000:
+                raise SafeError('Kubernetes inventory exceeds item limit')
             token = page.get('metadata', {}).get('continue', '')
             if not token:
                 return result
+        raise SafeError('Kubernetes inventory exceeds page limit')
 
     def logs(self, ns, pod, container, since_seconds=600, limit_bytes=200000,
              tail_lines=1000, timestamps=False):
+        # Preserve the existing seven-day mail scan's 2MiB bounded response.
+        if type(limit_bytes) is not int or not 0 < limit_bytes <= 2 * 1024 * 1024:
+            raise SafeError('Kubernetes log bounds exceeded')
+        end = time.monotonic() + 5
         query = {'container': container, 'sinceSeconds': since_seconds, 'limitBytes': limit_bytes,
                  'timestamps': str(timestamps).lower()}
         if tail_lines is not None:
@@ -118,8 +131,8 @@ class Kubernetes:
         path = f'/api/v1/namespaces/{ns}/pods/{pod}/log?' + urllib.parse.urlencode(query)
         req = urllib.request.Request(self.base + path, headers={
             'Authorization': 'Bearer ' + (SA / 'token').read_text().strip()})
-        with urllib.request.urlopen(req, context=self.context, timeout=15) as response:
-            value = response.read(limit_bytes + 1)
+        with urllib.request.urlopen(req, context=self.context, timeout=end - time.monotonic()) as response:
+            value = read_response(response, end, limit_bytes)
             if timestamps and len(value) >= limit_bytes:
                 raise ValueError('Mail event log response was truncated')
             return value.decode(errors='replace')

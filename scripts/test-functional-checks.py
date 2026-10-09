@@ -146,7 +146,7 @@ class Tests(unittest.TestCase):
         response = MagicMock()
         response.__enter__.return_value = response
         response.code, response.headers = 200, {}
-        response.read.return_value = b''
+        response.read1.return_value = b''
         opener = SimpleNamespace(open=MagicMock(return_value=response))
         ctx = Context(None, time.monotonic() + 10)
         with patch('functional.urllib.request.build_opener', return_value=opener):

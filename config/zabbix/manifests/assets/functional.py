@@ -16,6 +16,41 @@ class SafeError(Exception):
     """An intentionally generic error; never includes URLs, bodies or credentials."""
 
 
+def read_response(response, deadline, max_bytes):
+    """Read bounded bytes without buffering through a slow stream indefinitely.
+
+    urllib's timeout is an inactivity timeout. read1 performs at most one raw
+    read; resetting its socket timeout to the remaining elapsed budget prevents
+    a trickle of bytes from extending a request. DNS resolution is synchronous
+    and remains subject to the platform resolver's own timeout.
+    """
+    chunks, size = [], 0
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise SafeError('response deadline exceeded')
+        # HTTPError wraps an HTTPResponse; ordinary responses expose fp directly.
+        stream = response
+        for _ in range(3):
+            raw = getattr(stream, 'raw', None)
+            sock = getattr(raw, '_sock', None)
+            if sock is not None:
+                sock.settimeout(remaining)
+                break
+            stream = getattr(stream, 'fp', None)
+            if stream is None:
+                break
+        chunk = response.read1(min(16384, max_bytes + 1 - size))
+        if time.monotonic() >= deadline:
+            raise SafeError('response deadline exceeded')
+        if not chunk:
+            return b''.join(chunks)
+        size += len(chunk)
+        if size > max_bytes:
+            raise SafeError('response exceeds byte limit')
+        chunks.append(chunk)
+
+
 class Redirects(urllib.request.HTTPRedirectHandler):
     def __init__(self, follow):
         self.follow = follow
@@ -66,24 +101,15 @@ class Context:
             request = urllib.request.Request(url, data=data, method=method,
                                             headers=request_headers)
             opener = urllib.request.build_opener(Redirects(follow_redirects))
+            request_deadline = min(self.deadline, time.monotonic() + timeout)
             try:
-                response = opener.open(request, timeout=min(timeout, self.remaining()))
+                response = opener.open(request, timeout=request_deadline - time.monotonic())
             except urllib.error.HTTPError as error:
                 response = error
             with response:
-                chunks, size = [], 0
-                while True:
-                    if not self.remaining():
-                        raise SafeError('service deadline exceeded')
-                    chunk = response.read(min(16384, max_bytes + 1 - size))
-                    if not chunk:
-                        break
-                    chunks.append(chunk)
-                    size += len(chunk)
-                    if size > max_bytes:
-                        raise SafeError('HTTP response exceeds limit')
+                body = read_response(response, request_deadline, max_bytes)
                 return SimpleNamespace(status=response.code, headers=dict(response.headers),
-                                       body=b''.join(chunks))
+                                       body=body)
         except SafeError:
             raise
         except Exception:
