@@ -1,13 +1,26 @@
 # Stalwart / fetchmail functional monitoring
 
-Every five minutes, the collector performs anonymous protocol negotiations:
+## Polling and incident confirmation
+
+Poll every 900 seconds (15 minutes); shared failure grace is 1800 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+Every 15 minutes, the collector performs anonymous protocol negotiations:
 
 - Local SMTP port 25: valid 220 greeting, successful EHLO and QUIT, matching the fetchmail delivery listener.
 - Local submission port 587: EHLO must advertise STARTTLS, upgrade with certificate verification, then repeat EHLO and QUIT.
 - Local IMAPS port 993 and Migadu IMAPS port 993: verified TLS, OK greeting, CAPABILITY containing IMAP4rev1 or IMAP4rev2 and matching tagged OK completion.
 - Migadu outbound relay port 465: verified implicit TLS, SMTP greeting, EHLO and QUIT.
 
-Each endpoint has a five-second total socket-operation budget bounded by the runner's remaining 30-second deadline; responses are capped at 16 KiB total, 4 KiB buffered and 40 lines per response. Failures retry at the foundation's one-minute cadence and use its existing three-failing-sample alert debounce. No AUTH, mailbox selection, message retrieval, MAIL/RCPT/DATA, synthetic delivery or credentials are used. Only static error classifications are reported.
+Each endpoint has a five-second total socket-operation budget bounded by the runner's remaining 30-second deadline; responses are capped at 16 KiB total, 4 KiB buffered and 40 lines per response. Failures retry at the foundation's configured cadence and use its existing execution-based alert debounce. No AUTH, mailbox selection, message retrieval, MAIL/RCPT/DATA, synthetic delivery or credentials are used. Only static error classifications are reported.
 
 The deployed v0.15.5 configuration explicitly distinguishes submission STARTTLS from IMAPS implicit TLS. SMTP reset/re-EHLO semantics follow [RFC 3207](https://www.rfc-editor.org/rfc/rfc3207); anonymous IMAP CAPABILITY/tagged completion follows [RFC 9051](https://www.rfc-editor.org/rfc/rfc9051). [Pinned v0.15.5 TLS resolver source](https://github.com/stalwartlabs/stalwart/blob/v0.15.5/crates/common/src/listener/tls.rs) confirms SNI certificate selection and self-signed fallback when no configured certificate exists. [Stalwart TLS certificate documentation](https://stalw.art/docs/server/tls/certificates/) describes certificate selection and self-signed fallback. Source-controlled listener and Migadu fetch/relay settings are in config/stalwart-mail/manifests/.
 
