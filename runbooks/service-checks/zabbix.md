@@ -14,7 +14,7 @@ See [the shared framework](../service-functional-checks.md) for startup,
 unknown/deferred observations and queue freshness.
 
 The `functional/zabbix` family runs every 15 minutes with a 25-second
-execution deadline. Each request is bounded to six seconds, with 256 KiB for API/bootstrap
+execution deadline. Each request is bounded to five seconds, with 256 KiB for API/bootstrap
 and 1 MiB for the deployed theme stylesheet;
 no redirects are followed. The normal discovery and execution-based
 trigger policy applies (cached samples do not count as new executions).
