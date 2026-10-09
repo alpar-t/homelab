@@ -58,5 +58,90 @@
   "minimum_failure_observations": 2,
   "minimum_recovery_observations": 2,
   "severity": 3,
-  "notification": "page"
+  "notification": "page",
+  "workloads": [],
+  "check_workloads": {
+    "MetalLB VIP baloo/mcp-searxng": [
+      {
+        "namespace": "baloo",
+        "kind": "Deployment",
+        "name": "mcp-searxng"
+      }
+    ],
+    "MetalLB VIP baloo/openclaw-homeassistant": [
+      {
+        "namespace": "baloo",
+        "kind": "Deployment",
+        "name": "openclaw"
+      }
+    ],
+    "MetalLB VIP baloo/whisper": [
+      {
+        "namespace": "baloo",
+        "kind": "Deployment",
+        "name": "whisper"
+      }
+    ],
+    "MetalLB VIP homeassistant/homeassistant-db-external": [
+      {
+        "namespace": "homeassistant",
+        "kind": "Cluster",
+        "name": "homeassistant-db"
+      }
+    ],
+    "MetalLB VIP immich/immich-server-lan": [
+      {
+        "namespace": "immich",
+        "kind": "Deployment",
+        "name": "immich-server"
+      }
+    ],
+    "MetalLB VIP media/emby": [
+      {
+        "namespace": "media",
+        "kind": "Deployment",
+        "name": "emby"
+      }
+    ],
+    "MetalLB VIP media/qbittorrent-bt": [
+      {
+        "namespace": "media",
+        "kind": "Deployment",
+        "name": "arr-stack"
+      }
+    ],
+    "MetalLB VIP paperless-ngx/paperless-ftp": [
+      {
+        "namespace": "paperless-ngx",
+        "kind": "Deployment",
+        "name": "paperless-ngx"
+      }
+    ],
+    "MetalLB VIP pihole/pihole-dns": [
+      {
+        "namespace": "pihole",
+        "kind": "Deployment",
+        "name": "pihole"
+      },
+      {
+        "namespace": "pihole",
+        "kind": "Deployment",
+        "name": "pihole-2"
+      }
+    ],
+    "MetalLB VIP wireguard/wireguard-home": [
+      {
+        "namespace": "wireguard",
+        "kind": "Deployment",
+        "name": "wireguard-home"
+      }
+    ],
+    "MetalLB representative VIP semantic connection": [
+      {
+        "namespace": "media",
+        "kind": "Deployment",
+        "name": "emby"
+      }
+    ]
+  }
 }
