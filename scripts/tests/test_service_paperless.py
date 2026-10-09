@@ -29,37 +29,19 @@ class Context:
 
 
 class PaperlessTests(unittest.TestCase):
-    def test_empty_and_nonempty_database(self):
-        for value in ({"count": 0, "results": []}, {"count": 25, "results": [{"id": 2}]}):
-            ctx = Context(value)
-            self.assertEqual(service.documents(ctx, CONFIG)["status"], 0)
-            url, kwargs = ctx.requests[0]
-            self.assertIn("fields=id", url)
-            self.assertIn("page_size=1", url)
-            self.assertEqual(kwargs["headers"]["Authorization"], "Token private-test-token")
-            self.assertLessEqual(kwargs["timeout"], ctx.remaining())
-    def test_broken_schema_and_unrequested_data(self):
-        for value in ({}, [], {"count": True, "results": []}, {"count": 1, "results": []},
-                      {"count": 1, "results": [{"id": 2, "title": "PRIVATE"}]},
-                      {"count": 1, "results": [{"id": "2"}]}):
-            result = service.documents(Context(value), CONFIG)
-            self.assertEqual(result["status"], 1)
-            self.assertNotIn("PRIVATE", result["detail"])
-    def test_auth_rejection(self):
-        for code in (401, 403, 302, 500):
-            self.assertEqual(service.documents(Context(status=code), CONFIG)["status"], 1)
-    def test_errors_redacted(self):
-        for method in ("secret", "http"):
+    def test_document_coverage_is_deferred_without_credential_or_http_access(self):
+        for legacy in ({}, {"token_key":"admin", "documents_url":"http://private/api/documents/"}):
             ctx = Context()
-            setattr(ctx, method, MagicMock(side_effect=TimeoutError("PRIVATE private-test-token")))
-            result = service.documents(ctx, CONFIG)
+            ctx.secret = MagicMock(side_effect=AssertionError("unsafe credential read"))
+            ctx.http = MagicMock(side_effect=AssertionError("unsafe document read"))
+            result = service.documents(ctx, dict(CONFIG, **legacy))
             self.assertEqual(result["status"], 1)
-            self.assertNotIn("PRIVATE", result["detail"])
-            self.assertNotIn("private-test-token", result["detail"])
-    def test_malformed_json(self):
-        ctx = Context()
-        ctx.http = MagicMock(return_value=SimpleNamespace(status=200, body=b"<html>login</html>"))
-        self.assertEqual(service.documents(ctx, CONFIG)["status"], 1)
+            self.assertEqual(result["severity"], 1)
+            self.assertEqual(result["observation"], "deferred")
+            self.assertEqual(result["notification"], "dashboard")
+            self.assertIn("ownerless", result["detail"])
+            ctx.secret.assert_not_called()
+            ctx.http.assert_not_called()
     def test_redis_fragmented_pong(self):
         conn = MagicMock()
         conn.__enter__.return_value = conn
@@ -84,6 +66,9 @@ class PaperlessTests(unittest.TestCase):
         with patch.object(service, "redis", return_value=ctx.check("Paperless Redis protocol", False, "okay")):
             records = service.run(ctx, CONFIG)
         self.assertEqual([row["status"] for row in records], [1, 0])
+        self.assertEqual(records[0]["observation"], "deferred")
+        self.assertEqual(records[0]["notification"], "dashboard")
+        self.assertFalse(ctx.requests)
 
 
 if __name__ == "__main__":

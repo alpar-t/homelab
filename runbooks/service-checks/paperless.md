@@ -13,84 +13,44 @@ Persistent ordinary outages page; module-specific advisories stay on the dashboa
 See [the shared framework](../service-functional-checks.md) for startup,
 unknown/deferred observations and queue freshness.
 
-Every 900 seconds, the collector performs a bounded authenticated GET of
-`/api/documents/?page_size=1&fields=id` and a Redis RESP PING. The first validates
-authentication, document permissions, pagination and a real PostgreSQL query;
-empty permitted archives pass. Only one numeric ID can be returned, and neither
-IDs nor counts appear in monitoring output. Unexpected fields fail safely.
-Redis must return exactly PONG; no queue or document data is read. Each HTTP
-request has an eight-second limit and 16 KiB cap; Redis has four-second socket
-limits within the shared thirty-second deadline. Foundation alert debounce applies.
+The collector performs only a bounded Redis RESP PING using the existing private
+broker listener. Require exactly PONG; no queue, document or task data is read.
+Four-second socket limits remain within the shared service deadline. This proves
+broker protocol availability, not Celery consumption, OCR, document ingestion,
+filesystem access or household archive authentication. Existing workload/CNPG
+readiness and Tika/Gotenberg functional checks continue independently.
 
-A failed API check means a rejected/revoked supplied credential, denied permissions,
-network/backend failure, or an incompatible response. A failed Redis check
-means the ingestion broker cannot answer its protocol. Neither check uploads,
-reprocesses, acknowledges tasks, sends mail, or changes stored data.
+## Document coverage and credential boundary
 
-## Required credential before rollout
+`Paperless document API` is deliberately deferred with severity1,
+`observation: deferred`, `notification: dashboard`. No document token is mounted,
+read or provisioned, and no anonymous document endpoint is invented.
 
-Provision a dedicated `zabbix-monitor` Paperless user, active, non-staff and
-non-superuser, with an unusable password. Give only the global
-`documents.view_document` permission. Do not grant archive-wide object access,
-write permissions or staff access, and do not copy the existing Baloo/admin
-token. Paperless permits ownerless documents by design, but the request selects
-only IDs. The monitor does not need a real document: an empty result still
-exercises the database and permission filter.
+A non-staff user with native `documents.view_document` permission can still read
+ownerless documents. A routine `fields=id` request only limits that response; it
+does not prevent a stolen DRF token from requesting ownerless household document
+bodies, downloads or metadata. An otherwise isolated account is therefore not a
+sufficient no-household-data boundary. Keep authenticated document coverage
+explicitly deferred until the native permission model can enforce that boundary.
+Do not supply an administrator or existing Baloo token to close this gap.
 
-An authorized administrator can provision through `manage.py shell` using this
-code (capture stdout in a mode-0600 file; never display it):
+The foundation excludes `paperless_monitor_token` from its credential projection.
+Any previously provisioned monitoring token should be revoked/removed by an
+authorized operator through the existing private workflow; no production token
+is read, provisioned or rotated by this change. No RBAC or NetworkPolicy is added.
+Existing unauthenticated Redis network reachability predates the monitoring PR.
 
-```python
-import sys
-from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
-from rest_framework.authtoken.models import Token
-if get_user_model().objects.filter(username="zabbix-monitor").exists():
-    raise RuntimeError("Account already exists; verify ownership before separate rotation")
-user = get_user_model().objects.create(username="zabbix-monitor")
-user.is_active, user.is_staff, user.is_superuser = True, False, False
-user.set_unusable_password()
-user.save()
-user.user_permissions.set(Permission.objects.filter(
-    content_type__app_label="documents", codename="view_document"))
-token, _ = Token.objects.get_or_create(user=user)
-sys.stdout.write(token.key)
-```
+## Validation and limits
 
-Merge the captured value as key `paperless_monitor_token` into the optional
-`zabbix/zabbix-functional-credentials` Secret, preserving other services' keys.
-Use the repository's secure Secret-management procedure; never commit the token
-or read the Secret through collector RBAC. The foundation mounts it at
-`/credentials/paperless_monitor_token`. Absent credentials defer authenticated coverage; rejected credentials fail explicitly.
-For rotation delete/recreate this user's DRF Token and update that key. For
-revocation deactivate the user or delete its token; the next sample must fail.
-These setup operations require separate administrator authorization and were
-not executed as part of implementation.
+Run `python3 -m unittest discover -s scripts/tests -p test_service_paperless.py`
+and `kubectl kustomize config/zabbix/manifests`. Fixtures prove document coverage
+cannot trigger credential/HTTP reads even with legacy config, while fragmented
+PONG, malformed/error/oversized replies and timeouts exercise the remaining broker
+check. Errors emit fixed diagnostics, never broker data or exception strings.
+No production requests or document operations are part of these tests.
 
-## Coverage and evidence
-
-The deployed manifest pins Paperless 2.20.15. Its
-[versioned DocumentViewSet source](https://github.com/paperless-ngx/paperless-ngx/blob/v2.20.15/src/documents/views.py)
-supports `fields`; its combined system status endpoint requires `is_staff`.
-The check deliberately avoids staff credentials. Redis has no password in the
-current manifest. Source and live namespace inventory show no Paperless ingress
-NetworkPolicy, so no new broad access rule is needed. Collector egress is not
-restricted by its current policies.
-
-This does not prove OCR workers, filesystem consumption, scanner FTP uploads,
-email ingestion, search index or user sign-in work. Redis PING proves broker
-protocol availability, not Celery consumption. Existing infrastructure checks
-cover pod readiness and database health; Tika/Gotenberg have separate functional
-checks. Do not infer stuck ingestion from an idle archive or add activity-age
-alerts without an explicit expected workload. No authenticated live API probe
-was run because a dedicated monitoring token has not been provisioned.
-
-Live Redis PING from the Paperless application pod returned PONG during
-implementation. This validates the configured broker endpoint, but does not
-prove the collector network path; validate that path after rollout.
-
-Missing monitoring credentials defer the authenticated portion at informational
-severity with dashboard-only evidence; this is a coverage prerequisite, not an
-application-outage page or a confirmed recovery. Public/dependency observations
-continue independently. A supplied credential that is rejected remains a real
-failed execution. No additional authority is accepted to expand coverage.
+This baseline does not prove scanner FTP, OCR workers, filesystem consumption,
+mail ingestion, search index, user sign-in or restores. An idle archive is healthy;
+absence of document activity never establishes an ingestion failure. The previous
+live Redis PING was from the application pod and does not validate the final
+collector path before a reviewed GitOps rollout.
