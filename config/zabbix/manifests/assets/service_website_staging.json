@@ -9,5 +9,29 @@
   "minimum_failure_observations": 2,
   "minimum_recovery_observations": 2,
   "severity": 2,
-  "notification": "dashboard"
+  "notification": "dashboard",
+  "workloads": [],
+  "check_workloads": {
+    "Staging homepage and asset": [
+      {
+        "namespace": "newjoy-website-staging",
+        "kind": "Deployment",
+        "name": "website"
+      }
+    ],
+    "Staging environment": [
+      {
+        "namespace": "newjoy-website-staging",
+        "kind": "Deployment",
+        "name": "website"
+      }
+    ],
+    "Staging public sign-in gate": [
+      {
+        "namespace": "newjoy-website-staging",
+        "kind": "Deployment",
+        "name": "oauth2-proxy"
+      }
+    ]
+  }
 }
