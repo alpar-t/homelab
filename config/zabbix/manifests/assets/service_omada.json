@@ -1,6 +1,11 @@
 {
-  "interval": 300,
+  "interval": 900,
   "deadline": 15,
   "url": "http://omada-controller.omada-controller.svc.cluster.local:8088/api/info",
-  "api_version": "3"
+  "api_version": "3",
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
 }

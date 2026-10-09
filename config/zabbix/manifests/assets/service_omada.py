@@ -6,7 +6,7 @@ import re
 def run(ctx, config):
     name = 'Omada configured controller API'
     try:
-        response = ctx.http(config['url'], timeout=min(8, ctx.remaining()),
+        response = ctx.http(config['url'], timeout=min(5, ctx.remaining()),
                             max_bytes=16384)
         if response.status != 200:
             return [ctx.check(name, True, 'controller bootstrap HTTP unavailable')]
