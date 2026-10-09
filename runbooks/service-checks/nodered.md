@@ -1,11 +1,23 @@
 # Node-RED runtime monitoring
 
+## Polling and incident confirmation
+
+Poll every 900 seconds (15 minutes); shared failure grace is 1800 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
 `Node-RED flow runtime` reads only `GET /flows/state` on the internal service
-every five minutes (15-second worker deadline, HTTP timeout at most five seconds,
+every 15 minutes (15-second worker deadline, HTTP timeout at most five seconds,
 4 KiB response cap). It requires HTTP 200 and a JSON object whose `state` is
 `start`. `stop`, `safe`, malformed responses, authentication failures, redirects,
-timeouts and missing configured credentials fail. Foundation retries failures
-after 60 seconds and preserves the existing three-sample alert debounce.
+timeouts fail. The framework retains the configured polling interval and preserves the existing execution-based alert debounce.
 
 This catches an editor that remains reachable while the automation runtime has
 been stopped or started in safe mode. Idle flows are healthy. Never POST runtime
@@ -24,16 +36,11 @@ The monitor uses the existing private ClusterIP API and changes no public
 authentication or Kubernetes permissions. Node-RED currently has no ingress
 NetworkPolicy; no additional network permission is needed.
 
-The [Admin API authentication documentation](https://nodered.org/docs/api/admin/oauth/)
-describes scoped API tokens. If internal `adminAuth` is enabled, provision a
-dedicated monitoring identity/token with only `flows.read` and add
-`"token_key": "nodered-runtime-token"` to the JSON config. Store only that token
-in the `nodered-runtime-token` key of the namespace-local
-`zabbix/zabbix-functional-credentials` Secret through the approved private
-credential workflow, preserving other service keys. Do not copy an editor/admin
-token. Revoke the dedicated token/account to remove access; rotate the mounted
-key with its replacement. Missing/revoked tokens fail visibly. The current
-anonymous internal API requires no credential rollout prerequisite.
+No credential is mounted or used by this check. If internal `adminAuth` is
+enabled, review the deployed version's read-only permission model before adding
+an identity. The current anonymous internal API requires no credential rollout
+prerequisite. This baseline has no optional bearer credential configuration. Existing unauthenticated internal access is a residual risk of the
+service itself, not a new permission granted by this monitoring PR.
 
 ## Limits and investigation
 
