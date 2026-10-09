@@ -1,5 +1,18 @@
 # Baloo functional monitoring
 
+## Polling and incident confirmation
+
+Poll every 900 seconds (15 minutes); shared failure grace is 1800 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
 `Baloo Kubernetes MCP read` negotiates MCP 2024-11-05, acknowledges
 initialization, and reads `tools/list` from the existing private mcp-k8s Service.
 It requires the Kubernetes server identity, tools capability, nonempty valid
@@ -13,11 +26,11 @@ It asserts a v1 Service with the exact identity and API port 443, exercising the
 adapter-to-Kubernetes API path and its existing RBAC. No resource metadata is
 logged. It never starts a job, invokes a model, or sends a message.
 
-The healthy interval is five minutes, with a 25-second worker deadline. Each
+The healthy interval is 15 minutes, with a 25-second worker deadline. Each
 HTTP request is capped at five seconds and 256 KiB; session termination, when
 a server supplies a session ID, is capped at three seconds and 4 KiB. The
-foundation retries failures after a minute and applies the existing Zabbix
-three-sample debounce (cached failures can count as samples). Session IDs,
+foundation retains the configured failure polling interval and applies the existing Zabbix
+execution-based debounce (cached failures do not count as new executions). Session IDs,
 catalog contents, and server errors never appear in monitoring evidence.
 
 No credential or RBAC change is needed: this endpoint already permits anonymous
