@@ -1,8 +1,13 @@
 {
-  "interval": 300,
+  "interval": 1800,
   "deadline": 30,
   "internal_url": "http://website.newjoy-website-staging.svc.cluster.local/",
   "public_url": "https://staging.newjoy.ro/",
   "issuer_host": "auth.newjoy.ro",
-  "marker": "New Joy Interior Design"
+  "marker": "New Joy Interior Design",
+  "failure_grace_seconds": 3600,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 2,
+  "notification": "dashboard"
 }
