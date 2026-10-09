@@ -16,7 +16,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from mail_activity import MailActivity
-from functional import FunctionalChecks
+from functional import FunctionalChecks, Redirects, SafeError, read_response
 
 UTC = dt.timezone.utc
 SA = Path('/var/run/secrets/kubernetes.io/serviceaccount')
@@ -45,35 +45,92 @@ def quantity(value):
 
 def check(name, family, bad, detail, severity=4):
     # IDs are safe for both Zabbix item keys and JSONPath literals.
+    delay = '5m'
+    if family in ('longhorn', 'backup', 'cluster') or severity <= 3:
+        delay = '10m'
+    if family in ('monitoring', 'storage') or (family == 'node' and name.count(' ') == 1):
+        delay = 'immediate'
+    if family == 'longhorn' and 'robustness=faulted' in str(detail):
+        delay = 'immediate'
     return {'id': hashlib.sha256(name.encode()).hexdigest()[:20], 'name': name,
             'family': family, 'status': int(bool(bad)), 'detail': str(detail)[:1800],
-            'severity': severity}
+            'severity': severity, 'notify_delay': delay, 'notification': 'page',
+            'failure_samples': 5 if family == 'node' and name.count(' ') == 1 else 3}
+
+
+class PodCheckLifecycle:
+    """Keep recovery samples for retired pods, including across collector restarts."""
+
+    def __init__(self, path):
+        self.path = Path(path)
+        self.records = json.loads(self.path.read_text()) if self.path.exists() else {}
+        # Older snapshots cached raw crash messages. Keep incident state/identity,
+        # but never replay those private payloads after an inventory failure.
+        for record in self.records.values():
+            record['check']['detail'] = 'prior pod state retained; inventory unavailable, inspect privately'
+
+    def reconcile(self, checks, inventory_ok, now):
+        current = {c['id']: c for c in checks if c['name'].startswith('Pod ')}
+        for key, value in current.items():
+            self.records[key] = {'check': value, 'last_seen': now}
+        for key, record in list(self.records.items()):
+            if key in current:
+                continue
+            if not inventory_ok:
+                # An API failure cannot prove a pod has recovered or disappeared.
+                checks.append(record['check'])
+            elif now - record['last_seen'] < 86400:
+                record['check'] = {**record['check'], 'status': 0,
+                                   'detail': 'Pod retired from the monitored inventory; not a service recovery'}
+                checks.append(record['check'])
+            else:
+                del self.records[key]
+        temp = self.path.with_suffix('.tmp')
+        temp.write_text(json.dumps(self.records))
+        temp.replace(self.path)
+        return checks
 
 
 class Kubernetes:
     def __init__(self):
         self.context = ssl.create_default_context(cafile=str(SA / 'ca.crt'))
         self.base = 'https://kubernetes.default.svc'
+        # Never forward the ServiceAccount bearer through API/aggregator redirects.
+        self.opener = urllib.request.build_opener(
+            Redirects(False), urllib.request.HTTPSHandler(context=self.context))
 
-    def get(self, path):
+    def get(self, path, timeout=5, deadline=None, max_bytes=4 * 1024 * 1024):
         # Re-read projected tokens, which Kubernetes rotates automatically.
+        end = min(deadline if deadline is not None else float('inf'),
+                  time.monotonic() + timeout)
+        if end <= time.monotonic() or not 0 < timeout <= 5 or not 0 < max_bytes <= 4 * 1024 * 1024:
+            raise SafeError('Kubernetes request bounds exceeded')
         req = urllib.request.Request(self.base + path, headers={
             'Authorization': 'Bearer ' + (SA / 'token').read_text().strip()})
-        with urllib.request.urlopen(req, context=self.context, timeout=15) as response:
-            return json.load(response)
+        with self.opener.open(req, timeout=end - time.monotonic()) as response:
+            return json.loads(read_response(response, end, max_bytes))
 
-    def items(self, path):
+    def items(self, path, timeout=5, deadline=None):
+        # A finite inventory prevents pagination from monopolizing collection.
+        end = min(deadline if deadline is not None else float('inf'), time.monotonic() + 20)
         result, token = [], ''
-        while True:
+        for _ in range(4):
             query = '?limit=500' + ('&continue=' + urllib.parse.quote(token) if token else '')
-            page = self.get(path + query)
+            page = self.get(path + query, timeout=timeout, deadline=end)
             result.extend(page['items'])
+            if len(result) > 2000:
+                raise SafeError('Kubernetes inventory exceeds item limit')
             token = page.get('metadata', {}).get('continue', '')
             if not token:
                 return result
+        raise SafeError('Kubernetes inventory exceeds page limit')
 
     def logs(self, ns, pod, container, since_seconds=600, limit_bytes=200000,
              tail_lines=1000, timestamps=False):
+        # Preserve the existing seven-day mail scan's 2MiB bounded response.
+        if type(limit_bytes) is not int or not 0 < limit_bytes <= 2 * 1024 * 1024:
+            raise SafeError('Kubernetes log bounds exceeded')
+        end = time.monotonic() + 5
         query = {'container': container, 'sinceSeconds': since_seconds, 'limitBytes': limit_bytes,
                  'timestamps': str(timestamps).lower()}
         if tail_lines is not None:
@@ -81,8 +138,8 @@ class Kubernetes:
         path = f'/api/v1/namespaces/{ns}/pods/{pod}/log?' + urllib.parse.urlencode(query)
         req = urllib.request.Request(self.base + path, headers={
             'Authorization': 'Bearer ' + (SA / 'token').read_text().strip()})
-        with urllib.request.urlopen(req, context=self.context, timeout=15) as response:
-            value = response.read(limit_bytes + 1)
+        with self.opener.open(req, timeout=end - time.monotonic()) as response:
+            value = read_response(response, end, limit_bytes)
             if timestamps and len(value) >= limit_bytes:
                 raise ValueError('Mail event log response was truncated')
             return value.decode(errors='replace')
@@ -124,7 +181,8 @@ def evaluate(data, policy, now):
                           and e.get('reason') == 'Unhealthy']
                 events.sort(key=lambda e: e.get('lastTimestamp') or e['metadata']['creationTimestamp'])
                 if events:
-                    detail = events[-1].get('message', detail)
+                    # Readiness events may carry arbitrary command/error output.
+                    detail = 'Unhealthy storage readiness event recorded; inspect node-storage-health events privately'
         checks.append(check(f'Physical storage {name}', 'storage', not healthy, detail))
 
     workloads = {(d['metadata']['namespace'], d['metadata']['name']): d for d in data['deployments']}
@@ -146,10 +204,36 @@ def evaluate(data, policy, now):
             continue
         if age(p['metadata']['creationTimestamp'], now) < 600:
             continue  # Startup/rollout grace; infrastructure is checked separately.
-        if not ready(p):
-            name = p['metadata']['namespace'] + '/' + p['metadata']['name']
-            states = [s.get('state', {}) for s in p.get('status', {}).get('containerStatuses', [])]
-            checks.append(check(f'Pod {name}', 'cluster', True, json.dumps(states), 3))
+        name = p['metadata']['namespace'] + '/' + p['metadata']['name']
+        # Termination logs and waiting messages can contain credentials or DSNs.
+        # Retain only bounded numeric fields and known native classifications.
+        counts = dict(waiting=0, terminated=0, running=0, unknown=0)
+        reasons, exits, restarts = set(), set(), 0
+        known_reasons = {'CrashLoopBackOff', 'ImagePullBackOff', 'ErrImagePull',
+                         'ContainerCreating', 'PodInitializing', 'CreateContainerConfigError',
+                         'CreateContainerError', 'RunContainerError', 'InvalidImageName',
+                         'OOMKilled', 'Error', 'Completed', 'StartError'}
+        for container in p.get('status', {}).get('containerStatuses', []):
+            state = container.get('state', {})
+            kind = next((key for key in ('waiting', 'terminated', 'running')
+                         if isinstance(state.get(key), dict)), 'unknown')
+            counts[kind] += 1
+            native = state.get(kind, {})
+            if kind in ('waiting', 'terminated'):
+                reason = native.get('reason')
+                reasons.add(reason if isinstance(reason, str) and reason in known_reasons else 'other')
+            code = native.get('exitCode')
+            if kind == 'terminated' and type(code) is int and 0 <= code <= 255:
+                exits.add(code)
+            restart = container.get('restartCount')
+            if type(restart) is int and restart >= 0:
+                restarts += restart
+        detail = '; '.join(f'{kind}={count}' for kind, count in counts.items())
+        detail += '; reasons=' + (','.join(sorted(reasons)) or 'none')
+        detail += '; exit_codes=' + (','.join(str(code) for code in sorted(exits)) or 'none')
+        detail += f'; restarts={restarts}; inspect pod logs privately'
+        checks.append(check(f'Pod {name}', 'cluster', not ready(p),
+                            'Ready' if ready(p) else detail, 3))
 
     completed = {}
     for b in data['longhorn_backups']:
@@ -178,7 +262,9 @@ def evaluate(data, policy, now):
     for target in data['backup_targets']:
         s = target.get('status', {})
         checks.append(check('Longhorn backup target ' + target['metadata']['name'], 'backup',
-                            not s.get('available', False), s.get('conditions', [])))
+                            not s.get('available', False),
+                            'backup target available' if s.get('available', False) else
+                            'backup target unavailable; inspect Longhorn controller conditions privately'))
 
     schedules = {}
     for b in data['scheduled_backups']:
@@ -203,13 +289,104 @@ def evaluate(data, policy, now):
                             f"ready={s.get('readyInstances', 0)}; phase={s.get('phase', 'missing')}"))
         for cond in ('ContinuousArchiving', 'LastBackupSucceeded'):
             value = conditions.get(cond, {})
-            checks.append(check(f'CNPG {cond} {ns}/{name}', 'backup', value.get('status') != 'True',
-                                value.get('message', 'condition missing')))
+            # Condition error messages can include private storage credentials/URLs.
+            native_status = value.get('status')
+            safe_status = native_status if native_status in ('True', 'False', 'Unknown') else 'missing or invalid'
+            checks.append(check(f'CNPG {cond} {ns}/{name}', 'backup', native_status != 'True',
+                                f'{cond} status={safe_status}; inspect cluster conditions privately'))
         limit = schedules.get((ns, name), 0)
         actual_age = age(s.get('lastSuccessfulBackup'), now)
         checks.append(check(f'CNPG backup freshness {ns}/{name}', 'backup',
                             not limit or actual_age > limit,
                             f'backup age={actual_age / 3600:.1f}h; limit={limit / 3600:.0f}h'))
+    return checks
+
+
+def add_reboot_dependencies(checks, data, policy):
+    """Expose placement to Zabbix; its history expressions own the grace period.
+
+    Keep raw failure state intact. A reboot must not close an existing incident,
+    and a service on an unrelated node must remain independently alertable.
+    """
+    nodes = {n['metadata']['name']: ready(n) for n in data['nodes']}
+    pods = data['pods']
+    grace = policy.get('reboot_grace', {})
+    dependencies = {}
+
+    def pod_nodes(selected):
+        return {p.get('spec', {}).get('nodeName') for p in selected} - {None, ''}
+
+    def matches(pod, selector):
+        labels = pod['metadata'].get('labels', {})
+        if any(labels.get(k) != v for k, v in selector.get('matchLabels', {}).items()):
+            return False
+        for requirement in selector.get('matchExpressions', []):
+            key, op = requirement['key'], requirement['operator']
+            values = requirement.get('values', [])
+            if ((op == 'In' and labels.get(key) not in values)
+                    or (op == 'NotIn' and labels.get(key) in values)
+                    or (op == 'Exists' and key not in labels)
+                    or (op == 'DoesNotExist' and key in labels)):
+                return False
+        return bool(selector)
+
+    workloads = {}
+    for resource, prefix in [('deployments', 'Application '), ('daemonsets', 'DaemonSet ')]:
+        for obj in data[resource]:
+            ns, name = obj['metadata']['namespace'], obj['metadata']['name']
+            parents = pod_nodes(p for p in pods if p['metadata']['namespace'] == ns
+                                and matches(p, obj.get('spec', {}).get('selector', {})))
+            dependencies[prefix + ns + '/' + name] = parents
+            if resource == 'deployments':
+                workloads[(ns, name)] = parents
+    metrics_nodes = workloads.get(('kube-system', 'metrics-server'), set())
+    dependencies['Collector API metrics'] = metrics_nodes
+    for name in policy['nodes']:
+        dependencies['Physical storage ' + name] = {name}
+        for metric in ('cpu', 'memory'):
+            dependencies[f'Node {name} {metric}'] = {name} | metrics_nodes
+    for pod in pods:
+        dependencies['Pod ' + pod['metadata']['namespace'] + '/' + pod['metadata']['name']] = pod_nodes([pod])
+    for ns, name in policy['databases']:
+        parents = pod_nodes(p for p in pods if p['metadata']['namespace'] == ns
+                            and p['metadata'].get('labels', {}).get('cnpg.io/cluster') == name)
+        dependencies[f'CNPG health {ns}/{name}'] = parents
+    for volume in data['volumes']:
+        status = volume.get('status', {})
+        ks = status.get('kubernetesStatus', {})
+        name = volume['metadata']['name']
+        parents = {status.get('currentNodeID')} - {None, ''}
+        parents |= {r.get('spec', {}).get('nodeID') for r in data['replicas']
+                    if r.get('spec', {}).get('volumeName') == name} - {None, ''}
+        dependencies[f"Longhorn volume {ks.get('namespace', '')}/{ks.get('pvcName', name)}"] = parents
+    for probe in policy['probes']:
+        if probe.get('workloads'):
+            dependencies[probe['name']] = set().union(*(workloads.get(tuple(w), set()) for w in probe['workloads']))
+    for name in ('Mail fetchmail failures', 'Mail stalwart failures', 'Mail incoming activity'):
+        dependencies[name] = workloads.get(('stalwart-mail', 'stalwart'), set())
+    for value in checks:
+        parents = dependencies.get(value['name'], set())
+        declared = value.get('workloads', [])
+        if declared:
+            parents = set()
+            for target in declared:
+                ns, kind, name = target['namespace'], target['kind'], target['name']
+                if kind == 'Node':
+                    parents.add(name)
+                elif kind == 'StatefulSet':
+                    parents |= pod_nodes(p for p in pods if p['metadata']['namespace'] == ns
+                        and any(o.get('kind') == 'StatefulSet' and o.get('name') == name
+                                for o in p['metadata'].get('ownerReferences', [])))
+                elif kind == 'Cluster':
+                    parents |= dependencies.get(f'CNPG health {ns}/{name}', set())
+                else:
+                    prefix = 'Application ' if kind == 'Deployment' else 'DaemonSet '
+                    parents |= dependencies.get(prefix + ns + '/' + name, set())
+        value['parent_nodes'] = sorted(parents)
+        value['parent_available'] = int(all(nodes.get(name, False) for name in parents))
+        rebuilding = value['family'] == 'longhorn' and 'robustness=faulted' not in value['detail']
+        value['grace_samples'] = (grace.get('replica_samples', 30) if rebuilding
+                                  else grace.get('service_samples', 10) if value['name'] in dependencies or declared else 1)
     return checks
 
 
@@ -219,6 +396,7 @@ PATHS = {
     'metrics': '/apis/metrics.k8s.io/v1beta1/nodes',
     'deployments': '/apis/apps/v1/deployments', 'daemonsets': '/apis/apps/v1/daemonsets',
     'volumes': '/apis/longhorn.io/v1beta2/namespaces/longhorn-system/volumes',
+    'replicas': '/apis/longhorn.io/v1beta2/namespaces/longhorn-system/replicas',
     'longhorn_backups': '/apis/longhorn.io/v1beta2/namespaces/longhorn-system/backups',
     'backup_targets': '/apis/longhorn.io/v1beta2/namespaces/longhorn-system/backuptargets',
     'clusters': '/apis/postgresql.cnpg.io/v1/clusters',
@@ -247,9 +425,9 @@ def probe(target):
         return check(name, target.get('family', 'reachability'), True, type(error).__name__)
 
 
-def collect(kube, policy, activity=None, functional=None):
+def collect(kube, policy, activity=None, pod_lifecycle=None, functional=None):
     now = time.time()
-    data, failures = {}, []
+    data, api_checks, failed_apis = {}, [], set()
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
         futures = {pool.submit(kube.items, path): name for name, path in PATHS.items()}
         for future in concurrent.futures.as_completed(futures):
@@ -258,11 +436,15 @@ def collect(kube, policy, activity=None, functional=None):
                 data[name] = future.result()
                 if name in ('nodes', 'volumes', 'clusters', 'backup_targets') and not data[name]:
                     raise ValueError('empty inventory')
+                api_checks.append(check('Collector API ' + name, 'monitoring', False, 'Inventory query succeeded'))
             except Exception as error:
                 data[name] = []
-                failures.append(check('Collector API ' + name, 'monitoring', True, type(error).__name__))
+                failed_apis.add(name)
+                api_checks.append(check('Collector API ' + name, 'monitoring', True, type(error).__name__))
         reachability = list(pool.map(probe, policy['probes']))
-    checks = evaluate(data, policy, now) + failures + reachability
+    checks = evaluate(data, policy, now) + api_checks + reachability
+    if pod_lifecycle is not None:
+        checks = pod_lifecycle.reconcile(checks, 'pods' not in failed_apis, now)
     mail_pods = [p for p in data['pods'] if p['metadata']['namespace'] == 'stalwart-mail'
                  and p['metadata'].get('labels', {}).get('app') == 'stalwart'
                  and not p['metadata'].get('deletionTimestamp')]
@@ -294,14 +476,16 @@ def collect(kube, policy, activity=None, functional=None):
                                 'Arrival monitoring unavailable: ' + type(error).__name__, 3))
     if functional is not None:
         checks.extend(functional.collect())
-    return {'collected_at': int(now), 'checks': checks}
+    return {'collected_at': int(now), 'checks': add_reboot_dependencies(checks, data, policy)}
 
 
 def main():
     policy = json.loads(Path(os.environ.get('POLICY_FILE', '/config/policy.json')).read_text())
     kube = Kubernetes()
     activity = MailActivity(os.environ.get('MAIL_ACTIVITY_STATE', '/state/mail-activity.json'))
-    functional = FunctionalChecks(kube, Path(os.environ.get('POLICY_FILE', '/config/policy.json')).parent, check)
+    functional = FunctionalChecks(kube, Path(os.environ.get('POLICY_FILE', '/config/policy.json')).parent, check,
+                                  state_path=os.environ.get('FUNCTIONAL_CHECK_STATE', '/state/functional-checks.json'))
+    pod_lifecycle = PodCheckLifecycle(os.environ.get('POD_CHECK_STATE', '/state/pod-checks.json'))
     snapshot = {'collected_at': 0, 'checks': []}
     lock = threading.Lock()
 
@@ -310,7 +494,7 @@ def main():
         while True:
             started = time.monotonic()
             try:
-                result = collect(kube, policy, activity, functional)
+                result = collect(kube, policy, activity, pod_lifecycle=pod_lifecycle, functional=functional)
                 with lock:
                     snapshot = result
             except Exception as error:
