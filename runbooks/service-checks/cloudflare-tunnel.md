@@ -1,7 +1,21 @@
 # Cloudflare Tunnel functional checks
 
-The Zabbix collector samples every five minutes with a 30-second deadline and
-existing three-failure debounce. Two aggregate assertions supplement existing
+## Polling and incident confirmation
+
+Poll every 600 seconds (10 minutes); shared failure grace is 900 seconds.
+A new problem needs both that elapsed grace and at least two independent failed
+executions; at this cadence an ordinary continuous failure normally requires
+three runs. Recovery needs two independent healthy executions. The first
+candidate failure can remain pending while confirmation accumulates. Cached
+minute snapshots do not count as new executions, and failures keep the same
+slow cadence. Combined with notification confirmation, a new persistent page
+incident normally appears about 32–42 minutes after the outage, before queue
+or referenced-workload reboot/rescheduling grace and maintenance delays.
+See [the shared framework](../service-functional-checks.md) for unknown/deferred
+observations, startup and incident persistence.
+
+The Zabbix collector samples every ten minutes with a 30-second deadline and
+execution-based confirmation. Two aggregate assertions supplement existing
 pod readiness/restart checks:
 
 - At least three nonterminating connectors expose a valid native
@@ -14,9 +28,10 @@ pod readiness/restart checks:
   Python's default user agent without changing any WAF policy.
 
 The inventory request uses existing pod-read RBAC, a single bounded list with
-limit five and its existing 15-second timeout. At most four metrics requests
-use two seconds each, and the public request uses four seconds (27 seconds
-of transport timeout total), additionally bounded by remaining worker time.
+limit five and a five-second request budget. At most four metrics requests
+use two seconds each, and the public request uses four seconds (17 seconds
+of transport budget total). The admission guard reserves those 17 seconds,
+and each body read also consumes the remaining service deadline.
 Bodies are capped at 256 KiB. No credentials, Secret reads, RBAC additions or
 NetworkPolicy changes are required: cloudflared currently has no restricting
 NetworkPolicy and its configured metrics listener is on port 2000.
