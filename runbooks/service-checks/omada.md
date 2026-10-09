@@ -1,12 +1,25 @@
 # Omada functional bootstrap
 
-Every five minutes, the collector reads the anonymous `/api/info` endpoint,
+## Polling and incident confirmation
+
+Poll every 900 seconds (15 minutes); shared failure grace is 1800 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+Every 15 minutes, the collector reads the anonymous `/api/info` endpoint,
 with an eight-second request timeout, 15-second worker deadline and 16 KiB
 response limit. It requires HTTP 200, integer `errorCode=0`, a numeric controller
 version, API version 3, and both `configured=true` and `registeredRoot=true`.
 This catches backend errors, HTML login/redirect responses, missing controller
 configuration after storage loss and incompatible API changes despite a working
-web root. Failed samples use the foundation retry and three-failure debounce.
+web root. Failed executions use the configured cadence and shared confirmation policy.
 
 The deployed 6.1.0.19 controller was checked through a local port-forward on
 2026-10-08 and returned this contract. The ClusterIP Service exposes the existing
