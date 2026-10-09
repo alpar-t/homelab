@@ -49,7 +49,9 @@ commands, or change cluster resources. Log checks retain counts, not mail
 content. HTTP/TCP probes are explicitly configured in `assets/policy.json`.
 
 Zabbix polls `/snapshot` once a minute. Discovery creates check state, severity,
-and evidence items. A problem requires three failing samples. Collection/API
+evidence, and parent-availability items. A problem requires three failing samples
+(five for node availability), plus the placement-based reboot grace below.
+Recovery requires five healthy samples. Collection/API
 failures produce explicit problems; an HTTP snapshot older than three minutes
 returns 503. Zabbix raises a no-data problem if collection or polling stops and
 also monitors unsupported items. Expected nodes, core Deployments, and database
@@ -303,3 +305,68 @@ To roll back the Baloo integration, disable the Zabbix action first, restore the
 previous coordinated source and Deployment, and leave the old cluster-health
 job enabled. Do not prune Zabbix or its PVCs as an incident workaround; preserve
 history and backups while investigating.
+
+## Reboots and notification noise (2026-10-08)
+
+Pufi's Zincati journal confirmed a clean FCOS update reboot at 06:03 Bucharest,
+returning around 06:08. Zabbix attempted 202 notifications that morning.
+The cascade combined expected non-HA service restarts, Longhorn replica rebuilds,
+one-sample recoveries followed by renewed failures, and orphaned pod/API alerts.
+Nine volumes still had genuinely degraded replicas during investigation; those
+problems must not be closed as a monitoring cleanup.
+
+The collector exposes actual parent-node availability, with deployment/DaemonSet
+selectors, pod placement, CNPG pod labels, configured HTTP/TCP workload mappings,
+and Longhorn attachment/replica nodes. It reads replica objects with get/list
+only. External services and the standalone HA appliance have no cluster-node
+parent. Keep probe `workloads` mappings accurate when moving or replacing apps.
+
+Native Zabbix history expressions enforce the policy:
+
+- Node availability requires five failed samples; ordinary checks require three.
+- Affected services require ten consecutive healthy parent-node samples before
+  opening a new incident. Longhorn rebuilds require thirty; faulted volumes use
+  the shorter service grace. At one-minute polling these are approximately
+  ten/thirty-minute windows after the relevant node recovers. A reboot on an
+  unrelated node does not inhibit a service.
+- Raw failure state remains visible throughout grace. Parent unavailability
+  cannot close an already-open incident: recovery separately requires five
+  consecutive healthy service samples.
+- Native actions notify once, then recover once only for prior recipients
+  (`Notify all involved`). Node, physical-disk, monitoring, and faulted-volume
+  incidents have no extra action delay. Service/probe incidents wait five more
+  minutes; resource warnings, pod/DaemonSet, backup, and other Longhorn incidents
+  wait ten. Thus a persistent ordinary service fault after a reboot typically
+  notifies about fifteen minutes after its parent returns, and a replica rebuild
+  about forty minutes after return. With healthy parent history already present,
+  only the normal failure threshold and action delay apply.
+- No periodic repeat operations are configured. Suppression still pauses problem
+  operations. Canceled escalations do not generate extra messages.
+
+Pods now emit both healthy and failing samples. `/state/pod-checks.json` retains
+retired pod checks for a day so they can resolve before discovery removes them;
+the evidence explicitly says the pod retired, not that its service recovered.
+An API failure cannot retire a pod, and successful API checks also emit healthy
+samples. The lifecycle cache survives collector restarts on the existing PVC.
+
+Deploy the collector/policy and read-only RBAC through GitOps before reconciling
+Zabbix prototypes/actions with the bootstrap helper. This ordering ensures the
+new discovery fields exist. Check fresh parent-availability items and trigger
+errors as well as ordinary state items. Do not close historical orphaned alerts
+without checking current pod inventory and collector evidence. During one-time
+cleanup, filter only those verified stale event IDs at the webhook to avoid a
+recovery-message burst; restore the original webhook after their recoveries have
+been processed. Never disable all alerts or blanket-suppress all services for a
+node reboot.
+
+Live validation confirmed reboot grace, delayed failure detection, resistance to
+one-sample recovery, preservation of open incidents through a renewed parent
+outage, and recovery on the fifth healthy sample. The disposable test host was
+outside all notification groups, produced exactly one problem, sent no messages,
+and was removed. All 22 verified stale pod/API incidents were reconciled.
+
+Zabbix 7.0's parser accepts some macro-based sample periods on a prototype but
+rejects them during discovery. `sample_gate()` therefore generates literal
+sample-window branches selected by the discovery macro. Validate actual discovered
+expressions and `discoveryrule.error`, not just a successful prototype API update.
+`Notify all involved` also requires `opmessage: {default_msg: 1}` in this version.
