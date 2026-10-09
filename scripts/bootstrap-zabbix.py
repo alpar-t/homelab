@@ -7,6 +7,7 @@ This changes only integration-owned objects, except initial Admin password setup
 import argparse
 import base64
 import json
+from pathlib import Path
 import secrets
 import subprocess
 import time
@@ -73,7 +74,22 @@ class API:
         return result[idfield + 's'][0]
 
 
+def sample_gate(key, macro, windows):
+    # Zabbix 7.0 accepts an LLD macro in a period parameter at prototype creation
+    # but rejects a quoted "#N" after discovery. Use literal sample windows and
+    # let the discovery macro select a branch instead.
+    return '(' + ' or '.join(
+        f'({macro}={n} and count(/HomePBP/{key}[{{#ID}}],#{n})={n}'
+        f' and min(/HomePBP/{key}[{{#ID}}],#{n})=1)'
+        for n in sorted(set(windows))) + ')'
+
+
 def configure_checks(api):
+    policy = json.loads((Path(__file__).resolve().parents[1] / 'config/zabbix/manifests/assets/policy.json').read_text())
+    grace = policy.get('reboot_grace', {'service_samples': 10, 'replica_samples': 30})
+    windows = [1, grace['service_samples'], grace['replica_samples']]
+    if any(type(n) is not int or n < 1 or n > 120 for n in windows):
+        raise ValueError('Reboot grace must be 1–120 samples')
     group = api.ensure('hostgroup', 'name', 'HomePBP', {}, 'groupid')
     host = api.ensure('host', 'host', 'HomePBP', {'name': 'HomePBP', 'groups': [{'groupid': group}],
                       'tags': [{'tag': 'managed_by', 'value': 'HOME-3'}], 'status': 0})
@@ -87,9 +103,13 @@ def configure_checks(api):
         'lifetime': '1d', 'enabled_lifetime_type': 2,
         'preprocessing': [{'type': 12, 'params': '$.checks', 'error_handler': 0}],
         'lld_macro_paths': [{'lld_macro': '{#' + macro + '}', 'path': '$.' + field} for macro, field in
-                            [('ID', 'id'), ('NAME', 'name'), ('FAMILY', 'family')]],
+                            [('ID', 'id'), ('NAME', 'name'), ('FAMILY', 'family'),
+                             ('NOTIFY_DELAY', 'notify_delay'), ('GRACE_SAMPLES', 'grace_samples'),
+                             ('FAILURE_SAMPLES', 'failure_samples'), ('NOTIFICATION', 'notification')]],
     }, 'itemid', query={'hostids': [host], 'filter': {'key_': 'homelab.discovery'}, 'output': ['itemid']})
-    for suffix, field, value_type, history in [('state', 'status', 3, '7d'), ('detail', 'detail', 4, '3d'), ('severity', 'severity', 3, '1d')]:
+    for suffix, field, value_type, history in [('state', 'status', 3, '7d'), ('detail', 'detail', 4, '3d'),
+                                              ('severity', 'severity', 3, '1d'),
+                                              ('parent_available', 'parent_available', 3, '3d')]:
         key = 'homelab.' + suffix + '[{#ID}]'
         api.ensure('itemprototype', 'key_', key, {
             'hostid': host, 'ruleid': discovery, 'name': '{#NAME}: ' + suffix,
@@ -104,16 +124,24 @@ def configure_checks(api):
                 {'type': 12, 'params': '$.' + field, 'error_handler': 0},
             ],
         }, 'itemid', query={'discoveryids': [discovery], 'filter': {'key_': key}, 'output': ['itemid']})
-    for severity in (2, 3, 4):
+    for severity in (1, 2, 3, 4):
         name = '{#NAME}: persistent failure (severity ' + str(severity) + ')'
         api.ensure('triggerprototype', 'description', name, {
-            'expression': 'count(/HomePBP/homelab.state[{#ID}],#3)=3 and min(/HomePBP/homelab.state[{#ID}],#3)=1 and last(/HomePBP/homelab.severity[{#ID}])=' + str(severity),
+            'expression': (sample_gate('homelab.state', '{#FAILURE_SAMPLES}', [3, 5]) + ' and '
+                           + sample_gate('homelab.parent_available', '{#GRACE_SAMPLES}', windows)
+                           + ' and last(/HomePBP/homelab.severity[{#ID}])=' + str(severity)),
             'priority': severity, 'manual_close': 1,
+            'recovery_mode': 1,
+            'recovery_expression': 'count(/HomePBP/homelab.state[{#ID}],#5)=5 and max(/HomePBP/homelab.state[{#ID}],#5)=0',
             'opdata': '{?last(/HomePBP/homelab.detail[{#ID}])}',
-            'tags': [{'tag': 'family', 'value': '{#FAMILY}'}, {'tag': 'check_id', 'value': '{#ID}'}, {'tag': 'managed_by', 'value': 'HOME-3'}],
+            'tags': [{'tag': 'family', 'value': '{#FAMILY}'}, {'tag': 'check_id', 'value': '{#ID}'},
+                     {'tag': 'managed_by', 'value': 'HOME-3'}, {'tag': 'notify_delay', 'value': '{#NOTIFY_DELAY}'},
+                     {'tag': 'notification', 'value': '{#NOTIFICATION}'}],
         }, 'triggerid', query={'discoveryids': [discovery], 'filter': {'description': name}, 'output': ['triggerid']})
     api.ensure('trigger', 'description', 'Monitoring collector has no fresh data', {
         'expression': 'nodata(/HomePBP/homelab.snapshot,3m)=1', 'priority': 4,
+        'recovery_mode': 1,
+        'recovery_expression': 'count(/HomePBP/homelab.snapshot,5m)>=5 and nodata(/HomePBP/homelab.snapshot,90s)=0',
         'tags': [{'tag': 'family', 'value': 'monitoring'}, {'tag': 'managed_by', 'value': 'HOME-3'}],
     }, query={'hostids': [host], 'filter': {'description': 'Monitoring collector has no fresh data'}, 'output': ['triggerid']})
     # Detect preprocessing/configuration faults even while the master is healthy.
@@ -123,6 +151,8 @@ def configure_checks(api):
     }, query={'hostids': [host], 'filter': {'key_': 'zabbix[host,,items_unsupported]'}, 'output': ['itemid']})
     api.ensure('trigger', 'description', 'Monitoring has unsupported items', {
         'expression': 'min(/HomePBP/zabbix[host,,items_unsupported],3m)>0', 'priority': 3,
+        'recovery_mode': 1,
+        'recovery_expression': 'count(/HomePBP/zabbix[host,,items_unsupported],#5)=5 and max(/HomePBP/zabbix[host,,items_unsupported],#5)=0',
         'tags': [{'tag': 'family', 'value': 'monitoring'}, {'tag': 'managed_by', 'value': 'HOME-3'}],
     }, query={'hostids': [host], 'filter': {'description': 'Monitoring has unsupported items'}, 'output': ['triggerid']})
     return group
@@ -174,11 +204,29 @@ return 'accepted';'''
     })
     api.call('user.update', {'userid': user, 'medias': [{'mediatypeid': media, 'sendto': ['Baloo'], 'active': 0, 'severity': 60, 'period': '1-7,00:00-24:00'}]})
     operation = {'operationtype': 0, 'opmessage': {'default_msg': 1, 'mediatypeid': media}, 'opmessage_usr': [{'userid': user}]}
-    api.ensure('action', 'name', 'HomePBP problems to Baloo', {'eventsource': 0, 'status': 0,
-        'filter': {'evaltype': 0, 'conditions': [{'conditiontype': 0, 'operator': 0, 'value': group}]},
-        'operations': [{**operation, 'esc_step_from': 1, 'esc_step_to': 1}],
-        'recovery_operations': [operation], 'pause_suppressed': 1,
-    })
+    configure_notification_actions(api, group, operation)
+
+
+def configure_notification_actions(api, group, operation):
+    for delay in ('immediate', '5m', '10m'):
+        conditions = [{'conditiontype': 0, 'operator': 0, 'value': group},
+                      {'conditiontype': 26, 'operator': 1, 'value2': 'notification', 'value': 'dashboard'}]
+        if delay == 'immediate':
+            # Untagged monitoring triggers retain immediate delivery.
+            conditions += [{'conditiontype': 26, 'operator': 1, 'value2': 'notify_delay', 'value': value}
+                           for value in ('5m', '10m')]
+        else:
+            conditions.append({'conditiontype': 26, 'operator': 0, 'value2': 'notify_delay', 'value': delay})
+        step = 1 if delay == 'immediate' else 2
+        name = 'HomePBP problems to Baloo' + ('' if delay == 'immediate' else ' after ' + delay)
+        api.ensure('action', 'name', name, {'eventsource': 0, 'status': 0,
+            'esc_period': '1m' if delay == 'immediate' else delay,
+            'filter': {'evaltype': 1, 'conditions': conditions},
+            'operations': [{**operation, 'esc_step_from': step, 'esc_step_to': step}],
+            # No recovery-only messages for incidents that ended before notification.
+            'recovery_operations': [{'operationtype': 11, 'opmessage': {'default_msg': 1}}], 'pause_suppressed': 1,
+            'notify_if_canceled': 0,
+        })
 
 
 def retire_synthetic_mail_check(api):
