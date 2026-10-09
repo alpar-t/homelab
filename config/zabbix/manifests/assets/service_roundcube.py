@@ -1,6 +1,7 @@
 """Anonymous OAuth bootstrap and the configured IMAP authentication capability."""
 from http.cookies import SimpleCookie
 import socket
+import time
 from urllib.parse import urlsplit, parse_qs
 
 
@@ -27,34 +28,46 @@ def bootstrap(ctx, config):
 
 
 def imap_capability(ctx, config):
+    deadline = time.monotonic() + min(4, ctx.remaining())
     def timeout():
-        remaining = ctx.remaining()
+        remaining = min(ctx.remaining(), deadline - time.monotonic())
         if remaining <= 0:
             raise TimeoutError()
-        return min(4, remaining)
+        return remaining
 
     with socket.create_connection((config['imap_host'], config['imap_port']), timeout()) as connection:
-        with connection.makefile('rb') as stream:
-            def line():
+        buffer = bytearray()
+        received = 0
+        def line():
+            nonlocal received
+            while b'\r\n' not in buffer:
                 connection.settimeout(timeout())
-                result = stream.readline(4097)
-                if len(result) > 4096 or not result.endswith(b'\r\n'):
-                    raise ValueError('invalid protocol line')
-                return result.rstrip(b'\r\n').upper()
+                part = connection.recv(min(4097 - len(buffer), 16385 - received))
+                timeout()  # A peer cannot extend the total budget by trickling bytes.
+                if not part:
+                    raise ValueError('short protocol line')
+                buffer.extend(part)
+                received += len(part)
+                if len(buffer) > 4096 or received > 16384:
+                    raise ValueError('protocol response limit')
+            end = buffer.index(b'\r\n')
+            result = bytes(buffer[:end]).upper()
+            del buffer[:end + 2]
+            return result
 
-            if not line().startswith(b'* OK '):
-                return False
-            connection.settimeout(timeout())
-            connection.sendall(b'M1 CAPABILITY\r\n')
-            capabilities = set()
-            for _ in range(12):
-                value = line()
-                if value.startswith(b'* CAPABILITY '):
-                    capabilities.update(value.split()[2:])
-                elif value.startswith(b'M1 '):
-                    return (value.startswith(b'M1 OK ') and b'AUTH=OAUTHBEARER' in capabilities
-                            and bool({b'IMAP4REV1', b'IMAP4REV2'} & capabilities))
+        if not line().startswith(b'* OK '):
             return False
+        connection.settimeout(timeout())
+        connection.sendall(b'M1 CAPABILITY\r\n')
+        capabilities = set()
+        for _ in range(12):
+            value = line()
+            if value.startswith(b'* CAPABILITY '):
+                capabilities.update(value.split()[2:])
+            elif value.startswith(b'M1 '):
+                return (value.startswith(b'M1 OK ') and b'AUTH=OAUTHBEARER' in capabilities
+                        and bool({b'IMAP4REV1', b'IMAP4REV2'} & capabilities))
+        return False
 
 
 def run(ctx, config):

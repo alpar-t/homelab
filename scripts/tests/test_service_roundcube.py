@@ -1,4 +1,3 @@
-import io
 import json
 from pathlib import Path
 import sys
@@ -33,8 +32,9 @@ class Connection:
     def __exit__(self, *args):
         pass
 
-    def makefile(self, mode):
-        return io.BytesIO(self.transcript)
+    def recv(self, size):
+        chunk, self.transcript = self.transcript[:min(size, 7)], self.transcript[min(size, 7):]
+        return chunk
 
     def settimeout(self, timeout):
         assert 0 < timeout <= 4
@@ -88,6 +88,20 @@ class Tests(unittest.TestCase):
             rows = service.run(self.ctx, self.config)
         self.assertEqual([row['status'] for row in rows], [1, 1])
         self.assertNotIn('private-secret', str(rows))
+
+    def test_trickle_response_cannot_extend_total_deadline(self):
+        clock = [100.0]
+        connection = Connection(b'* OK server\r\n* CAPABILITY IMAP4rev2 AUTH=OAUTHBEARER\r\nM1 OK complete\r\n')
+        original = connection.recv
+        def trickle(size):
+            clock[0] += 0.8
+            return original(1)
+        connection.recv = trickle
+        with patch.object(service.time, 'monotonic', side_effect=lambda: clock[0]), patch.object(service.socket, 'create_connection', return_value=connection):
+            with self.assertRaises(TimeoutError):
+                service.imap_capability(self.ctx, self.config)
+        self.assertLessEqual(clock[0], 104.8)
+        self.assertEqual(connection.sent, [])
 
     def test_deadline_and_work_bound(self):
         self.ctx.remaining = lambda: 0

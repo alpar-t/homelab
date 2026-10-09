@@ -27,8 +27,9 @@ Depends on the shared functional-check runner (foundation PR #124). Every 15 min
   actual configured mail protocol rather than duplicating the existing TCP probe.
 
 The runner applies existing execution-based alert debounce and stale-result checks.
-HTTP is capped at 32 KiB/6 seconds; IMAP at twelve response lines, 4096 bytes per
-line and four seconds per operation, additionally bounded by remaining time.
+HTTP is capped at 32 KiB/five seconds; IMAP at twelve response lines, 4096 bytes
+per line, 16 KiB total and four seconds for the whole transaction. Each receive
+uses the remaining budget, so trickling bytes cannot extend the body deadline.
 Output contains only fixed descriptions, never cookies, redirect parameters,
 mailbox identifiers, protocol banners or exception text.
 

@@ -10,5 +10,22 @@
   "minimum_failure_observations": 2,
   "minimum_recovery_observations": 2,
   "severity": 3,
-  "notification": "page"
+  "notification": "page",
+  "workloads": [],
+  "check_workloads": {
+    "Roundcube OAuth bootstrap": [
+      {
+        "namespace": "roundcube",
+        "kind": "Deployment",
+        "name": "roundcube"
+      }
+    ],
+    "Roundcube IMAP OAuth capability": [
+      {
+        "namespace": "stalwart-mail",
+        "kind": "Deployment",
+        "name": "stalwart"
+      }
+    ]
+  }
 }
