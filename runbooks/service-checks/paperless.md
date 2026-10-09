@@ -1,6 +1,19 @@
 # Paperless functional checks
 
-Every 300 seconds, the collector performs a bounded authenticated GET of
+## Polling and incident confirmation
+
+Poll every 900 seconds (15 minutes); shared failure grace is 1800 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+Every 900 seconds, the collector performs a bounded authenticated GET of
 `/api/documents/?page_size=1&fields=id` and a Redis RESP PING. The first validates
 authentication, document permissions, pagination and a real PostgreSQL query;
 empty permitted archives pass. Only one numeric ID can be returned, and neither
@@ -9,7 +22,7 @@ Redis must return exactly PONG; no queue or document data is read. Each HTTP
 request has an eight-second limit and 16 KiB cap; Redis has four-second socket
 limits within the shared thirty-second deadline. Foundation alert debounce applies.
 
-A failed API check means missing/revoked credentials, denied permissions,
+A failed API check means a rejected/revoked supplied credential, denied permissions,
 network/backend failure, or an incompatible response. A failed Redis check
 means the ingestion broker cannot answer its protocol. Neither check uploads,
 reprocesses, acknowledges tasks, sends mail, or changes stored data.
@@ -48,7 +61,7 @@ Merge the captured value as key `paperless_monitor_token` into the optional
 `zabbix/zabbix-functional-credentials` Secret, preserving other services' keys.
 Use the repository's secure Secret-management procedure; never commit the token
 or read the Secret through collector RBAC. The foundation mounts it at
-`/credentials/paperless_monitor_token`. Missing credentials fail explicitly.
+`/credentials/paperless_monitor_token`. Absent credentials defer authenticated coverage; rejected credentials fail explicitly.
 For rotation delete/recreate this user's DRF Token and update that key. For
 revocation deactivate the user or delete its token; the next sample must fail.
 These setup operations require separate administrator authorization and were
@@ -75,3 +88,9 @@ was run because a dedicated monitoring token has not been provisioned.
 Live Redis PING from the Paperless application pod returned PONG during
 implementation. This validates the configured broker endpoint, but does not
 prove the collector network path; validate that path after rollout.
+
+Missing monitoring credentials defer the authenticated portion at informational
+severity with dashboard-only evidence; this is a coverage prerequisite, not an
+application-outage page or a confirmed recovery. Public/dependency observations
+continue independently. A supplied credential that is rejected remains a real
+failed execution. No additional authority is accepted to expand coverage.
