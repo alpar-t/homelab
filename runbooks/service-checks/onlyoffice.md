@@ -1,6 +1,19 @@
 # OnlyOffice and OpenCloud collaboration
 
-The collector runs five bounded read-only metadata requests every 300 seconds,
+## Polling and incident confirmation
+
+Poll every 900 seconds (15 minutes); shared failure grace is 1800 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+The collector runs five bounded read-only metadata requests every 900 seconds,
 with a 30-second service deadline and at most five seconds per request. Three
 stable signals use the existing functional-check discovery and alert debounce:
 
