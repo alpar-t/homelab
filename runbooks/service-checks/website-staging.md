@@ -1,6 +1,19 @@
 # Newjoy website staging functional checks
 
-Every five minutes, the Zabbix functional collector checks the internal homepage
+## Polling and incident confirmation
+
+Poll every 1800 seconds (30 minutes); shared failure grace is 3600 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Availability is advisory and dashboard-only.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+Every 30 minutes, the Zabbix functional collector checks the internal homepage
 for the New Joy identity and staging UI marker, then fetches one declared
 first-party Astro stylesheet. Missing assets, HTML fallback responses, broken
 content types and an unrelated login/error page fail this check. It separately
@@ -17,7 +30,7 @@ visual design or importer/build/publication functionality.
 
 Requests use HomePBP-monitor/1, five-second timeouts, a 256KiB response cap and
 the shared 30-second execution deadline. Results contain only fixed diagnostic
-messages. Existing three-failure alert debounce applies. No credentials, new
+messages. Existing execution-based alert debounce applies. No credentials, new
 RBAC or destination ingress permissions are required: staging has no restricting
 NetworkPolicy and the collector permits HTTP/HTTPS egress.
 
