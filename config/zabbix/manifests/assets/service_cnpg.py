@@ -133,7 +133,8 @@ def run(ctx, config):
                 critical |= instance == entry['primary']
         bad = bool(failures)
         checks.append(ctx.check(entry['label'], bad, '; '.join(sorted(set(failures))) if bad else
-                                'SQL database/recovery queries succeeded; roles and replay lag within policy',
+                                ('Recent PostgreSQL startup: SQL/replication observation deferred' if entry['deferred'] else
+                                 'SQL database/recovery queries succeeded; roles and replay lag within policy'),
                                 severity=3 if critical or not bad else 2,
                                 notification='page' if critical or not bad else 'dashboard',
                                 observation='unknown' if entry['deferred'] and not bad else 'known'))
