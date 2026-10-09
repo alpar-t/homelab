@@ -3,74 +3,107 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("prowlarr", ROOT / "config/zabbix/manifests/assets/service_prowlarr.py")
+ASSET = ROOT / 'config/zabbix/manifests/assets/service_prowlarr.py'
+spec = importlib.util.spec_from_file_location('security_prowlarr', ASSET)
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
-CONFIG = json.loads((ROOT / "config/zabbix/manifests/assets/service_prowlarr.json").read_text())
+CONFIG = json.loads(ASSET.with_suffix('.json').read_text())
+FIXTURES = {}
 
 
 class Context:
-    now = 1700000000
-    def __init__(self, health=None, indexers=None, statuses=None):
-        self.payloads = [health or [], indexers or [], statuses or []]
-        self.calls = []
-        self.code = 200
-        self.missing = False
-        self.error = False
+    def __init__(self, fault=None, remaining=30):
+        self.fault, self.budget, self.calls = fault, remaining, []
+        self.kube = self
+        self.secret_reads = []
     def remaining(self):
-        return 20
+        return self.budget
     def secret(self, key):
-        if self.missing:
-            raise RuntimeError("secret-marker")
-        return "secret-marker"
+        self.secret_reads.append(key)
+        raise AssertionError('unsafe credential read attempted')
     def check(self, name, bad, detail, severity=3):
-        return dict(name=name, status=int(bad), detail=detail, severity=severity)
+        return dict(name=name, status=int(bool(bad)), detail=detail, severity=severity)
     def http(self, url, **kwargs):
+        if not 0 < kwargs['timeout'] <= self.remaining():
+            raise TimeoutError('PRIVATE-CREDENTIAL')
         self.calls.append((url, kwargs))
-        if self.error:
-            raise TimeoutError("secret-marker private-url")
-        return SimpleNamespace(status=self.code, body=json.dumps(self.payloads.pop(0)).encode())
+        if (kwargs.get('headers') or {}).get('Authorization') or (kwargs.get('headers') or {}).get('X-Api-Key') or (kwargs.get('headers') or {}).get('X-Actual-Token'):
+            raise AssertionError('unsafe authentication header')
+        path = urlsplit(url).path
+        if path not in FIXTURES:
+            raise AssertionError('unexpected HTTP path: ' + path)
+        status, value = FIXTURES[path]
+        if self.fault == 'timeout':
+            raise TimeoutError('PRIVATE-CREDENTIAL')
+        if self.fault in (200, 302, 401, 403, 500):
+            status, value = self.fault, {'error':'PRIVATE-CREDENTIAL'}
+        if self.fault == 'malformed':
+            value = 'PRIVATE-CREDENTIAL'
+        body = value.encode() if isinstance(value, str) else json.dumps(value).encode()
+        return SimpleNamespace(status=status, body=body, headers={'Content-Type':'text/html' if path == '/' else 'application/json'})
+    def get(self, path):
+        self.calls.append((path, {}))
+        if self.fault == 'timeout':
+            raise TimeoutError('PRIVATE-CREDENTIAL')
+        if '/pods?' in path:
+            assert path.startswith('/api/v1/namespaces/media/pods?')
+            states = [dict(name='prowlarr',ready=self.fault != 'not-ready',state={'running':{}})]
+            return {'items':[dict(metadata={'name':'unused'},status={'phase':'Running','containerStatuses':states})],
+                    'metadata':{'continue':'private' if self.fault == 'truncated' else ''}}
+        assert path == '/apis/apps/v1/namespaces/baloo/deployments?limit=100'
+        names = ['pinchtab-web','pinchtab'] if 'prowlarr' == 'pinchtab' else ['product-model-api','product-model-renderer']
+        items = [dict(metadata={'name':n,'generation':2},spec={'replicas':1},
+                      status={'observedGeneration':1 if self.fault == 'stale-generation' else 2,
+                              'availableReplicas':0 if self.fault == 'not-ready' else 1,'readyReplicas':1}) for n in names]
+        return {'items':[] if self.fault == 'missing' else items,
+                'metadata':{'continue':'private' if self.fault == 'truncated' else ''}}
 
 
-class Checks(unittest.TestCase):
-    def test_empty_and_fixed_gets(self):
+class SecurityBaselineTests(unittest.TestCase):
+    def test_useful_baseline_is_distinct_from_deferred_coverage(self):
         ctx = Context()
-        self.assertEqual([r["status"] for r in module.run(ctx, CONFIG)], [0, 0])
-        self.assertEqual([c[0].rsplit("/", 1)[-1] for c in ctx.calls], ["health", "indexer", "indexerstatus"])
-        for _, kwargs in ctx.calls:
-            self.assertNotIn("data", kwargs)
-            self.assertNotIn("method", kwargs)
-            self.assertFalse(kwargs["follow_redirects"])
-            self.assertLessEqual(kwargs["timeout"], 6)
-    def test_enabled_blocked_and_disabled(self):
-        status = [{"indexerId": 1, "disabledTill": "2030-01-01T00:00:00Z"}]
-        for enabled, expected in ((True, 1), (False, 0)):
-            ctx = Context(indexers=[{"id": 1, "enable": enabled}], statuses=status)
-            self.assertEqual(module.run(ctx, CONFIG)[1]["status"], expected)
-    def test_expired_failure(self):
-        ctx = Context(indexers=[{"id": 1, "enable": True}], statuses=[{"indexerId": 1, "disabledTill": "2000-01-01T00:00:00Z"}])
-        self.assertEqual(module.run(ctx, CONFIG)[1]["status"], 0)
-    def test_health_errors_and_empty_warning(self):
-        notice = Context(health=[{"source": "UpdateCheck", "type": "notice"}])
-        self.assertEqual([r["status"] for r in module.run(notice, CONFIG)], [0, 0])
-        ctx = Context(health=[{"source": "DatabaseCheck", "type": "error", "message": "secret-marker"}])
-        result = module.run(ctx, CONFIG)
-        self.assertEqual(result[0]["status"], 1)
-        self.assertNotIn("secret-marker", str(result))
-        ctx = Context(health=[{"source": "NoIndexerAvailableCheck", "type": "error"}])
-        self.assertEqual(module.run(ctx, CONFIG)[0]["status"], 0)
-    def test_schema_rejected(self):
-        cases = [Context(indexers=[{"id": 1, "enable": "true"}]), Context(health=[{"source": "x", "type": "unknown"}]), Context(statuses=[{"indexerId": 1, "disabledTill": "invalid"}])]
-        for ctx in cases:
-            self.assertTrue(all(r["status"] for r in module.run(ctx, CONFIG)))
-    def test_unavailable_auth_timeout_missing(self):
-        for code in (401, 403, 302, 500):
-            ctx = Context(); ctx.code = code
-            self.assertTrue(all(r["status"] for r in module.run(ctx, CONFIG)))
-        for flag in ("missing", "error"):
-            ctx = Context(); setattr(ctx, flag, True)
-            result = module.run(ctx, CONFIG)
-            self.assertTrue(all(r["status"] for r in result))
-            self.assertNotIn("secret-marker", str(result))
+        rows = module.run(ctx, CONFIG)
+        active = [r for r in rows if r['severity'] > 1]
+        deferred = [r for r in rows if r['severity'] == 1]
+        self.assertTrue(active)
+        self.assertTrue(all(r['status'] == 0 for r in active), rows)
+        self.assertTrue(deferred)
+        self.assertTrue(all(r['status'] == 1 and r['observation'] == 'deferred' and r['notification'] == 'dashboard' and 'deferred' in r['detail'] for r in deferred), rows)
+        self.assertTrue(ctx.calls)
+        self.assertEqual([], ctx.secret_reads)
+        for url, args in ctx.calls:
+            self.assertNotIn('Authorization', (args.get('headers') or {}))
+            self.assertNotIn('X-Api-Key', (args.get('headers') or {}))
+            self.assertNotIn('X-Actual-Token', (args.get('headers') or {}))
+            if url.startswith('http'):
+                self.assertLessEqual(args['timeout'], 8)
+                self.assertLessEqual(args['max_bytes'], 65536)
+                if args.get('method') == 'POST':
+                    self.assertEqual('actual_budget', 'prowlarr')
+                    self.assertEqual('tools/list', json.loads(args['data'])['method'])
+                else:
+                    self.assertNotIn('method', args)
+    def test_bad_baseline_never_claims_health_or_leaks_responses(self):
+        faults = ['timeout','malformed',302,401,403,500] if FIXTURES else ['timeout','missing','not-ready','truncated','stale-generation']
+        if 'prowlarr' in ('radarr','prowlarr'):
+            faults = ['timeout','not-ready','truncated']
+        for fault in faults:
+            with self.subTest(fault=fault):
+                rows = module.run(Context(fault), CONFIG)
+                self.assertTrue(any(r['status'] for r in rows if r['severity'] > 1), rows)
+                self.assertNotIn('PRIVATE-CREDENTIAL', json.dumps(rows))
+    def test_legacy_credentials_cannot_reenable_privileged_access(self):
+        legacy = dict(CONFIG,credential_key='admin',session_secret='admin',workspace_path='/dav/spaces/private/',
+                      token_key='admin',api_url='http://renderer:18811',renderer_url='http://renderer:18811')
+        rows = module.run(Context(), legacy)
+        self.assertTrue(all(r['status'] == 1 for r in rows if r['severity'] == 1))
+    def test_deadline_fails_without_authenticated_fallback(self):
+        rows = module.run(Context(remaining=0), CONFIG)
+        self.assertTrue(all(r['status'] == 1 for r in rows))
+
+
+if __name__ == '__main__':
+    unittest.main()

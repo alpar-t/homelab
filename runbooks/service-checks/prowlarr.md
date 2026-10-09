@@ -1,52 +1,43 @@
-# Prowlarr functional monitoring
+# Prowlarr safe monitoring baseline
 
-Depends on functional monitoring foundation PR #124. Every 300 seconds the
-collector performs three fixed authenticated GETs on the internal Prowlarr
-Service: `/api/v1/health`, `/api/v1/indexer`, `/api/v1/indexerstatus`.
-Each request has a six-second maximum timeout and 256 KiB response cap;
-the worker deadline is 25 seconds. Existing Zabbix failure debounce applies.
+Observe the existing prowlarr container in the single nonterminating arr-stack pod using existing read-only pod RBAC. Require Running, container ready and a running state. Native API health/indexer checks are explicitly deferred.
 
-API health checks authenticated database-backed response shapes and counts
-non-indexer health errors. Warnings are advisory and do not alert. Indexer
-health entries and NoIndexerAvailableCheck are excluded: the second check
-counts future `disabledTill` values only for explicitly enabled indexers.
-An empty list, disabled indexers, expired blocks and historical failure times
-are healthy. Counts only are reported; names, URLs, fields, keys and health
-messages never appear in result details. Missing credentials, rejection,
-malformed responses and timeouts are unavailable failures, never healthy.
+Coverage that cannot be obtained with native enforced read-only authority stays
+visible as advisory records with severity1, `observation: deferred`, `notification: dashboard` and a `coverage deferred`
+detail. These records must not be mistaken for completed functional validation.
+The ordinary operational checks use the shared framework's normal severity and
+transient grace. Existing Kubernetes/native signals continue independently.
 
-## Rollout prerequisite
+## Access and credential boundary
 
-Prowlarr's native API key grants full application API access, including writes;
-there is no dedicated read-only key scope. This implementation only issues the
-three fixed GETs, but that does not constrain a stolen key. Provisioning this
-broad credential is an explicit rollout prerequisite. No key is copied or
-provisioned by this PR and no hypothetical authorization proxy is assumed.
-An operator must deliberately store the Prowlarr Settings > General API key in
-`zabbix/zabbix-functional-credentials`, key `prowlarr_api_key`, using a protected
-local file and the organization's Secret provisioning procedure. Preserve
-other keys in this shared Secret; never print or commit values. The optional
-foundation volume supplies `/credentials/prowlarr_api_key`; no Secret API
-permission is needed. Revoke by rotating Prowlarr's API key, update approved
-clients and this Secret, and remove the monitoring key when disabling coverage.
+No anonymous functional API has been verified for this deployed version as part of this change, and no application-wide administrative API key is copied. This is explicitly Kubernetes readiness evidence, not indexer search, active block or upstream availability validation.
 
-The media manifests contain no destination NetworkPolicy; existing collector
-network access suffices. No policy, RBAC or identity access changes are made.
+No broad native token is an acceptable rollout prerequisite. No proxy is added.
+The foundation projects only approved native read-only credential keys and the
+public mail TLS CA; legacy unsafe keys are not mounted. If unsafe credentials
+were provisioned separately before this change, an authorized operator should
+remove/revoke them through the existing private credential workflow; this PR
+does not retrieve, provision or rotate any production credential.
 
-## Limits and source contract
+## Collection and validation
 
-This is passive: cached blocks cannot prove an unused indexer works or that
-search results/downloads succeed. No tests, searches, syncs or upstream indexer
-requests are triggered. The indexer list can contain sensitive settings in
-memory; responses are bounded and never logged or persisted. Indexer warnings
-that do not create an active block remain outside the alert baseline.
+The shared framework samples at a 15-minute healthy cadence. Operational
+failures require two real failed observations and a 30-minute grace;
+recovery requires two real healthy observations. Cached snapshots are not new
+observations. Failure retries follow the same bounded source-controlled cadence,
+with shared jitter and overload limits. Deferred checks remain severity1,
+observation deferred and dashboard-only; they never assert functional success.
 
-The deployed manifest pins Prowlarr 2.3.5.5327. Its versioned
-[IndexerStatusController](https://github.com/Prowlarr/Prowlarr/blob/v2.3.5.5327/src/Prowlarr.Api.V1/Indexers/IndexerStatusController.cs)
-GET reads `GetBlockedProviders()`; status resource fields are `indexerId` and
-`disabledTill`. Upstream
-[IndexerResource](https://github.com/Prowlarr/Prowlarr/blob/develop/src/Prowlarr.Api.V1/Indexers/IndexerResource.cs)
-and [HealthResource](https://github.com/Prowlarr/Prowlarr/blob/develop/src/Prowlarr.Api.V1/Health/HealthResource.cs)
-define `enable` and `source`/`type`. Fixtures verify this contract; authenticated
-production API behavior has not been live validated. No production credentials
-were accessed.
+The JSON interval/deadline policy remains source-controlled and the service uses
+bounded requests within that deadline. The shared service deadline remains bounded by its JSON policy. HTTP requests use only fixed
+anonymous paths and the shared redirect/TLS/body-limit helper; no response bodies,
+credential values or exception strings enter snapshot evidence. Kubernetes reads
+use existing read-only RBAC, one bounded inventory page, and refuse pagination.
+
+Run `python3 -m unittest discover -s scripts/tests -p test_service_prowlarr.py`
+and `kubectl kustomize config/zabbix/manifests`. Fixtures cover normal operational
+evidence, explicit deferred records, rejected/malformed/unavailable evidence,
+redaction, deadline expiry and ignored legacy credential config. No production
+request or deployment is performed by these tests. Validate actual anonymous
+contracts/readiness after the normal reviewed GitOps rollout; this change does
+not claim new live functional validation.
