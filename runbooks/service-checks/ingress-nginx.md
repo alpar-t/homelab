@@ -22,7 +22,7 @@ the branded title is checked instead of the temporary construction copy.
 Redirects, authentication responses, default-backend HTML and upstream errors
 fail. The foundation supplies the `HomePBP-monitor/1` User-Agent.
 
-Requests are read-only, capped at 64 KiB and eight seconds (or the remaining
+Requests are read-only, capped at 64 KiB and five seconds (or the remaining
 30-second service deadline). Existing execution-based alert debounce applies.
 No credentials, extra Kubernetes RBAC, ingress changes or NetworkPolicy
 changes are required: the controller and public backend have no destination
