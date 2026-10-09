@@ -32,12 +32,14 @@ check while preserving the public configuration signal.
 ## Credential prerequisite
 
 Create a dedicated non-staff, non-superuser monitoring account. Give it only
-`guest` membership in the intended recipe space and select that active space.
+`guest` membership in a dedicated empty monitoring recipe space and select that
+active space. Give the account no household-space memberships.
 Create an expiring Tandoor OAuth access token with **only `read` scope** through
 its access-token management UI/API as that account. Do not use
 `/api-token-auth/`: version 2.6.13 creates a broad `read write app` token there.
-Use a dedicated empty space when household recipe access is unnecessary; this
-still exercises the same database/search/serializer path. It will not verify
+Keep the monitoring space empty. The read-scoped token can read every recipe
+visible to its identity if stolen, so account and space isolation are essential.
+An empty space still exercises the same database/search/serializer path. It will not verify
 household-space permissions or existing recipe rows in that configuration.
 
 Store the token as key `tandoor_read_token` in the existing manually managed
