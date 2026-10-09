@@ -114,6 +114,14 @@ def probe(ctx, endpoint):
 def run(ctx, config):
     records = []
     for endpoint in config['endpoints']:
+        if endpoint['tls'] != 'none' and endpoint.get('ca_key'):
+            try:
+                ctx.secret(endpoint['ca_key'])
+            except Exception:
+                records.append(dict(ctx.check(endpoint['name'], True,
+                    'coverage deferred: approved local public TLS trust anchor unavailable', severity=1),
+                    observation='deferred', notification='dashboard'))
+                continue
         try:
             probe(ctx, endpoint)
             detail = 'anonymous protocol negotiation succeeded'

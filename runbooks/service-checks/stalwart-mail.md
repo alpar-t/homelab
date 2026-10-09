@@ -33,10 +33,15 @@ kubectl -n zabbix create secret generic zabbix-functional-credentials --from-fil
 kubectl -n zabbix patch secret zabbix-functional-credentials --type=merge --patch-file=/private/tmp/stalwart-mail-trust-patch.json
 ```
 
-Create the Secret first if it does not exist. Secret volume projection supplies updates without copying mailbox passwords. To revoke trust, remove only this key. Certificate renewal/rotation may require replacing the trusted self-signed certificate. The monitor retains normal chain, validity and hostname validation with TLS >=1.2; local SNI is `mail.newjoy.ro`, independently of the cluster DNS connection address. Migadu uses public system trust and its configured upstream hostname. Missing PEM, name mismatch, expiry or untrusted certificates fail the local TLS checks; no verification bypass exists. If the fallback certificate does not cover `mail.newjoy.ro`, install a correctly named certificate on Stalwart before rollout. No new NetworkPolicy or RBAC is required: the mail namespace has no ingress-restricting policy, collector egress is unrestricted, and probes use sockets only.
+Create the Secret first if it does not exist. Secret volume projection supplies updates without copying mailbox passwords. To revoke trust, remove only this key. Certificate renewal/rotation may require replacing the trusted self-signed certificate. The monitor retains normal chain, validity and hostname validation with TLS >=1.2; local SNI is `mail.newjoy.ro`, independently of the cluster DNS connection address. Migadu uses public system trust and its configured upstream hostname. A missing approved public CA reports deferred informational/dashboard coverage without connecting to those local TLS endpoints. Supplied invalid PEM, name mismatch, expiry or untrusted certificates remain real local TLS failures; no verification bypass exists. If the fallback certificate does not cover `mail.newjoy.ro`, install a correctly named certificate on Stalwart before rollout. No new NetworkPolicy or RBAC is required: the mail namespace has no ingress-restricting policy, collector egress is unrestricted, and probes use sockets only.
 
 ## Limits and existing passive receiving signal
 
 These checks establish listener/protocol/TLS functionality and upstream availability, not mailbox authentication, durable ingestion, outbound relay authorization or end-to-end mail delivery. Closing an anonymous IMAP session after CAPABILITY touches no mailbox state. No mail or addresses enter monitoring output.
 
 The existing incoming activity, fetchmail/Stalwart failure-log and TCP checks are untouched. In particular receiving activity remains 24/7 with the initial 24-hour silence threshold and exactly the existing adaptive-gap policy described in [Zabbix monitoring](../zabbix-monitoring.md#incoming-mail-activity). No new activity is generated and no absence-of-mail threshold changes.
+
+Missing local public trust affects only the configured CA-dependent STARTTLS and
+IMAPS observations. Plaintext SMTP and upstream Migadu probes continue unchanged.
+The monitor does not obtain or trust a certificate from the monitored connection
+to clear the advisory, and it provisions no credentials or CA material.

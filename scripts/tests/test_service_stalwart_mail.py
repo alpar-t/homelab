@@ -14,7 +14,7 @@ spec.loader.exec_module(mail)
 class Context:
     def remaining(self): return 30
     def secret(self, key): return 'TEST TRUST ANCHOR'
-    def check(self, name, bad, detail): return dict(name=name, status=int(bad), detail=detail)
+    def check(self, name, bad, detail, severity=3): return dict(name=name, status=int(bad), detail=detail, severity=severity)
 
 
 class MailProtocolTests(unittest.TestCase):
@@ -83,10 +83,36 @@ class MailProtocolTests(unittest.TestCase):
             result = mail.run(ctx, {'endpoints': [self.endpoint(protocol='imap', tls='implicit')]})[0]
         self.assertEqual(result['status'], 1)
         self.assertNotIn('private secret', result['detail'])
+        self.assertEqual((result['severity'], result['observation'], result['notification']), (1, 'deferred', 'dashboard'))
         with patch.object(mail.socket, 'create_connection', side_effect=OSError('private host')):
             result = mail.run(Context(), {'endpoints': [self.endpoint()]})[0]
         self.assertEqual(result['status'], 1)
         self.assertNotIn('private host', result['detail'])
+
+    def test_missing_local_ca_does_not_affect_plaintext_or_public_tls(self):
+        ctx = Context()
+        ctx.secret = Mock(side_effect=ValueError('private missing file'))
+        plain = dict(self.endpoint(), name='plaintext')
+        local = dict(self.endpoint(tls='starttls'), name='local TLS')
+        public = dict(self.endpoint(tls='implicit'), name='public TLS')
+        public.pop('ca_key')
+        with patch.object(mail, 'probe') as probe:
+            rows = mail.run(ctx, {'endpoints': [plain, local, public]})
+        self.assertEqual([r['status'] for r in rows], [0, 1, 0])
+        self.assertEqual(rows[1]['observation'], 'deferred')
+        self.assertEqual([call.args[1]['name'] for call in probe.call_args_list], ['plaintext', 'public TLS'])
+        self.assertEqual(ctx.secret.call_count, 1)
+
+    def test_supplied_invalid_ca_remains_real_failure(self):
+        ctx = Context()
+        ctx.secret = Mock(return_value='not a PEM certificate')
+        sock = Mock()
+        with patch.object(mail.socket, 'create_connection', return_value=sock):
+            row = mail.run(ctx, {'endpoints': [self.endpoint(protocol='imap', tls='implicit')]})[0]
+        self.assertEqual((row['status'], row['severity']), (1, 3))
+        self.assertNotIn('observation', row)
+        self.assertNotIn('not a PEM', row['detail'])
+        self.assertTrue(sock.close.called)
 
     def test_expired_deadline_prevents_connect(self):
         ctx = Context()
