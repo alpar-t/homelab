@@ -1,8 +1,20 @@
 # MetalLB functional monitoring
 
-The collector checks the ten explicitly expected LAN LoadBalancer services every
-300 seconds (failed checks retry at 60 seconds), under the shared 30-second
-execution deadline and three-sample alert policy. Expected names and VIPs are in
+## Polling and incident confirmation
+
+Poll every 600 seconds (10 minutes); shared failure grace is 900 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+The collector checks the ten explicitly expected LAN LoadBalancer services every 600 seconds (Failures retain the configured polling interval), under the shared 30-second
+execution deadline and execution-based alert policy. Expected names and VIPs are in
 `service_metallb.json`; update that inventory and resourceName-scoped RBAC together
 when intentionally adding/removing services. Unlisted services, including an
 intentionally pending new service, do not alert.
@@ -31,7 +43,7 @@ No credentials, Secret reads, writes, synthetic services, or network changes are
 required. Namespaced Roles grant GET only for the ten expected Service names and
 GET/list only for metallb-system ServiceL2Status. Existing pod read access proves
 speaker ownership and Local-policy placement. API reads run concurrently using
-the client's 15-second timeout to avoid sequential timeout accumulation. API
+the client's five-second timeout to avoid sequential timeout accumulation. API
 permission/schema errors fail visibly, with no exception body emitted. Media
 currently has no ingress NetworkPolicy, so no policy exception is needed.
 
