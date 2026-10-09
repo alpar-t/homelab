@@ -18,9 +18,9 @@ def run(ctx, config):
     connected, sampled, unavailable = 0, 0, 0
     inventory_failed = False
     try:
-        # Kubernetes.get has a fixed 15-second transport timeout. One bounded
-        # list (no pagination) leaves at least 12 seconds for HTTP probes.
-        if ctx.remaining() < 15:
+        # One five-second Kubernetes GET leaves twelve seconds for the bounded
+        # connector/public probes; no pagination or transport retry.
+        if ctx.remaining() < 17:
             raise TimeoutError()
         page = ctx.kube.get('/api/v1/namespaces/cloudflared/pods?labelSelector=app%3Dcloudflared&limit=5')
         pods = [p for p in page['items'] if not p.get('metadata', {}).get('deletionTimestamp')]
