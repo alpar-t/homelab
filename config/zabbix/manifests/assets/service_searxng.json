@@ -8,5 +8,22 @@
   "minimum_failure_observations": 2,
   "minimum_recovery_observations": 2,
   "severity": 3,
-  "notification": "page"
+  "notification": "page",
+  "workloads": [],
+  "check_workloads": {
+    "SearXNG query execution": [
+      {
+        "namespace": "baloo",
+        "kind": "Deployment",
+        "name": "searxng"
+      }
+    ],
+    "SearXNG MCP search catalog": [
+      {
+        "namespace": "baloo",
+        "kind": "Deployment",
+        "name": "mcp-searxng"
+      }
+    ]
+  }
 }
