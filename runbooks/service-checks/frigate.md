@@ -37,3 +37,10 @@ Read-only rollout evidence on 2026-10-08: deployed stats/config schemas matched;
 front and gate had roughly 12 FPS, while enabled back had zero capture/process
 FPS. The camera check is expected to alert on that existing condition until
 the camera is repaired or intentionally disabled. Monitoring does not change it.
+
+Unavailable, invalid or stale telemetry creates one telemetry problem. Camera
+capture and recording rows then report unknown observations, retaining any
+previously confirmed incident without asserting a new outage or recovery.
+Startup grace also reports unknown for those rows; actual fresh post-startup
+observations are required to recover. Disabled cameras and idle recording
+remain healthy when fresh telemetry proves their configured state.

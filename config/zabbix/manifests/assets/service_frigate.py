@@ -49,9 +49,13 @@ def run(ctx, config):
         worker_ok = type(worker) is int and worker > 0
         return [
             ctx.check(names[0], stale, 'native stats stale' if stale else 'native stats fresh'),
-            ctx.check(names[1], stale or (bool(failed) and not grace),
-                      f'enabled={enabled}; unhealthy={failed}; startup_grace={grace}'),
-            ctx.check(names[2], stale or (recording > 0 and not worker_ok and not grace),
-                      f'recording-enabled={recording}; worker_present={worker_ok}; startup_grace={grace}')]
+            ctx.check(names[1], bool(failed) and not grace,
+                      f'enabled={enabled}; unhealthy={failed}; startup_grace={grace}',
+                      observation='unknown' if stale or grace else 'known'),
+            ctx.check(names[2], recording > 0 and not worker_ok and not grace,
+                      f'recording-enabled={recording}; worker_present={worker_ok}; startup_grace={grace}',
+                      observation='unknown' if stale or grace else 'known')]
     except Exception:
-        return [ctx.check(name, True, 'Frigate API unavailable or invalid telemetry') for name in names]
+        return [ctx.check(names[0], True, 'Frigate API unavailable or invalid telemetry')] + [
+            ctx.check(name, False, 'no fresh camera/recording observation', observation='unknown')
+            for name in names[1:]]

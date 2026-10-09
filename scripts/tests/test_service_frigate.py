@@ -35,8 +35,8 @@ class Context:
         value = self.stats if url.endswith('/stats') else self.settings
         return SimpleNamespace(status=self.status, body=json.dumps(value).encode())
 
-    def check(self, name, bad, detail):
-        return {'name': name, 'status': int(bool(bad)), 'detail': detail}
+    def check(self, name, bad, detail, **kwargs):
+        return {'name': name, 'status': int(bool(bad)), 'detail': detail, **kwargs}
 
 
 class FrigateTests(unittest.TestCase):
@@ -70,7 +70,9 @@ class FrigateTests(unittest.TestCase):
         ctx.stats['cameras'] = {}
         self.assertEqual(self.run_check(ctx)[1]['status'], 0)
         ctx.stats['service']['last_updated'] = 9000
-        self.assertEqual([r['status'] for r in self.run_check(ctx)], [1, 1, 1])
+        rows = self.run_check(ctx)
+        self.assertEqual(rows[0]['status'], 1)
+        self.assertTrue(all(row['observation'] == 'unknown' for row in rows[1:]))
 
     def test_invalid_unauthorized_timeout_are_redacted(self):
         for kind in ('status', 'error', 'schema', 'nan'):
@@ -80,7 +82,8 @@ class FrigateTests(unittest.TestCase):
             if kind == 'schema': ctx.stats = {'secret': 'private'}
             if kind == 'nan': ctx.stats['service']['last_updated'] = float('nan')
             rows = self.run_check(ctx)
-            self.assertTrue(all(r['status'] == 1 for r in rows))
+            self.assertEqual(rows[0]['status'], 1)
+            self.assertTrue(all(row['observation'] == 'unknown' for row in rows[1:]))
             self.assertNotIn('private', json.dumps(rows))
 
 
