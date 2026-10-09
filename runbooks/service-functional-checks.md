@@ -75,6 +75,10 @@ incident without requiring an impossible second execution. Telemetry latches
 also persist and require real successful executions to recover. Workers may remain occupied by an underlying synchronous operation;
 transport limits and the independent collector freshness/watchdog stay important.
 
+Warmup diagnostic rows use separate `Functional observation pending <slug>`
+names and never provide healthy samples for a pre-existing telemetry incident.
+Telemetry baselines also require two fresh real successful executions.
+
 The runner advances failure/recovery counters only on completed real executions.
 Failure requires elapsed grace plus the configured count of independent failed
 observations. Recovery requires the configured count of real healthy observations.

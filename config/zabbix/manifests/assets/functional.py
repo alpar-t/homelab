@@ -214,7 +214,7 @@ class FunctionalChecks:
             if not isinstance(telemetry, dict) or len(telemetry) > 128:
                 raise ValueError('telemetry state inventory')
             for slug, row in telemetry.items():
-                if not re.fullmatch(r'[a-z0-9_]+', slug) or not isinstance(row, dict) or set(row) != {'status', 'failures', 'recoveries', 'failure_since'}:
+                if not re.fullmatch(r'[a-z0-9_]+', slug) or not isinstance(row, dict) or set(row) not in ({'status', 'failures', 'recoveries', 'failure_since'}, {'status', 'failures', 'recoveries', 'failure_since', 'established'}):
                     raise ValueError('telemetry state fields')
                 if type(row['status']) is not int or row['status'] not in (0, 1):
                     raise ValueError('telemetry state status')
@@ -224,6 +224,7 @@ class FunctionalChecks:
                 if stamp is not None and (type(stamp) not in (int, float) or not math.isfinite(stamp) or stamp < 0):
                     raise ValueError('telemetry state time')
                 row['recoveries'] = 0  # Restored healthy history cannot recover.
+                row['established'] = row['status'] == 1
             self.saved_telemetry = telemetry
             for rows in value['services'].values():
                 for row in rows.values():
@@ -248,7 +249,7 @@ class FunctionalChecks:
         recovery_required = self.load_error and not baseline_restored
         value = {'version': 1, 'recovery_required': recovery_required, 'services': {slug: {name: {key: row[key] for key in fields}
                  for name, row in state['rows'].items()} for slug, state in self.states.items()},
-                 'telemetry': {slug: state.get('telemetry', dict(status=0, failures=0, recoveries=0, failure_since=None))
+                 'telemetry': {slug: state.get('telemetry', dict(status=0, failures=0, recoveries=0, failure_since=None, established=False))
                                for slug, state in self.states.items()}}
         try:
             self.state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -372,19 +373,19 @@ class FunctionalChecks:
 
     def _observe_telemetry(self, state, bad, config, stamp):
         _, _, grace, minimum_failed, minimum_recovered = self._policy(config)
-        row = state.setdefault('telemetry', dict(status=0, failures=0, recoveries=0, failure_since=None))
+        row = state.setdefault('telemetry', dict(status=0, failures=0, recoveries=0, failure_since=None, established=False))
         if bad:
             row['recoveries'] = 0
             row['failures'] = min(row['failures'] + 1, 1000000000)
             if row['failure_since'] is None or row['failure_since'] > stamp:
                 row['failure_since'] = stamp
             if row['failures'] >= minimum_failed and stamp - row['failure_since'] >= grace:
-                row['status'] = 1
+                row['status'], row['established'] = 1, True
         else:
             row['failures'], row['failure_since'] = 0, None
             row['recoveries'] = min(row['recoveries'] + 1, 1000000000)
             if row['recoveries'] >= minimum_recovered:
-                row['status'] = 0
+                row['status'], row['established'] = 0, True
 
     def _worker(self):
         while True:
@@ -472,7 +473,7 @@ class FunctionalChecks:
                         state = dict(slug=slug, rows=self.saved.get(slug, {}), next_due=now + phase,
                                      initial_deadline=now + phase + queue_allowance + duration,
                                      deadline=None, pending=False, error=None, completed=None,
-                                     telemetry=self.saved_telemetry.get(slug, dict(status=0, failures=0, recoveries=0, failure_since=None)))
+                                     telemetry=self.saved_telemetry.get(slug, dict(status=0, failures=0, recoveries=0, failure_since=None, established=False)))
                         self.states[slug] = state
                     if not state['pending'] and now >= state['next_due']:
                         self.jobs.put_nowait((slug, module_path, config, state, duration))
@@ -486,7 +487,7 @@ class FunctionalChecks:
                     clock_expired = clock_expired or (initial and now > state['initial_deadline'] and state['pending'])
                     telemetry = state['telemetry']
                     if clock_expired and not telemetry['status']:
-                        telemetry['status'], telemetry['recoveries'] = 1, 0
+                        telemetry['status'], telemetry['recoveries'], telemetry['established'] = 1, 0, True
                         persist_dirty = True
                     expired = clock_expired or state['error'] is not None
                     unavailable = telemetry['status'] == 1
@@ -499,14 +500,19 @@ class FunctionalChecks:
                     monitor = self.check(monitor_name, family, unavailable, detail, 3)
                     monitor.update(notification=config.get('notification', 'page'), workloads=config.get('workloads', []),
                                    raw_status='unknown' if expired or initial else 'ok')
-                    output.append(monitor)
+                    if telemetry['established'] or unavailable:
+                        output.append(monitor)
+                    else:
+                        pending = self.check('Functional observation pending ' + slug, family, False, detail, 1)
+                        pending.update(notification='dashboard', workloads=config.get('workloads', []), raw_status='unknown')
+                        output.append(pending)
                     output.extend(self._render(state, config, expired))
                 except Exception as exc:
                     monitor = self.check(monitor_name, family, True, 'functional configuration unavailable: ' + type(exc).__name__, 3)
                     monitor.update(notification='page', workloads=[], raw_status='unknown')
                     output.append(monitor)
                     if state:
-                        output.extend(self._render(state, config, True))
+                        output.extend(self._render(state, {}, True))
             if persist_dirty:
                 self._persist()
             if self.persist_error:

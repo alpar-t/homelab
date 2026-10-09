@@ -259,6 +259,31 @@ class Tests(unittest.TestCase):
         self.assertEqual(restored.saved_telemetry['test']['status'], 1)
         self.assertEqual(restored.saved_telemetry['test']['recoveries'], 0)
 
+    def test_telemetry_warmup_does_not_publish_cached_recovery(self):
+        self.service("def run(ctx, config): return [ctx.check('Test read', False, 'ok')]")
+        first = self.execute()
+        self.assertNotIn('Functional monitoring test', [r['name'] for r in first])
+        for _ in range(20):
+            self.assertNotIn('Functional monitoring test', [r['name'] for r in self.runner.collect()])
+        second = self.execute()
+        self.assertEqual(next(r for r in second if r['name'] == 'Functional monitoring test')['status'], 0)
+        path = self.directory / 'warmup-state.json'
+        self.runner.state_path = path
+        self.runner._persist()
+        restored = FunctionalChecks(None, self.directory, check, state_path=path)
+        self.assertFalse(restored.saved_telemetry['test']['established'])
+        self.assertEqual(restored.saved_telemetry['test']['recoveries'], 0)
+
+    def test_malformed_module_config_cannot_break_other_snapshots(self):
+        self.service("def run(ctx, config): return [ctx.check('Test read', False, 'ok')]")
+        self.execute()
+        self.execute()
+        (self.directory / 'service_test.json').write_text('{"check_workloads": []}')
+        rows = self.runner.collect()
+        self.assertEqual(rows[0]['status'], 1)
+        self.assertEqual(rows[1]['status'], 0)
+        self.assertEqual(rows[1]['raw_status'], 'unknown')
+
     def test_source_reload_preserves_confirmed_incident(self):
         self.service("def run(ctx, config): return [ctx.check('Test read', True, 'failed')]",
                      dict(failure_grace_seconds=0))
