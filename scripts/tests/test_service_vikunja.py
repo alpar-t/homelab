@@ -56,6 +56,8 @@ class Tests(unittest.TestCase):
         rows = MODULE.run(ctx, CONFIG)
         self.assertEqual([0, 1], [r['status'] for r in rows])
         self.assertEqual(1, len(ctx.calls))
+        self.assertEqual(rows[1]["observation"], "deferred")
+        self.assertEqual(rows[1]["notification"], "dashboard")
     def test_exhausted_deadline(self):
         ctx = Context()
         ctx.remaining = lambda: 0

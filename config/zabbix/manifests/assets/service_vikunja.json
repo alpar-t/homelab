@@ -1,7 +1,12 @@
 {
-  "interval": 300,
+  "interval": 900,
   "deadline": 20,
   "base_url": "http://vikunja.vikunja.svc.cluster.local/api/v2",
   "frontend_url": "https://tasks.newjoy.ro/",
-  "token_key": "vikunja_read_token"
+  "token_key": "vikunja_read_token",
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
 }

@@ -6,7 +6,7 @@ def _get(ctx, url, headers=None):
     remaining = ctx.remaining()
     if remaining <= 0:
         raise ValueError("deadline")
-    response = ctx.http(url, headers=headers, timeout=min(6, remaining), max_bytes=65536)
+    response = ctx.http(url, headers=headers, timeout=min(5, remaining), max_bytes=65536)
     if response.status != 200:
         raise ValueError("HTTP status")
     body = json.loads(response.body)
@@ -36,8 +36,9 @@ def run(ctx, config):
     try:
         token = ctx.secret(config["token_key"])
     except Exception:
-        results.append(ctx.check("Vikunja authenticated project query", True,
-                                 "dedicated read-only monitoring credential unavailable"))
+        results.append(dict(ctx.check("Vikunja authenticated project query", True,
+                                 "coverage deferred: dedicated read-only credential unavailable", 1),
+                            observation="deferred", notification="dashboard"))
         return results
     try:
         data = _get(ctx, base + "/projects?page=1&per_page=1",
