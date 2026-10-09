@@ -1,6 +1,19 @@
 # Vikunja functional checks
 
-Every five minutes, with a 20-second service deadline, the collector requests
+## Polling and incident confirmation
+
+Poll every 900 seconds (15 minutes); shared failure grace is 1800 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+Every 15 minutes, with a 20-second service deadline, the collector requests
 `GET /api/v2/info` and `GET /api/v2/projects?page=1&per_page=1` internally.
 The first validates a nonempty version, the configured public frontend URL,
 and enabled Pocket ID provider. The second validates authenticated database
@@ -34,7 +47,7 @@ Use the generated file as input to the site's private secret-management workflow
 while preserving existing keys; never commit or print it. The foundation mounts
 this Secret read-only at `/credentials`, without Kubernetes Secret API access.
 Revoke the token in Vikunja's API-token UI (or DELETE the token by ID), remove
-its Secret key and rotate the private file. Missing/expired/unauthorized tokens
+its Secret key and rotate the private file. Missing tokens defer authenticated coverage; supplied expired/unauthorized tokens
 fail the authenticated check explicitly; no credentials were provisioned by this
 PR. No service ingress NetworkPolicy exists in the current source, and no new
 RBAC, identity groups, or public exposure is required.
@@ -54,3 +67,9 @@ broken authenticated database reads. It does not prove interactive OIDC login,
 task writes, attachments, reminders, or the separate Baloo task adapter. It does
 not read household tasks or validate their contents. Public ingress remains
 covered separately; these calls exercise the internal backend.
+
+Missing monitoring credentials defer the authenticated portion at informational
+severity with dashboard-only evidence; this is a coverage prerequisite, not an
+application-outage page or a confirmed recovery. Public/dependency observations
+continue independently. A supplied credential that is rejected remains a real
+failed execution. No additional authority is accepted to expand coverage.
