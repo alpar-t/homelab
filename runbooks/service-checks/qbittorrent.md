@@ -1,6 +1,19 @@
 # qBittorrent functional checks
 
-Every five minutes, the collector uses the existing internal Web API session policy at `qbittorrent.media.svc.cluster.local:8080`. Two GET requests validate `/api/v2/app/version` and `/api/v2/transfer/info`; only a disconnected global session requires a third request to `/api/v2/torrents/info?filter=downloading&limit=1`. Each request has a five-second timeout, a bounded response, and a shared twenty-second deadline. Existing three-failure alert debounce applies.
+## Polling and incident confirmation
+
+Poll every 900 seconds (15 minutes); shared failure grace is 1800 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+Every 15 minutes, the collector uses the existing internal Web API session policy at `qbittorrent.media.svc.cluster.local:8080`. Two GET requests validate `/api/v2/app/version` and `/api/v2/transfer/info`; only a disconnected global session requires a third request to `/api/v2/torrents/info?filter=downloading&limit=1`. Each request has a five-second timeout, a bounded response, and a shared twenty-second deadline. Existing execution-based alert debounce applies.
 
 The session check catches unauthorized responses, login HTML, incompatible version payloads and timeouts. Transfer validation requires the documented connection status and nonnegative integer speeds. Disconnected sessions alert only when the downloading filter contains unfinished activity. Zero torrents and disconnected idle sessions pass; firewalled sessions pass because they can still download. Names, paths, hashes, trackers, cookies and response bodies never enter results. No torrents are added, resumed, deleted, rechecked or changed.
 
