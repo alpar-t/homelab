@@ -49,4 +49,4 @@ class Reconciliation(unittest.TestCase):
             self.assertNotIn('private', result['detail'])
 
     def test_insufficient_budget(self):
-        self.assertEqual(self.probe(self.status(60), remaining=15)['status'], 1)
+        self.assertEqual(self.probe(self.status(60), remaining=5)['status'], 1)

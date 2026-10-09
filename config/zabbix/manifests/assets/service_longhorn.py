@@ -5,7 +5,7 @@ from datetime import datetime
 def run(ctx, config):
     name = 'Longhorn backup-store reconciliation'
     try:
-        if ctx.remaining() < 16:
+        if ctx.remaining() < 6:
             raise ValueError('insufficient request budget')
         # One named CR GET, using the collector's existing 15-second API timeout.
         target = ctx.kube.get('/apis/longhorn.io/v1beta2/namespaces/'
