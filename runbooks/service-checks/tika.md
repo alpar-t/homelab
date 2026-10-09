@@ -18,7 +18,7 @@ with PUT `/tika` to both Paperless's `tika:9998` and OpenCloud's
 `opencloud-tika:9998`. It requires HTTP 200, `text/plain`, and an exact decoded
 text match after trimming surrounding whitespace. Each instance has its own
 stable check under `functional/tika`; the usual execution-based debounce applies.
-Requests take at most eight seconds each, share a thirty-second worker deadline,
+Requests take at most five seconds each, share a thirty-second worker deadline,
 and cap responses at 4 KiB. No documents, credentials, files, or returned content
 are retained or included in evidence. Request bodies are constructed in memory;
 Tika may use its normal internal temporary-file handling.
