@@ -7,7 +7,7 @@ from urllib.parse import urlsplit, parse_qs
 def bootstrap(ctx, config):
     response = ctx.http(config['url'], headers={
         'Host': 'webmail.newjoy.ro', 'X-Forwarded-Proto': 'https'},
-        timeout=6, max_bytes=32768)
+        timeout=5, max_bytes=32768)
     headers = {k.lower(): v for k, v in response.headers.items()}
     target = urlsplit(headers.get('location', ''))
     params = parse_qs(target.query)
