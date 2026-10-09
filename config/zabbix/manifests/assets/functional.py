@@ -163,6 +163,13 @@ class FunctionalChecks:
                     for field in ('failure_since', 'observed_at'):
                         if row[field] is not None and (type(row[field]) not in (int, float) or not math.isfinite(row[field]) or row[field] < 0):
                             raise ValueError('state timestamp')
+            for rows in value['services'].values():
+                for row in rows.values():
+                    # Restored healthy state is history, not fresh recovery evidence.
+                    # In particular an older successful write cannot close a failure
+                    # whose later persistence attempt failed before pod restart.
+                    if row['status'] == 0:
+                        row.update(established=False, recoveries=0)
             return value['services']
         except Exception:
             # A corrupt state must not silently manufacture healthy recovery.
