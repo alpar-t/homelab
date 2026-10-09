@@ -1,48 +1,48 @@
-"""Read-only HA appliance configuration and always-on energy integration baseline."""
-import json
-import math
+"""Anonymous HA frontend and API-authentication contracts; never carry actuator tokens."""
+from html.parser import HTMLParser
+
+
+class Shell(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.title = False
+        self.title_text = []
+        self.app = False
+    def handle_starttag(self, tag, attrs):
+        self.title = tag == 'title' or self.title
+        self.app |= tag == 'home-assistant'
+    def handle_endtag(self, tag):
+        if tag == 'title':
+            self.title = False
+    def handle_data(self, value):
+        if self.title:
+            self.title_text.append(value)
 
 
 def run(ctx, config):
-    names = ('Home Assistant authenticated configuration', 'Home Assistant energy entities')
-    try:
-        token = ctx.secret(config['credential_key'])
-    except Exception:
-        return [ctx.check(name, True, 'dedicated monitoring credential unavailable') for name in names]
-    headers = {'Authorization': 'Bearer ' + token, 'Accept': 'application/json'}
-
-    def get(path):
-        response = ctx.http(config['base_url'].rstrip('/') + path, headers=headers,
-                            timeout=min(5, ctx.remaining()), max_bytes=131072)
-        if response.status != 200:
-            raise ValueError('API request rejected')
-        value = json.loads(response.body)
-        if not isinstance(value, dict):
-            raise ValueError('invalid API shape')
-        return value
-
     rows = []
+    base = config['base_url'].rstrip('/')
     try:
-        value = get('/api/config')
-        components = value.get('components')
-        healthy = (isinstance(value.get('version'), str) and bool(value['version'])
-                   and isinstance(components, list)
-                   and all(item in components for item in config['required_components']))
-        rows.append(ctx.check(names[0], not healthy,
-                              'authenticated configuration and required integrations available' if healthy
-                              else 'configuration schema or required integrations unavailable'))
+        response = ctx.http(base + '/', timeout=min(5, ctx.remaining()), max_bytes=65536)
+        content_type = next((v for k, v in response.headers.items() if k.lower() == 'content-type'), '')
+        shell = Shell()
+        shell.feed(response.body.decode('utf-8'))
+        good = (response.status == 200 and 'text/html' in content_type.lower()
+                and shell.app and 'home assistant' in ''.join(shell.title_text).casefold())
+        rows.append(ctx.check('Home Assistant anonymous frontend', not good,
+            'Home Assistant frontend shell served; application internals not authenticated'
+            if good else 'frontend shell unavailable or invalid'))
     except Exception:
-        rows.append(ctx.check(names[0], True, 'authenticated configuration request unavailable'))
-    failures = 0
-    for entity in config['numeric_entities']:
-        try:
-            value = get('/api/states/' + entity)
-            if value.get('entity_id') != entity or not isinstance(value.get('state'), str):
-                raise ValueError('invalid entity shape')
-            if not math.isfinite(float(value['state'])):
-                raise ValueError('invalid numeric state')
-        except Exception:
-            failures += 1
-    rows.append(ctx.check(names[1], failures > 0,
-                          f'expected always-on numeric entities: {len(config["numeric_entities"])}; unavailable: {failures}'))
+        rows.append(ctx.check('Home Assistant anonymous frontend', True, 'frontend request unavailable or invalid'))
+    try:
+        response = ctx.http(base + '/api/', timeout=min(5, ctx.remaining()), max_bytes=4096)
+        good = response.status == 401
+        rows.append(ctx.check('Home Assistant API authentication guard', not good,
+            'API rejects anonymous access; authenticated API functionality unproven'
+            if good else 'API anonymous-rejection contract failed'))
+    except Exception:
+        rows.append(ctx.check('Home Assistant API authentication guard', True, 'API authentication guard unavailable'))
+    for name in ('Home Assistant authenticated configuration', 'Home Assistant energy entities'):
+        rows.append(dict(ctx.check(name, True,
+            'coverage deferred: HA native tokens permit actuator control; no appliance credential is mounted', severity=1), observation='deferred', notification='dashboard'))
     return rows

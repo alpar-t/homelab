@@ -1,57 +1,43 @@
-# Home Assistant functional baseline
+# Home Assistant appliance safe monitoring baseline
 
-The external HA OS appliance is `192.168.1.102:8123`; the Kubernetes HA
-namespace only contains its recorder database. This check never reloads HA,
-changes automations, or invokes services.
+Anonymous frontend shell must identify Home Assistant and include its home-assistant application element; /api/ must reject anonymous access with401. Authenticated configuration and energy entities are explicitly deferred.
 
-Every five minutes, the collector performs four authenticated GETs:
+Coverage that cannot be obtained with native enforced read-only authority stays
+visible as advisory records with severity1, `observation: deferred`, `notification: dashboard` and a `coverage deferred`
+detail. These records must not be mistaken for completed functional validation.
+The ordinary operational checks use the shared framework's normal severity and
+transient grace. Existing Kubernetes/native signals continue independently.
 
-- `/api/config`: require a nonempty version and loaded api, recorder and
-  automation components. This catches authentication/API failures and missing
-  core integrations, but does not prove recorder SQL writes or automation execution.
-- `/api/states/<entity>` for the three `sensor.victron_system_grid_l[123]`
-  entities used by `config/homeassistant/ha/packages/victron.yaml`: require the
-  requested identity and a finite numeric state. Zero and negative power are normal.
+## Access and credential boundary
 
-Requests use five-second timeouts, bounded responses and the foundation's
-30-second execution deadline. Existing three-failure debounce applies. Output
-contains counts only, never sensor values, locations, response bodies or tokens.
-Missing credentials fail both checks rather than silently disabling coverage.
+HA native user tokens can actuate entities/services and cannot enforce read-only scope. Never copy a household, administrator or dedicated actuator-capable token into monitoring. Anonymous checks prove frontend delivery and an authentication guard, not recorder writes, integrations, sensor freshness or automation execution. The recorder DB retains its separate Kubernetes/CNPG checks.
 
-## Credential prerequisite
+No broad native token is an acceptable rollout prerequisite. No proxy is added.
+The foundation projects only approved native read-only credential keys and the
+public mail TLS CA; legacy unsafe keys are not mounted. If unsafe credentials
+were provisioned separately before this change, an authorized operator should
+remove/revoke them through the existing private credential workflow; this PR
+does not retrieve, provision or rotate any production credential.
 
-Create a dedicated Home Assistant local user named `zabbix-monitor`, with
-administrator access disabled. Sign in as that user, open its profile and create
-a long-lived access token named `Zabbix functional monitor`. HA long-lived tokens
-inherit user permissions; they are not HTTP-method or entity scoped. A regular
-HA user can still control entities. HA does not provide a built-in read-only
-REST token: this implementation uses only GETs, but the credential itself must
-be protected as an actuator-capable credential. Do not reuse a household/admin
-or MCP token. If policy requires enforced read-only credentials, do not provision
-this token until an independently restricted API proxy is available.
+## Collection and validation
 
-Place the token in a local protected file, then add its contents under the key
-`homeassistant_monitor_token` to the manually managed
-`zabbix/zabbix-functional-credentials` Secret. Preserve all other service keys;
-never replace the shared Secret with a single-key manifest. The foundation
-mounts it under `/credentials/`; no Secret API read RBAC is added. Delete the
-long-lived token in the dedicated user's profile to revoke it; replace only
-this key after rotation. This source change does not provision a user or Secret.
+The shared framework samples at a 10-minute healthy cadence. Operational
+failures require two real failed observations and a 15-minute grace;
+recovery requires two real healthy observations. Cached snapshots are not new
+observations. Failure retries follow the same bounded source-controlled cadence,
+with shared jitter and overload limits. Deferred checks remain severity1,
+observation deferred and dashboard-only; they never assert functional success.
 
-The collector must be able to reach the appliance on LAN TCP/8123. Its namespace
-has no egress restriction, and HA is outside Kubernetes, so no destination pod
-NetworkPolicy changes are needed. HTTP follows the existing private LAN endpoint;
-the bearer token traverses that LAN in cleartext.
+The JSON interval/deadline policy remains source-controlled and the service uses
+bounded requests within that deadline. The shared service deadline remains bounded by its JSON policy. HTTP requests use only fixed
+anonymous paths and the shared redirect/TLS/body-limit helper; no response bodies,
+credential values or exception strings enter snapshot evidence. Kubernetes reads
+use existing read-only RBAC, one bounded inventory page, and refuse pagination.
 
-## Limits and response
-
-Check the token/user and appliance API after configuration failures. After energy
-entity failures, check the continuously powered Victron integration and entity
-IDs before changing the expected list. Sleeping phones, battery sensors, pool
-seasonal devices and all other entities are deliberately outside this baseline.
-Do not check age of `last_changed` or `last_updated`: an unchanged valid reading
-can legitimately retain an old timestamp. Consequently, silently frozen numeric
-states are not detected. Configuration availability does not prove runtime
-freshness, automation firing, recorder persistence, or actuator health.
-
-REST endpoint and bearer-token contracts: [official HA REST API documentation](https://developers.home-assistant.io/docs/api/rest/).
+Run `python3 -m unittest discover -s scripts/tests -p test_service_homeassistant.py`
+and `kubectl kustomize config/zabbix/manifests`. Fixtures cover normal operational
+evidence, explicit deferred records, rejected/malformed/unavailable evidence,
+redaction, deadline expiry and ignored legacy credential config. No production
+request or deployment is performed by these tests. Validate actual anonymous
+contracts/readiness after the normal reviewed GitOps rollout; this change does
+not claim new live functional validation.
