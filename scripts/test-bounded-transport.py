@@ -63,6 +63,52 @@ class Transport(unittest.TestCase):
         self.assertLess(raw.timeouts[-1], raw.timeouts[0])
         self.assertTrue(raw.body)  # Did not buffer the complete slow body.
 
+    def test_chunked_size_line_trickle_is_bounded_below_framing(self):
+        class Socket:
+            def makefile(self, *args):
+                return io.BytesIO(b'HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n')
+        clock = [10.0]
+        value = http.client.HTTPResponse(Socket())
+        value.begin()
+        raw = Raw(b'0' * 40 + b'1\r\nx\r\n0\r\n\r\n', clock)
+        value.fp = io.BufferedReader(raw)
+        with patch('functional.time.monotonic', side_effect=lambda: clock[0]):
+            with self.assertRaises((SafeError, TimeoutError)):
+                read_response(value, 10.1, 30)
+        self.assertLessEqual(clock[0], 10.100001)
+        self.assertTrue(raw.body)
+        value.close()
+
+    def test_chunked_http_error_framing_is_also_deadline_bound(self):
+        class Socket:
+            def makefile(self, *args):
+                return io.BytesIO(b'HTTP/1.1 503 unavailable\r\nTransfer-Encoding: chunked\r\n\r\n')
+        clock = [10.0]
+        value = http.client.HTTPResponse(Socket())
+        value.begin()
+        raw = Raw(b'0' * 40 + b'1\r\nx\r\n0\r\n\r\n', clock)
+        value.fp = io.BufferedReader(raw)
+        error = collector.urllib.error.HTTPError('http://fixture.invalid', 503, 'unavailable', {}, value)
+        with patch('functional.time.monotonic', side_effect=lambda: clock[0]):
+            with self.assertRaises((SafeError, TimeoutError)):
+                read_response(error, 10.1, 30)
+        self.assertLessEqual(clock[0], 10.100001)
+        error.close()
+
+    def test_chunked_data_and_trailers_remain_compatible_and_capped(self):
+        class Socket:
+            def makefile(self, *args):
+                return io.BytesIO(b'HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n')
+        for cap, expected in [(4, b'abcd'), (3, None)]:
+            value = http.client.HTTPResponse(Socket())
+            value.begin()
+            value.fp = io.BufferedReader(Raw(b'2\r\nab\r\n2\r\ncd\r\n0\r\nX-End: yes\r\n\r\n'))
+            if expected is None:
+                with self.assertRaises(SafeError): read_response(value, time.monotonic() + 1, cap)
+            else:
+                self.assertEqual(read_response(value, time.monotonic() + 1, cap), expected)
+            value.close()
+
     def test_byte_cap_and_exact_limit(self):
         for size in (0, 10):
             value, _ = response(b'x' * size)

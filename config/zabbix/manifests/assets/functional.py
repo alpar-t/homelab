@@ -1,5 +1,7 @@
 """Bounded, credential-conscious functional service checks (standard library only)."""
 import importlib.util
+import http.client
+import io
 import json
 from pathlib import Path
 import queue
@@ -16,6 +18,47 @@ class SafeError(Exception):
     """An intentionally generic error; never includes URLs, bodies or credentials."""
 
 
+def _stream_socket(stream):
+    for _ in range(3):
+        raw = getattr(stream, 'raw', None)
+        sock = getattr(raw, '_sock', None)
+        if sock is not None:
+            return sock
+        stream = getattr(stream, 'fp', None)
+        if stream is None:
+            break
+    return None
+
+
+class DeadlineReader(io.RawIOBase):
+    """Apply elapsed budgets below HTTP chunk-size/trailer buffered readlines."""
+    def __init__(self, source, deadline):
+        self.source, self.deadline = source, deadline
+        self._sock = _stream_socket(source)
+
+    def readable(self):
+        return True
+
+    def readinto(self, target):
+        remaining = self.deadline - time.monotonic()
+        if remaining <= 0:
+            raise SafeError('response deadline exceeded')
+        if self._sock is not None:
+            self._sock.settimeout(remaining)
+        # The underlying BufferedReader.read1 performs at most one raw read.
+        part = self.source.read1(len(target))
+        if time.monotonic() >= self.deadline:
+            raise SafeError('response deadline exceeded')
+        target[:len(part)] = part
+        return len(part)
+
+    def close(self):
+        try:
+            self.source.close()
+        finally:
+            super().close()
+
+
 def read_response(response, deadline, max_bytes):
     """Read bounded bytes without buffering through a slow stream indefinitely.
 
@@ -24,22 +67,25 @@ def read_response(response, deadline, max_bytes):
     a trickle of bytes from extending a request. DNS resolution is synchronous
     and remains subject to the platform resolver's own timeout.
     """
+    # HTTPResponse.read1 may buffer multiple receives for chunk framing. Put
+    # elapsed enforcement below those internal readline operations as well.
+    message = response
+    for _ in range(3):
+        if isinstance(message, http.client.HTTPResponse) and message.chunked:
+            message.fp = io.BufferedReader(DeadlineReader(message.fp, deadline))
+            break
+        message = getattr(message, 'fp', None)
+        if message is None:
+            break
     chunks, size = [], 0
     while True:
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise SafeError('response deadline exceeded')
         # HTTPError wraps an HTTPResponse; ordinary responses expose fp directly.
-        stream = response
-        for _ in range(3):
-            raw = getattr(stream, 'raw', None)
-            sock = getattr(raw, '_sock', None)
-            if sock is not None:
-                sock.settimeout(remaining)
-                break
-            stream = getattr(stream, 'fp', None)
-            if stream is None:
-                break
+        sock = _stream_socket(response)
+        if sock is not None:
+            sock.settimeout(remaining)
         chunk = response.read1(min(16384, max_bytes + 1 - size))
         if time.monotonic() >= deadline:
             raise SafeError('response deadline exceeded')

@@ -28,7 +28,9 @@ max_bytes=262144, follow_redirects=False)` returns `status`, `headers`, and
 refused. Responses are bounded (maximum 1 MiB). Each HTTP request has an elapsed body-read
 budget capped by its timeout and remaining service deadline; bounded read1 chunks
 reset the socket timeout to the remaining budget so trickled bodies cannot keep a
-worker occupied. Synchronous DNS resolution and response-header parsing remain
+worker occupied. Chunked transfer framing uses a deadline-aware raw-reader
+adapter so internal chunk-size and trailer readlines cannot extend that budget.
+Synchronous DNS resolution and response-header parsing remain
 subject to platform resolver / socket inactivity limits; no resolver threads are
 created. Kubernetes requests use five-second transport budgets and 4 MiB JSON
 caps; inventory pagination stops at four pages / 2000 objects / 20 seconds and
