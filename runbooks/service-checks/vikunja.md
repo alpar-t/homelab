@@ -19,7 +19,7 @@ The first validates a nonempty version, the configured public frontend URL,
 and enabled Pocket ID provider. The second validates authenticated database
 access and the v2 pagination envelope, accepting an empty account (including
 `items: null`). Neither endpoint creates tasks, comments, or projects. Responses
-are capped at 64 KiB and each request at six seconds or the remaining deadline.
+are capped at 64 KiB and each request at five seconds or the remaining deadline.
 Failures use the foundation's normal Zabbix alert debounce; project titles,
 counts, bodies, URLs and credentials are never emitted in evidence.
 
@@ -28,8 +28,10 @@ counts, bodies, URLs and credentials are never emitted in evidence.
 Provision a dedicated Vikunja monitoring bot user, with no household project/team
 membership, using an authorized operator account's bot-user UI/API. Give its API
 token only `projects: [read_all]`, verified against the installed `/api/v2/routes`
-permission catalog. Alternatively use a dedicated ordinary account with no
-shared household projects. Do not reuse a household/admin or Baloo token. Set a
+permission catalog. Alternatively use a dedicated ordinary account, still with an expiring API
+token scoped only to `projects: [read_all]`. Both choices must have no household
+or shared project/team memberships. Do not use an unrestricted login/session
+token; a key name alone does not enforce these permissions. Do not reuse a household/admin or Baloo token. Set a
 bounded expiry and arrange rotation before expiry. An empty account still
 exercises authentication, permissions and the project/database query.
 
