@@ -1,5 +1,10 @@
 {
-  "interval": 300,
+  "interval": 900,
   "deadline": 25,
-  "base_url": "http://zabbix-web.zabbix.svc/"
+  "base_url": "http://zabbix-web.zabbix.svc/",
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
 }

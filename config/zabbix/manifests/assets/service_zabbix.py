@@ -20,7 +20,7 @@ class Page(HTMLParser):
 
 
 def request(ctx, url, max_bytes=262144, **kwargs):
-    return ctx.http(url, timeout=min(6, ctx.remaining()), max_bytes=max_bytes, **kwargs)
+    return ctx.http(url, timeout=min(5, ctx.remaining()), max_bytes=max_bytes, **kwargs)
 
 
 def run(ctx, config):
