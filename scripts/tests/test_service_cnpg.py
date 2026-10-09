@@ -94,6 +94,14 @@ class Tests(unittest.TestCase):
         self.ctx.cluster['metadata']['annotations'] = {'cnpg.io/hibernation': 'on'}
         self.assertEqual(self.run_check()['observation'], 'unknown')
 
+    def test_cluster_rows_have_only_their_own_workload_reference(self):
+        expected = [{'namespace': 'test', 'kind': 'Cluster', 'name': 'db'}]
+        self.assertEqual(self.run_check()['workloads'], expected)
+        self.ctx.cluster['spec']['nodeMaintenanceWindow'] = {'inProgress': True}
+        self.assertEqual(self.run_check()['workloads'], expected)
+        self.ctx.kube.get = lambda path: {'items': []}
+        self.assertEqual(self.run_check()['workloads'], expected)
+
     def test_healthy_idle_zero_database(self):
         self.assertEqual(self.run_check()['status'], 0)
     def test_broken_roles_and_lag(self):

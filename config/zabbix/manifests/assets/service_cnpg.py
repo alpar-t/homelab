@@ -56,9 +56,10 @@ def run(ctx, config):
     checks, jobs, clusters = [], [], []
     for namespace, name in config['clusters']:
         label = f'CNPG SQL and replication {namespace}/{name}'
+        workloads = [{'namespace': namespace, 'kind': 'Cluster', 'name': name}]
         cluster = inventory.get((namespace, name))
         if not cluster:
-            checks.append(ctx.check(label, True, 'Expected cluster inventory unavailable'))
+            checks.append(ctx.check(label, True, 'Expected cluster inventory unavailable', workloads=workloads))
             continue
         spec, status = cluster['spec'], cluster.get('status', {})
         grace = config['grace_seconds']
@@ -67,14 +68,14 @@ def run(ctx, config):
                 cluster['metadata'].get('annotations', {}).get('cnpg.io/hibernation') == 'on' or
                 recent(status.get('targetPrimaryTimestamp'), ctx.now, grace) or
                 recent(ready.get('lastTransitionTime'), ctx.now, grace)):
-            checks.append(ctx.check(label, False, 'Maintenance or recent transition: SQL/replication observation deferred', observation='unknown'))
+            checks.append(ctx.check(label, False, 'Maintenance or recent transition: SQL/replication observation deferred', observation='unknown', workloads=workloads))
             continue
         reported = status.get('instancesReportedState', {})
         expected = spec['instances']
         if not 1 <= expected <= 8 or status.get('currentPrimary') not in reported:
-            checks.append(ctx.check(label, True, 'Expected instance SQL coverage unavailable'))
+            checks.append(ctx.check(label, True, 'Expected instance SQL coverage unavailable', workloads=workloads))
             continue
-        entry = {'label': label, 'primary': status.get('currentPrimary'),
+        entry = {'label': label, 'workloads': workloads, 'primary': status.get('currentPrimary'),
                  'replica': spec.get('replica', {}).get('enabled', False), 'samples': [], 'failed_instances': set(), 'coverage_degraded': len(reported) != expected, 'deferred': False, 'expected': expected}
         clusters.append(entry)
         for instance, state in reported.items():
@@ -137,5 +138,6 @@ def run(ctx, config):
                                  'SQL database/recovery queries succeeded; roles and replay lag within policy'),
                                 severity=3 if critical or not bad else 2,
                                 notification='page' if critical or not bad else 'dashboard',
-                                observation='unknown' if entry['deferred'] and not bad else 'known'))
+                                observation='unknown' if entry['deferred'] and not bad else 'known',
+                                workloads=entry['workloads']))
     return checks
