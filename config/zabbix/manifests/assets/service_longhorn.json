@@ -6,5 +6,9 @@
   "minimum_failure_observations": 2,
   "minimum_recovery_observations": 2,
   "severity": 3,
-  "notification": "page"
+  "notification": "page",
+  "workloads": [],
+  "check_workloads": {
+    "Longhorn backup-store reconciliation": []
+  }
 }
