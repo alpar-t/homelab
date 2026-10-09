@@ -7,7 +7,7 @@ def run(ctx, config):
     try:
         headers = {'Accept': 'application/json'}
         if config.get('token_key'):
-            headers['Authorization'] = 'Bearer ' + ctx.secret(config['token_key'])
+            return [dict(ctx.check(name, True, 'coverage deferred: authenticated runtime access requires a separate permission review', 1), observation='deferred', notification='dashboard')]
         remaining = ctx.remaining()
         if remaining <= 0:
             return [ctx.check(name, True, 'runtime state unavailable: deadline exhausted')]

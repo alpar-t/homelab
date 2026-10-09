@@ -59,14 +59,15 @@ class RuntimeTest(unittest.TestCase):
             self.assertEqual(result['status'], 1)
             self.assertNotIn('private-token', result['detail'])
 
-    def test_optional_scoped_token_and_missing_credential(self):
+    def test_credentials_are_not_read_or_sent(self):
         ctx = Context()
-        config = dict(self.config, token_key='nodered-runtime-token')
-        self.assertEqual(module.run(ctx, config)[0]['status'], 0)
-        self.assertEqual(ctx.calls[0][1]['headers']['Authorization'], 'Bearer private-token')
-        ctx = Context()
-        self.assertEqual(module.run(ctx, dict(self.config, token_key='missing'))[0]['status'], 1)
-        self.assertEqual(ctx.calls, [])
+        def unexpected_secret(key):
+            raise AssertionError('must not access credentials')
+        ctx.secret = unexpected_secret
+        rows = module.run(ctx, dict(self.config, token_key='nodered-runtime-token'))
+        self.assertEqual(rows[0]['observation'], 'deferred')
+        self.assertEqual(rows[0]['notification'], 'dashboard')
+        self.assertFalse(ctx.calls)
 
     def test_exhausted_deadline_avoids_request(self):
         ctx = Context(remaining=0)
