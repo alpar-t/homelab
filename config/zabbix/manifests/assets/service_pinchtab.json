@@ -1,8 +1,20 @@
 {
-  "interval": 300,
+  "interval": 900,
   "deadline": 30,
   "targets": [
-    {"name": "general web", "url": "http://pinchtab-web.baloo.svc.cluster.local:9867", "credential": "pinchtab_web_token", "sessions": true},
-    {"name": "OLX", "url": "http://pinchtab.baloo.svc.cluster.local:9867", "credential": "pinchtab_olx_token", "sessions": false}
-  ]
+    {
+      "name": "general web",
+      "deployment": "pinchtab-web"
+    },
+    {
+      "name": "OLX",
+      "deployment": "pinchtab"
+    }
+  ],
+  "namespace": "baloo",
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
 }
