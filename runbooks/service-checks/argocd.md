@@ -1,7 +1,20 @@
 # ArgoCD reconciliation monitoring
 
-The collector reads only Application CRs in `argocd`, every five minutes, with
-three-failure Zabbix debounce. It needs the included namespace Role/RoleBinding
+## Polling and incident confirmation
+
+Poll every 600 seconds (10 minutes); shared failure grace is 900 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+The collector reads only Application CRs in `argocd`, every 10 minutes, with
+execution-based Zabbix debounce. It needs the included namespace Role/RoleBinding
 granting only `list applications.argoproj.io`; no ArgoCD credentials, public
 endpoint, network-policy changes or Secret reads are required. Private admin
 access remains as described in [argocd-access](../argocd-access.md).
@@ -31,10 +44,9 @@ the authoritative Application manifests where applicable. Remove them when done.
 No maximum pause duration is enforced. AppProject sync windows are not evaluated;
 use the explicit maintenance marker for long deliberate blocked sync periods.
 
-The API call uses one list page capped at 500 Applications, a 15-second client
-timeout, and requires at least 16 seconds remaining in the 30-second worker
+The API call uses one list page capped at 500 Applications, a five-second timeout, and requires at least six seconds remaining in the 30-second worker
 budget. Empty, truncated, unauthorized, malformed or inaccessible inventories
-fail closed. The shared client does not enforce a byte cap on Kubernetes JSON;
+fail closed. The shared client caps Kubernetes JSON at 4 MiB;
 this check never paginates and bounds evaluation to 500 Applications.
 
 This passive baseline verifies controller-reported convergence, not an actual new
