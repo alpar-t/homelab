@@ -44,7 +44,7 @@ class DNS(unittest.TestCase):
         ctx.kube.get.side_effect = PermissionError('private')
         self.assertEqual(m.run(ctx,self.config())[0]['status'],1)
         ctx = self.context()
-        ctx.remaining.return_value = 18
+        ctx.remaining.return_value = 8
         self.assertEqual(m.run(ctx,self.config())[0]['status'],1)
         ctx.kube.get.assert_not_called()
     def test_tcp_short_and_udp_socket_failure(self):

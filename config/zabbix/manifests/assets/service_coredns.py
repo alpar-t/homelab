@@ -96,12 +96,12 @@ def query(ctx, server, hostname, expected, tcp):
 
 def run(ctx, config):
     rows = []
-    # Each existing Kubernetes.get has a 15s timeout. Reserve four seconds for
+    # Each Kubernetes.get has a five-second timeout. Reserve four seconds for
     # probes; never start another API request without its full timeout budget.
     try:
         records = []
         for target in config['services']:
-            if ctx.remaining() < 19:
+            if ctx.remaining() < 9:
                 raise TimeoutError()
             service = ctx.kube.get('/api/v1/namespaces/' + target['namespace'] + '/services/' + target['service'])
             address = str(ipaddress.IPv4Address(service['spec']['clusterIP']))

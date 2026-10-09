@@ -1,1 +1,19 @@
-{"interval":300,"deadline":30,"services":[{"namespace":"default","service":"kubernetes"},{"namespace":"kube-system","service":"kube-dns"}]}
+{
+  "interval": 600,
+  "deadline": 30,
+  "services": [
+    {
+      "namespace": "default",
+      "service": "kubernetes"
+    },
+    {
+      "namespace": "kube-system",
+      "service": "kube-dns"
+    }
+  ],
+  "failure_grace_seconds": 900,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
+}
