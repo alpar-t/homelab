@@ -1,8 +1,19 @@
 {
-  "interval": 300,
+  "interval": 1800,
   "deadline": 30,
   "endpoints": [
-    {"name": "internal", "url": "http://landing-page.landing-page.svc.cluster.local/"},
-    {"name": "public", "url": "https://newjoy.ro/"}
-  ]
+    {
+      "name": "internal",
+      "url": "http://landing-page.landing-page.svc.cluster.local/"
+    },
+    {
+      "name": "public",
+      "url": "https://newjoy.ro/"
+    }
+  ],
+  "failure_grace_seconds": 3600,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
 }
