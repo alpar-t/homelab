@@ -1,1 +1,10 @@
-{"interval":300,"deadline":30,"vip":"192.168.1.208"}
+{
+  "interval": 600,
+  "deadline": 30,
+  "vip": "192.168.1.208",
+  "failure_grace_seconds": 900,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
+}

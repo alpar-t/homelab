@@ -5,7 +5,7 @@ def run(ctx, config):
     base = '/api/v1/namespaces/wireguard/services/wireguard-home'
     try:
         service = ctx.kube.get(base)
-        if ctx.remaining() < 16:
+        if ctx.remaining() < 6:
             raise TimeoutError()
         slices = ctx.kube.get('/apis/discovery.k8s.io/v1/namespaces/wireguard/'
                               'endpointslices?labelSelector=kubernetes.io%2Fservice-name%3Dwireguard-home&limit=100')
