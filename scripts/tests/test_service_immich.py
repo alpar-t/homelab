@@ -91,7 +91,11 @@ class Tests(unittest.TestCase):
             self.assertNotIn('PRIVATE', json.dumps(rows))
         ctx = Context()
         ctx.missing = True
-        self.assertEqual(self.run_check(ctx)[1]['status'], 1)
+        row = self.run_check(ctx)[1]
+        self.assertEqual(row['status'], 1)
+        self.assertEqual(row['observation'], 'deferred')
+        self.assertEqual(row['notification'], 'dashboard')
+        self.assertEqual(len(ctx.calls), 2)
 
     def test_public_api_malformed_and_unavailable(self):
         for value in ({'major': True, 'minor': 1, 'patch': 0},

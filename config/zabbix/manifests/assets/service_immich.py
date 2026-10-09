@@ -67,6 +67,11 @@ def run(ctx, config):
         rows.append(ctx.check('Immich public API configuration', True, 'API unavailable, malformed, uninitialized or in maintenance'))
     try:
         token = ctx.secret(config['credential_key'])
+    except Exception:
+        token = None
+    try:
+        if token is None:
+            raise ValueError('monitor credential unavailable')
         stats = _json(ctx, base + '/api/assets/statistics', {'x-api-key': token})
         if not all(type(stats.get(key)) is int and stats[key] >= 0 for key in ('images', 'videos', 'total')):
             raise ValueError("statistics schema")
@@ -74,7 +79,10 @@ def run(ctx, config):
             raise ValueError("statistics inconsistent")
         rows.append(ctx.check('Immich authenticated asset statistics', False, 'scoped read-only database statistics valid; empty library allowed'))
     except Exception:
-        rows.append(ctx.check('Immich authenticated asset statistics', True, 'monitor credential missing/rejected or asset statistics unavailable/malformed'))
+        if token is None:
+            rows.append(dict(ctx.check('Immich authenticated asset statistics', True, 'coverage deferred: dedicated read-only credential unavailable', 1), observation='deferred', notification='dashboard'))
+        else:
+            rows.append(ctx.check('Immich authenticated asset statistics', True, 'asset statistics rejected, unavailable or malformed'))
     try:
         _redis(ctx, config)
         rows.append(ctx.check('Immich Redis dependency', False, 'Redis INFO valid; loading complete and persistence status healthy'))
