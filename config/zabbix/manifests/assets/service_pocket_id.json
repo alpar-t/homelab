@@ -26,5 +26,29 @@
   "minimum_failure_observations": 2,
   "minimum_recovery_observations": 2,
   "severity": 3,
-  "notification": "page"
+  "notification": "page",
+  "workloads": [],
+  "check_workloads": {
+    "Pocket ID OIDC metadata and signing keys": [
+      {
+        "namespace": "pocket-id",
+        "kind": "Deployment",
+        "name": "pocket-id"
+      }
+    ],
+    "Pocket ID sign-in proxy portal": [
+      {
+        "namespace": "portal",
+        "kind": "Deployment",
+        "name": "oauth2-proxy"
+      }
+    ],
+    "Pocket ID sign-in proxy search": [
+      {
+        "namespace": "baloo",
+        "kind": "Deployment",
+        "name": "oauth2-proxy-search"
+      }
+    ]
+  }
 }
