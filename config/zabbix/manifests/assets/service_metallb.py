@@ -12,15 +12,19 @@ def ready(pod):
 def run(ctx, config):
     records = []
     expected = config['services']
-    paths = ['/apis/metallb.io/v1beta1/namespaces/metallb-system/servicel2statuses',
-             '/api/v1/pods'] + [f"/api/v1/namespaces/{s['namespace']}/services/{s['name']}" for s in expected]
+    paths = ['/apis/metallb.io/v1beta1/namespaces/metallb-system/servicel2statuses?limit=100',
+             '/api/v1/pods?limit=500'] + [f"/api/v1/namespaces/{s['namespace']}/services/{s['name']}" for s in expected]
     try:
-        # All API calls use the foundation client's 15s timeout concurrently;
-        # avoid accumulating ten sequential timeout windows within a 30s run.
-        if ctx.remaining() < 16:
+        # Three API requests at a time limit peak decoding and API load.
+        # The foundation bounds each response and request elapsed budget.
+        if ctx.remaining() < 5 * ((len(paths) + 2) // 3) + 6:
             raise TimeoutError()
-        with ThreadPoolExecutor(max_workers=12) as pool:
+        with ThreadPoolExecutor(max_workers=3) as pool:
             results = list(pool.map(ctx.kube.get, paths))
+        if (results[0].get('metadata', {}).get('continue') or
+                results[1].get('metadata', {}).get('continue') or
+                len(results[0]['items']) > 100 or len(results[1]['items']) > 500):
+            raise ValueError('inventory exceeds bounded baseline')
         announcements, pods = results[0]['items'], results[1]['items']
         live_speakers = {p['metadata']['uid']: p['spec'].get('nodeName') for p in pods
                          if p['metadata']['namespace'] == 'metallb-system' and ready(p)}

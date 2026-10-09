@@ -49,3 +49,18 @@ VIP outage. This was
 workstation validation, not a deployed collector test. After rollout, confirm
 fresh functional/metallb records and the collector's granted RBAC. Missing or
 malformed inventory produces monitoring failure, never a healthy substitute.
+
+
+## Combined collector load bounds
+
+The review caps this module at three concurrent requests. Workers are joined
+before a poll returns, so running scrape threads are never abandoned for a later
+execution to multiply. The shared foundation enforces elapsed body-read budgets
+with read1 and remaining socket timeouts; Kubernetes transport uses five seconds
+and a 4 MiB JSON cap. Synchronous DNS and response header parsing remain platform
+resolver / socket inactivity limits. No retry threads or broader RBAC are added.
+
+The pod and L2-status lists request one page (500 pods / 100 statuses), reject
+continuation, and retain ten name-scoped Service GETs. No clusterwide Service
+permission is added to optimize request count. An oversized inventory reports
+monitoring unavailable and requires explicit review.
