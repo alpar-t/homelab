@@ -24,8 +24,8 @@ class Context:
         if isinstance(self.apps, Exception):
             raise self.apps
         return self.apps
-    def check(self, name, bad, detail, severity=3):
-        return dict(name=name, status=int(bool(bad)), detail=detail)
+    def check(self, name, bad, detail, severity=3, **kwargs):
+        return dict(name=name, status=int(bool(bad)), detail=detail, **kwargs)
 
 
 class Tests(unittest.TestCase):
@@ -98,6 +98,23 @@ class Tests(unittest.TestCase):
             self.assertNotIn('secret', str(result))
         self.ctx.budget = 15
         self.assertEqual(1, module.run(self.ctx, CONFIG)[0]['status'])
+
+    def test_restart_grace_and_paused_fault_are_unknown_not_recovery(self):
+        self.app['status']['conditions'] = [dict(type='ComparisonError')]
+        self.app['status']['sync']['status'] = 'OutOfSync'
+        first = self.run_check(600)
+        self.assertEqual([r['observation'] for r in first[1:]], ['unknown', 'unknown'])
+        module._since.clear()  # Collector/source restart resets module grace.
+        second = self.run_check(600)
+        self.assertEqual([r['observation'] for r in second[1:]], ['unknown', 'unknown'])
+        self.app['spec']['syncPolicy']['automated']['enabled'] = False
+        paused = self.run_check(3600)
+        self.assertEqual([r['observation'] for r in paused[1:]], ['unknown', 'unknown'])
+        self.app['spec']['syncPolicy']['automated']['enabled'] = True
+        self.app['status']['conditions'] = []
+        self.app['status']['sync']['status'] = 'Synced'
+        healthy = self.run_check()
+        self.assertEqual([r['observation'] for r in healthy[1:]], ['known', 'known'])
 
     def test_recovery_resets_grace(self):
         self.app['status']['sync']['status'] = 'OutOfSync'

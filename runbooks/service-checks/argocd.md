@@ -56,3 +56,8 @@ Independent service checks remain necessary even when ArgoCD reports Healthy.
 
 Policy references: [automated sync](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/)
 and [skip reconciliation](https://argo-cd.readthedocs.io/en/stable/user-guide/skip_reconcile/).
+
+Faults inside observation grace, and paused apps still reporting faults, defer
+the affected aggregate as unknown when no established fault is counted. They
+cannot supply recovery evidence for an older incident after collector restart.
+Current healthy convergence or a real persistent fault remains known evidence.
