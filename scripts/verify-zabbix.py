@@ -58,7 +58,7 @@ def main():
     if not states:
         raise RuntimeError('No discovered checks yet')
     stale = [i['name'] for i in items if i['key_'].startswith(
-        ('homelab.state[', 'homelab.detail[', 'homelab.severity['))
+        ('homelab.state[', 'homelab.detail[', 'homelab.severity[', 'homelab.parent_available['))
         and time.time() - int(i['lastclock']) > 180]
     if stale:
         raise RuntimeError('Active check values are missing or stale: ' + json.dumps(stale[:5])
