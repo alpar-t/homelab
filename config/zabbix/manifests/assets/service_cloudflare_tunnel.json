@@ -1,7 +1,27 @@
 {
-  "interval": 300,
+  "interval": 600,
   "deadline": 30,
   "expected_replicas": 3,
   "public_url": "https://newjoy.ro/",
-  "markers": ["<html", "newjoy.ro", "<title"]
+  "markers": [
+    "<html",
+    "newjoy.ro",
+    "<title"
+  ],
+  "failure_grace_seconds": 900,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page",
+  "workloads": [],
+  "check_workloads": {
+    "Cloudflare tunnel connected replicas": [],
+    "Cloudflare tunnel public route": [
+      {
+        "namespace": "landing-page",
+        "kind": "Deployment",
+        "name": "landing-page"
+      }
+    ]
+  }
 }
