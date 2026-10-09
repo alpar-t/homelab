@@ -145,14 +145,15 @@ class Kube(unittest.TestCase):
         (self.sa / 'token').write_text('fixture-token')
         self.kube = collector.Kubernetes.__new__(collector.Kubernetes)
         self.kube.context, self.kube.base = None, 'https://fixture.invalid'
+        self.kube.opener = collector.urllib.request.build_opener()
 
     def test_json_caps_and_five_second_transport(self):
         value, _ = response(b'{"items":[]}')
-        with patch('collector.SA', self.sa), patch('collector.urllib.request.urlopen', return_value=value) as opened:
+        with patch('collector.SA', self.sa), patch.object(self.kube.opener, 'open', return_value=value) as opened:
             self.assertEqual(self.kube.get('/inventory'), {'items': []})
             self.assertLessEqual(opened.call_args.kwargs['timeout'], 5)
         value, _ = response(b'{"items":[]}')
-        with patch('collector.SA', self.sa), patch('collector.urllib.request.urlopen', return_value=value):
+        with patch('collector.SA', self.sa), patch.object(self.kube.opener, 'open', return_value=value):
             with self.assertRaises(SafeError): self.kube.get('/inventory', max_bytes=4)
 
     def test_items_page_item_and_time_bounds(self):
@@ -172,11 +173,11 @@ class Kube(unittest.TestCase):
 
     def test_logs_preserve_historical_mail_cap_and_reject_truncation(self):
         value, _ = response(b'line\n')
-        with patch('collector.SA', self.sa), patch('collector.urllib.request.urlopen', return_value=value) as opened:
+        with patch('collector.SA', self.sa), patch.object(self.kube.opener, 'open', return_value=value) as opened:
             self.assertEqual(self.kube.logs('mail', 'pod', 'stalwart', limit_bytes=2097152, timestamps=True), 'line\n')
             self.assertLessEqual(opened.call_args.kwargs['timeout'], 5)
         value, _ = response(b'xxxx')
-        with patch('collector.SA', self.sa), patch('collector.urllib.request.urlopen', return_value=value):
+        with patch('collector.SA', self.sa), patch.object(self.kube.opener, 'open', return_value=value):
             with self.assertRaises(ValueError): self.kube.logs('mail', 'pod', 'stalwart', limit_bytes=4, timestamps=True)
         with self.assertRaises(SafeError): self.kube.logs('mail', 'pod', 'stalwart', limit_bytes=2097153)
 
