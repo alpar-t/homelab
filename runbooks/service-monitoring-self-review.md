@@ -31,8 +31,12 @@ speed for low load; two recovery observations also delay recovery notifications.
 
 ## Review coverage and policy
 
-All three reviewers inspected every original PR head. Review fixes and the combined
-render must pass the final validation gate before these changes are deployed.
+All three reviewers inspected every original PR head and re-reviewed the fixes.
+The combined 49-service tree passes 365 monitoring/access-policy tests and the
+rendered boundary regression: 19 read-only bindings, four projected keys, five
+allowed and fifteen denied egress cases, four private-ingress denials, and six
+adversarial permission/network mutations. These are offline checks, not production
+rollout or delivery evidence.
 
 | PR | Service | Security | Performance | Reporting | Interval | Failure grace |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -105,6 +109,8 @@ graces and parent recovery can add time. Existing infrastructure failures retain
 their faster independent policy. These are policy estimates, not measured delivery
 latencies; notification-path verification remains a rollout gate.
 
+Kubernetes API/log redirects are refused before credentials can leave the
+authorized origin. Chunked response framing is covered by elapsed read budgets.
 Raw Pod termination messages, storage event messages, Longhorn condition text and
 CNPG condition messages are excluded from new evidence. Legacy cached Pod details
 are sanitized on replay while preserving incident state. This review does not
