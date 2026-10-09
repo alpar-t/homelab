@@ -105,6 +105,7 @@ class FunctionalChecks:
         self.credentials, self.state_path = credentials, Path(state_path) if state_path else None
         self.jobs, self.lock = queue.Queue(maxsize=64), threading.Lock()
         self.states, self.modules, self.persist_error, self.load_error = {}, {}, False, False
+        self.saved_telemetry = {}
         self.saved = self._load()
         for _ in range(3):
             threading.Thread(target=self._worker, daemon=True).start()
@@ -137,6 +138,21 @@ class FunctionalChecks:
                     for field in ('failure_since', 'observed_at'):
                         if row[field] is not None and (type(row[field]) not in (int, float) or not math.isfinite(row[field]) or row[field] < 0):
                             raise ValueError('state timestamp')
+            telemetry = value.get('telemetry', {})
+            if not isinstance(telemetry, dict) or len(telemetry) > 128:
+                raise ValueError('telemetry state inventory')
+            for slug, row in telemetry.items():
+                if not re.fullmatch(r'[a-z0-9_]+', slug) or not isinstance(row, dict) or set(row) != {'status', 'failures', 'recoveries', 'failure_since'}:
+                    raise ValueError('telemetry state fields')
+                if type(row['status']) is not int or row['status'] not in (0, 1):
+                    raise ValueError('telemetry state status')
+                if any(type(row[k]) is not int or not 0 <= row[k] <= 1000000000 for k in ('failures', 'recoveries')):
+                    raise ValueError('telemetry state counters')
+                stamp = row['failure_since']
+                if stamp is not None and (type(stamp) not in (int, float) or not math.isfinite(stamp) or stamp < 0):
+                    raise ValueError('telemetry state time')
+                row['recoveries'] = 0  # Restored healthy history cannot recover.
+            self.saved_telemetry = telemetry
             for rows in value['services'].values():
                 for row in rows.values():
                     # Restored healthy state is history, not fresh recovery evidence.
@@ -159,7 +175,9 @@ class FunctionalChecks:
             for state in self.states.values())
         recovery_required = self.load_error and not baseline_restored
         value = {'version': 1, 'recovery_required': recovery_required, 'services': {slug: {name: {key: row[key] for key in fields}
-                 for name, row in state['rows'].items()} for slug, state in self.states.items()}}
+                 for name, row in state['rows'].items()} for slug, state in self.states.items()},
+                 'telemetry': {slug: state.get('telemetry', dict(status=0, failures=0, recoveries=0, failure_since=None))
+                               for slug, state in self.states.items()}}
         try:
             self.state_path.parent.mkdir(parents=True, exist_ok=True)
             temporary = self.state_path.with_suffix(self.state_path.suffix + '.tmp')
@@ -280,9 +298,26 @@ class FunctionalChecks:
             if name not in names:
                 row.update(raw_status='unknown', detail='no new observation for this check', recoveries=0)
 
+    def _observe_telemetry(self, state, bad, config, stamp):
+        _, _, grace, minimum_failed, minimum_recovered = self._policy(config)
+        row = state.setdefault('telemetry', dict(status=0, failures=0, recoveries=0, failure_since=None))
+        if bad:
+            row['recoveries'] = 0
+            row['failures'] = min(row['failures'] + 1, 1000000000)
+            if row['failure_since'] is None or row['failure_since'] > stamp:
+                row['failure_since'] = stamp
+            if row['failures'] >= minimum_failed and stamp - row['failure_since'] >= grace:
+                row['status'] = 1
+        else:
+            row['failures'], row['failure_since'] = 0, None
+            row['recoveries'] = min(row['recoveries'] + 1, 1000000000)
+            if row['recoveries'] >= minimum_recovered:
+                row['status'] = 0
+
     def _worker(self):
         while True:
             slug, module_path, config, state, duration = self.jobs.get()
+            interval = config.get('interval', 900)
             deadline = time.monotonic() + duration
             with self.lock:
                 state['deadline'] = deadline
@@ -306,7 +341,7 @@ class FunctionalChecks:
             with self.lock:
                 finished = time.monotonic()
                 state.update(error=error, pending=False, finished=finished,
-                             next_due=finished + config.get('interval', 900), deadline=None)
+                             next_due=finished + interval, deadline=None)
                 try:
                     if result is not None:
                         self._observe(state, result, config, time.time())
@@ -314,6 +349,7 @@ class FunctionalChecks:
                     else:
                         for row in state['rows'].values():
                             row.update(raw_status='unknown', recoveries=0)
+                    self._observe_telemetry(state, result is None, config, time.time())
                     self._persist()
                 except Exception:
                     state['error'] = 'functional state update unavailable'
@@ -342,7 +378,7 @@ class FunctionalChecks:
         paths = {p.stem[len('service_'):]: p for p in self.directory.glob('service_*.json')}
         for p in self.directory.glob('service_*.py'):
             paths.setdefault(p.stem[len('service_'):], self.directory / (p.stem + '.json'))
-        output, now = [], time.monotonic()
+        output, now, persist_dirty = [], time.monotonic(), False
         queue_allowance = max(60, math.ceil(len(paths) / 3) * 30 + 60)
         with self.lock:
             for slug, config_path in sorted(paths.items()):
@@ -363,20 +399,32 @@ class FunctionalChecks:
                         phase = int.from_bytes(hashlib.sha256(slug.encode()).digest()[:8], 'big') % interval
                         state = dict(slug=slug, rows=self.saved.get(slug, {}), next_due=now + phase,
                                      initial_deadline=now + phase + queue_allowance + duration,
-                                     deadline=None, pending=False, error=None, completed=None)
+                                     deadline=None, pending=False, error=None, completed=None,
+                                     telemetry=self.saved_telemetry.get(slug, dict(status=0, failures=0, recoveries=0, failure_since=None)))
                         self.states[slug] = state
                     if not state['pending'] and now >= state['next_due']:
                         self.jobs.put_nowait((slug, module_path, config, state, duration))
                         state.update(pending=True, queued_at=now)
                     initial = state['completed'] is None and state['error'] is None
-                    expired = ((initial and now > state['initial_deadline']) or state['error'] is not None
-                               or (state['pending'] and state['deadline'] is not None and now >= state['deadline'])
-                               or (state['completed'] is not None and now - state['completed'] > interval + queue_allowance + duration))
+                    # A completed exception is an independent error observation,
+                    # not permission to count every cached minute as another failure.
+                    clock_expired = (state['pending'] and (
+                        (state['deadline'] is not None and now >= state['deadline'])
+                        or now - state.get('queued_at', state['initial_deadline']) > queue_allowance + duration))
+                    clock_expired = clock_expired or (initial and now > state['initial_deadline'] and state['pending'])
+                    telemetry = state['telemetry']
+                    if clock_expired and not telemetry['status']:
+                        telemetry['status'], telemetry['recoveries'] = 1, 0
+                        persist_dirty = True
+                    expired = clock_expired or state['error'] is not None
+                    unavailable = telemetry['status'] == 1
                     detail = ('observation unavailable' if expired else 'warming; awaiting first real observation' if initial
                               else f"sample age={int(now - state['completed'])}s; interval={interval}s")
                     detail += ('; raw failures=' + str(sum(r.get('raw_status') == 'failed' for r in state['rows'].values()))
                                + '; awaiting independent baseline=' + str(sum(not r['established'] for r in state['rows'].values())))
-                    monitor = self.check(monitor_name, family, expired, detail, 3)
+                    detail += (f"; independent telemetry failures={telemetry['failures']}; "
+                               f"independent telemetry recoveries={telemetry['recoveries']}")
+                    monitor = self.check(monitor_name, family, unavailable, detail, 3)
                     monitor.update(notification=config.get('notification', 'page'), workloads=config.get('workloads', []),
                                    raw_status='unknown' if expired or initial else 'ok')
                     output.append(monitor)
@@ -387,6 +435,8 @@ class FunctionalChecks:
                     output.append(monitor)
                     if state:
                         output.extend(self._render(state, config, True))
+            if persist_dirty:
+                self._persist()
             if self.persist_error:
                 output.append(self.check('Functional observation state persistence', 'monitoring', True,
                                          'state unavailable; inspect local state storage', 3))

@@ -47,8 +47,11 @@ Initial probes receive a deterministic phase over the full interval. Subsequent
 probes are due one interval after completion, including failures; there is no
 one-minute error retry. Three workers and a bounded queue operate independently
 of infrastructure collection. Initial due time plus queue allowance and deadline
-permits normal warmup. Missed completion/freshness bounds create one telemetry
-incident. Workers may remain occupied by an underlying synchronous operation;
+permits normal warmup. A completed module exception uses the same independent-observation and elapsed
+grace gates as business failures; cached exception minutes cannot page early.
+Hung or never-completing workers/queue bounds create one time-based telemetry
+incident without requiring an impossible second execution. Telemetry latches
+also persist and require real successful executions to recover. Workers may remain occupied by an underlying synchronous operation;
 transport limits and the independent collector freshness/watchdog stay important.
 
 The runner advances failure/recovery counters only on completed real executions.

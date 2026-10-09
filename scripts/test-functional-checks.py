@@ -102,6 +102,7 @@ class Tests(unittest.TestCase):
         rows = self.execute()
         state = self.runner.states['test']
         state.update(error='functional observation unavailable', pending=False, next_due=time.monotonic() + 1000)
+        self.runner._observe_telemetry(state, True, dict(failure_grace_seconds=0, minimum_failure_observations=1), 1000)
         rows = self.runner.collect()
         self.assertEqual([r['status'] for r in rows], [1, 0])
         self.assertEqual(rows[1]['raw_status'], 'unknown')
@@ -216,6 +217,47 @@ class Tests(unittest.TestCase):
         self.assertEqual(restored._render(state, {}), [])
         restored._observe(state, [dict(name='Test read', status=0, detail='ok')], {}, 3700)
         self.assertEqual(restored._render(state, {})[0]['status'], 0)
+
+    def test_completed_telemetry_errors_require_independent_observations(self):
+        self.service("def run(ctx, config): raise ValueError('unavailable')", dict(interval=900, failure_grace_seconds=1800))
+        self.execute()
+        state = self.runner.states['test']
+        for _ in range(20):
+            self.assertEqual(self.runner.collect()[0]['status'], 0)
+        self.assertEqual(state['telemetry']['failures'], 1)
+        first = state['telemetry']['failure_since']
+        self.runner._observe_telemetry(state, True, dict(failure_grace_seconds=1800), first + 1800)
+        rows = self.runner.collect()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['status'], 1)
+        self.runner._observe_telemetry(state, False, {}, first + 2700)
+        self.assertEqual(self.runner.collect()[0]['status'], 1)
+        self.runner._observe_telemetry(state, False, {}, first + 3600)
+        self.assertEqual(self.runner.collect()[0]['status'], 0)
+
+    def test_hung_worker_latches_one_telemetry_problem_without_two_errors(self):
+        self.service("def run(ctx, config): return [ctx.check('Test read', False, 'ok')]")
+        self.execute()
+        state = self.runner.states['test']
+        state.update(pending=True, deadline=time.monotonic() - 1, queued_at=time.monotonic())
+        rows = self.runner.collect()
+        self.assertEqual(rows[0]['status'], 1)
+        self.assertEqual(state['telemetry']['failures'], 0)
+        self.assertTrue(all(r['status'] == 0 for r in rows[1:]))
+        state.update(pending=False, deadline=None, error='late execution unavailable', next_due=time.monotonic() + 900)
+        self.runner._observe_telemetry(state, True, {}, time.time())
+        self.assertEqual(self.runner.collect()[0]['status'], 1)
+
+    def test_telemetry_latch_persists_without_cached_recovery(self):
+        path = self.directory / 'telemetry-state.json'
+        runner = FunctionalChecks(None, self.directory, check, state_path=path)
+        state = self.state()
+        runner.states['test'] = state
+        runner._observe_telemetry(state, True, dict(failure_grace_seconds=0, minimum_failure_observations=1), 1000)
+        runner._persist()
+        restored = FunctionalChecks(None, self.directory, check, state_path=path)
+        self.assertEqual(restored.saved_telemetry['test']['status'], 1)
+        self.assertEqual(restored.saved_telemetry['test']['recoveries'], 0)
 
     def test_source_reload_preserves_confirmed_incident(self):
         self.service("def run(ctx, config): return [ctx.check('Test read', True, 'failed')]",
