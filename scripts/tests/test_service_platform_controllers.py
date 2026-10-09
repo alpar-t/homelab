@@ -23,7 +23,7 @@ class PlatformTests(unittest.TestCase):
         response = response if response is not None else {'items': self.nodes}
         ctx = SimpleNamespace(now=1767229200,
                               kube=SimpleNamespace(get=lambda path: response),
-                              check=lambda name, bad, detail: {'name': name, 'status': int(bad), 'detail': detail})
+                              check=lambda name, bad, detail, **kwargs: {'name': name, 'status': int(bad), 'detail': detail, **kwargs})
         return MODULE.run(ctx, self.config)
 
     def test_healthy_and_partial_capacity_loss(self):
@@ -42,7 +42,9 @@ class PlatformTests(unittest.TestCase):
         self.nodes[0]['status']['conditions'][0]['status'] = 'False'
         self.nodes[1]['status']['conditions'][0]['lastTransitionTime'] = '2026-01-01T00:59:00Z'
         self.nodes[2]['metadata']['labels']['kubernetes.io/arch'] = 'arm64'
-        self.assertEqual([c['status'] for c in self.run_check()], [0, 0, 0])
+        rows = self.run_check()
+        self.assertEqual([c['status'] for c in rows], [0, 0, 0])
+        self.assertEqual([r['observation'] for r in rows[:2]], ['unknown', 'unknown'])
 
     def test_malformed_or_truncated_inventory(self):
         for response in ({'items': {}}, {'items': [], 'metadata': {'continue': 'more'}}):

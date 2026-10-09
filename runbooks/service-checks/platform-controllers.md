@@ -52,3 +52,7 @@ Dynamic DaemonSet discovery still does not detect a deleted DaemonSet:
 Validate with `scripts/test zabbix` and
 `kubectl kustomize config/zabbix/manifests`. This PR depends on the functional
 runner foundation; no production mutation is required to validate this check.
+
+Not-Ready nodes and registration startup grace produce unknown observations,
+so an older GPU registration incident cannot recover until fresh registration
+is observed. Infrastructure node availability remains the outage signal.

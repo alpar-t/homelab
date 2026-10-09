@@ -24,11 +24,14 @@ def run(ctx, config):
                       if c.get('type') == 'Ready'), None)
         if ready is None:
             raise ValueError('missing node readiness condition')
+        observation = 'known'
         if ready.get('status') != 'True':
+            observation = 'unknown'
             detail, bad = 'Node not Ready; infrastructure check covers availability', False
         else:
             since = datetime.fromisoformat(ready['lastTransitionTime'].replace('Z', '+00:00')).timestamp()
             if ctx.now - since < config['ready_grace_seconds']:
+                observation = 'unknown'
                 detail, bad = 'Node recovery grace; GPU registration may be pending', False
             else:
                 value = node['status'].get('allocatable', {}).get(config['resource'], '0')
@@ -37,5 +40,5 @@ def run(ctx, config):
                 count = int(value)
                 bad = count < config['minimum_allocatable']
                 detail = 'GPU allocatable=%d; expected at least %d' % (count, config['minimum_allocatable'])
-        records.append(ctx.check('Platform GPU registration ' + name, bad, detail))
+        records.append(ctx.check('Platform GPU registration ' + name, bad, detail, observation=observation))
     return records
