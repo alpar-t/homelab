@@ -1,6 +1,19 @@
 # OTmonitor functional monitoring
 
-The collector observes existing `log-tailer` output every five minutes. The
+## Polling and incident confirmation
+
+Poll every 600 seconds (10 minutes); shared failure grace is 900 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+The collector observes existing `log-tailer` output every 10 minutes. The
 native web data endpoint is disabled (`web enable false`); port 80 exposes the
 VNC GUI and does not establish boiler communication. No endpoint, exporter,
 heating setting, gateway command, or MQTT publication is added.
@@ -26,10 +39,9 @@ alone do not satisfy the check.
 
 The query selects one running, nonterminating pod and reads at most 600 lines /
 128 KiB from the previous three minutes. Kubernetes calls use the foundation's
-15-second timeout; each is started only with at least 15 seconds left in the
+five-second timeout; each is started only with at least five seconds left in the
 30-second service deadline. Missing/ambiguous source, malformed or stale frames,
-permission errors, truncation, and timeouts fail visibly. The foundation retries
-failed checks every minute and the existing three-failure alert debounce applies.
+permission errors, truncation, and timeouts fail visibly. The framework retains the configured polling interval and the existing execution-based alert debounce applies.
 
 No credentials or network ingress changes are needed. Existing pod GET access
 is reused; a namespace-local Role adds only `get` on `pods/log` in `otmonitor`
