@@ -105,7 +105,7 @@ def configure_checks(api):
         'lld_macro_paths': [{'lld_macro': '{#' + macro + '}', 'path': '$.' + field} for macro, field in
                             [('ID', 'id'), ('NAME', 'name'), ('FAMILY', 'family'),
                              ('NOTIFY_DELAY', 'notify_delay'), ('GRACE_SAMPLES', 'grace_samples'),
-                             ('FAILURE_SAMPLES', 'failure_samples')]],
+                             ('FAILURE_SAMPLES', 'failure_samples'), ('NOTIFICATION', 'notification')]],
     }, 'itemid', query={'hostids': [host], 'filter': {'key_': 'homelab.discovery'}, 'output': ['itemid']})
     for suffix, field, value_type, history in [('state', 'status', 3, '7d'), ('detail', 'detail', 4, '3d'),
                                               ('severity', 'severity', 3, '1d'),
@@ -124,7 +124,7 @@ def configure_checks(api):
                 {'type': 12, 'params': '$.' + field, 'error_handler': 0},
             ],
         }, 'itemid', query={'discoveryids': [discovery], 'filter': {'key_': key}, 'output': ['itemid']})
-    for severity in (2, 3, 4):
+    for severity in (1, 2, 3, 4):
         name = '{#NAME}: persistent failure (severity ' + str(severity) + ')'
         api.ensure('triggerprototype', 'description', name, {
             'expression': (sample_gate('homelab.state', '{#FAILURE_SAMPLES}', [3, 5]) + ' and '
@@ -135,7 +135,8 @@ def configure_checks(api):
             'recovery_expression': 'count(/HomePBP/homelab.state[{#ID}],#5)=5 and max(/HomePBP/homelab.state[{#ID}],#5)=0',
             'opdata': '{?last(/HomePBP/homelab.detail[{#ID}])}',
             'tags': [{'tag': 'family', 'value': '{#FAMILY}'}, {'tag': 'check_id', 'value': '{#ID}'},
-                     {'tag': 'managed_by', 'value': 'HOME-3'}, {'tag': 'notify_delay', 'value': '{#NOTIFY_DELAY}'}],
+                     {'tag': 'managed_by', 'value': 'HOME-3'}, {'tag': 'notify_delay', 'value': '{#NOTIFY_DELAY}'},
+                     {'tag': 'notification', 'value': '{#NOTIFICATION}'}],
         }, 'triggerid', query={'discoveryids': [discovery], 'filter': {'description': name}, 'output': ['triggerid']})
     api.ensure('trigger', 'description', 'Monitoring collector has no fresh data', {
         'expression': 'nodata(/HomePBP/homelab.snapshot,3m)=1', 'priority': 4,
@@ -208,7 +209,8 @@ return 'accepted';'''
 
 def configure_notification_actions(api, group, operation):
     for delay in ('immediate', '5m', '10m'):
-        conditions = [{'conditiontype': 0, 'operator': 0, 'value': group}]
+        conditions = [{'conditiontype': 0, 'operator': 0, 'value': group},
+                      {'conditiontype': 26, 'operator': 1, 'value2': 'notification', 'value': 'dashboard'}]
         if delay == 'immediate':
             # Untagged monitoring triggers retain immediate delivery.
             conditions += [{'conditiontype': 26, 'operator': 1, 'value2': 'notify_delay', 'value': value}

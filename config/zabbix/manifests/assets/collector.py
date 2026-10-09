@@ -54,7 +54,7 @@ def check(name, family, bad, detail, severity=4):
         delay = 'immediate'
     return {'id': hashlib.sha256(name.encode()).hexdigest()[:20], 'name': name,
             'family': family, 'status': int(bool(bad)), 'detail': str(detail)[:1800],
-            'severity': severity, 'notify_delay': delay,
+            'severity': severity, 'notify_delay': delay, 'notification': 'page',
             'failure_samples': 5 if family == 'node' and name.count(' ') == 1 else 3}
 
 
@@ -314,11 +314,27 @@ def add_reboot_dependencies(checks, data, policy):
         dependencies[name] = workloads.get(('stalwart-mail', 'stalwart'), set())
     for value in checks:
         parents = dependencies.get(value['name'], set())
+        declared = value.get('workloads', [])
+        if declared:
+            parents = set()
+            for target in declared:
+                ns, kind, name = target['namespace'], target['kind'], target['name']
+                if kind == 'Node':
+                    parents.add(name)
+                elif kind == 'StatefulSet':
+                    parents |= pod_nodes(p for p in pods if p['metadata']['namespace'] == ns
+                        and any(o.get('kind') == 'StatefulSet' and o.get('name') == name
+                                for o in p['metadata'].get('ownerReferences', [])))
+                elif kind == 'Cluster':
+                    parents |= dependencies.get(f'CNPG health {ns}/{name}', set())
+                else:
+                    prefix = 'Application ' if kind == 'Deployment' else 'DaemonSet '
+                    parents |= dependencies.get(prefix + ns + '/' + name, set())
         value['parent_nodes'] = sorted(parents)
         value['parent_available'] = int(all(nodes.get(name, False) for name in parents))
         rebuilding = value['family'] == 'longhorn' and 'robustness=faulted' not in value['detail']
         value['grace_samples'] = (grace.get('replica_samples', 30) if rebuilding
-                                  else grace.get('service_samples', 10) if value['name'] in dependencies else 1)
+                                  else grace.get('service_samples', 10) if value['name'] in dependencies or declared else 1)
     return checks
 
 
@@ -415,7 +431,8 @@ def main():
     policy = json.loads(Path(os.environ.get('POLICY_FILE', '/config/policy.json')).read_text())
     kube = Kubernetes()
     activity = MailActivity(os.environ.get('MAIL_ACTIVITY_STATE', '/state/mail-activity.json'))
-    functional = FunctionalChecks(kube, Path(os.environ.get('POLICY_FILE', '/config/policy.json')).parent, check)
+    functional = FunctionalChecks(kube, Path(os.environ.get('POLICY_FILE', '/config/policy.json')).parent, check,
+                                  state_path=os.environ.get('FUNCTIONAL_CHECK_STATE', '/state/functional-checks.json'))
     pod_lifecycle = PodCheckLifecycle(os.environ.get('POD_CHECK_STATE', '/state/pod-checks.json'))
     snapshot = {'collected_at': 0, 'checks': []}
     lock = threading.Lock()
