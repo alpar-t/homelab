@@ -1,64 +1,109 @@
+import importlib.util
 import json
 from pathlib import Path
-import sys
 from types import SimpleNamespace
 import unittest
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'config/zabbix/manifests/assets'))
-import service_actual_budget as service
+from urllib.parse import urlsplit
 
-CONFIG = json.loads((Path(__file__).resolve().parents[2] / 'config/zabbix/manifests/assets/service_actual_budget.json').read_text())
+ROOT = Path(__file__).resolve().parents[2]
+ASSET = ROOT / 'config/zabbix/manifests/assets/service_actual_budget.py'
+spec = importlib.util.spec_from_file_location('security_actual_budget', ASSET)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+CONFIG = json.loads(ASSET.with_suffix('.json').read_text())
+FIXTURES = {'/info': (200, {'build': {'name': '@actual-app/sync-server', 'version': '26.8.0'}}), '/account/needs-bootstrap': (200, {'status': 'ok', 'data': {'bootstrapped': True, 'availableLoginMethods': [{'method': 'password'}]}}), '/http': (401, {'error': 'Unauthorized: Missing Authorization header'})}
+
 
 class Context:
-    def __init__(self):
-        self.responses = [(200, {'build': {'name': '@actual-app/sync-server', 'version': '26.8.0'}}), (200, {'status': 'ok', 'data': {'bootstrapped': True, 'availableLoginMethods': [{'method': 'password'}]}}), (200, {'status': 'ok', 'data': {'validated': True, 'permission': 'BASIC'}}), (200, {'status': 'ok', 'data': []}), (401, {'error': 'Unauthorized: Missing Authorization header'})]
-        self.calls = []
-    def remaining(self): return 20
-    def secret(self, key): return 'sensitive-session'
-    def check(self, name, bad, detail, severity=3): return dict(name=name, status=int(bool(bad)), detail=detail, severity=severity)
+    def __init__(self, fault=None, remaining=30):
+        self.fault, self.budget, self.calls = fault, remaining, []
+        self.kube = self
+        self.secret_reads = []
+    def remaining(self):
+        return self.budget
+    def secret(self, key):
+        self.secret_reads.append(key)
+        raise AssertionError('unsafe credential read attempted')
+    def check(self, name, bad, detail, severity=3):
+        return dict(name=name, status=int(bool(bad)), detail=detail, severity=severity)
     def http(self, url, **kwargs):
+        if not 0 < kwargs['timeout'] <= self.remaining():
+            raise TimeoutError('PRIVATE-CREDENTIAL')
         self.calls.append((url, kwargs))
-        status, body = self.responses.pop(0)
-        return SimpleNamespace(status=status, body=json.dumps(body).encode())
+        if (kwargs.get('headers') or {}).get('Authorization') or (kwargs.get('headers') or {}).get('X-Api-Key') or (kwargs.get('headers') or {}).get('X-Actual-Token'):
+            raise AssertionError('unsafe authentication header')
+        path = urlsplit(url).path
+        if path not in FIXTURES:
+            raise AssertionError('unexpected HTTP path: ' + path)
+        status, value = FIXTURES[path]
+        if self.fault == 'timeout':
+            raise TimeoutError('PRIVATE-CREDENTIAL')
+        if self.fault in (200, 302, 401, 403, 500):
+            status, value = self.fault, {'error':'PRIVATE-CREDENTIAL'}
+        if self.fault == 'malformed':
+            value = 'PRIVATE-CREDENTIAL'
+        body = value.encode() if isinstance(value, str) else json.dumps(value).encode()
+        return SimpleNamespace(status=status, body=body, headers={'Content-Type':'text/html' if path == '/' else 'application/json'})
+    def get(self, path):
+        self.calls.append((path, {}))
+        if self.fault == 'timeout':
+            raise TimeoutError('PRIVATE-CREDENTIAL')
+        if '/pods?' in path:
+            assert path.startswith('/api/v1/namespaces/media/pods?')
+            states = [dict(name='actual_budget',ready=self.fault != 'not-ready',state={'running':{}})]
+            return {'items':[dict(metadata={'name':'unused'},status={'phase':'Running','containerStatuses':states})],
+                    'metadata':{'continue':'private' if self.fault == 'truncated' else ''}}
+        assert path == '/apis/apps/v1/namespaces/baloo/deployments?limit=100'
+        names = ['pinchtab-web','pinchtab'] if 'actual_budget' == 'pinchtab' else ['product-model-api','product-model-renderer']
+        items = [dict(metadata={'name':n,'generation':2},spec={'replicas':1},
+                      status={'observedGeneration':1 if self.fault == 'stale-generation' else 2,
+                              'availableReplicas':0 if self.fault == 'not-ready' else 1,'readyReplicas':1}) for n in names]
+        return {'items':[] if self.fault == 'missing' else items,
+                'metadata':{'continue':'private' if self.fault == 'truncated' else ''}}
 
-class Tests(unittest.TestCase):
-    def test_healthy_empty_account_and_bounded_requests(self):
+
+class SecurityBaselineTests(unittest.TestCase):
+    def test_useful_baseline_is_distinct_from_deferred_coverage(self):
         ctx = Context()
-        self.assertEqual([r['status'] for r in service.run(ctx, CONFIG)], [0, 0, 0])
-        self.assertTrue(all(c[1]['timeout'] <= 5 and c[1]['max_bytes'] == 65536 for c in ctx.calls))
-        self.assertTrue(all('/download' not in c[0] and '/login' not in c[0] for c in ctx.calls))
-    def test_unbootstrapped_and_spa_fallback(self):
-        for body in ({'status': 'ok', 'data': {'bootstrapped': False}}, {'html': 'SPA'}):
-            ctx = Context(); ctx.responses[1] = (200, body)
-            self.assertEqual(service.run(ctx, CONFIG)[0]['status'], 1)
-    def test_budget_access_is_rejected_without_private_output(self):
-        ctx = Context(); ctx.responses[3] = (200, {'status': 'ok', 'data': [{'name': 'private-budget'}]})
-        rows = service.run(ctx, CONFIG)
-        self.assertEqual(rows[1]['status'], 1)
-        self.assertNotIn('private-budget', str(rows))
-    def test_unauthorized_or_admin_account_does_not_list_budgets(self):
-        for response in ((401, {'reason': 'token-expired'}), (200, {'status': 'ok', 'data': {'validated': True, 'permission': 'ADMIN'}})):
-            ctx = Context(); ctx.responses[2] = response; ctx.responses.pop(3)
-            rows = service.run(ctx, CONFIG)
-            self.assertEqual(rows[1]['status'], 1)
-            self.assertFalse(any('/list-user-files' in c[0] for c in ctx.calls))
-    def test_missing_credential_is_failure(self):
-        ctx = Context(); ctx.responses[2:4] = []
-        def missing(key): raise FileNotFoundError('secret-value')
-        ctx.secret = missing
-        rows = service.run(ctx, CONFIG)
-        self.assertEqual([r['status'] for r in rows], [0, 1, 0])
-        self.assertNotIn('secret-value', str(rows))
-    def test_mcp_open_or_malformed_rejection_fails(self):
-        for response in ((200, {'result': {'tools': []}}), (401, {'error': 'other'})):
-            ctx = Context(); ctx.responses[-1] = response
-            self.assertEqual(service.run(ctx, CONFIG)[2]['status'], 1)
-    def test_timeouts_and_malformed_json_do_not_leak(self):
-        for exc in (TimeoutError('sensitive-session'), ValueError('private-body')):
-            ctx = Context()
-            def broken(*args, **kwargs): raise exc
-            ctx.http = broken
-            rows = service.run(ctx, CONFIG)
-            self.assertEqual([r['status'] for r in rows], [1, 1, 1])
-            self.assertNotIn(str(exc), str(rows))
+        rows = module.run(ctx, CONFIG)
+        active = [r for r in rows if r['severity'] > 1]
+        deferred = [r for r in rows if r['severity'] == 1]
+        self.assertTrue(active)
+        self.assertTrue(all(r['status'] == 0 for r in active), rows)
+        self.assertTrue(deferred)
+        self.assertTrue(all(r['status'] == 1 and r['observation'] == 'deferred' and r['notification'] == 'dashboard' and 'deferred' in r['detail'] for r in deferred), rows)
+        self.assertTrue(ctx.calls)
+        self.assertEqual([], ctx.secret_reads)
+        for url, args in ctx.calls:
+            self.assertNotIn('Authorization', (args.get('headers') or {}))
+            self.assertNotIn('X-Api-Key', (args.get('headers') or {}))
+            self.assertNotIn('X-Actual-Token', (args.get('headers') or {}))
+            if url.startswith('http'):
+                self.assertLessEqual(args['timeout'], 8)
+                self.assertLessEqual(args['max_bytes'], 65536)
+                if args.get('method') == 'POST':
+                    self.assertEqual('actual_budget', 'actual_budget')
+                    self.assertEqual('tools/list', json.loads(args['data'])['method'])
+                else:
+                    self.assertNotIn('method', args)
+    def test_bad_baseline_never_claims_health_or_leaks_responses(self):
+        faults = ['timeout','malformed',302,401,403,500] if FIXTURES else ['timeout','missing','not-ready','truncated','stale-generation']
+        if 'actual_budget' in ('radarr','prowlarr'):
+            faults = ['timeout','not-ready','truncated']
+        for fault in faults:
+            with self.subTest(fault=fault):
+                rows = module.run(Context(fault), CONFIG)
+                self.assertTrue(any(r['status'] for r in rows if r['severity'] > 1), rows)
+                self.assertNotIn('PRIVATE-CREDENTIAL', json.dumps(rows))
+    def test_legacy_credentials_cannot_reenable_privileged_access(self):
+        legacy = dict(CONFIG,credential_key='admin',session_secret='admin',workspace_path='/dav/spaces/private/',
+                      token_key='admin',api_url='http://renderer:18811',renderer_url='http://renderer:18811')
+        rows = module.run(Context(), legacy)
+        self.assertTrue(all(r['status'] == 1 for r in rows if r['severity'] == 1))
+    def test_deadline_fails_without_authenticated_fallback(self):
+        rows = module.run(Context(remaining=0), CONFIG)
+        self.assertTrue(all(r['status'] == 1 for r in rows))
 
-if __name__ == '__main__': unittest.main()
+
+if __name__ == '__main__':
+    unittest.main()

@@ -1,7 +1,11 @@
 {
-  "interval": 300,
+  "interval": 900,
   "deadline": 30,
   "server_url": "http://actual-budget.actual-budget.svc.cluster.local:5006",
   "mcp_url": "http://actual-budget-mcp.actual-budget.svc.cluster.local:3000/http",
-  "session_secret": "actual_budget_monitor_session"
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page"
 }

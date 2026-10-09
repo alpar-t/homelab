@@ -22,20 +22,7 @@ def run(ctx, config):
         rows.append(ctx.check('Actual backend contract', not valid, 'build and bootstrapped password-login contract valid' if valid else 'backend build/bootstrap contract invalid'))
     except Exception:
         rows.append(ctx.check('Actual backend contract', True, 'backend contract unavailable'))
-    try:
-        token = ctx.secret(config['session_secret'])
-        headers = {'X-Actual-Token': token}
-        status, account = request(ctx, base + '/account/validate', headers=headers)
-        data = account.get('data', {})
-        valid = status == 200 and account.get('status') == 'ok' and data.get('validated') is True and data.get('permission') == 'BASIC'
-        if not valid:
-            raise ValueError('account contract invalid')
-        status, files = request(ctx, base + '/sync/list-user-files', headers=headers)
-        # A dedicated monitor identity must have no access to household budgets.
-        valid = status == 200 and files.get('status') == 'ok' and files.get('data') == []
-        rows.append(ctx.check('Actual monitor account metadata', not valid, 'dedicated BASIC account and empty budget listing valid' if valid else 'budget listing invalid or monitor has budget access'))
-    except Exception:
-        rows.append(ctx.check('Actual monitor account metadata', True, 'dedicated monitor credential/account contract unavailable'))
+    rows.append(dict(ctx.check('Actual monitor account metadata', True, 'coverage deferred: native BASIC sessions permit writes; no financial credential is mounted', severity=1), observation='deferred', notification='dashboard'))
     try:
         status, result = request(ctx, config['mcp_url'], method='POST', headers={'Content-Type': 'application/json', 'Accept': 'application/json, text/event-stream'}, data=json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list', 'params': {}}).encode())
         valid = status == 401 and result.get('error') == 'Unauthorized: Missing Authorization header'

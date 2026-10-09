@@ -1,15 +1,43 @@
-# Actual Budget functional baseline
+# Actual Budget safe monitoring baseline
 
-Every five minutes, bounded by a 30-second worker deadline, the collector checks three contracts. Existing Zabbix discovery and three-failure debounce apply.
+Anonymous /info build and /account/needs-bootstrap contracts plus anonymous MCP tools/list denial. The empty BASIC account probe is explicitly deferred: its session would still permit writes.
 
-- `/info` must return the Actual sync-server build name and a version, and `/account/needs-bootstrap` must report a bootstrapped server with password login available. This exercises the account database and headless login configuration beyond `/health`.
-- A dedicated BASIC session must validate through `/account/validate`, then return an empty `/sync/list-user-files` listing. Missing/expired credentials, an elevated role, malformed responses, or any budget access fail. Budget identifiers, names, account details, and tokens never enter result output.
-- An anonymous JSON-RPC `tools/list` POST to MCP `/http` must return its deployed JSON 401 missing-authorization error. This detects a broken transport or accidentally unprotected endpoint; it does not prove authenticated catalog or Actual connectivity.
+Coverage that cannot be obtained with native enforced read-only authority stays
+visible as advisory records with severity1, `observation: deferred`, `notification: dashboard` and a `coverage deferred`
+detail. These records must not be mistaken for completed functional validation.
+The ordinary operational checks use the shared framework's normal severity and
+transient grace. Existing Kubernetes/native signals continue independently.
 
-## Credential prerequisite
+## Access and credential boundary
 
-Before rollout, use Actual's administrator UI to create a dedicated `Zabbix monitor` BASIC user with no owned/shared budgets. Use its dedicated authentication identity to obtain a session token once via the supported Actual login workflow. Store only that token in `zabbix/zabbix-functional-credentials`, key `actual_budget_monitor_session`, using a local file and `kubectl create secret generic ... --from-file=actual_budget_monitor_session=/secure/path/token --dry-run=client -o yaml | kubectl apply -f -` (preserve other service keys when updating an existing Secret). Do not place passwords/tokens in command arguments, git, or logs. Sessions can expire; rotate via the same dedicated workflow. Revoke the session in Actual's user/session administration and remove the Secret key to retire it. No Secret API read RBAC is added.
+No financial/session/MCP credential is read or provisioned. Household budget sync, bank integration and authenticated database/sync operations remain unproven.
 
-Actual 26.8 has BASIC/ADMIN roles, not a read-only financial token scope. No household budget access is granted, and Baloo's password/session/MCP bearer is not copied. The monitor uses GET only on authenticated Actual endpoints. The MCP bearer grants broad financial operations; authenticated catalog coverage is deferred until the adapter offers a separately scoped catalog-only identity. No tools are called, no budgets downloaded, and no financial mutations, syncs or bank requests occur.
+No broad native token is an acceptable rollout prerequisite. No proxy is added.
+The foundation projects only approved native read-only credential keys and the
+public mail TLS CA; legacy unsafe keys are not mounted. If unsafe credentials
+were provisioned separately before this change, an authorized operator should
+remove/revoke them through the existing private credential workflow; this PR
+does not retrieve, provision or rotate any production credential.
 
-Source semantics were verified from the running Actual 26.8.0 application source maps (`app-account`, `app-sync`, `validate-user`, `app.ts`) and MCP 0.9.6 `dist/src/server/httpServer.js`. API source was inspected live; HTTP behavior was validated with fixtures only. No destination ingress NetworkPolicy currently isolates Actual pods, so no access policy expansion is required. This baseline cannot prove household budget sync, bank integration, or MCP tool execution.
+## Collection and validation
+
+The shared framework samples at a 15-minute healthy cadence. Operational
+failures require two real failed observations and a 30-minute grace;
+recovery requires two real healthy observations. Cached snapshots are not new
+observations. Failure retries follow the same bounded source-controlled cadence,
+with shared jitter and overload limits. Deferred checks remain severity1,
+observation deferred and dashboard-only; they never assert functional success.
+
+The JSON interval/deadline policy remains source-controlled and the service uses
+bounded requests within that deadline. The shared service deadline remains bounded by its JSON policy. HTTP requests use only fixed
+anonymous paths and the shared redirect/TLS/body-limit helper; no response bodies,
+credential values or exception strings enter snapshot evidence. Kubernetes reads
+use existing read-only RBAC, one bounded inventory page, and refuse pagination.
+
+Run `python3 -m unittest discover -s scripts/tests -p test_service_actual_budget.py`
+and `kubectl kustomize config/zabbix/manifests`. Fixtures cover normal operational
+evidence, explicit deferred records, rejected/malformed/unavailable evidence,
+redaction, deadline expiry and ignored legacy credential config. No production
+request or deployment is performed by these tests. Validate actual anonymous
+contracts/readiness after the normal reviewed GitOps rollout; this change does
+not claim new live functional validation.
