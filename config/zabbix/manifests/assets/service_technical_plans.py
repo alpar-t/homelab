@@ -34,7 +34,7 @@ def run(ctx, config):
     base = config["url"].rstrip("/")
     records = []
     try:
-        response = ctx.http(base + "/openapi.json", timeout=min(8, ctx.remaining()), max_bytes=131072)
+        response = ctx.http(base + "/openapi.json", timeout=min(5, ctx.remaining()), max_bytes=131072)
         valid = response.status == 200 and compatible(json.loads(response.body))
         detail = "preview/import API models compatible" if valid else "OpenAPI unavailable or incompatible preview/import models"
     except Exception:
@@ -44,7 +44,7 @@ def run(ctx, config):
         # No bearer and no workspace: source confirms auth dependency runs before
         # renderer invocation; this request never creates files or invokes Blender.
         response = ctx.http(base + "/internal/get-plan-schema", method="POST", data=b"{}",
-                            headers={"Content-Type": "application/json"}, timeout=min(8, ctx.remaining()), max_bytes=4096)
+                            headers={"Content-Type": "application/json"}, timeout=min(5, ctx.remaining()), max_bytes=4096)
         payload = json.loads(response.body)
         guarded = response.status == 401 and payload == {"detail": "Bearer authentication is required"}
         detail = "internal schema route enforces bearer authentication" if guarded else "internal schema route missing or authentication contract changed"
