@@ -11,6 +11,7 @@ resources:
   - ingress.yaml
   # Keep empty slots: service PRs add resources only inside their own slot.
   # resources: argocd
+  - argocd-readonly.yaml
   # end resources: argocd
   # resources: coredns
   # end resources: coredns
@@ -35,6 +36,8 @@ configMapGenerator:
       # service: actual-budget
       # end service: actual-budget
       # service: argocd
+      - assets/service_argocd.py
+      - assets/service_argocd.json
       # end service: argocd
       # service: baloo
       # end service: baloo
