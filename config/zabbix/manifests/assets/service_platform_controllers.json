@@ -1,0 +1,44 @@
+{
+  "interval": 600,
+  "deadline": 20,
+  "expected_nodes": [
+    "buksi",
+    "pamacs",
+    "pufi"
+  ],
+  "plugin_node_selector": {
+    "kubernetes.io/arch": "amd64"
+  },
+  "resource": "gpu.intel.com/i915",
+  "minimum_allocatable": 10,
+  "ready_grace_seconds": 600,
+  "failure_grace_seconds": 900,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page",
+  "workloads": [],
+  "check_workloads": {
+    "Platform GPU registration buksi": [
+      {
+        "namespace": "kube-system",
+        "kind": "Node",
+        "name": "buksi"
+      }
+    ],
+    "Platform GPU registration pamacs": [
+      {
+        "namespace": "kube-system",
+        "kind": "Node",
+        "name": "pamacs"
+      }
+    ],
+    "Platform GPU registration pufi": [
+      {
+        "namespace": "kube-system",
+        "kind": "Node",
+        "name": "pufi"
+      }
+    ]
+  }
+}
