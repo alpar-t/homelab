@@ -57,6 +57,8 @@ configMapGenerator:
       # service: homeassistant
       # end service: homeassistant
       # service: immich
+      - assets/service_immich.py
+      - assets/service_immich.json
       # end service: immich
       # service: ingress-nginx
       # end service: ingress-nginx
