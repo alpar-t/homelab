@@ -63,6 +63,8 @@ configMapGenerator:
       # service: interior-designer
       # end service: interior-designer
       # service: landing-page
+      - assets/service_landing_page.py
+      - assets/service_landing_page.json
       # end service: landing-page
       # service: longhorn
       # end service: longhorn
