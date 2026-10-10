@@ -53,6 +53,8 @@ configMapGenerator:
       - assets/service_github_runners.json
       # end service: github-runners
       # service: gotenberg
+      - assets/service_gotenberg.py
+      - assets/service_gotenberg.json
       # end service: gotenberg
       # service: homeassistant
       # end service: homeassistant
