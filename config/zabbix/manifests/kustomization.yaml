@@ -77,6 +77,8 @@ configMapGenerator:
       # service: omada
       # end service: omada
       # service: onlyoffice
+      - assets/service_onlyoffice.py
+      - assets/service_onlyoffice.json
       # end service: onlyoffice
       # service: opencloud
       # end service: opencloud
