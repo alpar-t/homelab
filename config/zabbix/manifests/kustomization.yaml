@@ -80,6 +80,8 @@ configMapGenerator:
       # service: nodered
       # end service: nodered
       # service: omada
+      - assets/service_omada.py
+      - assets/service_omada.json
       # end service: omada
       # service: onlyoffice
       # end service: onlyoffice
