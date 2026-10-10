@@ -213,8 +213,15 @@ deduplicated, including messages delivered to multiple recipients. Only hashed
 identifiers and timestamps are retained; mail contents, addresses, subjects,
 and Message-IDs are not stored or sent to Baloo.
 
-The user selected an initial 24-hour silence threshold with adaptation. The
-policy lives in `config/zabbix/manifests/assets/policy.json`. After at least ten
+The user initially selected a 24-hour silence threshold with adaptation. On
+2026-10-10, the user changed this to a fixed 48-hour threshold. Initial, minimum,
+and maximum silence hours are all 48 in
+`config/zabbix/manifests/assets/policy.json`, so recalibration cannot shorten it.
+The evidence labels this as fixed by policy. Policy changes recalibrate the
+persisted cache on the next collection without discarding arrival timestamps.
+
+The adaptive implementation remains available if the bounds are widened again.
+After at least ten
 completed gaps are available, use 1.5 times the 90th-percentile gap from a rolling
 seven-day history, rounded up to a whole hour and bounded to 6–48 hours. The
 current silent interval does not enter the baseline. Recalibrate on new arrivals
@@ -370,3 +377,60 @@ rejects them during discovery. `sample_gate()` therefore generates literal
 sample-window branches selected by the discovery macro. Validate actual discovered
 expressions and `discoveryrule.error`, not just a successful prototype API update.
 `Notify all involved` also requires `opmessage: {default_msg: 1}` in this version.
+
+## Alert review and prepared corrections (2026-10-10)
+
+A read-only review covering October 9 at 09:42 through October 10 at 21:42
+Bucharest time found seven problem events: six recovered and one remained open.
+Six problems notified Baloo, with five recovery notifications; Immich's ten-minute
+incident ended before its notification operation. Zabbix's successful webhook
+records prove admission to Baloo, not individual WhatsApp deliveries.
+
+Three `LastBackupSucceeded` incidents (Zabbix, Home Assistant recorder, Immich)
+had the evidence `New Backup starting up`. Their actual Backup objects all
+completed successfully. Home Assistant's run took 3h32m; its preceding weekly
+runs took about four hours. These are classification errors rather than a reason
+to increase notification delays across all checks. CNPG uses `BackupStarted`
+with a false condition while the backup runs, distinct from `LastBackupFailed`.
+
+The prepared collector correction tolerates only `False/BackupStarted` with a
+valid transition timestamp younger than `cnpg_backup_running_grace_hours` (six
+hours). Longer runs, actual failures, and missing conditions/timestamps still
+fail. Completed-backup freshness and continuous archiving remain independent
+checks, so a running backup cannot excuse an overdue completed backup.
+
+The twelve-minute Stalwart incident came from one `smtp.spf-from-fail` record,
+held in the ten-minute log window. Its explanatory text matched the broad
+failure regex even though it was an SPF rejection. The prepared matcher uses
+Stalwart's structured event name when present, preserving the legacy-text
+fallback and delivery/queue failure detection. Fetchmail's twenty-two-minute
+incident had repeated failure records; retained container logs no longer covered
+that interval, so its exact cause was not established. Keep that detection.
+
+Incoming-mail silence crossed its learned 23-hour threshold twice. The first
+recovered after two hours; the second was still open with about 25.6 hours of
+silence. The existing adaptive policy remains unchanged. The older Emby config
+backup warning was also still open (about 280 hours against a 240-hour limit).
+Neither warning should be dismissed as part of this noise correction.
+
+Alpar subsequently requested both corrections and a fixed 48-hour mail-silence
+threshold. Publish the collector/policy through the existing Zabbix GitOps
+workflow. No trigger/action bootstrap reconciliation is needed because
+the discovery schema and notification delays are unchanged. Validate fresh
+items, no unsupported checks, and the next scheduled backups after deployment.
+
+The follow-up investigation recovered Pamacs's rotated container logs under
+`/var/log/pods/` (including gzip rotations); `kubectl logs` had only the current
+file. From 12:17:50 to 12:27:05 Bucharest on October 9, Migadu's IMAP server
+returned `NO [UNAVAILABLE] Backend server temporarily unavailable` during login
+for all three mailboxes. Fetchmail classified these as `AUTHFAIL`/query status 3,
+with `previously authorized` on the affected accounts. No credential change was
+needed. The retained failures were confined to that interval, and the next
+successful external ingestion was recorded at about 12:43.
+
+This outage can delay retrieval while it is occurring, but it does not explain
+the preceding 23-hour silence: that alert opened at 10:47, before the first
+fetchmail failure. Another successful arrival was recorded at 20:03 that
+evening, followed by a new silence interval. Keep fetchmail error monitoring
+independent of the 48-hour traffic-anomaly threshold. Do not send synthetic
+mail or reset passwords to investigate a recovered provider-side failure.
