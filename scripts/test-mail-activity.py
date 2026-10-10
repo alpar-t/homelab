@@ -10,7 +10,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'config/zabbix/manifests/assets'))
 from mail_activity import MailActivity
 
-POLICY = json.loads((ROOT / 'config/zabbix/manifests/assets/policy.json').read_text())['mail_activity']
+DEPLOYED_POLICY = json.loads((ROOT / 'config/zabbix/manifests/assets/policy.json').read_text())['mail_activity']
+# Continue exercising adaptation independently of the selected fixed policy.
+POLICY = {**DEPLOYED_POLICY, 'initial_silence_hours': 24,
+          'minimum_silence_hours': 6, 'maximum_silence_hours': 48}
 NOW = dt.datetime(2026, 10, 7, 9, tzinfo=dt.timezone.utc).timestamp()
 
 
@@ -33,6 +36,23 @@ def arrivals(stamps):
 
 
 class MailActivityTests(unittest.TestCase):
+    def test_fixed_48_hours_replaces_a_learned_threshold_and_survives_restart(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'state.json'
+            watcher = MailActivity(path)
+            result = watcher.observe([arrivals([NOW-i*3600 for i in range(12, -1, -1)])], NOW, POLICY)
+            self.assertEqual(result['threshold_seconds'], 6*3600)
+            watcher = MailActivity(path)
+            result = watcher.observe([''], NOW+24*3600, DEPLOYED_POLICY)
+            self.assertEqual(result['threshold_seconds'], 48*3600)
+            self.assertFalse(result['bad'])
+            self.assertIn('fixed silence threshold', result['detail'])
+            result = watcher.observe(['\n'.join([queue(999, NOW+30*3600), ingest(999, NOW+30*3600)])],
+                                     NOW+30*3600, DEPLOYED_POLICY)
+            self.assertEqual(result['threshold_seconds'], 48*3600)
+            self.assertFalse(watcher.summary(NOW+77*3600, DEPLOYED_POLICY)['bad'])
+            self.assertTrue(watcher.summary(NOW+79*3600, DEPLOYED_POLICY)['bad'])
+
     def test_only_successfully_stored_external_messages_count(self):
         rows = [queue(1, NOW-100), ingest(1, NOW-99), queue(2, NOW-80), ingest(2, NOW-79, 'spam'),
                 queue(3, NOW-50, '10.42.0.36'), ingest(3, NOW-49), queue(4, NOW-40),
