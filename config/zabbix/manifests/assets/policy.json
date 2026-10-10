@@ -11,6 +11,9 @@
     "minimum_gap_samples": 10
   },
   "deployments": [
+    ["kube-system", "local-path-provisioner"],
+    ["reloader", "reloader-reloader"],
+    ["system-upgrade", "system-upgrade-controller"],
     ["argocd", "argocd-server"], ["baloo", "openclaw"],
     ["cloudflared", "cloudflared"], ["pocket-id", "pocket-id"],
     ["stalwart-mail", "stalwart"], ["roundcube", "roundcube"],
