@@ -138,10 +138,13 @@ class MailActivity:
         threshold = self.state.get('threshold', policy['initial_silence_hours'] * 3600)
         count_today = sum(stamp >= today for stamp in stamps)
         last_text = dt.datetime.fromtimestamp(last, zone).strftime('%Y-%m-%d %H:%M %Z') if last else 'none in retained history'
+        threshold_source = ('fixed silence threshold by policy' if
+                            policy['initial_silence_hours'] == policy['minimum_silence_hours'] == policy['maximum_silence_hours']
+                            else f'threshold learned from {self.state.get("gap_samples", 0)} completed gap samples')
         detail = (f'{silence / 3600:.1f}h since last external arrival; alert after {threshold / 3600:g}h; '
                   f'last arrival {last_text}; {count_today} arrivals today; '
                   f'{len(stamps)} arrivals in the rolling {policy["baseline_days"]}-day history; '
-                  f'threshold learned from {self.state.get("gap_samples", 0)} completed gap samples')
+                  f'{threshold_source}')
         return {'bad': silence > threshold, 'detail': detail, 'silence_seconds': round(silence),
                 'threshold_seconds': threshold, 'arrivals_today': count_today,
                 'last_arrival': last, 'gap_samples': self.state.get('gap_samples', 0)}
