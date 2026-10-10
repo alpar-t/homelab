@@ -17,6 +17,9 @@ The collector observes existing `log-tailer` output every 10 minutes. The
 native web data endpoint is disabled (`web enable false`); port 80 exposes the
 VNC GUI and does not establish boiler communication. No endpoint, exporter,
 heating setting, gateway command, or MQTT publication is added.
+The sidecar follows the newest daily log and switches to the next file within
+five seconds of creation. On a sidecar restart it starts at the end of the
+current file, so old entries cannot appear as current telemetry.
 
 `OTmonitor live OpenTherm exchanges` requires gateway `R` Read-Data status
 (ID 0), boiler `B` Read-Ack status (ID 0), and boiler Read-Ack water temperature

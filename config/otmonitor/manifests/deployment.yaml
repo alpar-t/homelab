@@ -98,14 +98,32 @@ spec:
           args:
             - |
               mkdir -p /config/logs
-              # Wait for log files to appear, then tail them
+              # Follow the newest daily file and switch when OTMonitor rotates it.
+              current_file=
+              tail_pid=
               while true; do
-                if ls /config/logs/otlog-*.txt 1>/dev/null 2>&1; then
-                  tail -F /config/logs/otlog-*.txt
-                else
-                  echo "Waiting for OTMonitor logs..."
-                  sleep 5
+                newest_file=
+                for candidate in /config/logs/otlog-*.txt; do
+                  if [ -f "$candidate" ]; then newest_file="$candidate"; fi
+                done
+                if [ "$newest_file" != "$current_file" ]; then
+                  if [ -n "$tail_pid" ]; then
+                    kill "$tail_pid"
+                    wait "$tail_pid" 2>/dev/null || true
+                  fi
+                  if [ -n "$newest_file" ]; then
+                    if [ -n "$current_file" ]; then
+                      tail -n +1 -F "$newest_file" &
+                    else
+                      tail -n 0 -F "$newest_file" &
+                    fi
+                    tail_pid=$!
+                  else
+                    tail_pid=
+                  fi
+                  current_file="$newest_file"
                 fi
+                sleep 5
               done
           volumeMounts:
             - name: config
