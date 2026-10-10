@@ -43,6 +43,24 @@ def quantity(value):
     return float(match[1]) * scale[match[2]]
 
 
+MAIL_FAILURE_PATTERNS = {
+    'fetchmail': r'(?i)authorization failure|authentication failed|socket error|connection refused|delivery.*failed|SMTP error|query status=[2-9]|certificate.*fail',
+    'stalwart': r'(?i)delivery\.(failed|d[sn].*failed)|delivery.*(error|failed)|smtp.*(auth.*fail|connection.*fail)|queue.*error',
+}
+
+
+def mail_failure_matches(container, line):
+    if container == 'stalwart':
+        # Stalwart appends structured event names to its human-readable text.
+        # SPF rejections can mention authentication failure in that text; match
+        # the event instead so routine filtering is not a service incident.
+        plain = re.sub(r'\x1b\[[0-9;]*m', '', line)
+        event = re.search(r'\(([a-z][a-z0-9-]*\.[a-z0-9-]+)\)', plain)
+        if event:
+            line = event[1]
+    return bool(re.search(MAIL_FAILURE_PATTERNS[container], line))
+
+
 def check(name, family, bad, detail, severity=4):
     # IDs are safe for both Zabbix item keys and JSONPath literals.
     delay = '5m'
@@ -292,8 +310,18 @@ def evaluate(data, policy, now):
             # Condition error messages can include private storage credentials/URLs.
             native_status = value.get('status')
             safe_status = native_status if native_status in ('True', 'False', 'Unknown') else 'missing or invalid'
-            checks.append(check(f'CNPG {cond} {ns}/{name}', 'backup', native_status != 'True',
-                                f'{cond} status={safe_status}; inspect cluster conditions privately'))
+            bad = native_status != 'True'
+            detail = f'{cond} status={safe_status}; inspect cluster conditions privately'
+            # CNPG sets LastBackupSucceeded=False/BackupStarted throughout a
+            # normal backup. Bound this exception so a stuck run still alerts;
+            # the independent completed-backup freshness gate remains active.
+            if (cond == 'LastBackupSucceeded' and value.get('status') == 'False'
+                    and value.get('reason') == 'BackupStarted'):
+                running_age = age(value.get('lastTransitionTime'), now)
+                grace_hours = policy.get('cnpg_backup_running_grace_hours', 6)
+                bad = running_age >= grace_hours * 3600
+                detail = f'Backup in progress for {running_age / 3600:.1f}h; running limit={grace_hours}h'
+            checks.append(check(f'CNPG {cond} {ns}/{name}', 'backup', bad, detail))
         limit = schedules.get((ns, name), 0)
         actual_age = age(s.get('lastSuccessfulBackup'), now)
         checks.append(check(f'CNPG backup freshness {ns}/{name}', 'backup',
@@ -448,14 +476,12 @@ def collect(kube, policy, activity=None, pod_lifecycle=None, functional=None):
     mail_pods = [p for p in data['pods'] if p['metadata']['namespace'] == 'stalwart-mail'
                  and p['metadata'].get('labels', {}).get('app') == 'stalwart'
                  and not p['metadata'].get('deletionTimestamp')]
-    for container, pattern in [
-        ('fetchmail', r'(?i)authorization failure|authentication failed|socket error|connection refused|delivery.*failed|SMTP error|query status=[2-9]|certificate.*fail'),
-        ('stalwart', r'(?i)delivery\.(failed|d[sn].*failed)|delivery.*(error|failed)|smtp.*(auth.*fail|connection.*fail)|queue.*error')]:
+    for container in MAIL_FAILURE_PATTERNS:
         bad, count = not bool(mail_pods), 0
         try:
             for pod in mail_pods:
                 lines = kube.logs('stalwart-mail', pod['metadata']['name'], container).splitlines()
-                count += sum(bool(re.search(pattern, line)) for line in lines)
+                count += sum(mail_failure_matches(container, line) for line in lines)
             bad = bad or count > 0
             detail = f'{count} matching failure records in the last 10 minutes; inspect {container} logs'
         except Exception as error:
