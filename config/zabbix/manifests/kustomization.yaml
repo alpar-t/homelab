@@ -99,6 +99,8 @@ configMapGenerator:
       # service: product-models
       # end service: product-models
       # service: prowlarr
+      - assets/service_prowlarr.py
+      - assets/service_prowlarr.json
       # end service: prowlarr
       # service: qbittorrent
       # end service: qbittorrent
