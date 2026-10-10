@@ -20,6 +20,7 @@ resources:
   # resources: metallb
   # end resources: metallb
   # resources: velero
+  - velero-readonly.yaml
   # end resources: velero
   # resources: wireguard
   - wireguard-monitoring-rbac.yaml
@@ -154,6 +155,8 @@ configMapGenerator:
       # service: vaultwarden
       # end service: vaultwarden
       # service: velero
+      - assets/service_velero.py
+      - assets/service_velero.json
       # end service: velero
       # service: vikunja
       # end service: vikunja
