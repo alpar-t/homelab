@@ -93,6 +93,8 @@ configMapGenerator:
       - assets/service_platform_controllers.json
       # end service: platform-controllers
       # service: pocket-id
+      - assets/service_pocket_id.py
+      - assets/service_pocket_id.json
       # end service: pocket-id
       # service: portal
       # end service: portal
