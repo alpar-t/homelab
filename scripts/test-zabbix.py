@@ -84,6 +84,41 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(len(errors), len(collector.PATHS))
         self.assertTrue(all(c['status'] == 1 for c in errors))
 
+    def test_running_backup_is_bounded_and_cannot_hide_stale_backups(self):
+        self.policy['databases'] = [['db', 'pg']]
+        self.policy['cnpg_backup_running_grace_hours'] = 6
+        timestamp = lambda seconds: collector.dt.datetime.fromtimestamp(NOW - seconds, collector.UTC).isoformat()
+        condition = {'type': 'LastBackupSucceeded', 'status': 'False', 'reason': 'BackupStarted',
+                     'lastTransitionTime': timestamp(4 * 3600), 'message': 'New Backup starting up'}
+        self.data['clusters'] = [{'metadata': {'name': 'pg', 'namespace': 'db'},
+                                 'status': {'conditions': [condition],
+                                            'lastSuccessfulBackup': timestamp(49 * 3600)}}]
+        self.data['scheduled_backups'] = [{'metadata': {'name': 'daily', 'namespace': 'db'},
+                                          'spec': {'schedule': '0 15 3 * * *', 'cluster': {'name': 'pg'}}}]
+        metric = 'CNPG LastBackupSucceeded db/pg'
+        self.assertEqual(self.checks()[metric]['status'], 0)
+        self.assertEqual(self.checks()['CNPG backup freshness db/pg']['status'], 1)
+        condition['lastTransitionTime'] = timestamp(6 * 3600)
+        self.assertEqual(self.checks()[metric]['status'], 1)
+        condition['lastTransitionTime'] = timestamp(60)
+        condition['reason'] = 'LastBackupFailed'
+        self.assertEqual(self.checks()[metric]['status'], 1)
+        condition['reason'] = 'BackupStarted'
+        del condition['lastTransitionTime']
+        self.assertEqual(self.checks()[metric]['status'], 1)
+        self.data['clusters'][0]['status']['conditions'] = []
+        self.assertEqual(self.checks()[metric]['status'], 1)
+
+    def test_stalwart_filter_rejections_do_not_match_explanatory_error_text(self):
+        rejected = '\x1b[33m2026-10-10T06:50:00Z SPF rejected (smtp.spf-from-fail)\x1b[0m authentication failed; delivery failed'
+        self.assertFalse(collector.mail_failure_matches('stalwart', rejected))
+        for event in ('delivery.failed', 'delivery.dsn-failed', 'delivery.connection-error',
+                      'smtp.auth-failed', 'smtp.connection-failed', 'queue.error'):
+            self.assertTrue(collector.mail_failure_matches('stalwart', f'Failure ({event})'))
+        self.assertTrue(collector.mail_failure_matches('stalwart', 'delivery failed'))
+        self.assertTrue(collector.mail_failure_matches('fetchmail', 'query status=2'))
+        self.assertFalse(collector.mail_failure_matches('fetchmail', 'query status=1'))
+
     def test_kubernetes_quantity_units(self):
         self.assertEqual(collector.quantity('16100Mi'), 16100 * 1024**2)
         self.assertEqual(collector.quantity('200000000n'), .2)
