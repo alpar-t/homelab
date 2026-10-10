@@ -109,6 +109,8 @@ configMapGenerator:
       # service: searxng
       # end service: searxng
       # service: sonarr
+      - assets/service_sonarr.py
+      - assets/service_sonarr.json
       # end service: sonarr
       # service: stalwart-mail
       # end service: stalwart-mail
