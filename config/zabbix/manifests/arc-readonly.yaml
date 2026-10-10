@@ -1,0 +1,47 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zabbix-arc-status
+  namespace: arc-runners
+rules:
+  - apiGroups: [actions.github.com]
+    resources: [autoscalingrunnersets, ephemeralrunnersets, ephemeralrunners]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zabbix-arc-status
+  namespace: arc-runners
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zabbix-arc-status
+subjects:
+  - kind: ServiceAccount
+    name: collector
+    namespace: zabbix
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zabbix-arc-listener
+  namespace: arc-systems
+rules:
+  - apiGroups: [actions.github.com]
+    resources: [autoscalinglisteners]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zabbix-arc-listener
+  namespace: arc-systems
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zabbix-arc-listener
+subjects:
+  - kind: ServiceAccount
+    name: collector
+    namespace: zabbix
