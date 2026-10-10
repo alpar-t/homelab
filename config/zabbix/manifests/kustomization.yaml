@@ -104,6 +104,8 @@ configMapGenerator:
       # service: paperless
       # end service: paperless
       # service: pihole
+      - assets/service_pihole.py
+      - assets/service_pihole.json
       # end service: pihole
       # service: pinchtab
       # end service: pinchtab
