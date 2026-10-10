@@ -1,0 +1,35 @@
+{
+  "interval": 1800,
+  "deadline": 30,
+  "internal_url": "http://portal.portal.svc.cluster.local",
+  "public_url": "https://portal.newjoy.ro",
+  "failure_grace_seconds": 3600,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page",
+  "workloads": [],
+  "check_workloads": {
+    "Portal frontend assets": [
+      {
+        "namespace": "portal",
+        "kind": "Deployment",
+        "name": "portal"
+      }
+    ],
+    "Portal catalog contract": [
+      {
+        "namespace": "portal",
+        "kind": "Deployment",
+        "name": "portal"
+      }
+    ],
+    "Portal public sign-in gate": [
+      {
+        "namespace": "portal",
+        "kind": "Deployment",
+        "name": "oauth2-proxy"
+      }
+    ]
+  }
+}

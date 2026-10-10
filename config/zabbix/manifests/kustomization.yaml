@@ -95,6 +95,8 @@ configMapGenerator:
       # service: pocket-id
       # end service: pocket-id
       # service: portal
+      - assets/service_portal.py
+      - assets/service_portal.json
       # end service: portal
       # service: product-models
       # end service: product-models
