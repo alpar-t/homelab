@@ -1,0 +1,31 @@
+{
+  "interval": 900,
+  "deadline": 25,
+  "url": "http://roundcube.roundcube.svc.cluster.local/",
+  "authorize": "https://auth.newjoy.ro/authorize",
+  "callback": "https://webmail.newjoy.ro/index.php/login/oauth",
+  "imap_host": "stalwart.stalwart-mail.svc.cluster.local",
+  "imap_port": 143,
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page",
+  "workloads": [],
+  "check_workloads": {
+    "Roundcube OAuth bootstrap": [
+      {
+        "namespace": "roundcube",
+        "kind": "Deployment",
+        "name": "roundcube"
+      }
+    ],
+    "Roundcube IMAP OAuth capability": [
+      {
+        "namespace": "stalwart-mail",
+        "kind": "Deployment",
+        "name": "stalwart"
+      }
+    ]
+  }
+}
