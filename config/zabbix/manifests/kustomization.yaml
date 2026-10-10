@@ -97,6 +97,8 @@ configMapGenerator:
       # service: portal
       # end service: portal
       # service: product-models
+      - assets/service_product_models.py
+      - assets/service_product_models.json
       # end service: product-models
       # service: prowlarr
       # end service: prowlarr
