@@ -55,6 +55,8 @@ configMapGenerator:
       # service: gotenberg
       # end service: gotenberg
       # service: homeassistant
+      - assets/service_homeassistant.py
+      - assets/service_homeassistant.json
       # end service: homeassistant
       # service: immich
       # end service: immich
