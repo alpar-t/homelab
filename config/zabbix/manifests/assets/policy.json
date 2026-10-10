@@ -1,11 +1,12 @@
 {
   "nodes": ["buksi", "pamacs", "pufi"],
   "reboot_grace": {"service_samples": 10, "replica_samples": 30},
+  "cnpg_backup_running_grace_hours": 6,
   "mail_activity": {
     "timezone": "Europe/Bucharest",
     "baseline_days": 7,
-    "initial_silence_hours": 24,
-    "minimum_silence_hours": 6,
+    "initial_silence_hours": 48,
+    "minimum_silence_hours": 48,
     "maximum_silence_hours": 48,
     "gap_multiplier": 1.5,
     "minimum_gap_samples": 10
