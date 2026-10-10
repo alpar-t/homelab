@@ -164,6 +164,8 @@ configMapGenerator:
       - assets/service_wireguard.json
       # end service: wireguard
       # service: zabbix
+      - assets/service_zabbix.py
+      - assets/service_zabbix.json
       # end service: zabbix
 generatorOptions:
   disableNameSuffixHash: true
