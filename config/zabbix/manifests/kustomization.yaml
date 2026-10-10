@@ -142,6 +142,8 @@ configMapGenerator:
       # service: vikunja
       # end service: vikunja
       # service: website-staging
+      - assets/service_website_staging.py
+      - assets/service_website_staging.json
       # end service: website-staging
       # service: whisper
       # end service: whisper
