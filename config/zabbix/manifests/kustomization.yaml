@@ -125,6 +125,8 @@ configMapGenerator:
       # service: velero
       # end service: velero
       # service: vikunja
+      - assets/service_vikunja.py
+      - assets/service_vikunja.json
       # end service: vikunja
       # service: website-staging
       # end service: website-staging
