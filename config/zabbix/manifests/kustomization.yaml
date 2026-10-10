@@ -83,6 +83,8 @@ configMapGenerator:
       # service: otmonitor
       # end service: otmonitor
       # service: paperless
+      - assets/service_paperless.py
+      - assets/service_paperless.json
       # end service: paperless
       # service: pihole
       # end service: pihole
