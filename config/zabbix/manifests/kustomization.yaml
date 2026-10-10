@@ -13,6 +13,7 @@ resources:
   # resources: argocd
   # end resources: argocd
   # resources: coredns
+  - coredns-rbac.yaml
   # end resources: coredns
   # resources: github-runners
   - arc-readonly.yaml
@@ -43,6 +44,8 @@ configMapGenerator:
       # service: cnpg
       # end service: cnpg
       # service: coredns
+      - assets/service_coredns.py
+      - assets/service_coredns.json
       # end service: coredns
       # service: emby
       # end service: emby
