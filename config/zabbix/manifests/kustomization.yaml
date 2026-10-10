@@ -38,6 +38,8 @@ configMapGenerator:
       # service: argocd
       # end service: argocd
       # service: baloo
+      - assets/service_baloo.py
+      - assets/service_baloo.json
       # end service: baloo
       # service: cloudflare-tunnel
       # end service: cloudflare-tunnel
