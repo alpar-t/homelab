@@ -17,6 +17,8 @@ configMapGenerator:
       - assets/functional.py
       - assets/service_nodered.py
       - assets/service_nodered.json
+      - assets/service_platform_controllers.py
+      - assets/service_platform_controllers.json
       - assets/mail_activity.py
       - assets/policy.json
 generatorOptions:
