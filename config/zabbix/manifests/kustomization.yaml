@@ -124,6 +124,8 @@ configMapGenerator:
       # service: sonarr
       # end service: sonarr
       # service: stalwart-mail
+      - assets/service_stalwart_mail.py
+      - assets/service_stalwart_mail.json
       # end service: stalwart-mail
       # service: tandoor
       # end service: tandoor
