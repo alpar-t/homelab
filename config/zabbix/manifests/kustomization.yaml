@@ -71,6 +71,8 @@ configMapGenerator:
       # service: metallb
       # end service: metallb
       # service: metrics-server
+      - assets/service_metrics_server.py
+      - assets/service_metrics_server.json
       # end service: metrics-server
       # service: nodered
       # end service: nodered
