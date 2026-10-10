@@ -48,6 +48,8 @@ configMapGenerator:
       # service: coredns
       # end service: coredns
       # service: emby
+      - assets/service_emby.py
+      - assets/service_emby.json
       # end service: emby
       # service: frigate
       # end service: frigate
