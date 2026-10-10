@@ -78,6 +78,8 @@ configMapGenerator:
       - assets/service_metrics_server.json
       # end service: metrics-server
       # service: nodered
+      - assets/service_nodered.py
+      - assets/service_nodered.json
       # end service: nodered
       # service: omada
       - assets/service_omada.py
