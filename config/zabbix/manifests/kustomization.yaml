@@ -18,6 +18,8 @@ configMapGenerator:
       - assets/functional.py
       - assets/service_wireguard.py
       - assets/service_wireguard.json
+      - assets/service_platform_controllers.py
+      - assets/service_platform_controllers.json
       - assets/mail_activity.py
       - assets/policy.json
 generatorOptions:
