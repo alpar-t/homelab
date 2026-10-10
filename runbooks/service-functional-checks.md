@@ -6,6 +6,15 @@ unique stable, service-prefixed rows. Never include credentials, response bodies
 user data or exception messages in evidence. Standard-library helpers provide
 bounded read-only HTTP and the collector's restricted Kubernetes client.
 
+The collector Kustomization reserves separate comment-delimited registration
+slots for the service PRs. Add each module and JSON file between its matching
+`service: <slug>` and `end service: <slug>` comments. Add supporting manifests
+inside that service's matching `resources` slot. Keep empty slots and their
+boundary comments: they separate concurrent edits so one service merge does not
+conflict with another service's registration. Empty slots are comments only and
+enable no checks or permissions. Avoid appending every service at the same point
+or reformatting the whole list while adding one service.
+
 ```python
 def run(ctx, config):
     response = ctx.http(config['url'])
