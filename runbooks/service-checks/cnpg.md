@@ -1,0 +1,86 @@
+# CloudNativePG functional baseline
+
+## Polling and incident confirmation
+
+Poll every 900 seconds (15 minutes); shared failure grace is 1800 seconds.
+A problem needs both the elapsed grace and at least two independent failed
+executions; recovery needs two independent healthy executions. At this cadence
+and grace, ordinary continuous failure normally requires three failed runs.
+Minute snapshots never count as new observations, and failures keep the same
+slow cadence. Scheduling is staggered. Referenced workload reboot/rescheduling
+grace and maintenance preserve confirmed state without declaring recovery.
+Persistent ordinary outages page; module-specific advisories stay on the dashboard.
+See [the shared framework](../service-functional-checks.md) for startup,
+unknown/deferred observations and queue freshness.
+
+The `functional/cnpg` module observes all ten explicitly configured database
+clusters every 15 minutes. Each cluster has one stable `CNPG SQL and
+replication <namespace>/<cluster>` check. Failures retain the configured polling interval and
+use the existing execution-based Zabbix trigger.
+
+The native instance exporter on TCP 9187 executes SQL queries. Required finite
+metrics prove database-size and recovery-state queries work, compare SQL
+recovery roles with the operator's designated primary, require standby WAL
+receivers and the primary's expected streaming replica count, and reject replay
+lag above 300 seconds. Empty databases and zero activity are healthy. The default
+CNPG lag query returns zero when received and replayed WAL positions match, so
+an idle database does not fail merely because its last transaction was long ago.
+See the [official default query definitions](https://github.com/cloudnative-pg/cloudnative-pg/blob/release-1.28/config/manager/default-monitoring.yaml).
+Live primary/standby metric schema should be revalidated after operator upgrades.
+
+Allow ten minutes following a Ready-condition transition, primary transition,
+or PostgreSQL startup before enforcing roles/replication. Explicit CNPG node
+maintenance and `cnpg.io/hibernation: on` defer observation with visible evidence.
+This grace prevents normal restarts and switchovers paging before replication
+settles. A long-running maintenance flag suppresses this baseline intentionally;
+clear it when maintenance ends. Existing readiness, backups and WAL archive
+checks continue independently. Use Zabbix maintenance for other planned work.
+
+No database credentials, Secret reads, writes, pod exec, or new RBAC are required.
+A single existing cluster-list GET obtains instance IPs from
+`status.instancesReportedState`; incomplete instance coverage fails visibly.
+Its existing API timeout is five seconds and it is admitted only with at least
+six seconds remaining. Responses with pagination fail rather than fetching
+unbounded pages. At most 100 CRs / 80 instance scrapes / three workers are
+allowed, and each HTTP scrape has a maximum three-second timeout, 256 KiB body
+limit and the shared 30-second module deadline. Non-200, timeout, missing,
+ambiguous and nonfinite required metrics fail without emitting response bodies,
+database names, IPs or exception text.
+
+Rollout needs the source module/config and the narrow `cnpg-metrics-monitoring`
+NetworkPolicy permitting only `zabbix/app=collector` to `zabbix-db` TCP 9187.
+Other database namespaces currently do not isolate exporter ingress. If they
+become isolated, add equivalent narrow access in that service's source manifests.
+Add newly deployed clusters to the explicit JSON inventory. The exporter remains
+internal and database TCP access stays unchanged.
+
+This proves native SQL observation and streaming/replay consistency, not an
+application login, permissions on each application's tables, an actual write,
+end-to-end client routing, restore success, or durability under failure. A native
+exporter could itself serve incorrect/cached data; this check does not introduce
+synthetic writes to rule that out. Replication-slot backlog and backup/archive
+health remain outside this check's scope.
+
+Validation: unit fixtures cover idle/healthy metrics, wrong SQL roles, replay
+lag, disconnected streaming, malformed/missing/nonfinite metrics, errors,
+maintenance/startup grace, missing inventory and deadline exhaustion. A safe
+live Kubernetes API proxy scrapes confirmed the deployed primary and standby's
+exact required metric names: primary recovery=0/streaming=1 and standby
+recovery=1/receiver=1/lag=0. This uses the operator exporter's
+SQL privileges; it does not demonstrate the collector's future network path.
+
+
+## Combined collector load bounds
+
+The review caps this module at three concurrent requests. Workers are joined
+before a poll returns, so running scrape threads are never abandoned for a later
+execution to multiply. The shared foundation enforces elapsed body-read budgets
+with read1 and remaining socket timeouts; Kubernetes transport uses five seconds
+and a 4 MiB JSON cap. Synchronous DNS and response header parsing remain platform
+resolver / socket inactivity limits. No retry threads or broader RBAC are added.
+
+Maintenance, hibernation and recent Ready/primary transitions emit an unknown
+observation, preserving the last confirmed incident instead of manufacturing a
+recovery. Primary SQL unavailability or a wrong primary role pages at severity3;
+replica-only scrape/schema/receiver/lag/capacity degradation is severity2 and
+dashboard-only. Base primary/cluster availability checks remain complementary.

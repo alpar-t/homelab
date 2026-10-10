@@ -46,6 +46,8 @@ configMapGenerator:
       # service: cloudflare-tunnel
       # end service: cloudflare-tunnel
       # service: cnpg
+      - assets/service_cnpg.py
+      - assets/service_cnpg.json
       # end service: cnpg
       # service: coredns
       # end service: coredns
