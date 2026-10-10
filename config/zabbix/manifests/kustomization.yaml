@@ -124,6 +124,8 @@ configMapGenerator:
       # service: qbittorrent
       # end service: qbittorrent
       # service: radarr
+      - assets/service_radarr.py
+      - assets/service_radarr.json
       # end service: radarr
       # service: roundcube
       # end service: roundcube

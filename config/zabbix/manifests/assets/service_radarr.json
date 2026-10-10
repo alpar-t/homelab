@@ -1,0 +1,16 @@
+{
+  "interval": 900,
+  "deadline": 20,
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page",
+  "workloads": [
+    {
+      "namespace": "media",
+      "kind": "Deployment",
+      "name": "arr-stack"
+    }
+  ]
+}
