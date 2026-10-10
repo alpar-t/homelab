@@ -292,6 +292,7 @@ Each Pi-hole instance uses **local SSD storage** (local-ssd PVC, 1Gi per instanc
 - dnsmasq configuration (`pihole-dnsmasq`)
 
 **Configured via env vars:**
+- Local DNS entries from `pihole-custom-dns` through Pi-hole v6 `FTLCONF_dns_hosts`
 - Upstream DNS (defaults to Cloudflare, managed by benchmark job)
 - DNSSEC enabled
 - Timezone, web port

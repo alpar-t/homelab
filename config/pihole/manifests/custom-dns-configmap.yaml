@@ -2,8 +2,9 @@
 # Format: IP_ADDRESS HOSTNAME
 # These are managed via GitOps - edit here, push, ArgoCD syncs
 #
-# Pi-hole reads this from /etc/pihole/custom.list
-# Mount this ConfigMap in your Pi-hole deployment
+# Pi-hole v6 reads FTLCONF_dns_hosts from this ConfigMap.
+# Keep the value to host records only: it is passed directly as an environment
+# variable to both Pi-hole instances.
 
 apiVersion: v1
 kind: ConfigMap
@@ -11,28 +12,9 @@ metadata:
   name: pihole-custom-dns
   namespace: pihole
 data:
-  custom.list: |
-    # ===========================================
-    # Kubernetes Nodes (for VPN access)
-    # Add your node IPs here so they resolve over VPN
-    # ===========================================
-    
+  custom.list: |-
     192.168.1.173 pamacs.local pamacs
     192.168.1.174 buksi.local buksi
     192.168.1.166 pufi.local pufi
-    
-    # ===========================================
-    # Kubernetes LoadBalancer Services (MetalLB)
-    # ===========================================
-    
-    # Home Assistant PostgreSQL database
     192.168.1.200 ha-db.local
-    
-    # Future services (uncomment as needed)
-    # 192.168.1.201 nextcloud-db.local
-    # 192.168.1.202 immich-db.local
-    
-    # ===========================================
-    # Add your entries above
-    # ===========================================
 

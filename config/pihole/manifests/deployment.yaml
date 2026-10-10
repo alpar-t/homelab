@@ -67,6 +67,11 @@ spec:
             # Initial upstreams will default to Cloudflare, then benchmark job optimizes
             - name: FTLCONF_dns_dnssec
               value: "true"
+            - name: FTLCONF_dns_hosts
+              valueFrom:
+                configMapKeyRef:
+                  name: pihole-custom-dns
+                  key: custom.list
             # Listen on all interfaces (inside the pod)
             - name: FTLCONF_dns_listeningMode
               value: "all"
@@ -86,9 +91,6 @@ spec:
           volumeMounts:
             - name: pihole-data
               mountPath: /etc/pihole
-            - name: custom-dns
-              mountPath: /etc/pihole/custom.list
-              subPath: custom.list
             - name: dnsmasq-data
               mountPath: /etc/dnsmasq.d
           resources:
@@ -114,9 +116,6 @@ spec:
         - name: pihole-data
           persistentVolumeClaim:
             claimName: pihole-data
-        - name: custom-dns
-          configMap:
-            name: pihole-custom-dns
         - name: dnsmasq-data
           emptyDir: {}
         - name: dnsmasq-config

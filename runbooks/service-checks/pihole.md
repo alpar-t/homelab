@@ -55,11 +55,9 @@ A subsequent UDP diagnostic returned primary `SERVFAIL` (rcode 2) and secondary
 instances contains a hosts list but no `ha-db.local` entry. No host contents
 were printed and no configuration was changed.
 
-The manifests still mount the v5-style `/etc/pihole/custom.list`, whereas the
+The manifests mounted the v5-style `/etc/pihole/custom.list`, whereas the
 [official v6 configuration](https://docs.pi-hole.net/ftldns/configfile/#hosts)
-uses `dns.hosts` / `FTLCONF_dns_hosts`. This is a likely configuration migration
-cause, not a repair validated by these probes. A separate GitOps change should
-provision the declared custom entries through v6 `dns.hosts` on both deployments,
-then verify the local query over UDP and TCP. This monitoring PR intentionally
-retains the failing declared-record assertion; rollout will alert until that
-existing DNS defect is corrected.
+supports `dns.hosts` / `FTLCONF_dns_hosts`. The repair supplies the shared
+ConfigMap's host records through that environment setting on both deployments.
+Verify the local query over UDP and TCP against each instance after rollout;
+the declared-record assertion stays enabled.
