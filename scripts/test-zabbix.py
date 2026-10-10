@@ -185,6 +185,24 @@ class CollectorTests(unittest.TestCase):
         result = collector.add_reboot_dependencies([c], self.data, self.policy)[0]
         self.assertEqual(result['grace_samples'], 10)
 
+    def test_functional_workload_parents_are_explicit_and_scoped(self):
+        self.data['nodes'] = [
+            {'metadata': {'name': n}, 'status': {'conditions': [{'type': 'Ready', 'status': ready}]}}
+            for n, ready in [('pufi', 'False'), ('buksi', 'True')]]
+        self.data['pods'] = [
+            {'metadata': {'name': 'api', 'namespace': 'test', 'labels': {'app': 'api'}}, 'spec': {'nodeName': 'pufi'}},
+            {'metadata': {'name': 'controller-0', 'namespace': 'argocd', 'ownerReferences':
+                [{'kind': 'StatefulSet', 'name': 'argocd-application-controller'}]}, 'spec': {'nodeName': 'buksi'}}]
+        self.data['deployments'] = [{'metadata': {'namespace': 'test', 'name': 'api'},
+                                    'spec': {'selector': {'matchLabels': {'app': 'api'}}}}]
+        rows = [collector.check(name, 'functional/test', True, 'confirmed', 3)
+                for name in ('API contract', 'ArgoCD progress', 'External appliance')]
+        rows[0]['workloads'] = [{'namespace': 'test', 'kind': 'Deployment', 'name': 'api'}]
+        rows[1]['workloads'] = [{'namespace': 'argocd', 'kind': 'StatefulSet', 'name': 'argocd-application-controller'}]
+        result = collector.add_reboot_dependencies(rows, self.data, self.policy)
+        self.assertEqual([(r['parent_available'], r['grace_samples']) for r in result], [(0, 10), (1, 10), (1, 1)])
+        self.assertEqual([r['status'] for r in result], [1, 1, 1])
+
 
 class TriggerTests(unittest.TestCase):
     def configuration(self):
@@ -202,7 +220,7 @@ class TriggerTests(unittest.TestCase):
     def test_five_healthy_samples_are_required_and_flapping_stays_open(self):
         api = self.configuration()
         prototypes = [p for kind, name, p in api.objects if kind == 'triggerprototype']
-        self.assertEqual(len(prototypes), 3)
+        self.assertEqual(len(prototypes), 4)
         # Replay the boolean history predicates emitted to Zabbix, including
         # insufficient history and a one-sample recovery during replica rebuild.
         import re
@@ -223,7 +241,7 @@ class TriggerTests(unittest.TestCase):
         for delay in (None, 'immediate', '5m', '10m'):
             matched = []
             for action in actions:
-                conditions = action['filter']['conditions'][1:]
+                conditions = [c for c in action['filter']['conditions'] if c.get('value2') == 'notify_delay']
                 if all((delay == c['value']) if c['operator'] == 0 else (delay != c['value']) for c in conditions):
                     matched.append(action)
             self.assertEqual(len(matched), 1)
@@ -233,6 +251,20 @@ class TriggerTests(unittest.TestCase):
             self.assertEqual(action['operations'][0]['esc_step_to'], step)
             self.assertEqual(action['recovery_operations'], [{'operationtype': 11, 'opmessage': {'default_msg': 1}}])
             self.assertEqual(action['notify_if_canceled'], 0)
+
+    def test_dashboard_notification_tag_excludes_all_problem_actions(self):
+        api = self.configuration()
+        bootstrap.configure_notification_actions(api, '22', {'operationtype': 0})
+        actions = [p for kind, name, p in api.objects if kind == 'action']
+        for action in actions:
+            filters = action['filter']['conditions']
+            self.assertEqual(action['filter']['evaltype'], 1)
+            self.assertIn({'conditiontype': 26, 'operator': 1,
+                           'value2': 'notification', 'value': 'dashboard'}, filters)
+        prototypes = [p for kind, name, p in api.objects if kind == 'triggerprototype']
+        self.assertEqual({p['priority'] for p in prototypes}, {1, 2, 3, 4})
+        self.assertTrue(all({'tag': 'notification', 'value': '{#NOTIFICATION}'} in p['tags']
+                            for p in prototypes))
 
     def test_parent_grace_blocks_new_incidents_without_clearing_existing_ones(self):
         api = self.configuration()
