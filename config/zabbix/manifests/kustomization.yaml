@@ -22,6 +22,7 @@ resources:
   # resources: velero
   # end resources: velero
   # resources: wireguard
+  - wireguard-monitoring-rbac.yaml
   # end resources: wireguard
 configMapGenerator:
   - name: collector
@@ -133,6 +134,8 @@ configMapGenerator:
       # service: whisper
       # end service: whisper
       # service: wireguard
+      - assets/service_wireguard.py
+      - assets/service_wireguard.json
       # end service: wireguard
       # service: zabbix
       # end service: zabbix
