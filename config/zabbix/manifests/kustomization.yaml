@@ -138,6 +138,8 @@ configMapGenerator:
       # service: tika
       # end service: tika
       # service: trek
+      - assets/service_trek.py
+      - assets/service_trek.json
       # end service: trek
       # service: vaultwarden
       # end service: vaultwarden
