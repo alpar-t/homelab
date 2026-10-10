@@ -147,6 +147,8 @@ configMapGenerator:
       # service: tandoor
       # end service: tandoor
       # service: technical-plans
+      - assets/service_technical_plans.py
+      - assets/service_technical_plans.json
       # end service: technical-plans
       # service: tika
       # end service: tika

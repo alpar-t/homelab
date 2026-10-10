@@ -1,0 +1,17 @@
+{
+  "interval": 1800,
+  "deadline": 25,
+  "url": "http://technical-plan-api.baloo.svc.cluster.local:18809",
+  "failure_grace_seconds": 3600,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page",
+  "workloads": [
+    {
+      "namespace": "baloo",
+      "kind": "Deployment",
+      "name": "technical-plan-api"
+    }
+  ]
+}
