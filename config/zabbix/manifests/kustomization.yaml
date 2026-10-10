@@ -88,6 +88,8 @@ configMapGenerator:
       # service: opencloud
       # end service: opencloud
       # service: otmonitor
+      - assets/service_otmonitor.py
+      - assets/service_otmonitor.json
       # end service: otmonitor
       # service: paperless
       # end service: paperless
