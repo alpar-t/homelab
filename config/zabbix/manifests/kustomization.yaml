@@ -47,6 +47,8 @@ configMapGenerator:
       # service: emby
       # end service: emby
       # service: frigate
+      - assets/service_frigate.py
+      - assets/service_frigate.json
       # end service: frigate
       # service: github-runners
       - assets/service_github_runners.py
