@@ -1,0 +1,17 @@
+{
+  "interval": 900,
+  "deadline": 30,
+  "base_url": "http://opencloud-opencloud.opencloud.svc.cluster.local:9200",
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page",
+  "workloads": [
+    {
+      "namespace": "opencloud",
+      "kind": "Deployment",
+      "name": "opencloud-opencloud"
+    }
+  ]
+}

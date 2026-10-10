@@ -98,6 +98,8 @@ configMapGenerator:
       # service: onlyoffice
       # end service: onlyoffice
       # service: opencloud
+      - assets/service_opencloud.py
+      - assets/service_opencloud.json
       # end service: opencloud
       # service: otmonitor
       - assets/service_otmonitor.py
