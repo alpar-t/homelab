@@ -65,6 +65,8 @@ configMapGenerator:
       # service: landing-page
       # end service: landing-page
       # service: longhorn
+      - assets/service_longhorn.py
+      - assets/service_longhorn.json
       # end service: longhorn
       # service: maintainerr
       # end service: maintainerr
