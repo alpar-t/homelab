@@ -117,6 +117,8 @@ configMapGenerator:
       # service: technical-plans
       # end service: technical-plans
       # service: tika
+      - assets/service_tika.py
+      - assets/service_tika.json
       # end service: tika
       # service: trek
       # end service: trek
