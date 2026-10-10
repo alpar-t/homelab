@@ -1,0 +1,17 @@
+{
+  "url": "http://interior-designer.baloo.svc.cluster.local:8080",
+  "interval": 1800,
+  "deadline": 30,
+  "failure_grace_seconds": 3600,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page",
+  "workloads": [
+    {
+      "namespace": "baloo",
+      "kind": "Deployment",
+      "name": "interior-designer"
+    }
+  ]
+}

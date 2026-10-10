@@ -62,6 +62,8 @@ configMapGenerator:
       # service: ingress-nginx
       # end service: ingress-nginx
       # service: interior-designer
+      - assets/service_interior_designer.py
+      - assets/service_interior_designer.json
       # end service: interior-designer
       # service: landing-page
       # end service: landing-page
