@@ -9,17 +9,132 @@ resources:
   - oidc-client.yaml
   - oauth2-proxy.yaml
   - ingress.yaml
+  # Keep empty slots: service PRs add resources only inside their own slot.
+  # resources: argocd
+  # end resources: argocd
+  # resources: coredns
+  # end resources: coredns
+  # resources: github-runners
+  - arc-readonly.yaml
+  # end resources: github-runners
+  # resources: metallb
+  # end resources: metallb
+  # resources: velero
+  # end resources: velero
+  # resources: wireguard
+  # end resources: wireguard
 configMapGenerator:
   - name: collector
     namespace: zabbix
     files:
       - assets/collector.py
       - assets/functional.py
-      - assets/service_ingress_nginx.py
-      - assets/service_ingress_nginx.json
-      - assets/service_platform_controllers.py
-      - assets/service_platform_controllers.json
       - assets/mail_activity.py
       - assets/policy.json
+      # Keep empty slots: service PRs register only inside their own slot.
+      # service: actual-budget
+      # end service: actual-budget
+      # service: argocd
+      # end service: argocd
+      # service: baloo
+      # end service: baloo
+      # service: cloudflare-tunnel
+      # end service: cloudflare-tunnel
+      # service: cnpg
+      # end service: cnpg
+      # service: coredns
+      # end service: coredns
+      # service: emby
+      # end service: emby
+      # service: frigate
+      # end service: frigate
+      # service: github-runners
+      - assets/service_github_runners.py
+      - assets/service_github_runners.json
+      # end service: github-runners
+      # service: gotenberg
+      # end service: gotenberg
+      # service: homeassistant
+      # end service: homeassistant
+      # service: immich
+      # end service: immich
+      # service: ingress-nginx
+      - assets/service_ingress_nginx.py
+      - assets/service_ingress_nginx.json
+      # end service: ingress-nginx
+      # service: interior-designer
+      # end service: interior-designer
+      # service: landing-page
+      # end service: landing-page
+      # service: longhorn
+      # end service: longhorn
+      # service: maintainerr
+      # end service: maintainerr
+      # service: metallb
+      # end service: metallb
+      # service: metrics-server
+      # end service: metrics-server
+      # service: nodered
+      # end service: nodered
+      # service: omada
+      # end service: omada
+      # service: onlyoffice
+      # end service: onlyoffice
+      # service: opencloud
+      # end service: opencloud
+      # service: otmonitor
+      # end service: otmonitor
+      # service: paperless
+      # end service: paperless
+      # service: pihole
+      # end service: pihole
+      # service: pinchtab
+      # end service: pinchtab
+      # service: platform-controllers
+      - assets/service_platform_controllers.py
+      - assets/service_platform_controllers.json
+      # end service: platform-controllers
+      # service: pocket-id
+      # end service: pocket-id
+      # service: portal
+      # end service: portal
+      # service: product-models
+      # end service: product-models
+      # service: prowlarr
+      # end service: prowlarr
+      # service: qbittorrent
+      # end service: qbittorrent
+      # service: radarr
+      # end service: radarr
+      # service: roundcube
+      # end service: roundcube
+      # service: searxng
+      # end service: searxng
+      # service: sonarr
+      # end service: sonarr
+      # service: stalwart-mail
+      # end service: stalwart-mail
+      # service: tandoor
+      # end service: tandoor
+      # service: technical-plans
+      # end service: technical-plans
+      # service: tika
+      # end service: tika
+      # service: trek
+      # end service: trek
+      # service: vaultwarden
+      # end service: vaultwarden
+      # service: velero
+      # end service: velero
+      # service: vikunja
+      # end service: vikunja
+      # service: website-staging
+      # end service: website-staging
+      # service: whisper
+      # end service: whisper
+      # service: wireguard
+      # end service: wireguard
+      # service: zabbix
+      # end service: zabbix
 generatorOptions:
   disableNameSuffixHash: true
