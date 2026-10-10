@@ -34,6 +34,8 @@ configMapGenerator:
       - assets/policy.json
       # Keep empty slots: service PRs register only inside their own slot.
       # service: actual-budget
+      - assets/service_actual_budget.py
+      - assets/service_actual_budget.json
       # end service: actual-budget
       # service: argocd
       # end service: argocd
