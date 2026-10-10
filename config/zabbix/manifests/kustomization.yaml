@@ -72,6 +72,8 @@ configMapGenerator:
       # service: longhorn
       # end service: longhorn
       # service: maintainerr
+      - assets/service_maintainerr.py
+      - assets/service_maintainerr.json
       # end service: maintainerr
       # service: metallb
       # end service: metallb
