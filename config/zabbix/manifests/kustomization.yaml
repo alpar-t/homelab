@@ -45,6 +45,8 @@ configMapGenerator:
       - assets/service_baloo.json
       # end service: baloo
       # service: cloudflare-tunnel
+      - assets/service_cloudflare_tunnel.py
+      - assets/service_cloudflare_tunnel.json
       # end service: cloudflare-tunnel
       # service: cnpg
       - assets/service_cnpg.py
