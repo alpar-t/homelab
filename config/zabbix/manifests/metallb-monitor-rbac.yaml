@@ -1,0 +1,198 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zabbix-metallb-services
+  namespace: baloo
+rules:
+  - apiGroups: [""]
+    resources: [services]
+    resourceNames: ["mcp-searxng", "openclaw-homeassistant", "whisper"]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zabbix-metallb-services
+  namespace: baloo
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zabbix-metallb-services
+subjects:
+  - kind: ServiceAccount
+    name: collector
+    namespace: zabbix
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zabbix-metallb-services
+  namespace: homeassistant
+rules:
+  - apiGroups: [""]
+    resources: [services]
+    resourceNames: ["homeassistant-db-external"]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zabbix-metallb-services
+  namespace: homeassistant
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zabbix-metallb-services
+subjects:
+  - kind: ServiceAccount
+    name: collector
+    namespace: zabbix
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zabbix-metallb-services
+  namespace: immich
+rules:
+  - apiGroups: [""]
+    resources: [services]
+    resourceNames: ["immich-server-lan"]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zabbix-metallb-services
+  namespace: immich
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zabbix-metallb-services
+subjects:
+  - kind: ServiceAccount
+    name: collector
+    namespace: zabbix
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zabbix-metallb-services
+  namespace: media
+rules:
+  - apiGroups: [""]
+    resources: [services]
+    resourceNames: ["emby", "qbittorrent-bt"]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zabbix-metallb-services
+  namespace: media
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zabbix-metallb-services
+subjects:
+  - kind: ServiceAccount
+    name: collector
+    namespace: zabbix
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zabbix-metallb-services
+  namespace: paperless-ngx
+rules:
+  - apiGroups: [""]
+    resources: [services]
+    resourceNames: ["paperless-ftp"]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zabbix-metallb-services
+  namespace: paperless-ngx
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zabbix-metallb-services
+subjects:
+  - kind: ServiceAccount
+    name: collector
+    namespace: zabbix
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zabbix-metallb-services
+  namespace: pihole
+rules:
+  - apiGroups: [""]
+    resources: [services]
+    resourceNames: ["pihole-dns"]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zabbix-metallb-services
+  namespace: pihole
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zabbix-metallb-services
+subjects:
+  - kind: ServiceAccount
+    name: collector
+    namespace: zabbix
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zabbix-metallb-services
+  namespace: wireguard
+rules:
+  - apiGroups: [""]
+    resources: [services]
+    resourceNames: ["wireguard-home"]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zabbix-metallb-services
+  namespace: wireguard
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zabbix-metallb-services
+subjects:
+  - kind: ServiceAccount
+    name: collector
+    namespace: zabbix
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: zabbix-metallb-status
+  namespace: metallb-system
+rules:
+  - apiGroups: [metallb.io]
+    resources: [servicel2statuses]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zabbix-metallb-status
+  namespace: metallb-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zabbix-metallb-status
+subjects:
+  - kind: ServiceAccount
+    name: collector
+    namespace: zabbix
