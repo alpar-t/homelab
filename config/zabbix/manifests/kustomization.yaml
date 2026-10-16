@@ -115,6 +115,8 @@ configMapGenerator:
       - assets/service_pihole.json
       # end service: pihole
       # service: pinchtab
+      - assets/service_pinchtab.py
+      - assets/service_pinchtab.json
       # end service: pinchtab
       # service: platform-controllers
       - assets/service_platform_controllers.py
