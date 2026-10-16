@@ -12,7 +12,7 @@ data:
     Bridges to the wyoming server on localhost:7891 using the wyoming Python library.
     """
     from http.server import HTTPServer, BaseHTTPRequestHandler
-    import asyncio, av, io, sys
+    import asyncio, av, io, sys, json, wave
 
     from wyoming.audio import AudioChunk, AudioStart, AudioStop
     from wyoming.client import AsyncTcpClient
@@ -54,6 +54,32 @@ data:
 
 
     class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path != '/capabilities':
+                self.send_error(404)
+                return
+            try:
+                # Exercise the same decoder/resampler as POST, without inference.
+                audio = io.BytesIO()
+                with wave.open(audio, 'wb') as wav:
+                    wav.setnchannels(1)
+                    wav.setsampwidth(2)
+                    wav.setframerate(RATE)
+                    wav.writeframes(b'\x00\x00' * 1600)
+                pcm = to_pcm(audio.getvalue())
+                if len(pcm) < 3200 or any(pcm[:3200]):
+                    raise RuntimeError('decoder self-check failed')
+                body = json.dumps(dict(schema=1, endpoint='/transcribe', method='POST',
+                    input='raw-audio', output='text/plain', rate=RATE, width=2,
+                    channels=1, decoder_verified=True)).encode('utf-8')
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            except Exception:
+                self.send_error(503, 'decoder capability unavailable')
+
         def do_POST(self):
             if self.path != '/transcribe':
                 self.send_error(404)
@@ -106,6 +132,8 @@ spec:
       app: whisper
   template:
     metadata:
+      annotations:
+        monitoring.homepbp.io/bridge-contract: "1"
       labels:
         app: whisper
     spec:
