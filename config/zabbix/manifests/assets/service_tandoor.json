@@ -1,0 +1,18 @@
+{
+  "interval": 900,
+  "deadline": 25,
+  "base_url": "http://tandoor.tandoor.svc.cluster.local",
+  "token_key": "tandoor_read_token",
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page",
+  "workloads": [
+    {
+      "namespace": "tandoor",
+      "kind": "Deployment",
+      "name": "tandoor"
+    }
+  ]
+}
