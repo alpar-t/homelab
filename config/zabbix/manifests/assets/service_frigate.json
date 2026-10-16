@@ -1,0 +1,19 @@
+{
+  "url": "http://frigate.frigate.svc.cluster.local:5000",
+  "interval": 600,
+  "deadline": 20,
+  "max_stats_age": 120,
+  "startup_grace": 180,
+  "failure_grace_seconds": 900,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page",
+  "workloads": [
+    {
+      "namespace": "frigate",
+      "kind": "Deployment",
+      "name": "frigate"
+    }
+  ]
+}
