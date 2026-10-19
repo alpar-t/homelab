@@ -33,6 +33,45 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(checks['Physical storage pufi']['status'], 1)
         self.assertEqual(checks['Node pufi memory']['status'], 1)
 
+    def test_system_oom_alert_uses_recent_node_events_and_fails_closed(self):
+        self.policy['nodes'] = ['pufi']
+        event = {'reason': 'SystemOOM', 'involvedObject': {'kind': 'Node', 'name': 'pufi'},
+                 'lastTimestamp': collector.dt.datetime.fromtimestamp(
+                     NOW - 120, collector.UTC).isoformat()}
+        self.data['node_events'] = [event]
+        incident = self.checks()['Node pufi OOM']
+        self.assertEqual(incident['status'], 1)
+        self.assertEqual(incident['notify_delay'], 'immediate')
+        event['lastTimestamp'] = collector.dt.datetime.fromtimestamp(
+            NOW - 3700, collector.UTC).isoformat()
+        self.assertEqual(self.checks()['Node pufi OOM']['status'], 0)
+        self.data['node_events'] = None
+        self.assertEqual(self.checks()['Node pufi OOM']['status'], 1)
+
+    def test_node_memory_warning_starts_at_85_percent(self):
+        self.policy['nodes'] = ['buksi']
+        self.data['nodes'] = [{'metadata': {'name': 'buksi'},
+                               'status': {'allocatable': {'memory': '1000Mi', 'cpu': '4'},
+                                          'conditions': [{'type': 'Ready', 'status': 'True'}]}}]
+        self.data['metrics'] = [{'metadata': {'name': 'buksi'},
+                                 'usage': {'memory': '850Mi', 'cpu': '1'}}]
+        self.assertEqual(self.checks()['Node buksi memory']['status'], 1)
+        self.data['metrics'][0]['usage']['memory'] = '849Mi'
+        self.assertEqual(self.checks()['Node buksi memory']['status'], 0)
+
+    def test_filtered_event_inventory_keeps_its_query_parameters(self):
+        class Kube(collector.Kubernetes):
+            def __init__(self):
+                self.path = None
+
+            def get(self, path, **kwargs):
+                self.path = path
+                return {'items': []}
+
+        kube = Kube()
+        self.assertEqual(kube.items(collector.PATHS['node_events']), [])
+        self.assertIn('?fieldSelector=reason%3DSystemOOM&limit=500', kube.path)
+
     def test_backup_freshness_requires_a_completed_backup(self):
         self.data['volumes'] = [{
             'metadata': {'name': 'v', 'labels': {'recurring-job-group.longhorn.io/critical': 'enabled'}},
@@ -169,6 +208,7 @@ class CollectorTests(unittest.TestCase):
 
     def test_notification_delays_preserve_urgent_node_and_disk_alerts(self):
         cases = [('Node pufi', 'node', 4, 'immediate'),
+                 ('Node pufi OOM', 'node', 4, 'immediate'),
                  ('Physical storage pufi', 'storage', 4, 'immediate'),
                  ('Collector API pods', 'monitoring', 4, 'immediate'),
                  ('Node pufi memory', 'node', 3, '10m'),

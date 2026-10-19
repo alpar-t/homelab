@@ -41,6 +41,30 @@ subjects:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
+  name: zabbix-node-events
+  namespace: default
+rules:
+  - apiGroups: [""]
+    resources: [events]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: zabbix-node-events
+  namespace: default
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: zabbix-node-events
+subjects:
+  - kind: ServiceAccount
+    name: collector
+    namespace: zabbix
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
   name: zabbix-storage-events
   namespace: node-config
 rules:

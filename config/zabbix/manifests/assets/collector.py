@@ -66,7 +66,8 @@ def check(name, family, bad, detail, severity=4):
     delay = '5m'
     if family in ('longhorn', 'backup', 'cluster') or severity <= 3:
         delay = '10m'
-    if family in ('monitoring', 'storage') or (family == 'node' and name.count(' ') == 1):
+    if family in ('monitoring', 'storage') or (family == 'node' and
+                                              (name.count(' ') == 1 or name.endswith(' OOM'))):
         delay = 'immediate'
     if family == 'longhorn' and 'robustness=faulted' in str(detail):
         delay = 'immediate'
@@ -133,7 +134,8 @@ class Kubernetes:
         end = min(deadline if deadline is not None else float('inf'), time.monotonic() + 20)
         result, token = [], ''
         for _ in range(4):
-            query = '?limit=500' + ('&continue=' + urllib.parse.quote(token) if token else '')
+            query = ('&' if '?' in path else '?') + 'limit=500' + (
+                '&continue=' + urllib.parse.quote(token) if token else '')
             page = self.get(path + query, timeout=timeout, deadline=end)
             result.extend(page['items'])
             if len(result) > 2000:
@@ -173,8 +175,19 @@ def evaluate(data, policy, now):
                   ('MemoryPressure', 'DiskPressure', 'PIDPressure') and c['status'] != 'False']
         checks.append(check(f'Node {name}', 'node', not ready(n) or issues,
                             ', '.join(issues) or ('Ready' if ready(n) else 'missing or NotReady')))
+        node_events = data.get('node_events')
+        recent_ooms = [] if node_events is None else [event for event in node_events
+            if event.get('reason') == 'SystemOOM'
+            and event.get('involvedObject', {}).get('kind') == 'Node'
+            and event['involvedObject'].get('name') == name
+            and age(event.get('lastTimestamp') or event.get('eventTime')
+                    or event.get('metadata', {}).get('creationTimestamp'), now) < 3600]
+        checks.append(check(f'Node {name} OOM', 'node', node_events is None or bool(recent_ooms),
+                            'node event inventory unavailable' if node_events is None else
+                            f'{len(recent_ooms)} SystemOOM event(s) in the last hour' if recent_ooms else
+                            'no recent SystemOOM event'))
         metrics = next((m for m in data['metrics'] if m['metadata']['name'] == name), None)
-        for resource, threshold in [('memory', .9), ('cpu', .95)]:
+        for resource, threshold in [('memory', .85), ('cpu', .95)]:
             ratio = None
             if metrics and n:
                 ratio = quantity(metrics['usage'][resource]) / quantity(n['status']['allocatable'][resource])
@@ -421,6 +434,7 @@ def add_reboot_dependencies(checks, data, policy):
 PATHS = {
     'nodes': '/api/v1/nodes', 'pods': '/api/v1/pods',
     'events': '/api/v1/namespaces/node-config/events',
+    'node_events': '/api/v1/namespaces/default/events?fieldSelector=reason%3DSystemOOM',
     'metrics': '/apis/metrics.k8s.io/v1beta1/nodes',
     'deployments': '/apis/apps/v1/deployments', 'daemonsets': '/apis/apps/v1/daemonsets',
     'volumes': '/apis/longhorn.io/v1beta2/namespaces/longhorn-system/volumes',
@@ -466,7 +480,7 @@ def collect(kube, policy, activity=None, pod_lifecycle=None, functional=None):
                     raise ValueError('empty inventory')
                 api_checks.append(check('Collector API ' + name, 'monitoring', False, 'Inventory query succeeded'))
             except Exception as error:
-                data[name] = []
+                data[name] = None if name == 'node_events' else []
                 failed_apis.add(name)
                 api_checks.append(check('Collector API ' + name, 'monitoring', True, type(error).__name__))
         reachability = list(pool.map(probe, policy['probes']))
