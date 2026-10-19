@@ -19,6 +19,7 @@ resources:
   - arc-readonly.yaml
   # end resources: github-runners
   # resources: metallb
+  - metallb-monitor-rbac.yaml
   # end resources: metallb
   # resources: velero
   - velero-readonly.yaml
@@ -102,6 +103,8 @@ configMapGenerator:
       - assets/service_maintainerr.json
       # end service: maintainerr
       # service: metallb
+      - assets/service_metallb.py
+      - assets/service_metallb.json
       # end service: metallb
       # service: metrics-server
       - assets/service_metrics_server.py
