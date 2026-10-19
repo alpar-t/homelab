@@ -37,7 +37,9 @@ explicitly leave room for k3s, Longhorn, and the OS.
   4 CPUs to more than 90% with severe CPU wait; the corrected split keeps
   both CPU and memory headroom.
 - Zabbix warns at 85% node memory use and discovers recent Kubernetes
-  `SystemOOM` node events through read-only Event access in `default`.
+  `SystemOOM` node events through read-only Event access in `default`. Kubelet
+  recreated the old OOM Events with new timestamps after its restart, so the
+  collector groups copies by victim message and uses the oldest occurrence.
 - `config/node-config/k3s-memory.yaml` adds `memory.available<1Gi` to each
   node's kubelet hard eviction thresholds while retaining K3s's existing
   `imagefs.available<5%` and `nodefs.available<5%` thresholds. The Ignition
@@ -87,3 +89,25 @@ kubectl get events -A --field-selector reason=SystemOOM -o wide
 kubectl -n longhorn-system get volumes.longhorn.io
 kubectl -n immich get pods -o wide
 ```
+
+## Completed rollout and validation
+
+After Longhorn returned to zero degraded volumes, Pufi, Pamacs, then Buksi
+were restarted one at a time with `config/node-config/k3s-memory.yaml` at
+`/etc/rancher/k3s/config.yaml`. On each node the kubelet startup log showed
+`memory.available<1Gi` and the two original disk thresholds. All three
+returned Ready, with no MemoryPressure, DiskPressure, or PIDPressure.
+
+The GitOps workloads converged. Immich ML ordinal 2 is Ready on Pamacs;
+Interior Designer and Tandoor moved to Pamacs; Immich Server is Ready on Pufi;
+Frigate is Ready on Pamacs; Omada is Ready on Pufi. The affected ArgoCD
+applications are Synced and Healthy. Measured node memory requests after the
+final placement are Buksi 78%, Pamacs 82%, and Pufi 83% of the reduced
+allocatable memory. All active Longhorn volumes are healthy. Three detached
+volumes show `unknown`, including the retained ML caches for ordinals 0 and 1.
+
+At 18:52 UTC, host memory available was about 6 GiB on Buksi, 18 GiB on
+Pamacs, and 6.3 GiB on Pufi. All three had zero recent memory stalls and no
+new kernel OOM since the node rollout began. Pufi's brief CPU saturation after
+Frigate moved there led to the final Frigate/Immich Server placement above;
+its measured CPU use subsequently fell from about 93% to 43%.

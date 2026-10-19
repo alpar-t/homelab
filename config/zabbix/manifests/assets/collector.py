@@ -176,12 +176,19 @@ def evaluate(data, policy, now):
         checks.append(check(f'Node {name}', 'node', not ready(n) or issues,
                             ', '.join(issues) or ('Ready' if ready(n) else 'missing or NotReady')))
         node_events = data.get('node_events')
-        recent_ooms = [] if node_events is None else [event for event in node_events
-            if event.get('reason') == 'SystemOOM'
-            and event.get('involvedObject', {}).get('kind') == 'Node'
-            and event['involvedObject'].get('name') == name
-            and age(event.get('lastTimestamp') or event.get('eventTime')
-                    or event.get('metadata', {}).get('creationTimestamp'), now) < 3600]
+        oom_ages = {}
+        for event in node_events or []:
+            if (event.get('reason') != 'SystemOOM'
+                    or event.get('involvedObject', {}).get('kind') != 'Node'
+                    or event['involvedObject'].get('name') != name):
+                continue
+            # Kubelet replays old OOMs after a restart as fresh Events. The
+            # victim process and PID remain the same; use the oldest copy.
+            signature = event.get('message') or event.get('metadata', {}).get('uid') or id(event)
+            occurred = event.get('firstTimestamp') or event.get('eventTime') or (
+                event.get('metadata', {}).get('creationTimestamp')) or event.get('lastTimestamp')
+            oom_ages[signature] = max(oom_ages.get(signature, 0), age(occurred, now))
+        recent_ooms = [signature for signature, seconds in oom_ages.items() if seconds < 3600]
         checks.append(check(f'Node {name} OOM', 'node', node_events is None or bool(recent_ooms),
                             'node event inventory unavailable' if node_events is None else
                             f'{len(recent_ooms)} SystemOOM event(s) in the last hour' if recent_ooms else

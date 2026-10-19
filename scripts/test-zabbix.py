@@ -48,6 +48,19 @@ class CollectorTests(unittest.TestCase):
         self.data['node_events'] = None
         self.assertEqual(self.checks()['Node pufi OOM']['status'], 1)
 
+    def test_system_oom_replayed_after_kubelet_restart_is_not_new(self):
+        self.policy['nodes'] = ['pufi']
+        def event(pid, seconds_ago):
+            when = collector.dt.datetime.fromtimestamp(NOW - seconds_ago, collector.UTC).isoformat()
+            return {'reason': 'SystemOOM', 'involvedObject': {'kind': 'Node', 'name': 'pufi'},
+                    'message': f'System OOM encountered, victim process: java, pid: {pid}',
+                    'firstTimestamp': when, 'lastTimestamp': when}
+
+        self.data['node_events'] = [event(26090, 7200), event(26090, 120)]
+        self.assertEqual(self.checks()['Node pufi OOM']['status'], 0)
+        self.data['node_events'].append(event(26105, 120))
+        self.assertEqual(self.checks()['Node pufi OOM']['status'], 1)
+
     def test_node_memory_warning_starts_at_85_percent(self):
         self.policy['nodes'] = ['buksi']
         self.data['nodes'] = [{'metadata': {'name': 'buksi'},
