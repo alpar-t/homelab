@@ -273,7 +273,7 @@ spec:
           resources:
             requests:
               cpu: 500m
-              memory: 1Gi
+              memory: 2560Mi
               # GPU provided by Intel GPU Device Plugin
               gpu.intel.com/i915: 1
             limits:

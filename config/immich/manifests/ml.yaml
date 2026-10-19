@@ -1,9 +1,9 @@
 # Immich Machine Learning Service
 # Handles: face detection, face recognition, CLIP smart search, OCR
 #
-# Horizontally scaled across nodes (StatefulSet, 1 pod per node) so each
-# replica has dedicated access to its node's Intel iGPU via the OpenVINO
-# execution provider. Each replica owns its own model cache (RWO).
+# Keep one replica on the 32 GiB node when available. This leaves headroom
+# for Longhorn and the workloads pinned to the 16 GiB nodes. Retain ordinal 2
+# so its existing model-cache PVC remains attached.
 
 apiVersion: apps/v1
 kind: StatefulSet
@@ -15,7 +15,9 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 spec:
-  replicas: 3
+  replicas: 1
+  ordinals:
+    start: 2
   serviceName: immich-ml
   podManagementPolicy: Parallel
   selector:
@@ -27,13 +29,15 @@ spec:
         app: immich-ml
     spec:
       affinity:
-        # One ML pod per node so each replica gets a dedicated iGPU.
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app: immich-ml
-              topologyKey: kubernetes.io/hostname
+        # Keep this soft so ML can still run if Pamacs is unavailable.
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: workload/cpu-intensive
+                    operator: In
+                    values: ["true"]
 
       containers:
         - name: immich-ml
@@ -49,8 +53,7 @@ spec:
               value: "ViT-B-32__openai"
             - name: MACHINE_LEARNING_FACIAL_RECOGNITION_MODEL
               value: "buffalo_l"
-            # One worker per pod — inference serializes on a single iGPU,
-            # parallelism comes from horizontal scaling across nodes.
+            # One worker per pod serializes inference on its iGPU.
             - name: MACHINE_LEARNING_WORKERS
               value: "1"
             - name: MACHINE_LEARNING_REQUEST_THREADS
@@ -63,7 +66,7 @@ spec:
           resources:
             requests:
               cpu: 200m
-              memory: 1Gi
+              memory: 2560Mi
               gpu.intel.com/i915: 1
             limits:
               cpu: 2

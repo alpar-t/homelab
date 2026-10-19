@@ -40,6 +40,16 @@ spec:
       annotations:
         secret.reloader.stakater.com/reload: "interior-designer-webui"
     spec:
+      # Keep this memory-heavy but movable UI on the 32 GiB node when possible.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: workload/cpu-intensive
+                    operator: In
+                    values: ["true"]
       automountServiceAccountToken: false
       securityContext:
         fsGroup: 1000

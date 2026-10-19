@@ -44,6 +44,15 @@ storage:
       overwrite: true
 
   files:
+    # Match config/node-config/k3s-memory.yaml on replacement nodes. K3s's
+    # default kubelet config has only disk eviction thresholds; add memory.
+    - path: /etc/rancher/k3s/config.yaml
+      mode: 0644
+      contents:
+        inline: |
+          kubelet-arg:
+            - "eviction-hard=memory.available<1Gi,imagefs.available<5%,nodefs.available<5%"
+
     # Arm the iTCO hardware watchdog. Alder Lake-N nodes occasionally hard-freeze
     # with no kernel trace (see the 2026-07-04 pamacs freeze); the kargs above
     # reduce but do not eliminate this. Without an armed watchdog a freeze sits
