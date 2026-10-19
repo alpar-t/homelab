@@ -165,6 +165,8 @@ configMapGenerator:
       - assets/service_trek.json
       # end service: trek
       # service: vaultwarden
+      - assets/service_vaultwarden.py
+      - assets/service_vaultwarden.json
       # end service: vaultwarden
       # service: velero
       - assets/service_velero.py
