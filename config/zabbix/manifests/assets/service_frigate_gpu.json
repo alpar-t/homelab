@@ -1,0 +1,17 @@
+{
+  "interval": 60,
+  "deadline": 10,
+  "stats_url": "http://frigate.frigate.svc.cluster.local:5000/api/stats",
+  "failure_grace_seconds": 60,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 4,
+  "notification": "page",
+  "workloads": [
+    {
+      "namespace": "frigate",
+      "kind": "Deployment",
+      "name": "frigate"
+    }
+  ]
+}

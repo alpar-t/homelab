@@ -61,6 +61,8 @@ configMapGenerator:
       # service: frigate
       - assets/service_frigate.py
       - assets/service_frigate.json
+      - assets/service_frigate_gpu.py
+      - assets/service_frigate_gpu.json
       # end service: frigate
       # service: github-runners
       - assets/service_github_runners.py

@@ -58,3 +58,19 @@ previously confirmed incident without asserting a new outage or recovery.
 Startup grace also reports unknown for those rows; actual fresh post-startup
 observations are required to recover. Disabled cameras and idle recording
 remain healthy when fresh telemetry proves their configured state.
+
+## GPU object detection
+
+A separate `frigate_gpu` check polls `/api/stats` every minute and compares each
+active detector PID with the GPU client PIDs. A detector absent from that list
+raises `Frigate object detection on GPU` after two independent observations at
+least one minute apart, followed by Zabbix's three-sample trigger gate. This
+catches the default CPU detector or OpenVINO running on CPU even if its name is
+unchanged. GPU utilization can read zero while the detector remains a GPU client;
+the check uses client identity, not that utilization gauge.
+
+Unavailable or malformed stats raise `Frigate detector telemetry` and leave the
+detector-mode observation unknown, so API failure cannot be misreported as CPU
+inference or used to recover a confirmed incident. No credentials or camera
+frames are read. A healthy collector snapshot reports
+`detectors=1; GPU clients=1; detectors absent from GPU=0`.
