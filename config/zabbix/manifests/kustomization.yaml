@@ -157,6 +157,8 @@ configMapGenerator:
       - assets/service_stalwart_mail.json
       # end service: stalwart-mail
       # service: tandoor
+      - assets/service_tandoor.py
+      - assets/service_tandoor.json
       # end service: tandoor
       # service: technical-plans
       - assets/service_technical_plans.py
