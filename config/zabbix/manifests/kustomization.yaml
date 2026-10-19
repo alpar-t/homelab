@@ -81,6 +81,8 @@ configMapGenerator:
       - assets/service_immich.json
       # end service: immich
       # service: ingress-nginx
+      - assets/service_ingress_nginx.py
+      - assets/service_ingress_nginx.json
       # end service: ingress-nginx
       # service: interior-designer
       - assets/service_interior_designer.py
