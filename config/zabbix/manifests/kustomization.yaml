@@ -237,3 +237,6 @@ configMapGenerator:
       # end service: zabbix
 generatorOptions:
   disableNameSuffixHash: true
+  annotations:
+    # The collector source exceeds client-side apply's 256 KiB annotation limit.
+    argocd.argoproj.io/sync-options: ServerSideApply=true
