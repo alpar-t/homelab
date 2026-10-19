@@ -143,6 +143,8 @@ configMapGenerator:
       - assets/service_prowlarr.json
       # end service: prowlarr
       # service: qbittorrent
+      - assets/service_qbittorrent.py
+      - assets/service_qbittorrent.json
       # end service: qbittorrent
       # service: radarr
       - assets/service_radarr.py
