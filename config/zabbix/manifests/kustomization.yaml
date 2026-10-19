@@ -111,6 +111,8 @@ configMapGenerator:
       - assets/service_otmonitor.json
       # end service: otmonitor
       # service: paperless
+      - assets/service_paperless.py
+      - assets/service_paperless.json
       # end service: paperless
       # service: pihole
       - assets/service_pihole.py

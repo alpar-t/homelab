@@ -1,0 +1,21 @@
+{
+  "interval": 900,
+  "deadline": 30,
+  "redis_host": "redis.paperless-ngx.svc.cluster.local",
+  "redis_port": 6379,
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page",
+  "workloads": [
+    {
+      "namespace": "paperless-ngx",
+      "kind": "Deployment",
+      "name": "redis"
+    }
+  ],
+  "check_workloads": {
+    "Paperless document API": []
+  }
+}
