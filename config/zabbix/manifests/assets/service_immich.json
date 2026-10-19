@@ -1,0 +1,37 @@
+{
+  "interval": 900,
+  "deadline": 30,
+  "server_url": "http://immich-server.immich.svc.cluster.local:2283",
+  "redis_host": "redis.immich.svc.cluster.local",
+  "redis_port": 6379,
+  "credential_key": "immich-api-key",
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page",
+  "workloads": [],
+  "check_workloads": {
+    "Immich public API configuration": [
+      {
+        "namespace": "immich",
+        "kind": "Deployment",
+        "name": "immich-server"
+      }
+    ],
+    "Immich authenticated asset statistics": [
+      {
+        "namespace": "immich",
+        "kind": "Deployment",
+        "name": "immich-server"
+      }
+    ],
+    "Immich Redis dependency": [
+      {
+        "namespace": "immich",
+        "kind": "Deployment",
+        "name": "redis"
+      }
+    ]
+  }
+}
