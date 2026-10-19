@@ -405,7 +405,8 @@ spec:
               port: 9200
             periodSeconds: 2
             timeoutSeconds: 5
-            failureThreshold: 60
+            # JetStream can take several minutes to recover its persisted streams.
+            failureThreshold: 300
           livenessProbe:
             httpGet:
               path: /health
