@@ -157,6 +157,8 @@ configMapGenerator:
       - assets/service_roundcube.json
       # end service: roundcube
       # service: searxng
+      - assets/service_searxng.py
+      - assets/service_searxng.json
       # end service: searxng
       # service: sonarr
       - assets/service_sonarr.py
