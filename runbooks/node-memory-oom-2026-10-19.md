@@ -31,10 +31,11 @@ explicitly leave room for k3s, Longhorn, and the OS.
   This reduces parallel ML capacity, so check Immich's ML jobs after rollout.
 - Softly prefer Pamacs for the Interior Designer UI, which was stranded on
   Buksi after the Pamacs reboot. Its RWO PVC must be healthy before rollout.
-- Softly prefer Pufi for Frigate after removing its ML replica. The Immich
-  Server rollout also preferred Pamacs, so moving Frigate's 2 GiB request to
-  Pufi brings Pamacs below 85% of its new allocatable memory. Frigate remains
-  movable if Pufi is unavailable; verify the iGPU and RWO volumes after moving.
+- Softly prefer Pamacs for Frigate's sustained CPU load and Pufi for the
+  lower-CPU Immich Server. Both remain movable during a node outage. Moving
+  Frigate to Pufi briefly lowered Pamacs's requested memory, but drove Pufi's
+  4 CPUs to more than 90% with severe CPU wait; the corrected split keeps
+  both CPU and memory headroom.
 - Zabbix warns at 85% node memory use and discovers recent Kubernetes
   `SystemOOM` node events through read-only Event access in `default`.
 - `config/node-config/k3s-memory.yaml` adds `memory.available<1Gi` to each
@@ -52,8 +53,9 @@ leave Buksi near 97% with the incident's pod placement; one replica on Pamacs
 plus the Interior Designer move keeps all three nodes within the admission
 budget on Buksi. Tandoor was stranded on Pufi with a 512 MiB request; after
 its PVC is healthy, recreate that pod so its existing soft preference moves
-it to Pamacs. This brings Pufi below 85% of its post-eviction allocatable
-memory. The StatefulSet template
+it to Pamacs. Combined with placing the Immich Server on Pufi and Frigate on
+Pamacs, this keeps both nodes below 85% of post-eviction allocatable memory.
+The StatefulSet template
 change restarts the retained ML pod; verify it is Ready on Pamacs. Check
 scheduling failures, ML job throughput, and node memory after each rollout.
 Stop if a node OOM recurs.
