@@ -44,7 +44,9 @@ The `collector` Deployment uses Python's standard library and queries the
 Kubernetes API once a minute. Its ServiceAccount has get/list access to nodes,
 pods, deployments, DaemonSets, node metrics, Longhorn volumes/backups/targets,
 and CNPG clusters/schedules. Namespace-local Roles add node-config readiness
-events and Stalwart pod logs. It cannot read Secrets/ConfigMaps, execute
+events, `SystemOOM` Events in `default`, and Stalwart pod logs. Node memory
+usage warns at 85% of allocatable; a recent `SystemOOM` event is an immediate
+node alert. It cannot read Secrets/ConfigMaps, execute
 commands, or change cluster resources. Log checks retain counts, not mail
 content. HTTP/TCP probes are explicitly configured in `assets/policy.json`.
 
@@ -129,25 +131,24 @@ adapter with the MCP SDK already shipped in the pinned OpenClaw image, avoiding
 an additional Python/MCP/reporting/admin runtime. Reconsider upstream if it can
 provide the required exact surface without a local fork.
 
-Zabbix's webhook uses a separate `MONITORING_HOOK_TOKEN`, never the Gateway auth
-token. It posts only event ID/state/name to `/hooks/zabbix`. The mapping targets
-Alpar in an isolated low-thinking run and sends a concise problem/recovery
-message to the configured owner WhatsApp destination. Alert data stays wrapped
-as untrusted external input. Alpar reads current evidence before responding and
-does not remediate from an alert alone. Gateway HTTP 200 proves admission, not
-model completion or delivery; validate the actual channel result during cutover.
+The former per-event webhook used a separate `MONITORING_HOOK_TOKEN`, never the
+Gateway auth token, and posted event ID/state/name to `/hooks/zabbix`. Its three
+Zabbix actions are disabled after the October 19 digest cutover (see below).
+Keep the mapping dormant for rollback; do not re-enable its actions during
+normal reconciliation. Gateway HTTP 200 proves admission, not model completion
+or delivery. The current digest reads Zabbix through the restricted bridge and
+uses Baloo's command delivery to WhatsApp.
 
 BetterStack remains the independent external outage detector. Zabbix and Baloo
 cannot notify while their cluster or internet connection is completely down.
 
-Routine collector polling and the five-minute `managed: monitoring-watchdog`
-command do not invoke an LLM. The watchdog reads the Zabbix API and collector
-freshness through the bridge's `/watchdog` endpoint, stays silent on healthy or
-single failed checks, alerts after two consecutive failures, reminds at most
-every six hours, and reports recovery once. It cannot report if Baloo itself is
-down; independent external monitoring covers that case. Zabbix invokes Alpar
-on problem/recovery events, and interactive monitoring requests also invoke an
-LLM. Other unrelated Baloo scheduled jobs retain their own behavior.
+Routine collector polling and the `managed: zabbix-digest` command do not invoke
+an LLM. The digest reads the Zabbix API and collector freshness through the
+bridge's `/watchdog` endpoint, remains silent on healthy or single failed
+checks, and shares its rate gate with monitoring-outage reports. It cannot
+report if Baloo itself is down; independent external monitoring covers that
+case. Interactive monitoring requests still invoke an LLM. Other unrelated
+Baloo scheduled jobs retain their own behavior.
 
 ## Deployment and cutover
 
@@ -434,3 +435,38 @@ fetchmail failure. Another successful arrival was recorded at 20:03 that
 evening, followed by a new silence interval. Keep fetchmail error monitoring
 independent of the 48-hour traffic-anomaly threshold. Do not send synthetic
 mail or reset passwords to investigate a recovered provider-side failure.
+
+## Severity-aware digest (2026-10-19)
+
+The per-event Zabbix actions previously posted every problem and recovery to
+Baloo's `/hooks/zabbix`. Each post started an isolated Alpar LLM run that read
+current evidence and sent one WhatsApp message. The trigger/action delays did
+not aggregate events. A cluster-wide cascade around 20:27–20:48 Bucharest on
+October 19 produced dozens of messages; a read-only review at 20:49 showed 49
+open problems, including 33 Longhorn volume alarms, Pamacs physical storage,
+and Zabbix database health. All three nodes were Ready. Preserve and investigate
+the actual open problems; notification aggregation does not acknowledge them.
+
+`managed: zabbix-digest` runs every minute as a deterministic Baloo command.
+It reads fresh Zabbix problems through the loopback MCP bridge, retains state on
+the OpenClaw PVC, and sends at most one WhatsApp digest in any ten-minute span.
+It excludes suppressed and dashboard-only problems, highlights physical storage,
+nodes, databases, applications, and other primary signals ahead of derivative
+pod/volume details, and counts problems by severity and area. It reports changes
+and recovery in the next allowed digest. Critical changes use the next allowed
+ten-minute slot and repeat at most hourly while unchanged; moderate problems
+wait 30 minutes and repeat at most every four hours; low problems wait two hours
+and repeat at most daily. Monitoring/collector loss joins the same rate gate
+after two failed checks. The separate monitoring watchdog job is disabled.
+The digest itself does not invoke an LLM; the former per-event hook did.
+
+Cut over only after the digest job is deployed and a manual `NO_REPLY` run plus
+state persistence are verified. Then run `scripts/bootstrap-zabbix.py --apply
+--disable-direct-alerts` through the private Zabbix port-forward. This disables
+only the three `HomePBP problems to Baloo` actions. Confirm their live status is
+disabled and the digest job is enabled. Do not use `--enable-alerts` during normal
+reconciliation: it deliberately restores the old per-event delivery mode.
+When 300 or more problems are open, the MCP query returns only the most recent
+300; the digest says `at least 300` and a full inventory requires direct Zabbix
+review. The sidecar must restart once after the query limit change; later cron
+policy and command-script changes hot-reload through git-sync.

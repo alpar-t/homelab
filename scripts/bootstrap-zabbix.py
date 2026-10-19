@@ -229,6 +229,19 @@ def configure_notification_actions(api, group, operation):
         })
 
 
+def disable_direct_alerts(api):
+    """Retire per-event WhatsApp delivery after the digest has been verified."""
+    names = ['HomePBP problems to Baloo', 'HomePBP problems to Baloo after 5m',
+             'HomePBP problems to Baloo after 10m']
+    for name in names:
+        found = api.call('action.get', {'filter': {'name': name}, 'output': ['actionid', 'name', 'status']})
+        if len(found) > 1:
+            raise RuntimeError('Ambiguous direct alert action: ' + name)
+        if found and found[0]['status'] != '1':
+            api.call('action.update', {'actionid': found[0]['actionid'], 'status': 1})
+            print('Disabled direct alert action:', name)
+
+
 def retire_synthetic_mail_check(api):
     hosts = api.call('host.get', {'filter': {'host': 'HomePBP'}, 'output': ['hostid']})
     if len(hosts) != 1:
@@ -257,9 +270,13 @@ def main():
     parser.add_argument('--url', default='http://127.0.0.1:18080')
     parser.add_argument('--apply', action='store_true', help='Reconcile monitoring configuration and bootstrap credentials')
     parser.add_argument('--enable-alerts', action='store_true', help='Enable delivery after the Baloo hook is configured and verified')
+    parser.add_argument('--disable-direct-alerts', action='store_true',
+                        help='Disable the three integration-owned per-event actions after the digest is verified')
     parser.add_argument('--retire-synthetic-mail-check', action='store_true',
                         help='Close only the superseded synthetic coverage warning after the replacement check is fresh and healthy')
     args = parser.parse_args()
+    if args.enable_alerts and args.disable_direct_alerts:
+        parser.error('--enable-alerts and --disable-direct-alerts are mutually exclusive')
     api = API(args.url)
     print('Zabbix API version:', api.call('apiinfo.version', {}))
     if not args.apply:
@@ -278,6 +295,9 @@ def main():
         # Re-authenticate because changing a password can invalidate sessions.
         api.token = None
         api.token = api.call('user.login', {'username': 'Admin', 'password': password})
+    if args.disable_direct_alerts:
+        disable_direct_alerts(api)
+        return
     group = configure_checks(api)
     values, user = configure_identity(api, group, read_secret('baloo', 'zabbix-mcp'))
     write_secret('baloo', 'zabbix-mcp', values)

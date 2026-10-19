@@ -341,6 +341,24 @@ class TriggerTests(unittest.TestCase):
         self.assertTrue(all({'tag': 'notification', 'value': '{#NOTIFICATION}'} in p['tags']
                             for p in prototypes))
 
+    def test_digest_cutover_disables_only_owned_direct_actions(self):
+        class API:
+            def __init__(self):
+                self.updated = []
+            def call(self, method, params):
+                if method == 'action.get':
+                    name = params['filter']['name']
+                    return [{'actionid': name, 'name': name, 'status': '0'}]
+                if method == 'action.update':
+                    self.updated.append(params)
+                    return {'actionids': [params['actionid']]}
+                raise AssertionError(method)
+        api = API()
+        bootstrap.disable_direct_alerts(api)
+        self.assertEqual(len(api.updated), 3)
+        self.assertTrue(all(row['status'] == 1 and row['actionid'].startswith('HomePBP problems to Baloo')
+                            for row in api.updated))
+
     def test_parent_grace_blocks_new_incidents_without_clearing_existing_ones(self):
         api = self.configuration()
         prototype = next(p for kind, name, p in api.objects if kind == 'triggerprototype')
