@@ -207,6 +207,8 @@ configMapGenerator:
       - assets/service_website_staging.json
       # end service: website-staging
       # service: whisper
+      - assets/service_whisper.py
+      - assets/service_whisper.json
       # end service: whisper
       # service: wireguard
       - assets/service_wireguard.py
