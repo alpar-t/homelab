@@ -315,6 +315,9 @@ def evaluate(data, policy, now):
         c = clusters.get((ns, name), {})
         s = c.get('status', {})
         conditions = {x['type']: x for x in s.get('conditions', [])}
+        limit = schedules.get((ns, name), 0)
+        actual_age = age(s.get('lastSuccessfulBackup'), now)
+        archiving_ok = conditions.get('ContinuousArchiving', {}).get('status') == 'True'
         bad = not ready(c) or s.get('readyInstances', 0) < c.get('spec', {}).get('instances', 2)
         checks.append(check(f'CNPG health {ns}/{name}', 'cnpg', bad,
                             f"ready={s.get('readyInstances', 0)}; phase={s.get('phase', 'missing')}"))
@@ -334,9 +337,23 @@ def evaluate(data, policy, now):
                 grace_hours = policy.get('cnpg_backup_running_grace_hours', 6)
                 bad = running_age >= grace_hours * 3600
                 detail = f'Backup in progress for {running_age / 3600:.1f}h; running limit={grace_hours}h'
+            if cond == 'LastBackupSucceeded':
+                failed_attempt = native_status == 'False' and value.get('reason') == 'LastBackupFailed'
+                if failed_attempt and limit and actual_age <= limit and archiving_ok:
+                    # A failed attempt does not remove an existing usable base backup.
+                    # Keep the attempt visible without paging while the independent
+                    # freshness and continuous-archiving checks still protect recovery.
+                    bad = False
+                    detail = (f'Last attempt failed; completed backup age={actual_age / 3600:.1f}h; '
+                              f'limit={limit / 3600:.0f}h; archiving healthy')
             checks.append(check(f'CNPG {cond} {ns}/{name}', 'backup', bad, detail))
-        limit = schedules.get((ns, name), 0)
-        actual_age = age(s.get('lastSuccessfulBackup'), now)
+            if cond == 'LastBackupSucceeded':
+                notice = check(f'CNPG last backup attempt failed {ns}/{name}', 'backup',
+                               failed_attempt,
+                               'last attempt failed; inspect Backup object privately' if failed_attempt else
+                               'no failed latest attempt', 1)
+                notice['notification'] = 'dashboard'
+                checks.append(notice)
         checks.append(check(f'CNPG backup freshness {ns}/{name}', 'backup',
                             not limit or actual_age > limit,
                             f'backup age={actual_age / 3600:.1f}h; limit={limit / 3600:.0f}h'))

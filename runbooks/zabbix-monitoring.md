@@ -79,6 +79,16 @@ active backup group. CNPG schedules require six fields; supported daily/weekly
 schedules get the same freshness limits. Missing archive/backup conditions fail
 closed.
 
+A `LastBackupFailed` attempt creates a severity-1 dashboard-only problem while
+that same database has a completed backup within its schedule's freshness limit
+and continuous WAL archiving is healthy. The existing `LastBackupSucceeded`
+check emits healthy samples in this case, allowing an earlier high-severity
+incident to recover. Missing/stale completed backups, failed archiving, missing
+conditions or schedules, and a backup stuck beyond its running grace still raise
+their independent actionable problems. Successful backups on other databases do
+not substitute for this database's own recovery point. The failed-attempt notice
+clears after the next successful attempt and is excluded from the WhatsApp digest.
+
 The web UI is at `https://monitor.newjoy.ro`, gated by the `zabbix` Pocket ID
 client and an oauth2-proxy allowing only `advanced_apps`. Both the root and
 public API paths require Pocket ID; only `/oauth2` serves the sign-in flow.
@@ -394,11 +404,11 @@ runs took about four hours. These are classification errors rather than a reason
 to increase notification delays across all checks. CNPG uses `BackupStarted`
 with a false condition while the backup runs, distinct from `LastBackupFailed`.
 
-The prepared collector correction tolerates only `False/BackupStarted` with a
-valid transition timestamp younger than `cnpg_backup_running_grace_hours` (six
-hours). Longer runs, actual failures, and missing conditions/timestamps still
-fail. Completed-backup freshness and continuous archiving remain independent
-checks, so a running backup cannot excuse an overdue completed backup.
+The collector tolerates `False/BackupStarted` with a valid transition timestamp
+younger than `cnpg_backup_running_grace_hours` (six hours). Longer runs and
+missing conditions/timestamps still fail. A failed attempt has the bounded
+dashboard-only treatment described above; completed-backup freshness and
+continuous archiving remain independent checks.
 
 The twelve-minute Stalwart incident came from one `smtp.spf-from-fail` record,
 held in the ten-minute log window. Its explanatory text matched the broad

@@ -148,6 +148,42 @@ class CollectorTests(unittest.TestCase):
         self.data['clusters'][0]['status']['conditions'] = []
         self.assertEqual(self.checks()[metric]['status'], 1)
 
+    def test_failed_backup_attempt_is_dashboard_only_while_recovery_is_covered(self):
+        self.policy['databases'] = [['db', 'pg']]
+        timestamp = lambda seconds: collector.dt.datetime.fromtimestamp(NOW - seconds, collector.UTC).isoformat()
+        archive = {'type': 'ContinuousArchiving', 'status': 'True'}
+        attempt = {'type': 'LastBackupSucceeded', 'status': 'False',
+                   'reason': 'LastBackupFailed', 'message': 'private backup error'}
+        self.data['clusters'] = [{'metadata': {'name': 'pg', 'namespace': 'db'},
+                                  'status': {'lastSuccessfulBackup': timestamp(24 * 3600),
+                                             'conditions': [archive, attempt]}}]
+        self.data['scheduled_backups'] = [{'metadata': {'name': 'daily', 'namespace': 'db'},
+                                           'spec': {'schedule': '0 15 3 * * *', 'cluster': {'name': 'pg'}}}]
+        condition_name = 'CNPG LastBackupSucceeded db/pg'
+        notice_name = 'CNPG last backup attempt failed db/pg'
+        checks = self.checks()
+        self.assertEqual(checks[condition_name]['status'], 0)
+        self.assertEqual(checks['CNPG backup freshness db/pg']['status'], 0)
+        self.assertEqual((checks[notice_name]['status'], checks[notice_name]['severity'],
+                          checks[notice_name]['notification']), (1, 1, 'dashboard'))
+        self.assertNotIn('private backup error', json.dumps(checks))
+
+        archive['status'] = 'False'
+        self.assertEqual(self.checks()[condition_name]['status'], 1)
+        archive['status'] = 'True'
+        self.data['clusters'][0]['status']['lastSuccessfulBackup'] = timestamp(49 * 3600)
+        checks = self.checks()
+        self.assertEqual(checks[condition_name]['status'], 1)
+        self.assertEqual(checks['CNPG backup freshness db/pg']['status'], 1)
+
+        self.data['clusters'][0]['status']['lastSuccessfulBackup'] = timestamp(24 * 3600)
+        self.data['scheduled_backups'] = []
+        self.assertEqual(self.checks()[condition_name]['status'], 1)
+        self.data['scheduled_backups'] = [{'metadata': {'name': 'daily', 'namespace': 'db'},
+                                           'spec': {'schedule': '0 15 3 * * *', 'cluster': {'name': 'pg'}}}]
+        attempt['status'] = 'True'
+        self.assertEqual(self.checks()[notice_name]['status'], 0)
+
     def test_stalwart_filter_rejections_do_not_match_explanatory_error_text(self):
         rejected = '\x1b[33m2026-10-10T06:50:00Z SPF rejected (smtp.spf-from-fail)\x1b[0m authentication failed; delivery failed'
         self.assertFalse(collector.mail_failure_matches('stalwart', rejected))
