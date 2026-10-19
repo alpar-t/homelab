@@ -8,6 +8,9 @@ metadata:
     app.kubernetes.io/component: onlyoffice
 spec:
   replicas: 1
+  # The data PVC is ReadWriteOnce; finish detaching it before scheduling a replacement.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "opencloud.selectorLabels" . | nindent 6 }}
