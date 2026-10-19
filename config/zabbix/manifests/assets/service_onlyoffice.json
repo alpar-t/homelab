@@ -1,0 +1,51 @@
+{
+  "interval": 900,
+  "deadline": 30,
+  "editor": "http://opencloud-onlyoffice.opencloud.svc.cluster.local",
+  "editor_hosts": [
+    "opencloud-onlyoffice",
+    "opencloud-onlyoffice.opencloud.svc.cluster.local",
+    "office.newjoy.ro"
+  ],
+  "registry": "http://opencloud-opencloud.opencloud.svc.cluster.local:9200",
+  "collaboration": "http://opencloud-collaboration.opencloud.svc.cluster.local:9300",
+  "extensions": [
+    "docx",
+    "xlsx",
+    "pptx"
+  ],
+  "failure_grace_seconds": 1800,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page",
+  "workloads": [],
+  "check_workloads": {
+    "OnlyOffice document server dependencies": [
+      {
+        "namespace": "opencloud",
+        "kind": "Deployment",
+        "name": "opencloud-onlyoffice"
+      }
+    ],
+    "OnlyOffice WOPI capabilities": [
+      {
+        "namespace": "opencloud",
+        "kind": "Deployment",
+        "name": "opencloud-onlyoffice"
+      }
+    ],
+    "OnlyOffice OpenCloud collaboration contract": [
+      {
+        "namespace": "opencloud",
+        "kind": "Deployment",
+        "name": "opencloud-opencloud"
+      },
+      {
+        "namespace": "opencloud",
+        "kind": "Deployment",
+        "name": "opencloud-collaboration"
+      }
+    ]
+  }
+}
