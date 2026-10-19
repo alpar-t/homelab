@@ -23,6 +23,17 @@ spec:
         configmap.reloader.stakater.com/reload: "frigate-config"
         secret.reloader.stakater.com/reload: "frigate-rtsp,frigate-mqtt"
     spec:
+      # ML no longer occupies Pufi; keep Frigate's 2 GiB request off Pamacs.
+      # This is a preference so recording can resume on another node if needed.
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values: [pufi]
       containers:
         - name: frigate
           image: ghcr.io/blakeblackshear/frigate:0.17.2@sha256:d4351369984d4a9e2a49ac59736f6490856a7ea11f7790040746d21496967010

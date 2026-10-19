@@ -31,6 +31,10 @@ explicitly leave room for k3s, Longhorn, and the OS.
   This reduces parallel ML capacity, so check Immich's ML jobs after rollout.
 - Softly prefer Pamacs for the Interior Designer UI, which was stranded on
   Buksi after the Pamacs reboot. Its RWO PVC must be healthy before rollout.
+- Softly prefer Pufi for Frigate after removing its ML replica. The Immich
+  Server rollout also preferred Pamacs, so moving Frigate's 2 GiB request to
+  Pufi brings Pamacs below 85% of its new allocatable memory. Frigate remains
+  movable if Pufi is unavailable; verify the iGPU and RWO volumes after moving.
 - Zabbix warns at 85% node memory use and discovers recent Kubernetes
   `SystemOOM` node events through read-only Event access in `default`.
 - `config/node-config/k3s-memory.yaml` adds `memory.available<1Gi` to each
