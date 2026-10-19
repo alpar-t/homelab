@@ -1,0 +1,29 @@
+{
+  "interval": 600,
+  "deadline": 30,
+  "grace_seconds": 1800,
+  "freshness_seconds": 1800,
+  "failure_grace_seconds": 900,
+  "minimum_failure_observations": 2,
+  "minimum_recovery_observations": 2,
+  "severity": 3,
+  "notification": "page",
+  "workloads": [],
+  "check_workloads": {
+    "ArgoCD Application inventory": [],
+    "ArgoCD Repository and comparison": [
+      {
+        "namespace": "argocd",
+        "kind": "Deployment",
+        "name": "argocd-repo-server"
+      }
+    ],
+    "ArgoCD Reconciliation progress": [
+      {
+        "namespace": "argocd",
+        "kind": "StatefulSet",
+        "name": "argocd-application-controller"
+      }
+    ]
+  }
+}
