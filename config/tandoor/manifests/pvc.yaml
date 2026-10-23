@@ -7,6 +7,8 @@ metadata:
     app: tandoor
     # Recipe images - user-uploaded content
     data-criticality: critical
+    recurring-job.longhorn.io/source: enabled
+    recurring-job-group.longhorn.io/default: enabled
     recurring-job-group.longhorn.io/critical: enabled
   annotations:
     argocd.argoproj.io/sync-wave: "0"

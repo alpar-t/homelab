@@ -50,8 +50,11 @@ PVC `recurring-job-group.longhorn.io/critical=enabled` does not propagate to
 the Longhorn Volume by itself. Set `recurring-job.longhorn.io/source=enabled`
 on the PVC and retain `recurring-job-group.longhorn.io/default=enabled` to keep
 weekly coverage when enabling critical daily backups. Verify the live Volume
-labels and the next scheduled Backup objects. Review B2 capacity before
-enabling daily backups for the seven large Immich library PVCs.
+labels and the next scheduled Backup objects. Before adding the source label to
+an existing PVC whose last weekly backup is older than 48 hours, create and
+verify a fresh per-volume Backup so the new daily policy has a valid baseline.
+Review B2 capacity before enabling daily backups for the seven large Immich
+library PVCs (about 2.5 TiB of actual data in October 2026).
 
 Rebuildable Immich ML caches are excluded through
 `immich/model-cache-immich-ml-*` in `backup-exclusions.yaml`, which covers new

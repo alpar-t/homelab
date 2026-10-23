@@ -250,6 +250,8 @@ metadata:
     app: immich
     # User profile pictures - user-uploaded content
     data-criticality: critical
+    recurring-job.longhorn.io/source: enabled
+    recurring-job-group.longhorn.io/default: enabled
     recurring-job-group.longhorn.io/critical: enabled
   annotations:
     argocd.argoproj.io/sync-wave: "0"
@@ -295,6 +297,8 @@ metadata:
     app: immich
     # Database and configuration backups - important for recovery
     data-criticality: critical
+    recurring-job.longhorn.io/source: enabled
+    recurring-job-group.longhorn.io/default: enabled
     recurring-job-group.longhorn.io/critical: enabled
   annotations:
     argocd.argoproj.io/sync-wave: "0"
