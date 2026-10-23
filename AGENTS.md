@@ -63,6 +63,9 @@ Baloo's Paperless document MCP account, credential, and validation procedure:
 Longhorn minor-version upgrade procedure and validation gates:
 `runbooks/longhorn-upgrade.md`.
 
+Longhorn per-volume backup retries, alert grace, and recurring-job labels:
+`runbooks/longhorn-backup-retries.md`.
+
 CNPG database local-storage decision, inventory, and rolling migration:
 `runbooks/migrate-postgres-to-local-storage.md`.
 

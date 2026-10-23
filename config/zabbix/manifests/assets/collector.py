@@ -274,6 +274,25 @@ def evaluate(data, policy, now):
         checks.append(check(f'Pod {name}', 'cluster', not ready(p),
                             'Ready' if ready(p) else detail, 3))
 
+    # The Longhorn retry controller gets six hours after each completed
+    # recurring run. Keep a stale-backup incident pending until that bounded
+    # window closes, even when a prior run was also missed.
+    backup_retry_pending = set()
+    for job in data['longhorn_jobs']:
+        owners = job.get('metadata', {}).get('ownerReferences', [])
+        recurring = next((owner['name'] for owner in owners
+                          if owner.get('kind') == 'CronJob' and owner.get('name') in
+                          ('weekly-backup', 'critical-daily-backup')), None)
+        if not recurring:
+            continue
+        status = job.get('status', {})
+        finished = status.get('completionTime')
+        if not finished:
+            finished = next((condition.get('lastTransitionTime')
+                             for condition in status.get('conditions', [])
+                             if condition.get('type') == 'Failed' and condition.get('status') == 'True'), None)
+        if finished and age(finished, now) < 6 * 3600:
+            backup_retry_pending.add(recurring)
     completed = {}
     for b in data['longhorn_backups']:
         s = b.get('status', {})
@@ -296,8 +315,13 @@ def evaluate(data, policy, now):
         if critical or weekly:
             max_age = 48 * 3600 if critical else 10 * 86400
             actual_age = completed.get(name, float('inf'))
-            checks.append(check(f'Longhorn backup {label}', 'backup', actual_age > max_age,
-                                f'completed backup age={actual_age / 3600:.1f}h; limit={max_age / 3600:.0f}h'))
+            relevant = 'critical-daily-backup' if critical else 'weekly-backup'
+            retry_pending = relevant in backup_retry_pending
+            checks.append(check(f'Longhorn backup {label}', 'backup',
+                                actual_age > max_age and not retry_pending,
+                                f'completed backup age={actual_age / 3600:.1f}h; '
+                                f'limit={max_age / 3600:.0f}h; '
+                                f'retry window={"open" if retry_pending else "closed"}'))
     for target in data['backup_targets']:
         s = target.get('status', {})
         checks.append(check('Longhorn backup target ' + target['metadata']['name'], 'backup',
@@ -465,6 +489,7 @@ PATHS = {
     'volumes': '/apis/longhorn.io/v1beta2/namespaces/longhorn-system/volumes',
     'replicas': '/apis/longhorn.io/v1beta2/namespaces/longhorn-system/replicas',
     'longhorn_backups': '/apis/longhorn.io/v1beta2/namespaces/longhorn-system/backups',
+    'longhorn_jobs': '/apis/batch/v1/namespaces/longhorn-system/jobs',
     'backup_targets': '/apis/longhorn.io/v1beta2/namespaces/longhorn-system/backuptargets',
     'clusters': '/apis/postgresql.cnpg.io/v1/clusters',
     'scheduled_backups': '/apis/postgresql.cnpg.io/v1/scheduledbackups',

@@ -37,7 +37,8 @@ data:
     immich/immich-upload
     immich/immich-encoded-video
     immich/immich-import
-    immich/immich-model-cache
+    # StatefulSet claim templates create new ordinals after failed pod replacement.
+    immich/model-cache-immich-ml-*
     # Media stack — replaceable downloads and media library
     media/movies-data
     media/tv-data
@@ -69,53 +70,44 @@ spec:
               set -e
               echo "Applying backup exclusions..."
               
-              while IFS= read -r pvc_ref; do
-                # Skip empty lines and comments
-                [[ -z "$pvc_ref" || "$pvc_ref" =~ ^# ]] && continue
-                
-                NAMESPACE=$(echo "$pvc_ref" | cut -d'/' -f1)
-                PVC_NAME=$(echo "$pvc_ref" | cut -d'/' -f2)
-                
+              exclude_pvc() {
+                local NAMESPACE="$1" PVC_NAME="$2" PV_NAME VOLUME_NAME
                 echo "Processing: $NAMESPACE/$PVC_NAME"
-                
-                # Get the PV name for this PVC
                 PV_NAME=$(kubectl get pvc "$PVC_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.volumeName}' 2>/dev/null || true)
                 if [[ -z "$PV_NAME" ]]; then
                   echo "  WARNING: PVC $NAMESPACE/$PVC_NAME not found or not bound, skipping"
-                  continue
+                  return
                 fi
-                
-                # Get the Longhorn volume name (CSI volume handle)
                 VOLUME_NAME=$(kubectl get pv "$PV_NAME" -o jsonpath='{.spec.csi.volumeHandle}' 2>/dev/null || true)
                 if [[ -z "$VOLUME_NAME" ]]; then
                   echo "  WARNING: Could not get volume handle for PV $PV_NAME, skipping"
-                  continue
+                  return
                 fi
-                
-                # Check if volume exists in Longhorn
                 if ! kubectl get volume "$VOLUME_NAME" -n longhorn-system &>/dev/null; then
                   echo "  WARNING: Longhorn volume $VOLUME_NAME not found, skipping"
-                  continue
+                  return
                 fi
-                
-                # Per Longhorn design doc 20210624-label-driven-recurring-job:
-                # "Label with `default` job-group if no other recurring job
-                # label exists." So removing labels alone doesn't work — the
-                # controller re-adds `default` within milliseconds, because
-                # the volume now has no recurring-job label.
-                #
-                # The fix is to give the volume a marker recurring-job-group
-                # label pointing to a non-existent group ("excluded"). That
-                # counts as "another label" → suppresses the default
-                # auto-add. No RecurringJob is in the `excluded` group, so
-                # nothing actually fires on these volumes.
+                # Another job-group label prevents Longhorn re-adding `default`.
                 kubectl label volume "$VOLUME_NAME" -n longhorn-system \
                   recurring-job-group.longhorn.io/excluded=enabled \
                   recurring-job-group.longhorn.io/default- \
                   recurring-job.longhorn.io/weekly-backup- \
-                  --overwrite 2>/dev/null || true
-
+                  --overwrite
                 echo "  SUCCESS: Excluded $VOLUME_NAME (marker: excluded group)"
+              }
+
+              while IFS= read -r pvc_ref; do
+                [[ -z "$pvc_ref" || "$pvc_ref" =~ ^# ]] && continue
+                NAMESPACE=${pvc_ref%%/*}
+                PVC_NAME=${pvc_ref#*/}
+                if [[ "$PVC_NAME" == *\* ]]; then
+                  prefix=${PVC_NAME%\*}
+                  while IFS= read -r candidate; do
+                    [[ "$candidate" == "$prefix"* ]] && exclude_pvc "$NAMESPACE" "$candidate"
+                  done < <(kubectl get pvc -n "$NAMESPACE" -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')
+                else
+                  exclude_pvc "$NAMESPACE" "$PVC_NAME"
+                fi
               done < /config/excluded-pvcs
               
               echo "Done!"

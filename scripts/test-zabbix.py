@@ -97,6 +97,21 @@ class CollectorTests(unittest.TestCase):
         self.data['longhorn_backups'][0]['status']['state'] = 'Completed'
         self.assertEqual(self.checks()['Longhorn backup mail/blobs']['status'], 0)
 
+    def test_stale_backup_alert_waits_for_bounded_retry_window(self):
+        self.data['volumes'] = [{
+            'metadata': {'name': 'v', 'labels': {'recurring-job-group.longhorn.io/critical': 'enabled'}},
+            'status': {'state': 'attached', 'robustness': 'healthy',
+                       'kubernetesStatus': {'namespace': 'mail', 'pvcName': 'blobs'}}}]
+        finished = collector.dt.datetime.fromtimestamp(NOW - 5 * 3600, collector.UTC).isoformat()
+        self.data['longhorn_jobs'] = [{
+            'metadata': {'ownerReferences': [{'kind': 'CronJob', 'name': 'critical-daily-backup'}]},
+            'status': {'completionTime': finished}}]
+        self.assertEqual(self.checks()['Longhorn backup mail/blobs']['status'], 0)
+        self.assertIn('retry window=open', self.checks()['Longhorn backup mail/blobs']['detail'])
+        self.data['longhorn_jobs'][0]['status']['completionTime'] = collector.dt.datetime.fromtimestamp(
+            NOW - 6 * 3600 - 1, collector.UTC).isoformat()
+        self.assertEqual(self.checks()['Longhorn backup mail/blobs']['status'], 1)
+
     def test_excluded_volumes_are_not_reported_as_missing_backups(self):
         self.data['volumes'] = [{'metadata': {'name': 'media', 'labels': {
             'recurring-job-group.longhorn.io/excluded': 'enabled'}},

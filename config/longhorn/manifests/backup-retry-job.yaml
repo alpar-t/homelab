@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: longhorn-backup-retry
+  namespace: longhorn-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: longhorn-backup-retry
+  namespace: longhorn-system
+rules:
+  - apiGroups: [longhorn.io]
+    resources: [volumes, backups, snapshots]
+    verbs: [get, list]
+  - apiGroups: [longhorn.io]
+    resources: [backups, snapshots]
+    verbs: [create]
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: longhorn-backup-retry
+  namespace: longhorn-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: longhorn-backup-retry
+subjects:
+  - kind: ServiceAccount
+    name: longhorn-backup-retry
+    namespace: longhorn-system
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: longhorn-backup-retry
+  namespace: longhorn-system
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 120
+      ttlSecondsAfterFinished: 86400
+      backoffLimit: 1
+      template:
+        spec:
+          serviceAccountName: longhorn-backup-retry
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: retry
+              image: docker.io/python:3.13.12-alpine@sha256:bb1f2fdb1065c85468775c9d680dcd344f6442a2d1181ef7916b60a623f11d40
+              command: [python, -B, /app/backup_retry.py]
+              resources:
+                requests:
+                  cpu: 20m
+                  memory: 32Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              volumeMounts:
+                - name: program
+                  mountPath: /app
+                  readOnly: true
+          volumes:
+            - name: program
+              configMap:
+                name: longhorn-backup-retry
