@@ -32,7 +32,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: server
-          image: docker.io/zabbix/zabbix-server-pgsql:7.0.31-alpine@sha256:bdfe90847bd259a6da448db1e6ae83f5f439224654ed767296a8d57a088975b9
+          image: docker.io/zabbix/zabbix-server-pgsql:7.0.32-alpine@sha256:401dc90cff398aaf6a0fa72625f4b9b57407e61231f94e13e7f4e68aeff0c42c
           env:
             - name: DB_SERVER_HOST
               value: zabbix-db-rw.zabbix.svc
@@ -102,7 +102,7 @@ spec:
             capabilities:
               drop: [ALL]
         - name: web
-          image: docker.io/zabbix/zabbix-web-nginx-pgsql:7.0.31-alpine@sha256:d9ce0774cb6036ce5d49c9c8d46bf1474dad98aae810350de0d5068dd679b92d
+          image: docker.io/zabbix/zabbix-web-nginx-pgsql:7.0.32-alpine@sha256:a54ce2e19aaf0a61609e4bbc7ec01c16bef504e6e1c51e3854120ac76d2dbaeb
           env:
             - name: DB_SERVER_HOST
               value: zabbix-db-rw.zabbix.svc
