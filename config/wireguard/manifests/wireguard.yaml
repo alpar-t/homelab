@@ -151,7 +151,7 @@ spec:
       terminationGracePeriodSeconds: 15
       containers:
         - name: wireguard
-          image: docker.io/linuxserver/wireguard:1.0.20260223-r0-ls120@sha256:3abfd4b82212106e357989750b9c0c9859aa511f5305a9a55c18c8de7198b655
+          image: docker.io/linuxserver/wireguard:1.0.20260223-r0-ls127@sha256:e2f655e1956a6db476bc879bf721f3f8bfed49c6d8fbcf39495d7ecb991d8228
           command: ["/bin/sh", "/opt/wireguard/start.sh"]
           securityContext:
             allowPrivilegeEscalation: false
