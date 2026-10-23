@@ -59,6 +59,13 @@ class InventoryTests(unittest.TestCase):
         self.assertEqual([f['id'] for f in found], ['CVE-2026-12345'])
         self.assertEqual(len(found[0]['packages']), 2)
 
+    def test_trivy_image_without_packages_is_a_successful_empty_scan(self):
+        report = {'SchemaVersion': 2, 'ArtifactName': REF,
+                  'Metadata': {'ImageID': 'sha256:' + 'a' * 64}}
+        self.assertEqual(scanner.critical_findings(report), [])
+        with self.assertRaises(ValueError):
+            scanner.critical_findings({})
+
 
 class CycleTests(unittest.TestCase):
     def test_failed_rescan_retains_findings_and_records_error(self):

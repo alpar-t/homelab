@@ -78,10 +78,16 @@ def image_inventory(pods, replicasets, jobs):
 
 
 def critical_findings(report):
-    if not isinstance(report, dict) or not isinstance(report.get('Results'), list):
+    if not isinstance(report, dict):
+        raise ValueError('invalid Trivy JSON report')
+    results = report.get('Results')
+    # Trivy omits Results when an image has no recognized packages to scan.
+    if results is None and report.get('ArtifactName') and isinstance(report.get('Metadata'), dict):
+        results = []
+    if not isinstance(results, list):
         raise ValueError('invalid Trivy JSON report')
     findings = {}
-    for target in report['Results']:
+    for target in results:
         for item in target.get('Vulnerabilities') or []:
             if item.get('Severity') != 'CRITICAL' or item.get('Status') == 'not_affected':
                 continue
@@ -148,6 +154,7 @@ def scan_image(ref):
         try:
             process = subprocess.run(
                 [TRIVY, 'image', '--image-src', 'remote', '--scanners', 'vuln',
+                 '--severity', 'CRITICAL',
                  '--format', 'json', '--no-progress', '--timeout', '20m', ref],
                 stdout=output, stderr=subprocess.DEVNULL, timeout=25 * 60,
                 check=False, env={**os.environ, 'TRIVY_CACHE_DIR': '/cache/trivy'})
