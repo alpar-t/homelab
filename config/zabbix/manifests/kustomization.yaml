@@ -5,6 +5,7 @@ resources:
   - postgres.yaml
   - deployment.yaml
   - collector.yaml
+  - security-scanner.yaml
   - network-policy.yaml
   - oidc-client.yaml
   - oauth2-proxy.yaml
@@ -36,6 +37,7 @@ configMapGenerator:
       - assets/functional.py
       - assets/mail_activity.py
       - assets/policy.json
+      - assets/security_checks.py
       # Keep empty slots: service PRs register only inside their own slot.
       # service: actual-budget
       - assets/service_actual_budget.py
@@ -235,6 +237,10 @@ configMapGenerator:
       - assets/service_zabbix.py
       - assets/service_zabbix.json
       # end service: zabbix
+  - name: security-scanner
+    namespace: zabbix
+    files:
+      - assets/security_scanner.py
 generatorOptions:
   disableNameSuffixHash: true
   annotations:

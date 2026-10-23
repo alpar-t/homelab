@@ -51,6 +51,9 @@ Baloo's general PinchTab browser deployment and failure diagnostics:
 Zabbix monitoring architecture, restricted Baloo access, deployment gates,
 and recovery: `runbooks/zabbix-monitoring.md`.
 
+Running-image critical vulnerability scanning and Zabbix alerts:
+`runbooks/vulnerability-scanning.md`.
+
 2026-10-19 node system OOMs, Buksi memory pressure, and safe memory-budget rollout:
 `runbooks/node-memory-oom-2026-10-19.md`.
 

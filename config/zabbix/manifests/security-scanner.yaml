@@ -1,0 +1,182 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: security-scanner
+  namespace: zabbix
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: zabbix-security-scanner-readonly
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list]
+  - apiGroups: [apps]
+    resources: [replicasets]
+    verbs: [get, list]
+  - apiGroups: [batch]
+    resources: [jobs]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: zabbix-security-scanner-readonly
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: zabbix-security-scanner-readonly
+subjects:
+  - kind: ServiceAccount
+    name: security-scanner
+    namespace: zabbix
+---
+# Cache and compact findings are replaceable. This noreplica class excludes backups.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: security-scanner-cache
+  namespace: zabbix
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn-ssd-noreplica
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: security-scanner
+  namespace: zabbix
+  annotations:
+    configmap.reloader.stakater.com/reload: security-scanner
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: security-scanner
+  template:
+    metadata:
+      labels:
+        app: security-scanner
+    spec:
+      serviceAccountName: security-scanner
+      automountServiceAccountToken: false
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: workload/cpu-intensive
+                    operator: In
+                    values: ["true"]
+      securityContext:
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: copy-trivy
+          image: ghcr.io/aquasecurity/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
+          command: [sh, -c, "cp /usr/local/bin/trivy /tools/trivy && chmod 0555 /tools/trivy"]
+          securityContext:
+            runAsUser: 0
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tools
+              mountPath: /tools
+      containers:
+        - name: scanner
+          image: docker.io/library/python:3.13.12-alpine@sha256:bb1f2fdb1065c85468775c9d680dcd344f6442a2d1181ef7916b60a623f11d40
+          command: [python, -B, /config/security_scanner.py]
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: HOME
+              value: /cache
+            - name: TMPDIR
+              value: /tmp
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "2"
+              memory: 1536Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: tools
+              mountPath: /tools
+              readOnly: true
+            - name: cache
+              mountPath: /cache
+            - name: temporary
+              mountPath: /tmp
+            - name: kubernetes-api
+              mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: security-scanner
+        - name: tools
+          emptyDir: {}
+        - name: cache
+          persistentVolumeClaim:
+            claimName: security-scanner-cache
+        - name: temporary
+          emptyDir:
+            sizeLimit: 1Gi
+        - name: kubernetes-api
+          projected:
+            sources:
+              - serviceAccountToken:
+                  path: token
+                  expirationSeconds: 3600
+              - configMap:
+                  name: kube-root-ca.crt
+                  items:
+                    - key: ca.crt
+                      path: ca.crt
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: security-scanner
+  namespace: zabbix
+spec:
+  selector:
+    app: security-scanner
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

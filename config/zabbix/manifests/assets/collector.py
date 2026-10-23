@@ -17,6 +17,7 @@ import urllib.parse
 import urllib.request
 from mail_activity import MailActivity
 from functional import FunctionalChecks, Redirects, SafeError, read_response
+from security_checks import SecurityMonitor
 
 UTC = dt.timezone.utc
 SA = Path('/var/run/secrets/kubernetes.io/serviceaccount')
@@ -491,7 +492,7 @@ def probe(target):
         return check(name, target.get('family', 'reachability'), True, type(error).__name__)
 
 
-def collect(kube, policy, activity=None, pod_lifecycle=None, functional=None):
+def collect(kube, policy, activity=None, pod_lifecycle=None, functional=None, security=None):
     now = time.time()
     data, api_checks, failed_apis = {}, [], set()
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
@@ -540,6 +541,8 @@ def collect(kube, policy, activity=None, pod_lifecycle=None, functional=None):
                                 'Arrival monitoring unavailable: ' + type(error).__name__, 3))
     if functional is not None:
         checks.extend(functional.collect())
+    if security is not None:
+        checks.extend(security.collect())
     return {'collected_at': int(now), 'checks': add_reboot_dependencies(checks, data, policy)}
 
 
@@ -549,6 +552,7 @@ def main():
     activity = MailActivity(os.environ.get('MAIL_ACTIVITY_STATE', '/state/mail-activity.json'))
     functional = FunctionalChecks(kube, Path(os.environ.get('POLICY_FILE', '/config/policy.json')).parent, check,
                                   state_path=os.environ.get('FUNCTIONAL_CHECK_STATE', '/state/functional-checks.json'))
+    security = SecurityMonitor(check)
     pod_lifecycle = PodCheckLifecycle(os.environ.get('POD_CHECK_STATE', '/state/pod-checks.json'))
     snapshot = {'collected_at': 0, 'checks': []}
     lock = threading.Lock()
@@ -558,7 +562,8 @@ def main():
         while True:
             started = time.monotonic()
             try:
-                result = collect(kube, policy, activity, pod_lifecycle=pod_lifecycle, functional=functional)
+                result = collect(kube, policy, activity, pod_lifecycle=pod_lifecycle,
+                                 functional=functional, security=security)
                 with lock:
                     snapshot = result
             except Exception as error:
