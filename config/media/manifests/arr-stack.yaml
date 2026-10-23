@@ -1,5 +1,6 @@
 # Arr stack — qBittorrent, Sonarr, Radarr, Prowlarr as sidecar containers
-# Sharing RWO volumes within the same pod (no NFS needed)
+# Movies and TV use local folders on buksi; config and incomplete downloads
+# remain on Longhorn PVCs.
 # Hardlinks work because containers share the same filesystem mounts
 
 apiVersion: apps/v1
@@ -196,11 +197,13 @@ spec:
           persistentVolumeClaim:
             claimName: qbit-incomplete
         - name: movies-data
-          persistentVolumeClaim:
-            claimName: movies-data
+          hostPath:
+            path: /var/mnt/disk2/media/movies
+            type: Directory
         - name: tv-data
-          persistentVolumeClaim:
-            claimName: tv-data
+          hostPath:
+            path: /var/mnt/disk1/media/tv
+            type: Directory
         - name: sonarr-config
           persistentVolumeClaim:
             claimName: sonarr-config

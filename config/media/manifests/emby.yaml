@@ -1,6 +1,6 @@
 # Emby Media Server — LAN-only access via MetalLB
 # Hardware transcoding via Intel QSV/VAAPI
-# Co-located with arr-stack via podAffinity (shares RWO volumes on same node)
+# Pinned to buksi, where the local movie and TV folders are mounted.
 
 apiVersion: apps/v1
 kind: Deployment
@@ -77,11 +77,13 @@ spec:
           persistentVolumeClaim:
             claimName: emby-sync
         - name: movies-data
-          persistentVolumeClaim:
-            claimName: movies-data
+          hostPath:
+            path: /var/mnt/disk2/media/movies
+            type: Directory
         - name: tv-data
-          persistentVolumeClaim:
-            claimName: tv-data
+          hostPath:
+            path: /var/mnt/disk1/media/tv
+            type: Directory
         - name: dri
           hostPath:
             path: /dev/dri

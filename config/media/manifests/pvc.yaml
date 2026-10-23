@@ -1,5 +1,4 @@
-# Media storage — all RWO, shared via sidecar containers in the same pod
-# Emby co-located on same node via podAffinity
+# Config and incomplete-download PVCs. Movies and TV use local buksi folders.
 #
 # BACKUP EXCLUSION: media volumes excluded from Longhorn weekly backups.
 # See config/longhorn/manifests/backup-exclusions.yaml
@@ -19,38 +18,6 @@ spec:
   resources:
     requests:
       storage: 600Gi
----
-# Movies: completed downloads + organized library (Radarr hardlinks within)
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: movies-data
-  namespace: media
-  labels:
-    app.kubernetes.io/part-of: media-stack
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: longhorn-hdd-noreplica
-  resources:
-    requests:
-      storage: 2000Gi
----
-# TV: completed downloads + organized library (Sonarr hardlinks within)
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: tv-data
-  namespace: media
-  labels:
-    app.kubernetes.io/part-of: media-stack
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: longhorn-hdd-noreplica
-  resources:
-    requests:
-      storage: 2000Gi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
