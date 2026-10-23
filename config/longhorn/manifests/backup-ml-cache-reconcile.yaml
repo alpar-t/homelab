@@ -1,0 +1,136 @@
+# Reconcile cache PVCs created by future immich-ml StatefulSet ordinals.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: longhorn-ml-cache-exclusion
+  namespace: longhorn-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: longhorn-ml-cache-pvc-reader
+  namespace: immich
+rules:
+  - apiGroups: [""]
+    resources: [persistentvolumeclaims]
+    verbs: [list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: longhorn-ml-cache-pvc-reader
+  namespace: immich
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: longhorn-ml-cache-pvc-reader
+subjects:
+  - kind: ServiceAccount
+    name: longhorn-ml-cache-exclusion
+    namespace: longhorn-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: longhorn-ml-cache-pv-reader
+rules:
+  - apiGroups: [""]
+    resources: [persistentvolumes]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: longhorn-ml-cache-pv-reader
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: longhorn-ml-cache-pv-reader
+subjects:
+  - kind: ServiceAccount
+    name: longhorn-ml-cache-exclusion
+    namespace: longhorn-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: longhorn-ml-cache-volume-labeler
+  namespace: longhorn-system
+rules:
+  - apiGroups: [longhorn.io]
+    resources: [volumes]
+    verbs: [get, patch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: longhorn-ml-cache-volume-labeler
+  namespace: longhorn-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: longhorn-ml-cache-volume-labeler
+subjects:
+  - kind: ServiceAccount
+    name: longhorn-ml-cache-exclusion
+    namespace: longhorn-system
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: longhorn-ml-cache-exclusion
+  namespace: longhorn-system
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 120
+      ttlSecondsAfterFinished: 3600
+      backoffLimit: 1
+      template:
+        spec:
+          serviceAccountName: longhorn-ml-cache-exclusion
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: reconcile
+              image: docker.io/bitnami/kubectl:latest@sha256:6d9e8ad566a6d2dcb4a7a6120d030bd65bddbcc952246f4b31022834d9be7e02
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+                  pvc_list=$(kubectl -n immich get pvc \
+                    -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.spec.volumeName}{"\n"}{end}')
+                  while read -r name pv; do
+                    [[ "$name" == model-cache-immich-ml-* ]] || continue
+                    [[ -n "$pv" ]] || continue
+                    volume=$(kubectl get pv "$pv" -o jsonpath='{.spec.csi.volumeHandle}')
+                    [[ -n "$volume" ]] || continue
+                    kubectl -n longhorn-system label volume "$volume" \
+                      recurring-job-group.longhorn.io/excluded=enabled \
+                      recurring-job-group.longhorn.io/default- \
+                      recurring-job.longhorn.io/weekly-backup- \
+                      --overwrite
+                  done <<< "$pvc_list"
+              resources:
+                requests:
+                  cpu: 10m
+                  memory: 32Mi
+                limits:
+                  cpu: 100m
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]

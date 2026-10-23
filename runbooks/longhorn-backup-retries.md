@@ -55,7 +55,10 @@ enabling daily backups for the seven large Immich library PVCs.
 
 Rebuildable Immich ML caches are excluded through
 `immich/model-cache-immich-ml-*` in `backup-exclusions.yaml`, which covers new
-StatefulSet ordinals. The exclusion hook adds the `excluded` group and removes
-the `default` group from their live Volumes. After sync, verify that all current
-cache Volumes lack `default` and `critical` groups. The next scheduled run is
-the final proof that no new cache Backup CR appears.
+StatefulSet ordinals when the exclusion hook runs. The
+`longhorn-ml-cache-exclusion` CronJob reconciles new ordinals every five minutes
+between ArgoCD syncs. It only lists Immich PVCs, reads their PVs, and patches
+Longhorn Volume labels. The hook and CronJob add the `excluded` group and remove
+the `default` group. After sync, verify that all current cache Volumes lack
+`default` and `critical` groups. The next scheduled run is the final proof that
+no new cache Backup CR appears.
