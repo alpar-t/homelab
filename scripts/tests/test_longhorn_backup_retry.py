@@ -1,8 +1,11 @@
 import datetime as dt
 import importlib.util
+import io
 import json
 from pathlib import Path
 import unittest
+from unittest import mock
+import urllib.error
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -58,6 +61,29 @@ def backup(name, state, created=3200, finished=None):
 
 
 class RetryTests(unittest.TestCase):
+    def test_kubernetes_api_retries_transient_throttling(self):
+        class Token:
+            def read_text(self):
+                return 'test-token'
+
+        class Opener:
+            calls = 0
+
+            def open(self, request, timeout):
+                self.calls += 1
+                if self.calls == 1:
+                    raise urllib.error.HTTPError(request.full_url, 429, 'throttled', {}, None)
+                return io.BytesIO(b'{"items": []}')
+
+        client = retry.Kubernetes.__new__(retry.Kubernetes)
+        client.token = Token()
+        client.opener = Opener()
+        client.base = 'https://kubernetes.default.svc'
+        with mock.patch.object(retry.time, 'sleep') as sleep:
+            self.assertEqual(client.request(retry.API + '/snapshots'), {'items': []})
+        self.assertEqual(client.opener.calls, 2)
+        sleep.assert_called_once_with(1)
+
     def test_job_success_does_not_mask_missing_volume_backup(self):
         client = FakeKubernetes(job(), [volume()])
         retry.run(client, now=3000)

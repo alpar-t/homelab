@@ -111,19 +111,31 @@ class Kubernetes:
 
     def request(self, path, body=None):
         data = json.dumps(body).encode() if body is not None else None
-        request = urllib.request.Request(self.base + path, data=data, headers={
-            'Authorization': 'Bearer ' + self.token.read_text().strip(),
-            'Content-Type': 'application/json'}, method='POST' if data else 'GET')
-        try:
-            with self.opener.open(request, timeout=10) as response:
-                payload = response.read(8 * 1024 * 1024 + 1)
-        except urllib.error.HTTPError as error:
-            if body is not None and error.code == 409:
-                return None
-            raise RuntimeError(f'Kubernetes API {path}: HTTP {error.code}') from None
-        if len(payload) > 8 * 1024 * 1024:
-            raise RuntimeError('Kubernetes API response exceeds bound')
-        return json.loads(payload)
+        for attempt in range(5):
+            request = urllib.request.Request(self.base + path, data=data, headers={
+                'Authorization': 'Bearer ' + self.token.read_text().strip(),
+                'Content-Type': 'application/json'}, method='POST' if data else 'GET')
+            try:
+                with self.opener.open(request, timeout=10) as response:
+                    payload = response.read(8 * 1024 * 1024 + 1)
+            except urllib.error.HTTPError as error:
+                if body is not None and error.code == 409:
+                    error.close()
+                    return None
+                if error.code in (429, 500, 502, 503, 504) and attempt < 4:
+                    delay = min(8, 2 ** attempt)
+                    retry_after = error.headers.get('Retry-After', '')
+                    if retry_after.isdigit():
+                        delay = max(delay, min(10, int(retry_after)))
+                    error.close()
+                    print(f'Kubernetes API {path}: HTTP {error.code}; retrying', flush=True)
+                    time.sleep(delay)
+                    continue
+                error.close()
+                raise RuntimeError(f'Kubernetes API {path}: HTTP {error.code}') from None
+            if len(payload) > 8 * 1024 * 1024:
+                raise RuntimeError('Kubernetes API response exceeds bound')
+            return json.loads(payload)
 
 
 def reconcile_volume(client, job_name, job, volume, backups, snapshots, now, can_create=True):

@@ -20,7 +20,8 @@ missing backup gets a first incremental attempt at least 15 minutes after Job
 completion and at most one more attempt after a 45-minute backoff. At most two
 volumes retry concurrently. Detached, degraded, or excluded volumes are not
 retried. The controller stops six hours after Job completion. Deterministic CR
-names prevent duplicate attempts on repeated controller runs.
+names prevent duplicate attempts on repeated controller runs. Kubernetes API
+throttling and transient server errors are retried with bounded backoff.
 
 Zabbix's Longhorn backup freshness checks hold a stale result during this
 six-hour window after a scheduled Job, then report it if there is still no
