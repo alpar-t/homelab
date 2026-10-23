@@ -119,4 +119,11 @@ def run(ctx, config):
                 bad = True
         rows.append(ctx.check('CoreDNS ' + ('TCP' if tcp else 'UDP') + ' service lookup', bad,
                               'two service A records match Kubernetes API' if not bad else 'service DNS response invalid or unavailable'))
+    # Keep observing the original aggregate identity so a previously latched
+    # incident recovers only after real UDP and TCP success. The two transport
+    # checks provide the actionable pages; this summary stays on the dashboard.
+    rows.append(ctx.check('CoreDNS service lookup', any(row['status'] for row in rows),
+                          'UDP and TCP service lookups match Kubernetes API' if not any(row['status'] for row in rows)
+                          else 'one or more service lookups failed',
+                          severity=1, notification='dashboard'))
     return rows

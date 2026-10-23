@@ -29,16 +29,16 @@ class DNS(unittest.TestCase):
         ctx = Mock()
         ctx.remaining.return_value = 30
         ctx.kube.get.side_effect = [{'spec':{'clusterIP':'10.43.0.1'}},{'spec':{'clusterIP':'10.43.0.10'}}]
-        ctx.check.side_effect = lambda n,b,d: dict(name=n,status=int(b),detail=d)
+        ctx.check.side_effect = lambda n,b,d,**kwargs: dict(name=n,status=int(b),detail=d,**kwargs)
         return ctx
     def config(self):
         return {'services':[{'namespace':'default','service':'kubernetes'},{'namespace':'kube-system','service':'kube-dns'}]}
     def test_run_healthy_and_timeout(self):
         with patch.object(m,'query') as probe:
-            self.assertEqual([r['status'] for r in m.run(self.context(),self.config())],[0,0])
+            self.assertEqual([r['status'] for r in m.run(self.context(),self.config())],[0,0,0])
             self.assertEqual(probe.call_count,4)
         with patch.object(m,'query',side_effect=TimeoutError()):
-            self.assertEqual([r['status'] for r in m.run(self.context(),self.config())],[1,1])
+            self.assertEqual([r['status'] for r in m.run(self.context(),self.config())],[1,1,1])
     def test_api_denied_or_budget(self):
         ctx = self.context()
         ctx.kube.get.side_effect = PermissionError('private')
