@@ -28,7 +28,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: actual-budget
-          image: docker.io/actualbudget/actual-server:26.8.0@sha256:0b300f370dba85a74998a953736a831bd931cc8cb76c0d8ceac3d3fd288dfd4d
+          image: docker.io/actualbudget/actual-server:26.10.0-alpine@sha256:67b1b5e9584e3e143b4f5c41e52b4506ed9cdd1072392d5ab5369f2d4fd0bffd
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
