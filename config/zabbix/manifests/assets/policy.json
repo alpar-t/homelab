@@ -2,6 +2,7 @@
   "nodes": ["buksi", "pamacs", "pufi"],
   "reboot_grace": {"service_samples": 10, "replica_samples": 30},
   "cnpg_backup_running_grace_hours": 6,
+  "cnpg_daily_backup_freshness_hours": 60,
   "mail_activity": {
     "timezone": "Europe/Bucharest",
     "baseline_days": 7,

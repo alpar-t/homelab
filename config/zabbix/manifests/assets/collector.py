@@ -314,7 +314,7 @@ def evaluate(data, policy, now):
                             not valid or spec.get('suspend', False), spec['schedule']))
         if valid and not spec.get('suspend', False):
             key = (meta['namespace'], spec['cluster']['name'])
-            limit = 48 * 3600 if fields[5] == '*' else 10 * 86400
+            limit = policy.get('cnpg_daily_backup_freshness_hours', 60) * 3600 if fields[5] == '*' else 10 * 86400
             schedules[key] = min(schedules.get(key, float('inf')), limit)
     clusters = {(c['metadata']['namespace'], c['metadata']['name']): c for c in data['clusters']}
     for key in policy['databases']:

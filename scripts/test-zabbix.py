@@ -139,12 +139,13 @@ class CollectorTests(unittest.TestCase):
     def test_running_backup_is_bounded_and_cannot_hide_stale_backups(self):
         self.policy['databases'] = [['db', 'pg']]
         self.policy['cnpg_backup_running_grace_hours'] = 6
+        self.policy['cnpg_daily_backup_freshness_hours'] = 60
         timestamp = lambda seconds: collector.dt.datetime.fromtimestamp(NOW - seconds, collector.UTC).isoformat()
         condition = {'type': 'LastBackupSucceeded', 'status': 'False', 'reason': 'BackupStarted',
                      'lastTransitionTime': timestamp(4 * 3600), 'message': 'New Backup starting up'}
         self.data['clusters'] = [{'metadata': {'name': 'pg', 'namespace': 'db'},
                                  'status': {'conditions': [condition],
-                                            'lastSuccessfulBackup': timestamp(49 * 3600)}}]
+                                            'lastSuccessfulBackup': timestamp(61 * 3600)}}]
         self.data['scheduled_backups'] = [{'metadata': {'name': 'daily', 'namespace': 'db'},
                                           'spec': {'schedule': '0 15 3 * * *', 'cluster': {'name': 'pg'}}}]
         metric = 'CNPG LastBackupSucceeded db/pg'
@@ -185,6 +186,10 @@ class CollectorTests(unittest.TestCase):
         self.assertEqual(self.checks()[condition_name]['status'], 1)
         archive['status'] = 'True'
         self.data['clusters'][0]['status']['lastSuccessfulBackup'] = timestamp(49 * 3600)
+        checks = self.checks()
+        self.assertEqual(checks[condition_name]['status'], 0)
+        self.assertEqual(checks['CNPG backup freshness db/pg']['status'], 0)
+        self.data['clusters'][0]['status']['lastSuccessfulBackup'] = timestamp(61 * 3600)
         checks = self.checks()
         self.assertEqual(checks[condition_name]['status'], 1)
         self.assertEqual(checks['CNPG backup freshness db/pg']['status'], 1)

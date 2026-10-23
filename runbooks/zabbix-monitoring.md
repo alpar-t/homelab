@@ -75,9 +75,11 @@ policy. It does not collect separate SMART counter histories. Longhorn backup
 freshness uses completed Backup objects, rather than trusting recurring-job
 labels or cached Volume backup status. Enabled critical/default backup groups
 have 48-hour/10-day thresholds. An excluded marker does not cancel a remaining
-active backup group. CNPG schedules require six fields; supported daily/weekly
-schedules get the same freshness limits. Missing archive/backup conditions fail
-closed.
+active backup group. CNPG schedules require six fields; supported daily backups
+have a 60-hour freshness limit, while weekly backups have a 10-day limit. The
+daily limit lets one failed run recover on the next scheduled run, including
+normal completion time, while a second missed run still alerts. Missing archive
+or backup conditions fail closed.
 
 A `LastBackupFailed` attempt creates a severity-1 dashboard-only problem while
 that same database has a completed backup within its schedule's freshness limit
@@ -462,7 +464,7 @@ It reads fresh Zabbix problems through the loopback MCP bridge, retains state on
 the OpenClaw PVC, and sends at most one WhatsApp digest in any ten-minute span.
 It excludes suppressed and dashboard-only problems, highlights physical storage,
 nodes, databases, applications, and other primary signals ahead of derivative
-pod/volume details, and counts problems by severity and area. It reports changes
+pod/volume details, and counts problems by severity. It reports changes
 and recovery in the next allowed digest. Critical changes use the next allowed
 ten-minute slot and repeat at most hourly while unchanged; moderate problems
 wait 30 minutes and repeat at most every four hours; low problems wait two hours
@@ -480,3 +482,11 @@ When 300 or more problems are open, the MCP query returns only the most recent
 300; the digest says `at least 300` and a full inventory requires direct Zabbix
 review. The sidecar must restart once after the query limit change; later cron
 policy and command-script changes hot-reload through git-sync.
+
+The WhatsApp digest shows a short open count and severity summary, then named
+new and recovered checks and the highest-priority ongoing checks. Pod checks
+are counted but do not displace primary signals in a large incident. On October
+20, the Zabbix daily backup missed one run; its October 18 completed backup
+crossed the former 48-hour limit shortly before the October 20 backup finished.
+The daily CNPG limit is now 60 hours so one missed run can recover on the next
+schedule without paging when archiving and the prior backup remain healthy.
