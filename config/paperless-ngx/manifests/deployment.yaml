@@ -126,7 +126,7 @@ spec:
         
         # Main Paperless-ngx application
         - name: paperless-ngx
-          image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15@sha256:6c86cad803970ea782683a8e80e7403444c5bf3cf70de63b4d3c8e87500db92f
+          image: ghcr.io/paperless-ngx/paperless-ngx:3.3.4@sha256:9bc6e8248891bcfa6f52fffe8b81e4ea8cae75790c3ec1b9906961a7ba55c969
           ports:
             - containerPort: 8000
               name: http
@@ -174,7 +174,11 @@ spec:
             - name: PAPERLESS_OCR_LANGUAGE
               value: "eng+ron+hun"
             - name: PAPERLESS_OCR_MODE
-              value: "skip"
+              value: "auto"
+            # v3 separates OCR from archive creation. Preserve v2's `skip`
+            # behavior, which always generated an archive file.
+            - name: PAPERLESS_ARCHIVE_FILE_GENERATION
+              value: "always"
             - name: PAPERLESS_OCR_USER_ARGS
               # Limit jobs to reduce concurrent OCR memory usage (was using 4 concurrent pages)
               value: '{"invalidate_digital_signatures": true, "jobs": 2}'
@@ -201,6 +205,9 @@ spec:
             # Scanner uploads to /scanner/paperless/ via FTP
             - name: PAPERLESS_CONSUMPTION_DIR
               value: "/usr/src/paperless/consume/paperless"
+            # v3 permits duplicate documents by default; preserve v2 behavior.
+            - name: PAPERLESS_CONSUMER_DELETE_DUPLICATES
+              value: "true"
             
             # Scratch directory for temporary processing files
             # Must be persistent to survive pod restarts (queued tasks reference these files)
