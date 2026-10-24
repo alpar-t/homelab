@@ -146,7 +146,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: actual-budget-mcp
-          image: ghcr.io/agigante80/actual-mcp-server:0.9.6@sha256:8402acfc052a4e7a2f8ed2dbcfea8f0f2f823f4251be6cfe172da3b3cf74a398
+          image: ghcr.io/agigante80/actual-mcp-server:0.24.0@sha256:903a3e89c9803607f5cb1bc7ccf88ce115ba546f75ec6af53450beae31c7fec0
           imagePullPolicy: IfNotPresent
           ports:
             - name: mcp
