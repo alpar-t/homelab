@@ -54,6 +54,9 @@ and recovery: `runbooks/zabbix-monitoring.md`.
 Running-image critical vulnerability scanning and Zabbix alerts:
 `runbooks/vulnerability-scanning.md`.
 
+Tandoor 2.7.1 database migration and email-address sequence recovery:
+`runbooks/tandoor-271-migration-2026-10-24.md`.
+
 2026-10-19 node system OOMs, Buksi memory pressure, and safe memory-budget rollout:
 `runbooks/node-memory-oom-2026-10-19.md`.
 
