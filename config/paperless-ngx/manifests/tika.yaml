@@ -22,7 +22,10 @@ spec:
     spec:
       containers:
         - name: tika
-          image: docker.io/apache/tika:3.2.2.0-full@sha256:ffab324253edc54706e8882dd28190b1e6559c344b5315ae8a74b9efda9e7291
+          image: docker.io/apache/tika:3.3.3.0-full@sha256:6ef30abd65df4b6c478907904099d0245bdb0e0686f94fb9bc7493558442bb74
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Djavax.xml.accessExternalDTD= -Djavax.xml.accessExternalSchema= -Djavax.xml.accessExternalStylesheet="
           ports:
             - containerPort: 9998
               name: http
