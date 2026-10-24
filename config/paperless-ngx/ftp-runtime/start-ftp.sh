@@ -27,6 +27,7 @@ trap 'rm -f "$password_input"' EXIT
 printf '%s\n%s\n' "$FTP_USER_PASS" "$FTP_USER_PASS" > "$password_input"
 pure-pw useradd "$FTP_USER_NAME" -f "$password_file" -m \
     -d "$FTP_USER_HOME" -u "$user_id" -g "$group_id" < "$password_input"
+echo "PureDB user ready"
 rm -f "$password_input"
 trap - EXIT
 chown "$user_id:$group_id" "$FTP_USER_HOME"
@@ -42,4 +43,5 @@ if [ -n "${ADDED_FLAGS:-}" ]; then
     set -- "$@" $ADDED_FLAGS
 fi
 
+echo "Starting Pure-FTPd"
 exec /usr/sbin/pure-ftpd "$@"
