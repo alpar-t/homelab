@@ -17,8 +17,7 @@ COPY --from=upstream --chown=1000:1000 /usr/local/app/package.json ./package.jso
 COPY --from=upstream --chown=1000:1000 /usr/local/app/package-lock.json ./package-lock.json
 COPY --from=kubectl /bin/kubectl /usr/local/bin/kubectl
 
-RUN useradd --uid 1000 --create-home appuser \
-    && node --version \
+RUN node --version \
     && kubectl version --client=true
 
 ENV NODE_ENV=production \
