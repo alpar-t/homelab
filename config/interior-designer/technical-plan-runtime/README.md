@@ -1,9 +1,13 @@
 # Technical plan runtime image
 
 The technical plan API and renderer are Baloo scripts mounted by git-sync.
-Their PEP 723 metadata declares Python dependencies; both containers must run
-their scripts through `uv run --script`. This image supplies Python, uv, Cairo,
-and a font without carrying Open WebUI's unrelated packages.
+Their PEP 723 metadata declares Python dependencies; both containers run their
+scripts through `uv run --script`. This image supplies Python, uv, Cairo, and a
+font without carrying Open WebUI's unrelated packages. `api-deps.py` and
+`renderer-deps.py` mirror the two Baloo scripts' dependency metadata so the
+build can warm `/opt/uv-cache`. The image makes that cache writable by UID 1000
+and sets `UV_OFFLINE=true`; a new Pod must work without PyPI access. Keep those
+dependency declarations in sync whenever either Baloo script changes.
 
 The workflow publishes `ghcr.io/alpar-t/technical-plan-runtime:sha-<commit>`
 but does not update the Deployment. A new GHCR package is private by default.
@@ -16,7 +20,8 @@ to public cannot be reversed.
 Resolve the published tag with `scripts/resolve-container-image.py`, scan its
 exact digest with the procedure in `runbooks/vulnerability-scanning.md`, and
 pin the returned `reference=` in both `prepare-renderer` and
-`technical-plan-api`. Check startup of both containers and run a real
+`technical-plan-api`. Check both containers with a temporary no-token,
+deny-egress Pod using the actual Baloo scripts before rollout. Then run a real
 technical plan preview through the existing authenticated workflow before
 retiring the old Open WebUI image. The Dockerfile build checks CairoSVG PDF and
 PNG rendering; it does not exercise Baloo's mounted scripts or OpenCloud.
