@@ -264,7 +264,7 @@ spec:
               readOnly: true
         # Keep the WebUI Function stored on its PVC in sync with Baloo source.
         - name: progress-filter-sync
-          image: docker.io/library/python:3.13.17-alpine@sha256:fa0bb0d0cd7c7d6cef30a69094d32ac2b71c7304c87c6107fec100e1ee4eda02
+          image: ghcr.io/open-webui/open-webui:0.12.3@sha256:a537bbe1e6b428820f52ed4a029d7fff97062e24d5cf32c365fba36fd0542def
           command:
             - sh
             - -c
