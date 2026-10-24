@@ -55,7 +55,7 @@ COPY --from=build /wyoming-whisper-api-client/LICENSE /licenses/wyoming-whisper-
 COPY start-whisper.sh /usr/local/bin/start-whisper.sh
 
 ENV PYTHONPATH=/wyoming-whisper-api-client \
-    LD_LIBRARY_PATH=/opt/intel/oneapi/compiler/latest/lib:/opt/intel/oneapi/compiler/latest/linux/lib:/opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64_lin:/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8:/opt/intel/oneapi/mkl/latest/lib
+    LD_LIBRARY_PATH=/opt/intel/oneapi/umf/0.11/lib:/opt/intel/oneapi/tcm/1.4/lib:/opt/intel/oneapi/compiler/latest/lib:/opt/intel/oneapi/compiler/latest/linux/lib:/opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64_lin:/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8:/opt/intel/oneapi/mkl/latest/lib
 
 # SYCL loads its Level Zero adapter dynamically, so checking only the
 # whisper-server ELF misses adapter dependencies such as libumf.so.0.
