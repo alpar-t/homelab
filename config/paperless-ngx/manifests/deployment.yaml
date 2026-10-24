@@ -65,6 +65,30 @@ spec:
                 sleep 2
               done
               echo "Redis is ready!"
+        # The image installs extra OCR languages concurrently with Django's
+        # startup checks, which can make those checks fail before apt finishes.
+        - name: preload-ocr-languages
+          image: ghcr.io/paperless-ngx/paperless-ngx:3.3.4@sha256:9bc6e8248891bcfa6f52fffe8b81e4ea8cae75790c3ec1b9906961a7ba55c969
+          command:
+            - sh
+            - -ec
+            - |
+              apt-get update -qq
+              DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends tesseract-ocr-ron tesseract-ocr-hun
+              cp -a /usr/share/tesseract-ocr/5/tessdata/. /tessdata/
+              test -s /tessdata/eng.traineddata
+              test -s /tessdata/ron.traineddata
+              test -s /tessdata/hun.traineddata
+          volumeMounts:
+            - name: tessdata
+              mountPath: /tessdata
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
       containers:
         # FTP server sidecar for scanner uploads
         # Shares the consume volume with Paperless
@@ -169,8 +193,6 @@ spec:
                   key: secret_key
             
             # OCR configuration
-            - name: PAPERLESS_OCR_LANGUAGES
-              value: "ron hun"
             - name: PAPERLESS_OCR_LANGUAGE
               value: "eng+ron+hun"
             - name: PAPERLESS_OCR_MODE
@@ -259,6 +281,8 @@ spec:
               mountPath: /usr/src/paperless/export
             - name: consume
               mountPath: /usr/src/paperless/consume
+            - name: tessdata
+              mountPath: /usr/share/tesseract-ocr/5/tessdata
           
           resources:
             # Higher memory for large document/image processing (OCR on 255M pixel images)
@@ -305,6 +329,8 @@ spec:
         - name: consume
           persistentVolumeClaim:
             claimName: paperless-consume
+        - name: tessdata
+          emptyDir: {}
 ---
 # ClusterIP service for web interface (accessed via Ingress)
 apiVersion: v1
