@@ -142,6 +142,7 @@ def main() -> None:
     template = "{{.Digest}}|{{.Os}}|{{.Architecture}}"
     inspection = run_skopeo(
         "inspect",
+        "--no-tags",
         "--override-os",
         args.os,
         "--override-arch",

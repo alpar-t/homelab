@@ -172,7 +172,7 @@ spec:
             failureThreshold: 3
 
         - name: immich-server
-          image: ghcr.io/immich-app/immich-server:v3.1.0@sha256:079cc990b26a88d71f96027341c67329cb11829d4c341ce33b3718fe0f84cbfa
+          image: ghcr.io/immich-app/immich-server:v3.3.5@sha256:485d546a2e31d6a8b4db8423fcba5c109de8c218d93410af115fd1ccfc4352a6
           # GPU access for hardware transcoding (Intel QSV/VAAPI)
           # GPU is provided by Intel GPU Device Plugin via gpu.intel.com/i915 resource
           securityContext:
