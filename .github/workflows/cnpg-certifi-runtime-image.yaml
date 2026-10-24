@@ -24,9 +24,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - major: pg16
+          - tag_prefix: 16.14-system-trixie-certifi
             base: ghcr.io/cloudnative-pg/postgresql:16.14-system-trixie@sha256:04f35778ca3b55b52a81dae969bef179ead315b9f02d2b4b21a3415de269b836
-          - major: pg17
+          - tag_prefix: 17.10-system-bookworm-certifi
             base: ghcr.io/cloudnative-pg/postgresql:17.10-system-bookworm@sha256:768906f10c8a39983e534dc3d91b2b0e6cba37c6a664763258bb5f9bbfb18672
     steps:
       - name: Check out the repository
@@ -49,4 +49,4 @@ jobs:
           push: true
           platforms: linux/amd64
           build-args: POSTGRES_BASE=${{ matrix.base }}
-          tags: ghcr.io/alpar-t/cnpg-postgresql-certifi:${{ matrix.major }}-sha-${{ github.sha }}
+          tags: ghcr.io/alpar-t/cnpg-postgresql-certifi:${{ matrix.tag_prefix }}-sha-${{ github.sha }}
