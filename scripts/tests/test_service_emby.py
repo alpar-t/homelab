@@ -51,7 +51,11 @@ class Context:
         if '/pods?' in path:
             assert path.startswith('/api/v1/namespaces/media/pods?')
             states = [dict(name='emby',ready=self.fault != 'not-ready',state={'running':{}})]
-            return {'items':[dict(metadata={'name':'unused'},status={'phase':'Running','containerStatuses':states})],
+            probe = {'exec':{'command':['/bin/sh','-ec',
+                     'find /data/movies/media/movies -type f; head -c 4096 "$sample"']}}
+            containers = [dict(name='emby',readinessProbe={} if self.fault == 'missing-probe' else probe)]
+            return {'items':[dict(metadata={'name':'unused'},spec={'containers':containers},
+                                  status={'phase':'Running','containerStatuses':states})],
                     'metadata':{'continue':'private' if self.fault == 'truncated' else ''}}
         assert path == '/apis/apps/v1/namespaces/baloo/deployments?limit=100'
         names = ['pinchtab-web','pinchtab'] if 'emby' == 'pinchtab' else ['product-model-api','product-model-renderer']
@@ -87,7 +91,7 @@ class SecurityBaselineTests(unittest.TestCase):
                 else:
                     self.assertNotIn('method', args)
     def test_bad_baseline_never_claims_health_or_leaks_responses(self):
-        faults = ['timeout','malformed',302,401,403,500] if FIXTURES else ['timeout','missing','not-ready','truncated','stale-generation']
+        faults = ['timeout','malformed',302,401,403,500,'not-ready','truncated','missing-probe'] if FIXTURES else ['timeout','missing','not-ready','truncated','stale-generation']
         if 'emby' in ('radarr','prowlarr'):
             faults = ['timeout','not-ready','truncated']
         for fault in faults:
@@ -103,6 +107,14 @@ class SecurityBaselineTests(unittest.TestCase):
     def test_deadline_fails_without_authenticated_fallback(self):
         rows = module.run(Context(remaining=0), CONFIG)
         self.assertTrue(all(r['status'] == 1 for r in rows))
+
+    def test_movie_read_failure_is_critical(self):
+        for fault in ('not-ready', 'truncated', 'missing-probe'):
+            with self.subTest(fault=fault):
+                rows = module.run(Context(fault), CONFIG)
+                movie = next(row for row in rows if row['name'] == 'Emby movie file readable')
+                self.assertEqual(1, movie['status'])
+                self.assertEqual(5, movie['severity'])
 
 
 if __name__ == '__main__':

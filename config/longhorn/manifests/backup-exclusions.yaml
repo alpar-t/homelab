@@ -39,9 +39,7 @@ data:
     immich/immich-import
     # StatefulSet claim templates create new ordinals after failed pod replacement.
     immich/model-cache-immich-ml-*
-    # Media stack — replaceable downloads and media library
-    media/movies-data
-    media/tv-data
+    # Media stack — replaceable incomplete downloads
     media/qbit-incomplete
 
 ---

@@ -210,6 +210,11 @@ echo "  kubectl label node ${NODE_NAME} node.longhorn.io/create-default-disk=con
 paths=""
 for i in "${!DISKS[@]}"; do
     num=$((i + 1))
+    # Buksi's first HDD is reserved for the local movie and TV libraries.
+    # Never advertise it to Longhorn when printing the bootstrap annotation.
+    if [[ "${NODE_NAME%%.*}" == "buksi" && "$num" -eq 1 ]]; then
+        continue
+    fi
     [[ -n "$paths" ]] && paths="$paths,"
     paths="$paths{\"path\":\"${MOUNT_BASE}/disk${num}\",\"allowScheduling\":true}"
 done

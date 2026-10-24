@@ -229,12 +229,11 @@ After a node joins the cluster, tell Longhorn about its disks:
 # Label node to use custom disk config
 kubectl label node <node-name> node.longhorn.io/create-default-disk=config
 
-# Annotate with disk paths (adjust based on how many disks the node has)
-# Two disks:
-kubectl annotate node <node-name> node.longhorn.io/default-disks-config='[{"path":"/var/mnt/disk1","allowScheduling":true},{"path":"/var/mnt/disk2","allowScheduling":true}]'
+# Buksi's disk1 is reserved for local movies and TV; only disk2 belongs to Longhorn.
+kubectl annotate node buksi node.longhorn.io/default-disks-config='[{"path":"/var/mnt/disk2","allowScheduling":true}]' --overwrite
 
-# One disk:
-kubectl annotate node <node-name> node.longhorn.io/default-disks-config='[{"path":"/var/mnt/disk1","allowScheduling":true}]'
+# For other nodes, consult their current Longhorn disk inventory and node-specific
+# runbooks. Do not assume every mounted disk belongs to Longhorn.
 ```
 
 ### Apply Zincati Update Policy

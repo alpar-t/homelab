@@ -35,6 +35,9 @@ ssh -t core@pufi.local "sudo DISK1=/dev/sda DISK2=/dev/sdb /tmp/setup-node-stora
 ```
 
 The script will show discovered disks and ask for confirmation before formatting.
+It is for first-time setup: do not run its formatting path on a node with
+existing media or Longhorn data. On Buksi it omits disk1 from the printed
+Longhorn annotation because that HDD holds local media.
 
 ### 3. Verify mounts
 
@@ -49,17 +52,25 @@ done
 
 Longhorn is deployed via ArgoCD from `apps/longhorn.yaml`.
 
-After ArgoCD syncs, configure Longhorn to use the disks on each node:
+After ArgoCD syncs, configure Longhorn to use the disks on each node. Buksi's
+first HDD is reserved for local movie and TV folders, so never register
+`/var/mnt/disk1` as a Longhorn disk there:
 
 ```bash
-# For nodes with two disks:
-kubectl label node <node> node.longhorn.io/create-default-disk=config
-kubectl annotate node <node> node.longhorn.io/default-disks-config='[{"path":"/var/mnt/disk1","allowScheduling":true},{"path":"/var/mnt/disk2","allowScheduling":true}]'
+# Buksi: only its second HDD belongs to Longhorn.
+kubectl label node buksi node.longhorn.io/create-default-disk=config --overwrite
+kubectl annotate node buksi node.longhorn.io/default-disks-config='[{"path":"/var/mnt/disk2","allowScheduling":true}]' --overwrite
 
-# For nodes with one disk:
-kubectl label node <node> node.longhorn.io/create-default-disk=config
-kubectl annotate node <node> node.longhorn.io/default-disks-config='[{"path":"/var/mnt/disk1","allowScheduling":true}]'
+# For other nodes, use only the disks actually assigned to Longhorn. Check the
+# node-specific runbook before re-registering any disk.
 ```
+
+The annotation is used when a node first joins Longhorn without existing
+disks; changing it does not remove an already registered disk. Remove Buksi's
+old `/var/mnt/disk1` disk from the Longhorn Node resource only after all its
+replicas have moved or been retired. Verify `spec.disks` afterward. The global
+`defaultDataPath` below is a fallback for nodes labeled `true`, not for Buksi's
+`config` label and valid disk annotation.
 
 ## Configuration
 

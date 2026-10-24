@@ -66,6 +66,9 @@ Longhorn minor-version upgrade procedure and validation gates:
 Longhorn per-volume backup retries, alert grace, and recurring-job labels:
 `runbooks/longhorn-backup-retries.md`.
 
+Buksi local movie and TV storage, Longhorn disk boundary, and pressure cleanup:
+`runbooks/media-local-storage.md`.
+
 CNPG database local-storage decision, inventory, and rolling migration:
 `runbooks/migrate-postgres-to-local-storage.md`.
 

@@ -1,13 +1,16 @@
-# Emby safe public baseline
+# Emby public API and movie-read check
 
 `Emby public server contract` anonymously reads `/emby/System/Info/Public` and
-requires a nonempty identifier and numeric version. Existing workload and storage
-monitoring continue independently. No playback, transcoding, media download,
-user listing, library enumeration or credential access occurs.
+requires a nonempty identifier and numeric version. `Emby movie file readable`
+checks the Emby pod's readiness, whose exec probe fetches the public API and
+reads 4 KiB from a movie file larger than 10 MiB in the mounted library. This
+severity-5 check detects an unreadable or empty movie mount. It does not play,
+transcode, or download a movie, and monitoring uses no credentials.
 
 `Emby scoped library query` remains explicitly deferred with severity1 and
-`observation: deferred`, `notification: dashboard`. Public API success does not imply authenticated database,
-library, media readability or playback success. The monitor receives no native
+`observation: deferred`, `notification: dashboard`. Public API and sample-file
+success do not prove authenticated library queries, every movie, or playback.
+The monitor receives no native
 user session or dashboard API key. No household-library metadata access is
 acceptable for this baseline; no account/token setup is required.
 
@@ -18,8 +21,8 @@ observations. Failure retries follow the same bounded source-controlled cadence,
 with shared jitter and overload limits. Deferred checks remain severity1,
 observation deferred and dashboard-only; they never assert functional success.
 
-Only the existing anonymous ClusterIP API path is used; no NetworkPolicy or RBAC
-is widened. Requests retain a six-second maximum within the source-controlled
+Only the existing anonymous ClusterIP API path and read-only Kubernetes pod
+inventory are used; no NetworkPolicy or RBAC is widened. Requests retain a six-second maximum within the source-controlled
 service deadline and a 64 KiB response cap; redirects are disabled by the shared
 helper. Monitoring evidence contains fixed success/failure messages, never
 server identity, returned metadata or exception strings. A server requiring auth
@@ -30,7 +33,7 @@ were separately provisioned, revoke/remove them through the normal private
 operator workflow; this source change does not read or rotate credentials.
 
 Validate offline with `python3 -m unittest discover -s scripts/tests -p test_service_emby.py` and `kubectl kustomize config/zabbix/manifests`.
-Fixtures cover anonymous public schema, errors/redaction, forbidden credential
+Fixtures cover anonymous public schema, pod readiness, errors/redaction, forbidden credential
 reads, legacy config and explicit deferred coverage. No production requests are
 performed. This does not establish the live collector path before reviewed
 GitOps rollout. The existing public API contract is documented at

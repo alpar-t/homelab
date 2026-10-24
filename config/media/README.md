@@ -219,7 +219,7 @@ media apps. One login sets a cookie on `.newjoy.ro` — works across all subdoma
 | Storage | Class / location | Size | Purpose |
 |-----|-------|------|---------|
 | qbit-incomplete | longhorn-ssd-noreplica (RWO) | 600Gi | Active torrent downloads (random I/O) |
-| movies-data | Buksi `/var/mnt/disk2/media/movies` (hostPath, temporary) | 4 TB disk | Movie downloads + library during disk1 evacuation |
+| movies-data | Buksi `/var/mnt/disk1/media/movies` (hostPath) | 4 TB disk shared with TV | Movie downloads + library |
 | tv-data | Buksi `/var/mnt/disk1/media/tv` (hostPath) | 4 TB disk shared with movies | TV downloads + library |
 | emby-config | longhorn-ssd | 20Gi | Emby metadata & settings |
 | emby-sync | longhorn-hdd-noreplica | 100Gi | Replaceable offline-download conversions; pruned after 30 days |
@@ -229,6 +229,6 @@ media apps. One login sets a cookie on `.newjoy.ro` — works across all subdoma
 | qbittorrent-config | longhorn-ssd | 1Gi | qBittorrent settings & resume data |
 
 Config PVCs are backed up via weekly Longhorn backup. Local media folders are not
-backed up by Longhorn. Both media deployments are pinned to Buksi; if the
-respective HDD is absent, its `Directory` hostPath mount fails instead of writing
-to the root filesystem. Keep both HDD mounts enabled during the migration.
+backed up by Longhorn. Both media deployments are pinned to Buksi; if disk1 is
+absent, their `Directory` hostPath mounts fail instead of writing to the root
+filesystem. Keep the HDD mount enabled and verify it before starting media.

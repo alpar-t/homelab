@@ -65,10 +65,18 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 30
           readinessProbe:
-            tcpSocket:
-              port: http
+            exec:
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  curl -fsS --max-time 3 -o /dev/null http://127.0.0.1:8096/emby/System/Info/Public
+                  sample="$(find /data/movies/media/movies -type f \( -iname '*.mkv' -o -iname '*.mp4' \) -size +10M -print -quit)"
+                  test -n "$sample"
+                  head -c 4096 "$sample" >/dev/null
             initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 10
       volumes:
         - name: config
           persistentVolumeClaim:
@@ -78,7 +86,7 @@ spec:
             claimName: emby-sync
         - name: movies-data
           hostPath:
-            path: /var/mnt/disk2/media/movies
+            path: /var/mnt/disk1/media/movies
             type: Directory
         - name: tv-data
           hostPath:
