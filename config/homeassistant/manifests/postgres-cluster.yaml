@@ -36,7 +36,7 @@ spec:
     podAntiAffinityType: required
     topologyKey: kubernetes.io/hostname
   
-  imageName: ghcr.io/cloudnative-pg/postgresql:16
+  imageName: ghcr.io/alpar-t/cnpg-postgresql-security:16.14-system-trixie-sha-a63b9ec8b81240698caf589a1615beefb26b5a99@sha256:2bab4ec23402c6d729856405ed1c23873edb721b30b8033eac25c62da60f4a62
   
   bootstrap:
     initdb:
