@@ -37,7 +37,7 @@ RUN mkdir -p /runtime-root/whisper.cpp/build/bin \
 FROM docker.io/intel/oneapi-runtime:2025.2.2-0-devel-ubuntu24.04@sha256:d431954c4dc7c388f74d4e873263faed89d61fb3d6ab61537750045a42edc796
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      bash ca-certificates python3 wget \
+      bash ca-certificates python3 wget intel-oneapi-umf-0.11 \
     && apt-get -s purge linux-libc-dev libc6-dev build-essential cmake gcc g++ git python3-dev \
       > /tmp/purge-plan \
     && ! grep -Eq '^(Remv|Purg) (intel-|oneapi-|libze|libmkl|libdnnl|libsycl)' /tmp/purge-plan \
@@ -57,9 +57,15 @@ COPY start-whisper.sh /usr/local/bin/start-whisper.sh
 ENV PYTHONPATH=/wyoming-whisper-api-client \
     LD_LIBRARY_PATH=/opt/intel/oneapi/compiler/latest/lib:/opt/intel/oneapi/compiler/latest/linux/lib:/opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64_lin:/opt/intel/oneapi/tbb/latest/lib/intel64/gcc4.8:/opt/intel/oneapi/mkl/latest/lib
 
+# SYCL loads its Level Zero adapter dynamically, so checking only the
+# whisper-server ELF misses adapter dependencies such as libumf.so.0.
 RUN chmod +x /usr/local/bin/start-whisper.sh \
     && ldd /whisper.cpp/build/bin/whisper-server > /tmp/whisper-ldd \
     && ! grep -q 'not found' /tmp/whisper-ldd \
+    && ldd /opt/intel/oneapi/redist/lib/libur_adapter_level_zero.so.0 > /tmp/level-zero-ldd \
+    && ! grep -q 'not found' /tmp/level-zero-ldd \
+    && ldd /opt/intel/oneapi/redist/lib/libur_adapter_level_zero_v2.so.0 > /tmp/level-zero-v2-ldd \
+    && ! grep -q 'not found' /tmp/level-zero-v2-ldd \
     && /opt/wyoming-venv/bin/python -m wyoming_whisper_api_client --version
 
 # Exercise the real module entrypoint without an inference request or GPU.
