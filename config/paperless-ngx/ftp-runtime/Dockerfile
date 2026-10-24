@@ -6,7 +6,7 @@ FROM docker.io/library/alpine:3.23@sha256:ff7f0c727dd796aa36787bfcd9a64bf35a6ce7
 
 ARG PURE_FTPD_COMMIT=3fe02789c4f0e5756f3f612e32edee9aa5d49455
 RUN apk add --no-cache \
-      autoconf automake build-base ca-certificates git libcap-dev \
+      autoconf automake build-base ca-certificates git \
       libtool libsodium-dev openssl-dev pkgconf
 RUN git clone --branch 1.0.54 --depth 1 \
       https://github.com/jedisct1/pure-ftpd.git /src \
@@ -14,7 +14,7 @@ RUN git clone --branch 1.0.54 --depth 1 \
     && cd /src \
     && ./autogen.sh \
     && ./configure --prefix=/usr --with-puredb --with-tls --with-altlog \
-      --without-pam --without-inetd \
+      --without-pam --without-inetd --without-capabilities \
     && make -j2 \
     && make DESTDIR=/out install-strip
 
@@ -23,7 +23,7 @@ FROM docker.io/library/alpine:3.23@sha256:ff7f0c727dd796aa36787bfcd9a64bf35a6ce7
 LABEL org.opencontainers.image.source="https://github.com/jedisct1/pure-ftpd" \
       org.opencontainers.image.version="1.0.54" \
       org.opencontainers.image.revision="3fe02789c4f0e5756f3f612e32edee9aa5d49455"
-RUN apk add --no-cache ca-certificates libcap libcrypto3 libsodium libssl3 \
+RUN apk add --no-cache ca-certificates libcrypto3 libsodium libssl3 \
     && addgroup -S _pure-ftpd \
     && adduser -S -D -H -h /var/empty -s /sbin/nologin \
       -G _pure-ftpd _pure-ftpd \

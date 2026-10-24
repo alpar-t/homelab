@@ -9,7 +9,10 @@ so this candidate upgrades the server as well as slimming the runtime.
 
 The build verifies the signed upstream 1.0.54 tag resolves to commit
 `3fe02789c4f0e5756f3f612e32edee9aa5d49455` and compiles PureDB and TLS
-support. Only the server and `pure-pw` binaries move into the Alpine 3.23
+support. Linux capabilities support is disabled because the isolated CI
+build sandbox denies its runtime capability switch; upstream recommends this
+configure option where capabilities do not work. Privilege separation remains
+enabled. Only the server and `pure-pw` binaries move into the Alpine 3.23
 runtime. It implements the environment variables used by the current
 deployment, creates the configured UID/GID 1000 for PureDB, and keeps the
 passive port range. CI checks linked libraries and starts a disposable server,
