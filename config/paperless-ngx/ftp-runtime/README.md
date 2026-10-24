@@ -18,8 +18,9 @@ this check passes.
 
 Compiling application binaries without a distribution package record can make
 Trivy miss a future Pure-FTPd application advisory. The image labels and
-Dockerfile keep the exact upstream source commit and a 1.0.54 version
-assertion, but release review must still check Pure-FTPd advisories directly.
+Dockerfile keep the exact upstream source commit, and the build checks that
+the signed 1.0.54 tag still resolves to it. Release review must still check
+Pure-FTPd advisories directly.
 A zero-critical scan would establish only that the runtime packages have no
 known critical findings in the current Trivy database.
 

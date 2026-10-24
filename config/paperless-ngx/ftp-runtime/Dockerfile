@@ -37,7 +37,6 @@ RUN set -eux; \
     chmod +x /usr/local/bin/start-ftp.sh; \
     ldd /usr/sbin/pure-ftpd; \
     ldd /usr/bin/pure-pw; \
-    /usr/sbin/pure-ftpd -h 2>&1 | grep -q 'v1.0.54'; \
     for package in perl mariadb-connector-c; do \
          ! apk info -e "$package" >/dev/null 2>&1 || exit 1; \
        done
