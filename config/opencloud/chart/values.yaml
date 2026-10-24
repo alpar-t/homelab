@@ -241,27 +241,27 @@ webExtensions:
     # Draw.io extension
     drawio:
       enabled: true
-      tag: draw-io-1.0.0
+      tag: draw-io-2.2.0@sha256:d890d6e1bea09cdb7f9f31e7e4ea3c22d00d48fed71202be435571fcefd99878
     # External Sites extension
     externalsites:
       enabled: true
-      tag: external-sites-1.0.0
+      tag: external-sites-2.1.0@sha256:c0a48cd3c26f63c11d80b4138da26aa86baf05ec35d0e897ffc479ad24b99a01
     # Importer extension
     importer:
       enabled: true
-      tag: importer-1.0.0
+      tag: importer-2.0.1@sha256:90ff4fa09b3c248c5e2556d189610ea4a43253381b502bd2f5d474e251e99cef
     # JSON Viewer extension
     jsonviewer:
       enabled: true
-      tag: json-viewer-1.0.0
+      tag: json-viewer-2.1.0@sha256:fe43f1bb92d62c283ea6ed4a8b8d069f8ff4cfcaa75acbdec08fd9c256705df4
     # Progress Bars extension
     progressbars:
       enabled: true
-      tag: progress-bars-1.0.0
+      tag: progress-bars-2.1.0@sha256:53933b5dbbae03b75e9cc78d775b8b8fd1d6bc651b73dfffcd66df120ef1c951
     # Unzip extension
     unzip:
       enabled: true
-      tag: unzip-1.0.0
+      tag: unzip-2.2.1@sha256:9a71251417a4e76dafa15fcddff9540cbdcdbf0813ac347049e900654a3df448
 
 # =====================================================================
 # COLLABORATION (COLLABORA)
