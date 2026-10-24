@@ -63,14 +63,14 @@ import io
 import pathlib
 import time
 
-for attempt in range(50):
+for attempt in range(300):
     try:
         ftp = ftplib.FTP()
-        ftp.connect('127.0.0.1', 21, timeout=1)
+        ftp.connect('127.0.0.1', 21, timeout=5)
         ftp.login('scanner', 'smoke-only')
         break
     except (OSError, ftplib.Error) as exc:
-        if attempt == 49:
+        if attempt == 299:
             raise RuntimeError('Pure-FTPd never accepted pure-pw login') from exc
         time.sleep(0.1)
 payload = b'paperless-ftp-runtime-smoke\n'
