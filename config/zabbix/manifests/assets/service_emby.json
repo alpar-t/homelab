@@ -1,11 +1,11 @@
 {
-  "interval": 900,
+  "interval": 60,
   "deadline": 20,
   "base_url": "http://emby.media.svc.cluster.local:8096/emby",
-  "failure_grace_seconds": 1800,
+  "failure_grace_seconds": 120,
   "minimum_failure_observations": 2,
   "minimum_recovery_observations": 2,
-  "severity": 3,
+  "severity": 5,
   "notification": "page",
   "workloads": [
     {

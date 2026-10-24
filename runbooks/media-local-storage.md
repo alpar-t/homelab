@@ -74,3 +74,7 @@ movie file from its mounted local library. Zabbix reports a severity-5
 catches an empty or unreadable movie mount. It does not test an authenticated
 playback stream or transcoding; those require a dedicated restricted test
 account and separate synthetic request.
+The check is sampled once a minute; repeated failures spanning at least
+two minutes are required before Zabbix's three-sample trigger opens a
+severity-5 problem. Baloo's existing digest delivers critical changes in its
+next available ten-minute slot.

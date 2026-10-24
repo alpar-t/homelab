@@ -6,6 +6,10 @@ checks the Emby pod's readiness, whose exec probe fetches the public API and
 reads 4 KiB from a movie file larger than 10 MiB in the mounted library. This
 severity-5 check detects an unreadable or empty movie mount. It does not play,
 transcode, or download a movie, and monitoring uses no credentials.
+The functional observation runs every 60 seconds. Repeated failed observations
+spanning at least 120 seconds are required before Zabbix's three-sample
+trigger can open a problem. The severity-5 change enters the existing
+WhatsApp digest on its next allowed ten-minute slot.
 
 `Emby scoped library query` remains explicitly deferred with severity1 and
 `observation: deferred`, `notification: dashboard`. Public API and sample-file
