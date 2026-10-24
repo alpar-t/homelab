@@ -59,7 +59,7 @@ spec:
         # Open WebUI resolves external OpenAPI tool schemas during startup.
         # Avoid a rollout race that would leave the preview tool undiscovered.
         - name: wait-technical-plan-api
-          image: ghcr.io/open-webui/open-webui:0.11.3@sha256:41daa0cf2561a5d4c8d1ff31ee2a98d93ab4d3ac2605cac69366ff6a3374a933
+          image: docker.io/library/python:3.13.17-alpine@sha256:fa0bb0d0cd7c7d6cef30a69094d32ac2b71c7304c87c6107fec100e1ee4eda02
           command:
             - python
             - -c
@@ -92,7 +92,7 @@ spec:
               memory: 128Mi
       containers:
         - name: open-webui
-          image: ghcr.io/open-webui/open-webui:0.11.3@sha256:41daa0cf2561a5d4c8d1ff31ee2a98d93ab4d3ac2605cac69366ff6a3374a933
+          image: ghcr.io/open-webui/open-webui:0.12.3@sha256:a537bbe1e6b428820f52ed4a029d7fff97062e24d5cf32c365fba36fd0542def
           ports:
             - name: http
               containerPort: 8080
@@ -264,7 +264,7 @@ spec:
               readOnly: true
         # Keep the WebUI Function stored on its PVC in sync with Baloo source.
         - name: progress-filter-sync
-          image: ghcr.io/open-webui/open-webui:0.11.3@sha256:41daa0cf2561a5d4c8d1ff31ee2a98d93ab4d3ac2605cac69366ff6a3374a933
+          image: docker.io/library/python:3.13.17-alpine@sha256:fa0bb0d0cd7c7d6cef30a69094d32ac2b71c7304c87c6107fec100e1ee4eda02
           command:
             - sh
             - -c
@@ -305,10 +305,11 @@ spec:
             - name: tmp
               mountPath: /tmp
         - name: git-sync
-          image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
+          image: registry.k8s.io/git-sync/git-sync:v4.8.0@sha256:a20644562fba94773e594885cb001aadb5a3172175f13ac1215e5b2033c9200e
           args:
             - --repo=https://github.com/alpar-t/baloo.git
             - --root=/git
+            - --git-config-add=safe.directory:/git
             - --link=link
             - --depth=1
             - --period=60s
