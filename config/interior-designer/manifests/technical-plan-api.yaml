@@ -38,10 +38,11 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: git-sync-init
-          image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
+          image: registry.k8s.io/git-sync/git-sync:v4.8.0@sha256:a20644562fba94773e594885cb001aadb5a3172175f13ac1215e5b2033c9200e
           args:
             - --repo=https://github.com/alpar-t/baloo.git
             - --root=/git
+            - --git-config-add=safe.directory:/git
             - --link=link
             - --depth=1
             - --github-app-application-id=4150403
@@ -71,7 +72,7 @@ spec:
               mountPath: /var/run/secrets/github-app
               readOnly: true
         - name: prepare-renderer
-          image: ghcr.io/open-webui/open-webui:0.11.3@sha256:41daa0cf2561a5d4c8d1ff31ee2a98d93ab4d3ac2605cac69366ff6a3374a933
+          image: ghcr.io/alpar-t/technical-plan-runtime:sha-338578676f2461b2aa67915b44b148e583c90097@sha256:d74a19398023cb190c262e0e5b3edba530bf345bd55d823ed789db458bd0219b
           command:
             - uv
             - run
@@ -80,13 +81,13 @@ spec:
             - schema
           env:
             - name: UV_CACHE_DIR
-              value: /work/uv-cache
+              value: /opt/uv-cache
+            - name: UV_OFFLINE
+              value: "true"
             - name: UV_PYTHON
               value: /usr/local/bin/python
             - name: UV_NO_MANAGED_PYTHON
               value: "true"
-            - name: UV_PYTHON_INSTALL_DIR
-              value: /work/uv-python
             - name: XDG_CACHE_HOME
               value: /work/xdg-cache
           securityContext:
@@ -114,11 +115,14 @@ spec:
               mountPath: /tmp
       containers:
         - name: technical-plan-api
-          # Reuse the exact Open WebUI image already deployed in this app. It
-          # contains uv, Cairo, FastAPI, pypdf, and the browser file contract.
-          image: ghcr.io/open-webui/open-webui:0.11.3@sha256:41daa0cf2561a5d4c8d1ff31ee2a98d93ab4d3ac2605cac69366ff6a3374a933
+          # Resolve the API's PEP 723 dependencies with uv, just like the
+          # renderer init container. This keeps the API independent of the
+          # Open WebUI image's bundled Python packages.
+          image: ghcr.io/alpar-t/technical-plan-runtime:sha-338578676f2461b2aa67915b44b148e583c90097@sha256:d74a19398023cb190c262e0e5b3edba530bf345bd55d823ed789db458bd0219b
           command:
-            - python
+            - uv
+            - run
+            - --script
             - /git/link/openclaw/tools/technical-plan-api.py
           ports:
             - name: http
@@ -129,13 +133,13 @@ spec:
             - name: TECHNICAL_PLAN_WORK_ROOT
               value: /work/technical-plans
             - name: UV_CACHE_DIR
-              value: /work/uv-cache
+              value: /opt/uv-cache
+            - name: UV_OFFLINE
+              value: "true"
             - name: UV_PYTHON
               value: /usr/local/bin/python
             - name: UV_NO_MANAGED_PYTHON
               value: "true"
-            - name: UV_PYTHON_INSTALL_DIR
-              value: /work/uv-python
             - name: XDG_CACHE_HOME
               value: /work/xdg-cache
             - name: OPENWEBUI_INTERNAL_URL
@@ -198,10 +202,11 @@ spec:
             - name: tmp
               mountPath: /tmp
         - name: git-sync
-          image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
+          image: registry.k8s.io/git-sync/git-sync:v4.8.0@sha256:a20644562fba94773e594885cb001aadb5a3172175f13ac1215e5b2033c9200e
           args:
             - --repo=https://github.com/alpar-t/baloo.git
             - --root=/git
+            - --git-config-add=safe.directory:/git
             - --link=link
             - --depth=1
             - --period=60s
