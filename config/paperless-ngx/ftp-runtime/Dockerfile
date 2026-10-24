@@ -33,16 +33,14 @@ COPY --from=build /out/usr/bin/pure-pw /usr/bin/pure-pw
 COPY --from=build /src/COPYING /licenses/pure-ftpd-COPYING
 COPY start-ftp.sh /usr/local/bin/start-ftp.sh
 
-RUN chmod +x /usr/local/bin/start-ftp.sh \
-    && ldd /usr/sbin/pure-ftpd > /tmp/pure-ftpd-ldd \
-    && ldd /usr/bin/pure-pw > /tmp/pure-pw-ldd \
-    && ! grep -q 'not found' /tmp/pure-ftpd-ldd \
-    && ! grep -q 'not found' /tmp/pure-pw-ldd \
-    && /usr/sbin/pure-ftpd -h | grep -q 'v1.0.54' \
-    && for package in perl mariadb-connector-c; do \
+RUN set -eux; \
+    chmod +x /usr/local/bin/start-ftp.sh; \
+    ldd /usr/sbin/pure-ftpd; \
+    ldd /usr/bin/pure-pw; \
+    /usr/sbin/pure-ftpd -h 2>&1 | grep -q 'v1.0.54'; \
+    for package in perl mariadb-connector-c; do \
          ! apk info -e "$package" >/dev/null 2>&1 || exit 1; \
-       done \
-    && rm /tmp/pure-ftpd-ldd /tmp/pure-pw-ldd
+       done
 
 EXPOSE 21 30000-30009
 ENTRYPOINT ["/usr/local/bin/start-ftp.sh"]
