@@ -15,9 +15,6 @@ password_file=/etc/pure-ftpd/passwd/pureftpd.passwd
 database_file=/etc/pure-ftpd/pureftpd.pdb
 
 mkdir -p /etc/pure-ftpd/passwd "$FTP_USER_HOME"
-if [ -f "$password_file" ]; then
-    pure-pw mkdb "$database_file" -f "$password_file"
-fi
 
 # Follow upstream's password-file input path. The file is private and removed
 # immediately; the password never appears in a process argument or log.
@@ -25,8 +22,9 @@ umask 077
 password_input=$(mktemp)
 trap 'rm -f "$password_input"' EXIT
 printf '%s\n%s\n' "$FTP_USER_PASS" "$FTP_USER_PASS" > "$password_input"
-pure-pw useradd "$FTP_USER_NAME" -f "$password_file" -m \
+pure-pw useradd "$FTP_USER_NAME" -f "$password_file" \
     -d "$FTP_USER_HOME" -u "$user_id" -g "$group_id" < "$password_input"
+pure-pw mkdb "$database_file" -f "$password_file"
 echo "PureDB user ready"
 rm -f "$password_input"
 trap - EXIT
