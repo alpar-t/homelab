@@ -1,5 +1,8 @@
 # ArgoCD administrative access
 
+For the 2026-10 security update from 3.4.4 to 3.4.12, see
+`runbooks/argocd-security-upgrade-2026-10.md`.
+
 ArgoCD has no public Kubernetes Ingress. The Cloudflare tunnel also has an
 explicit terminal rule for `argocd.newjoy.ro`, placed before its wildcard
 catch-all, so that hostname cannot reach ingress-nginx even if an Ingress is
