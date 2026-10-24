@@ -102,7 +102,9 @@ spec:
           type: RuntimeDefault
       containers:
         - name: mcp-k8s
-          image: docker.io/flux159/mcp-server-kubernetes:v4.1.9@sha256:cab5f1aad3ef768619a014b82c926e4089d4f21eb989e116116a577300ece4b4
+          # Bundles upstream v4.1.9 with kubectl v1.34.6, matching the cluster.
+          # CVE-2026-19444 affects only Windows kubectl cp, not this Linux read-only catalog.
+          image: ghcr.io/alpar-t/mcp-k8s-runtime:sha-25c07566bf689163f4ddfd26a9fd9e7b3b9cc0a2@sha256:8f0dea356adae2e48b9bddbea7e2ca0978fad8eac55b5f74d28ce4aeedd772f4
           ports:
             - name: mcp
               containerPort: 3000
