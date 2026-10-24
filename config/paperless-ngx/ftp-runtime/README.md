@@ -11,8 +11,9 @@ The build verifies the signed upstream 1.0.54 tag resolves to commit
 `3fe02789c4f0e5756f3f612e32edee9aa5d49455` and compiles PureDB and TLS
 support. Only the server and `pure-pw` binaries move into the Alpine 3.23
 runtime. It implements the environment variables used by the current
-deployment and keeps the passive port range. CI checks linked libraries and
-starts a disposable server, logs in through `pure-pw`, uploads over passive FTP
+deployment, creates the configured UID/GID 1000 for PureDB, and keeps the
+passive port range. CI checks linked libraries and starts a disposable server,
+logs in through `pure-pw`, uploads over passive FTP
 and verifies bytes on disk. The workflow publishes the runtime stage only after
 this check passes.
 

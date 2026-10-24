@@ -26,7 +26,9 @@ LABEL org.opencontainers.image.source="https://github.com/jedisct1/pure-ftpd" \
 RUN apk add --no-cache ca-certificates libcap libcrypto3 libsodium libssl3 \
     && addgroup -S _pure-ftpd \
     && adduser -S -D -H -h /var/empty -s /sbin/nologin \
-      -G _pure-ftpd _pure-ftpd
+      -G _pure-ftpd _pure-ftpd \
+    && addgroup -g 1000 ftpgroup \
+    && adduser -D -H -u 1000 -G ftpgroup -s /sbin/nologin ftpuser
 
 COPY --from=build /out/usr/sbin/pure-ftpd /usr/sbin/pure-ftpd
 COPY --from=build /out/usr/bin/pure-pw /usr/bin/pure-pw
