@@ -54,7 +54,7 @@ RUN set -eu; \
     PUBLICHOST=127.0.0.1 ADDED_FLAGS='-d -d' \
     /usr/local/bin/start-ftp.sh > /tmp/ftp.log 2>&1 & \
     server_pid=$!; \
-    trap 'kill "$server_pid" 2>/dev/null || true' EXIT; \
+    trap 'status=$?; if [ "$status" -ne 0 ]; then cat /tmp/ftp.log; fi; kill "$server_pid" 2>/dev/null || true' EXIT; \
     python3 - <<'PY'
 import ftplib
 import io
