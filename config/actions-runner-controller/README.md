@@ -11,7 +11,7 @@ has a separate scale set while the controller and credential Secret are shared.
 
 - Controller chart: `gha-runner-scale-set-controller` 0.14.2 in `arc-systems`.
 - Runner chart: `gha-runner-scale-set` 0.14.2 in `arc-runners`.
-- Runner image: `actions-runner` 2.336.0, pinned by digest.
+- Runner image: `actions-runner` 2.338.1, pinned by digest.
 - Scale: zero idle runners, at most one active runner per repository.
 - Isolation: no privileged container, no Docker, no runner ServiceAccount token, no inbound traffic, and no private-network egress except DNS and the Kubernetes API used by ARC.
 
