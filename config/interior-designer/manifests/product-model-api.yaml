@@ -41,7 +41,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: git-sync-init
-          image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
+          image: registry.k8s.io/git-sync/git-sync:v4.8.0@sha256:a20644562fba94773e594885cb001aadb5a3172175f13ac1215e5b2033c9200e
           args:
             - --repo=https://github.com/alpar-t/baloo.git
             - --root=/git
@@ -149,7 +149,7 @@ spec:
             - name: tmp
               mountPath: /tmp
         - name: git-sync
-          image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
+          image: registry.k8s.io/git-sync/git-sync:v4.8.0@sha256:a20644562fba94773e594885cb001aadb5a3172175f13ac1215e5b2033c9200e
           args:
             - --repo=https://github.com/alpar-t/baloo.git
             - --root=/git
