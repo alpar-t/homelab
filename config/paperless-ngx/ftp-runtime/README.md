@@ -2,23 +2,26 @@
 
 The deployed FTP sidecar uses `stilliard/pure-ftpd:trixie-1.0.50`. Its seven
 critical Trivy IDs are in Perl and MariaDB packages. The Paperless Deployment
-uses Pure-FTPd's local `pure-pw` database, not SQL authentication. The upstream
+uses Pure-FTPd's local `pure-pw` database, not SQL authentication. The deployed
 server and `pure-pw` binaries have no dynamic dependency on either package
-family in the running image.
+family. The upstream 1.0.54 release adds PureDB and other security hardening,
+so this candidate upgrades the server as well as slimming the runtime.
 
-This image copies those same version 1.0.50 binaries from a verified upstream
-digest into a minimal Debian Trixie runtime with their linked libraries. It
-implements the environment variables used by the current deployment and keeps
-the passive port range. CI checks the linked libraries and starts a disposable
-server, logs in through `pure-pw`, uploads over passive FTP and verifies bytes
-on disk. The workflow publishes the runtime stage only after this check passes.
+The build verifies the signed upstream 1.0.54 tag resolves to commit
+`3fe02789c4f0e5756f3f612e32edee9aa5d49455` and compiles PureDB and TLS
+support. Only the server and `pure-pw` binaries move into the Alpine 3.23
+runtime. It implements the environment variables used by the current
+deployment and keeps the passive port range. CI checks linked libraries and
+starts a disposable server, logs in through `pure-pw`, uploads over passive FTP
+and verifies bytes on disk. The workflow publishes the runtime stage only after
+this check passes.
 
-Copying application binaries without their Debian package records can make
-Trivy miss a future Pure-FTPd application advisory. The build keeps the exact
-upstream source digest in the Dockerfile and the 1.0.50 version assertion, but
-release review must still check Pure-FTPd advisories directly. A zero-critical
-scan would establish only that the runtime packages have no known critical
-findings in the current Trivy database.
+Compiling application binaries without a distribution package record can make
+Trivy miss a future Pure-FTPd application advisory. The image labels and
+Dockerfile keep the exact upstream source commit and a 1.0.54 version
+assertion, but release review must still check Pure-FTPd advisories directly.
+A zero-critical scan would establish only that the runtime packages have no
+known critical findings in the current Trivy database.
 
 Before deployment, resolve and scan the exact published `linux/amd64` digest
 with `scripts/resolve-container-image.py` and the shared Trivy cache. Probe it

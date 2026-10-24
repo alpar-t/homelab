@@ -1,20 +1,36 @@
 # syntax=docker/dockerfile:1
-# Keep Pure-FTPd 1.0.50's actual server and pure-pw binaries, but leave the
-# upstream image's unused Perl, MariaDB, inetd and build packages behind.
-FROM docker.io/stilliard/pure-ftpd:trixie-1.0.50@sha256:54eff59f458532899a4f814da339a7c0921ddf0b4d8b3b87318a162cb4232687 AS upstream
+# Build the signed 1.0.54 release with the PureDB and TLS capabilities used
+# by the existing FTP sidecar. The release tag was verified to point at this
+# commit; fail if the remote tag is changed.
+FROM docker.io/library/alpine:3.23@sha256:ff7f0c727dd796aa36787bfcd9a64bf35a6ce72a73451b3359fde849b6703d63 AS build
 
-FROM docker.io/library/debian:trixie-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be455898a9f034ad AS runtime
+ARG PURE_FTPD_COMMIT=3fe02789c4f0e5756f3f612e32edee9aa5d49455
+RUN apk add --no-cache \
+      autoconf automake build-base ca-certificates git libcap-dev \
+      libtool libsodium-dev openssl-dev pkgconf
+RUN git clone --branch 1.0.54 --depth 1 \
+      https://github.com/jedisct1/pure-ftpd.git /src \
+    && test "$(git -C /src rev-parse HEAD)" = "$PURE_FTPD_COMMIT" \
+    && cd /src \
+    && ./autogen.sh \
+    && ./configure --prefix=/usr --with-puredb --with-tls --with-altlog \
+      --without-pam --without-inetd \
+    && make -j2 \
+    && make DESTDIR=/out install-strip
 
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-      ca-certificates libcap2 libcrypt1 libpam0g libsodium23 libssl3t64 \
-      zlib1g libzstd1 \
-    && rm -rf /var/lib/apt/lists/*
+FROM docker.io/library/alpine:3.23@sha256:ff7f0c727dd796aa36787bfcd9a64bf35a6ce72a73451b3359fde849b6703d63 AS runtime
 
-COPY --from=upstream /usr/sbin/pure-ftpd /usr/sbin/pure-ftpd
-COPY --from=upstream /usr/bin/pure-pw /usr/bin/pure-pw
-COPY --from=upstream /usr/share/doc/pure-ftpd/copyright /licenses/pure-ftpd-copyright
+LABEL org.opencontainers.image.source="https://github.com/jedisct1/pure-ftpd" \
+      org.opencontainers.image.version="1.0.54" \
+      org.opencontainers.image.revision="3fe02789c4f0e5756f3f612e32edee9aa5d49455"
+RUN apk add --no-cache ca-certificates libcap libcrypto3 libsodium libssl3 \
+    && addgroup -S _pure-ftpd \
+    && adduser -S -D -H -h /var/empty -s /sbin/nologin \
+      -G _pure-ftpd _pure-ftpd
+
+COPY --from=build /out/usr/sbin/pure-ftpd /usr/sbin/pure-ftpd
+COPY --from=build /out/usr/bin/pure-pw /usr/bin/pure-pw
+COPY --from=build /src/COPYING /licenses/pure-ftpd-COPYING
 COPY start-ftp.sh /usr/local/bin/start-ftp.sh
 
 RUN chmod +x /usr/local/bin/start-ftp.sh \
@@ -22,9 +38,9 @@ RUN chmod +x /usr/local/bin/start-ftp.sh \
     && ldd /usr/bin/pure-pw > /tmp/pure-pw-ldd \
     && ! grep -q 'not found' /tmp/pure-ftpd-ldd \
     && ! grep -q 'not found' /tmp/pure-pw-ldd \
-    && /usr/sbin/pure-ftpd -h | grep -q 'v1.0.50' \
-    && for package in perl-base libmariadb3 mariadb-common; do \
-         ! dpkg-query -W "$package" >/dev/null 2>&1 || exit 1; \
+    && /usr/sbin/pure-ftpd -h | grep -q 'v1.0.54' \
+    && for package in perl mariadb-connector-c; do \
+         ! apk info -e "$package" >/dev/null 2>&1 || exit 1; \
        done \
     && rm /tmp/pure-ftpd-ldd /tmp/pure-pw-ldd
 
@@ -34,9 +50,7 @@ ENTRYPOINT ["/usr/local/bin/start-ftp.sh"]
 # CI builds this target before publishing runtime. Python is only in this
 # disposable test stage; it exercises login, passive transfer and on-disk data.
 FROM runtime AS smoke
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache python3
 RUN set -eu; \
     FTP_USER_NAME=scanner FTP_USER_PASS=smoke-only FTP_USER_HOME=/scanner \
     FTP_USER_UID=1000 FTP_USER_GID=1000 FTP_PASSIVE_PORTS=30000:30009 \
