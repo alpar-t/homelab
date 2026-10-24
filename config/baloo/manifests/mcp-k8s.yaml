@@ -4,7 +4,7 @@
 # critical-health check. Two layers of read-only enforcement:
 #   1. RBAC (the real guardrail): the mcp-k8s ServiceAccount is bound to a
 #      ClusterRole with only get/list/watch — no create/update/delete/exec.
-#   2. ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS=true on the server (defense in depth).
+#   2. ALLOW_ONLY_READONLY_TOOLS=true on the server (defense in depth).
 #
 # ClusterIP only — never a LoadBalancer. Reached in-cluster by the openclaw pod
 # at http://mcp-k8s.baloo.svc.cluster.local:3000/mcp (streamable-http).
@@ -102,7 +102,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: mcp-k8s
-          image: flux159/mcp-server-kubernetes:v3.9.2@sha256:ef6531d5ad48faa94d81502c2072b6917cfdc7b91940c251e151cd97f265e21d
+          image: docker.io/flux159/mcp-server-kubernetes:v4.1.9@sha256:cab5f1aad3ef768619a014b82c926e4089d4f21eb989e116116a577300ece4b4
           ports:
             - name: mcp
               containerPort: 3000
@@ -113,7 +113,7 @@ spec:
               value: "3000"
             - name: HOST
               value: "0.0.0.0"
-            - name: ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS
+            - name: ALLOW_ONLY_READONLY_TOOLS
               value: "true"
             # DNS-rebinding protection stays ON; allow the exact Host header
             # OpenClaw sends. This env takes a SINGLE host and must include the

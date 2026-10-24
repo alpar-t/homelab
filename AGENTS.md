@@ -114,7 +114,7 @@ The trips channel (`Palkoek es Torokek`) must never have HA access — it is a s
 The `k8s` MCP server (`config/baloo/manifests/mcp-k8s.yaml`) gives the
 `alpar` agent **read-only** cluster access so Alpar can ask about the
 homelab and the `cluster-health` cron job can page on critical outages. It is
-`flux159/mcp-server-kubernetes` in `ALLOW_ONLY_NON_DESTRUCTIVE_TOOLS` mode, but
+`flux159/mcp-server-kubernetes` in `ALLOW_ONLY_READONLY_TOOLS` mode, but
 the real guardrail is RBAC: the `mcp-k8s` ServiceAccount is bound to a
 ClusterRole with only `get/list/watch` (no secrets, no configmaps, no write
 verbs). It is `k8s__*` allowed **only on `alpar`** and explicitly
