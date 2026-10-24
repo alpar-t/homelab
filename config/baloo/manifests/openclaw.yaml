@@ -60,12 +60,13 @@ spec:
               mountPath: /tmp
         # One-shot clone so the repo is on disk before render-config runs.
         - name: git-sync-init
-          image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
+          image: registry.k8s.io/git-sync/git-sync:v4.8.0@sha256:a20644562fba94773e594885cb001aadb5a3172175f13ac1215e5b2033c9200e
           args:
             - --repo=https://github.com/alpar-t/baloo.git
             - --root=/git
             - --link=link
             - --depth=1
+            - --git-config-add=safe.directory:/git
             - --github-app-application-id=4150403
             - --github-app-installation-id=142711366
             - --github-app-private-key-file=/var/run/secrets/github-app/private-key.pem
@@ -95,7 +96,7 @@ spec:
         # OpenClaw 2026.9 records canonical workspace paths. Copy the rotating
         # git-sync checkout into a stable directory before any agent starts.
         - name: prepare-stable-workspaces
-          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          image: ghcr.io/openclaw/openclaw:2026.9.34@sha256:70e88573161a9248cfe992c069f638085ac066278e03f11a46bcbd115f38e3fc
           command:
             - node
             - /git/link/openclaw/tools/sync-stable-workspace.js
@@ -127,7 +128,7 @@ spec:
         # a dependency-complete node_modules tree for the bundled plugin so it
         # keeps reserved harness ownership, usage reporting, and compaction.
         - name: prepare-codex-plugin-deps
-          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          image: ghcr.io/openclaw/openclaw:2026.9.34@sha256:70e88573161a9248cfe992c069f638085ac066278e03f11a46bcbd115f38e3fc
           command:
             - node
             - -e
@@ -202,7 +203,7 @@ spec:
               mountPath: /state
         # Substitute ${BALOO_OWNER_PHONE} into openclaw.json → /rendered/openclaw.json
         - name: render-config
-          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          image: ghcr.io/openclaw/openclaw:2026.9.34@sha256:70e88573161a9248cfe992c069f638085ac066278e03f11a46bcbd115f38e3fc
           command:
             - node
             - -e
@@ -342,21 +343,31 @@ spec:
             - name: rendered
               mountPath: /rendered
         # Install the reviewed PinchTab canary plugin at an exact version, then
-        # keep all state-installed plugins in lockstep with the pinned core.
+        # keep state-installed plugins in lockstep with the pinned core.
         # Existing tracked updates remain non-fatal so a transient registry
         # outage does not replace last-good plugin state.
+        # Keep WhatsApp 2026.9.7 for this 2026.9.34 rollout: the next init
+        # container patches that exact artifact. Fail startup on any other
+        # WhatsApp version. Test a newer plugin's reply handoff and remove the
+        # patch before resuming WhatsApp updates.
         - name: plugin-sync
-          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          image: ghcr.io/openclaw/openclaw:2026.9.34@sha256:70e88573161a9248cfe992c069f638085ac066278e03f11a46bcbd115f38e3fc
           command:
             - sh
             - -c
             - |
+              core_version="$(node -p 'require("/app/package.json").version')"
+              whatsapp_version="$(node -p 'try { require("/state/extensions/whatsapp/package.json").version } catch { "" }')"
+              if [ "$core_version" = "2026.9.34" ] && [ "$whatsapp_version" != "2026.9.7" ]; then
+                echo "OpenClaw 2026.9.34 requires the reviewed WhatsApp 2026.9.7 artifact for its durable delivery fix; found: ${whatsapp_version:-missing}" >&2
+                exit 1
+              fi
               if ! node /app/dist/index.js plugins inspect pinchtab >/dev/null 2>&1; then
                 node /app/dist/index.js plugins install npm:@pinchtab/pinchtab@0.15.1 --pin
               fi
-              core_version="$(node -p 'require("/app/package.json").version')"
-              whatsapp_version="$(node -p 'try { require("/state/extensions/whatsapp/package.json").version } catch { "" }')"
-              if [ "$whatsapp_version" != "$core_version" ]; then
+              if [ "$core_version" = "2026.9.34" ]; then
+                echo "Keeping WhatsApp 2026.9.7 for the exact-artifact durable delivery fix"
+              elif [ "$whatsapp_version" != "$core_version" ]; then
                 node /app/dist/index.js plugins update whatsapp || true
               fi
           env:
@@ -395,7 +406,7 @@ spec:
         # adds undefined fields to the admitted config snapshot. Patch only the
         # reviewed artifact in an ephemeral volume; leave the plugin intact.
         - name: prepare-whatsapp-delivery-fix
-          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          image: ghcr.io/openclaw/openclaw:2026.9.34@sha256:70e88573161a9248cfe992c069f638085ac066278e03f11a46bcbd115f38e3fc
           command:
             - node
             - /git/link/openclaw/tools/patch-whatsapp-durable-handoff.mjs
@@ -429,7 +440,7 @@ spec:
         # HOME-3 exposes only a curated Zabbix surface on pod loopback. API
         # credentials are mounted here, not in the gateway or agent workspaces.
         - name: zabbix-mcp
-          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          image: ghcr.io/openclaw/openclaw:2026.9.34@sha256:70e88573161a9248cfe992c069f638085ac066278e03f11a46bcbd115f38e3fc
           command: [node, /git/link/openclaw/tools/zabbix-mcp.js]
           env:
             - name: ZABBIX_API_URL
@@ -462,12 +473,13 @@ spec:
               readOnly: true
         # Continuous sync sidecar — keeps /git/link up to date with main.
         - name: git-sync
-          image: registry.k8s.io/git-sync/git-sync:v4.7.0@sha256:d232fd13474ba1b46dba431af2b1411b9d9afacda55ae644d2a32e43975128dd
+          image: registry.k8s.io/git-sync/git-sync:v4.8.0@sha256:a20644562fba94773e594885cb001aadb5a3172175f13ac1215e5b2033c9200e
           args:
             - --repo=https://github.com/alpar-t/baloo.git
             - --root=/git
             - --link=link
             - --depth=1
+            - --git-config-add=safe.directory:/git
             - --period=60s
             - --github-app-application-id=4150403
             - --github-app-installation-id=142711366
@@ -498,7 +510,7 @@ spec:
         # Keep workspace path identities stable while git-sync rotates its
         # checkout symlink. Individual files are replaced atomically.
         - name: workspace-sync
-          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          image: ghcr.io/openclaw/openclaw:2026.9.34@sha256:70e88573161a9248cfe992c069f638085ac066278e03f11a46bcbd115f38e3fc
           command:
             - node
             - /git/link/openclaw/tools/sync-stable-workspace.js
@@ -530,7 +542,7 @@ spec:
         # Writing and renaming in the same emptyDir makes each update atomic;
         # parse failures leave the last-good rendered config untouched.
         - name: config-renderer
-          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          image: ghcr.io/openclaw/openclaw:2026.9.34@sha256:70e88573161a9248cfe992c069f638085ac066278e03f11a46bcbd115f38e3fc
           command:
             - node
             - -e
@@ -685,7 +697,7 @@ spec:
               mountPath: /rendered
 
         - name: openclaw
-          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          image: ghcr.io/openclaw/openclaw:2026.9.34@sha256:70e88573161a9248cfe992c069f638085ac066278e03f11a46bcbd115f38e3fc
           imagePullPolicy: IfNotPresent
           # The gateway launches Codex app-server subprocesses. Keep tini as
           # PID 1 so terminated descendants are reaped instead of accumulating.
@@ -812,7 +824,7 @@ spec:
         # Semantic turns run through the gateway, so this sidecar needs only
         # the smaller share of the pod's unchanged aggregate resource budget.
         - name: newjoy-organizer
-          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          image: ghcr.io/openclaw/openclaw:2026.9.34@sha256:70e88573161a9248cfe992c069f638085ac066278e03f11a46bcbd115f38e3fc
           imagePullPolicy: IfNotPresent
           command:
             - /usr/bin/tini
@@ -963,7 +975,7 @@ spec:
         # password plus the read-only inbound and image-tool output directories.
         # Navigation and listing fields remain LLM-driven through PinchTab.
         - name: olx-auth-mcp
-          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          image: ghcr.io/openclaw/openclaw:2026.9.34@sha256:70e88573161a9248cfe992c069f638085ac066278e03f11a46bcbd115f38e3fc
           imagePullPolicy: IfNotPresent
           command:
             - node
@@ -1047,7 +1059,7 @@ spec:
         # Court credential + durable document-state boundary. The password is
         # never rendered into OpenClaw config or exposed in an agent tool result.
         - name: court-case-mcp
-          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          image: ghcr.io/openclaw/openclaw:2026.9.34@sha256:70e88573161a9248cfe992c069f638085ac066278e03f11a46bcbd115f38e3fc
           imagePullPolicy: IfNotPresent
           command:
             - node
@@ -1121,7 +1133,7 @@ spec:
         # Agent-facing task tools. The bot token exists only in this sidecar;
         # the OpenClaw gateway reaches its curated MCP surface over localhost.
         - name: vikunja-mcp
-          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          image: ghcr.io/openclaw/openclaw:2026.9.34@sha256:70e88573161a9248cfe992c069f638085ac066278e03f11a46bcbd115f38e3fc
           imagePullPolicy: IfNotPresent
           command:
             - node
@@ -1191,7 +1203,7 @@ spec:
         # Its only filesystem view is the inbound-media directory used for
         # explicit document uploads from WhatsApp/WebChat attachments.
         - name: paperless-mcp
-          image: ghcr.io/baruchiro/paperless-mcp:sha-b66ac72@sha256:abba37e831e789633900d3f6911768484b24f989793a05df83c8f95bb24ac8c5
+          image: ghcr.io/baruchiro/paperless-mcp:2.2.1@sha256:7a793eeeb2ef9ea43175bf6b43b2179cc7c5b7e5484b6aecea8984a61d1ffe2d
           imagePullPolicy: IfNotPresent
           ports:
             - name: paperless-mcp
@@ -1248,7 +1260,7 @@ spec:
         # that channel-facing reference opaque to the model and translate it to
         # the read-only shared path before forwarding the MCP request.
         - name: paperless-media-proxy
-          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          image: ghcr.io/openclaw/openclaw:2026.9.34@sha256:70e88573161a9248cfe992c069f638085ac066278e03f11a46bcbd115f38e3fc
           imagePullPolicy: IfNotPresent
           command:
             - node
@@ -1308,7 +1320,7 @@ spec:
         # this sidecar only adapts those client tool calls to OpenClaw's image
         # provider CLI so results return to the originating HTTP chat.
         - name: image-api
-          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          image: ghcr.io/openclaw/openclaw:2026.9.34@sha256:70e88573161a9248cfe992c069f638085ac066278e03f11a46bcbd115f38e3fc
           imagePullPolicy: IfNotPresent
           command:
             - node
@@ -1387,7 +1399,7 @@ spec:
         # Reconcile recurring OpenClaw cron jobs from git without touching
         # one-shot reminders created by users in chat.
         - name: cron-sync
-          image: ghcr.io/openclaw/openclaw:2026.9.7@sha256:0da12cd49983fcb5e4915fd3135ce7a33d82f93649b1df6964946d2c1d1dbcfc
+          image: ghcr.io/openclaw/openclaw:2026.9.34@sha256:70e88573161a9248cfe992c069f638085ac066278e03f11a46bcbd115f38e3fc
           command:
             - node
             - /git/link/openclaw/tools/sync-cron-jobs.js
