@@ -227,6 +227,17 @@ scripts/resolve-container-image.py registry.k8s.io/kubectl v1.34.6
 Copy the helper's `reference=` value into the manifest. Always write image refs
 as `<registry>/<image>:<tag>@<digest>` for reproducibility.
 
+Before changing an image or adding a service, scan the exact verified candidate
+digest for critical vulnerabilities with Trivy. Compare compatible stable tags
+and variants, and compare against the running digest for upgrades. Choose the
+compatible image with the fewest critical findings; check application security
+advisories and required runtime behavior too, since a lower package count alone
+can miss an application fix or hide a breaking change. Record before/after
+counts and explain any choice that leaves more critical findings. Follow
+`runbooks/vulnerability-scanning.md` for the scan procedure. Run candidate
+scans sequentially and avoid separate database caches on the scanner's PVC;
+parallel candidate scans have exhausted its 10 Gi capacity.
+
 **`registry.k8s.io/kubectl` is distroless** — no shell, no `cp`, no standard Unix tools.
 To get kubectl into a volume, use an Alpine init container that `wget`s the binary:
 ```yaml
