@@ -40,7 +40,7 @@ spec:
     spec:
       containers:
         - name: trek
-          image: docker.io/mauriceboe/trek:3.4.1@sha256:ce7fab639b89a6f62d484d1175a7d489a536a8c77291f56c03fec20608d4a3eb
+          image: docker.io/mauriceboe/trek:4.3.4@sha256:6b7c8f275cc0ff3ca44979084bf078f553c96a0564493a132c1631ffaf6c3e77
           ports:
             - containerPort: 3000
               name: http
