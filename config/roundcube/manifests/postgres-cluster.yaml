@@ -35,7 +35,7 @@ spec:
     podAntiAffinityType: required
     topologyKey: kubernetes.io/hostname
 
-  imageName: ghcr.io/cloudnative-pg/postgresql:17.10-system-bookworm@sha256:768906f10c8a39983e534dc3d91b2b0e6cba37c6a664763258bb5f9bbfb18672
+  imageName: ghcr.io/alpar-t/cnpg-postgresql-certifi:17.10-system-bookworm-certifi-sha-33c5c74eb29ca80b5f2921d7ae8f93c8de02c184@sha256:ce1f6ef2e658ae54f14c1e24de3c124e218a23e15b9fd63afeb5fe360c1b673b
 
   bootstrap:
     initdb:
