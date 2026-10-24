@@ -28,3 +28,30 @@ to isolate an engine; an `engines` parameter alongside categories can still
 include default engines. Do not count HTTP 200 as successful search without
 checking returned links. Public root, search, and JSON requests must redirect
 to Pocket ID when signed out.
+
+## 2026-10-24 CA trust upgrade
+
+The former `2026.9.13-e61d09756@sha256:3f2d2afdb8e455f843ed48d11a0d9f6aeea8de685844ae6695d455b880665ef4`
+had one critical finding, [certifi GHSA-6q48-6c7w-9gw2](https://github.com/certifi/python-certifi/security/advisories/GHSA-6q48-6c7w-9gw2). SearXNG's outbound
+`curl_cffi` client actually used `/etc/ssl/certs/ca-certificates.crt` with TLS
+verification enabled. Both that active system store and the old certifi bundle
+contained emSign ECC Root CA - G3, whose certificate family was removed after a
+compromised intermediate key. Upgrading certifi alone would not have changed
+the active trust store.
+
+The verified `linux/amd64` replacement is
+`docker.io/searxng/searxng:2026.10.24-ef0ec03da@sha256:7c7cbe509429e82755104b2a95f52085a98633c95d53f44e4e905fa3a59f08c8`.
+Its exact-digest Trivy scan found zero critical IDs; certifi is 2026.10.19 and
+the active system store no longer contains the G3 root. An isolated pod using
+the existing settings returned nonempty Bing, General, Images, and News JSON
+results. Google reported access denied on both old and new images, so that
+engine remains an upstream availability issue.
+
+GitOps commit `010f77a6` rolled out the new image. The production Service
+returned nonempty General JSON results, the MCP adapter listed and executed
+`searxng_web_search`, and anonymous homepage/JSON requests redirected to the
+OAuth sign-in path. The running-image scanner's next inventory mapped the exact
+new digest to `baloo/Deployment/searxng/searxng` with zero critical findings.
+Retain the former image reference above for a Git rollback.
+For later upgrades, verify both the Python package and the CA file actually
+used by `curl_cffi`, then repeat the category, MCP, and signed-out access checks.
