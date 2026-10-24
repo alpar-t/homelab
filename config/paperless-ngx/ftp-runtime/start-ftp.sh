@@ -19,10 +19,16 @@ if [ -f "$password_file" ]; then
     pure-pw mkdb "$database_file" -f "$password_file"
 fi
 
-# pure-pw reads the password twice from stdin. Keep it out of argv and logs.
-printf '%s\n%s\n' "$FTP_USER_PASS" "$FTP_USER_PASS" |
-    pure-pw useradd "$FTP_USER_NAME" -f "$password_file" -m \
-      -d "$FTP_USER_HOME" -u "$user_id" -g "$group_id"
+# Follow upstream's password-file input path. The file is private and removed
+# immediately; the password never appears in a process argument or log.
+umask 077
+password_input=$(mktemp)
+trap 'rm -f "$password_input"' EXIT
+printf '%s\n%s\n' "$FTP_USER_PASS" "$FTP_USER_PASS" > "$password_input"
+pure-pw useradd "$FTP_USER_NAME" -f "$password_file" -m \
+    -d "$FTP_USER_HOME" -u "$user_id" -g "$group_id" < "$password_input"
+rm -f "$password_input"
+trap - EXIT
 chown "$user_id:$group_id" "$FTP_USER_HOME"
 
 set -- -l "puredb:$database_file" -E -j -R \
