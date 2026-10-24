@@ -36,7 +36,7 @@ spec:
                     values: ["true"]
       containers:
         - name: frigate
-          image: ghcr.io/blakeblackshear/frigate:0.17.2@sha256:d4351369984d4a9e2a49ac59736f6490856a7ea11f7790040746d21496967010
+          image: ghcr.io/alpar-t/frigate-lpr-runtime:0.17.2-sha-d8086538faf5dc20c5facde84de2feb921169c05@sha256:b9bb69a18c4722838118ef787ebb78f50085dcf32b91a00ffc59a427f796ebf5
           ports:
             - containerPort: 5000
               name: http
