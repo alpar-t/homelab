@@ -39,3 +39,18 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: ${{ env.IMAGE }}:sha-${{ github.sha }}
+
+      - name: Smoke test read-only MCP catalog without credentials
+        run: |
+          docker pull "$IMAGE:sha-${{ github.sha }}"
+          docker run -d --name mcp-k8s-runtime-smoke \
+            --read-only --tmpfs /tmp:rw,nosuid,size=32m \
+            --user 1000:1000 \
+            --env ENABLE_UNSAFE_STREAMABLE_HTTP_TRANSPORT=1 \
+            --env HOST=127.0.0.1 --env PORT=3000 \
+            --env DNS_REBINDING_ALLOWED_HOST=127.0.0.1:3000 \
+            --env ALLOW_ONLY_READONLY_TOOLS=true \
+            --mount "type=bind,source=$PWD/config/baloo/mcp-k8s-runtime/smoke.mjs,target=/smoke.mjs,readonly" \
+            "$IMAGE:sha-${{ github.sha }}"
+          trap 'docker rm -f mcp-k8s-runtime-smoke >/dev/null' EXIT
+          docker exec mcp-k8s-runtime-smoke node /smoke.mjs
