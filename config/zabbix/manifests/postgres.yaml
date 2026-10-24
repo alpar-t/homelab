@@ -12,7 +12,7 @@ spec:
     enablePodAntiAffinity: true
     podAntiAffinityType: required
     topologyKey: kubernetes.io/hostname
-  imageName: ghcr.io/cloudnative-pg/postgresql:17.10-202608030910-system-bookworm@sha256:8561d04754c2caf8ed203b52e96163a24ff045782ca726d01b01bbcb0649222c
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.11-system-trixie@sha256:ae22bdd6008e02c18180c84192b3afbc95a758a184899f1cb7e85ed9c3ef8128
   bootstrap:
     initdb:
       database: zabbix
