@@ -93,6 +93,13 @@ class CycleTests(unittest.TestCase):
             self.assertEqual(state['errors'][REF], 'RuntimeError')
             restored = scanner.Scanner(Kube(), scan, Path(directory) / 'state.json', lambda: now[0])
             self.assertEqual(restored.snapshot()['reports'][REF]['findings'], [FINDING])
+            now[0] += scanner.ERROR_RETRY_INTERVAL - 1
+            restored.cycle()
+            self.assertEqual(len(calls), 2)
+            now[0] += 1
+            restored.cycle()
+            self.assertEqual(len(calls), 3)
+            self.assertNotIn(REF, restored.snapshot()['errors'])
 
 
 class AlertTests(unittest.TestCase):
