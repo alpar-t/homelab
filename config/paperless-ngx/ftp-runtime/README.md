@@ -16,9 +16,12 @@ enabled. Only the server and `pure-pw` binaries move into the Alpine 3.23
 runtime. It implements the environment variables used by the current
 deployment, creates the configured UID/GID 1000 for PureDB, and keeps the
 passive port range. CI checks linked libraries and starts a disposable server,
-logs in through `pure-pw`, uploads over passive FTP
-and verifies bytes on disk. The workflow publishes the runtime stage only after
-this check passes.
+logs in through `pure-pw`, uploads over passive FTP, then verifies bytes,
+UID/GID ownership and log forwarding. The workflow publishes the runtime stage
+only after this check passes.
+
+The startup script runs BusyBox syslogd on the container's stdout so the
+deployment's existing `ADDED_FLAGS=-d -d` verbose diagnostics remain visible.
 
 Compiling application binaries without a distribution package record can make
 Trivy miss a future Pure-FTPd application advisory. The image labels and

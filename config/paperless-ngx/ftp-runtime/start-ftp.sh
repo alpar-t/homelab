@@ -41,5 +41,19 @@ if [ -n "${ADDED_FLAGS:-}" ]; then
     set -- "$@" $ADDED_FLAGS
 fi
 
+# The existing sidecar requests verbose syslog output with '-d -d'. Keep
+# those diagnostics in container logs without installing a separate daemon.
+busybox syslogd -n -O /dev/stdout &
+syslog_pid=$!
+attempt=0
+while [ ! -S /dev/log ]; do
+    if ! kill -0 "$syslog_pid" 2>/dev/null || [ "$attempt" -ge 50 ]; then
+        echo "Unable to start FTP syslog" >&2
+        exit 1
+    fi
+    attempt=$((attempt + 1))
+    sleep 0.1
+done
+
 echo "Starting Pure-FTPd"
 exec /usr/sbin/pure-ftpd "$@"

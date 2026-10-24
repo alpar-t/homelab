@@ -51,13 +51,12 @@ ENTRYPOINT ["/usr/local/bin/start-ftp.sh"]
 FROM runtime AS smoke
 RUN apk add --no-cache python3
 RUN set -eu; \
-    busybox syslogd -O /tmp/syslog; \
     FTP_USER_NAME=scanner FTP_USER_PASS=smoke-only FTP_USER_HOME=/scanner \
     FTP_USER_UID=1000 FTP_USER_GID=1000 FTP_PASSIVE_PORTS=30000:30009 \
     PUBLICHOST=127.0.0.1 ADDED_FLAGS='-d -d' \
     /usr/local/bin/start-ftp.sh > /tmp/ftp.log 2>&1 & \
     server_pid=$!; \
-    trap 'status=$?; if [ "$status" -ne 0 ]; then cat /tmp/ftp.log /tmp/syslog; if kill -0 "$server_pid" 2>/dev/null; then echo "FTP start still running"; else wait "$server_pid" || echo "FTP start exited with $?" ; fi; fi; kill "$server_pid" 2>/dev/null || true' EXIT; \
+    trap 'status=$?; if [ "$status" -ne 0 ]; then cat /tmp/ftp.log; if kill -0 "$server_pid" 2>/dev/null; then echo "FTP start still running"; else wait "$server_pid" || echo "FTP start exited with $?" ; fi; fi; kill "$server_pid" 2>/dev/null || true' EXIT; \
     python3 - <<'PY'
 import ftplib
 import io
@@ -77,5 +76,13 @@ for attempt in range(300):
 payload = b'paperless-ftp-runtime-smoke\n'
 ftp.storbinary('STOR smoke.txt', io.BytesIO(payload))
 ftp.quit()
-assert pathlib.Path('/scanner/smoke.txt').read_bytes() == payload
+uploaded = pathlib.Path('/scanner/smoke.txt')
+assert uploaded.read_bytes() == payload
+assert (uploaded.stat().st_uid, uploaded.stat().st_gid) == (1000, 1000)
+for attempt in range(20):
+    if 'pure-ftpd:' in pathlib.Path('/tmp/ftp.log').read_text():
+        break
+    time.sleep(0.1)
+else:
+    raise RuntimeError('Pure-FTPd syslog was not forwarded to stdout')
 PY
