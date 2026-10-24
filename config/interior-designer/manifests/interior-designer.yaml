@@ -92,7 +92,7 @@ spec:
               memory: 128Mi
       containers:
         - name: open-webui
-          image: ghcr.io/open-webui/open-webui:0.12.3@sha256:a537bbe1e6b428820f52ed4a029d7fff97062e24d5cf32c365fba36fd0542def
+          image: ghcr.io/alpar-t/open-webui-runtime:sha-f93a109069720fe36571b82638c1b86d8de660a7@sha256:1b9bbed9d52da241f729f6b073fa4ccf19e2d22ea94bd077afd7dff64505bb98
           ports:
             - name: http
               containerPort: 8080
@@ -264,7 +264,7 @@ spec:
               readOnly: true
         # Keep the WebUI Function stored on its PVC in sync with Baloo source.
         - name: progress-filter-sync
-          image: ghcr.io/open-webui/open-webui:0.12.3@sha256:a537bbe1e6b428820f52ed4a029d7fff97062e24d5cf32c365fba36fd0542def
+          image: ghcr.io/alpar-t/open-webui-runtime:sha-f93a109069720fe36571b82638c1b86d8de660a7@sha256:1b9bbed9d52da241f729f6b073fa4ccf19e2d22ea94bd077afd7dff64505bb98
           command:
             - sh
             - -c
