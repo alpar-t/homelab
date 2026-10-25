@@ -85,7 +85,7 @@ def finding_rows(snapshot, now):
         for service, last_seen in recent.get(image, {}).items():
             if not isinstance(last_seen, (float, int)) or last_seen > now + 60:
                 raise ValueError('invalid recent exposure timestamp')
-            if 0 <= now - last_seen <= 7 * 86400:
+            if 0 <= now - last_seen < 7 * 86400:
                 services.add(service)
         report = reports.get(image, {})
         scanned_at = report.get('scanned_at', 0)
