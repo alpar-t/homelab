@@ -24,6 +24,13 @@ class FakeAPI:
 
     def call(self, method, params):
         self.calls.append((method, params))
+        if method == 'role.get':
+            return [{'roleid': '501', 'rules': {'actions': [
+                {'name': name, 'status': '1'} for name in
+                ('acknowledge_problems', 'add_problem_comments', 'edit_maintenance',
+                 'execute_scripts', 'manage_api_tokens', 'close_problems')]}}]
+        if method == 'role.update':
+            return {'roleids': ['501']}
         if method == 'user.get':
             return [{'userid': '503'}] if self.existing_user else []
         if method == 'token.create':
@@ -70,6 +77,13 @@ class SecurityReviewIdentityTests(unittest.TestCase):
         self.assertNotIn('maintenance.delete', rules['api'])
         self.assertEqual({a['name'] for a in rules['actions']}, {
             'add_problem_comments', 'acknowledge_problems', 'edit_maintenance',
+        })
+        action_update = next(call[1]['rules'] for call in api.calls if call[0] == 'role.update')
+        self.assertEqual(action_update['actions.default_access'], 0)
+        self.assertEqual({a['name']: a['status'] for a in action_update['actions']}, {
+            'acknowledge_problems': 1, 'add_problem_comments': 1,
+            'edit_maintenance': 1, 'execute_scripts': 0,
+            'manage_api_tokens': 0, 'close_problems': 0,
         })
         group = next(entry[2] for entry in api.calls if entry[0] == 'usergroup.ensure')
         self.assertEqual(group['hostgroup_rights'], [{'id': '17', 'permission': 3}])

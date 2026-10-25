@@ -17,6 +17,7 @@ READ = ['problem.get', 'event.get', 'host.get', 'trigger.get', 'item.get', 'hist
 WRITE = ['event.acknowledge', 'maintenance.create', 'maintenance.delete']
 REVIEW_READ = ['problem.get', 'host.get', 'maintenance.get']
 REVIEW_WRITE = ['event.acknowledge', 'maintenance.create', 'maintenance.update']
+REVIEW_ACTIONS = {'add_problem_comments', 'acknowledge_problems', 'edit_maintenance'}
 
 
 def kubectl(*args, value=None):
@@ -207,17 +208,31 @@ def configure_identity(api, group, existing):
 
 def configure_security_review_identity(api, group, existing):
     """Give the deterministic review controller its own Zabbix API identity."""
+    role_rules = {
+        'api.access': 1, 'api.mode': 1, 'api': REVIEW_READ + REVIEW_WRITE,
+        'ui.default_access': 0, 'modules.default_access': 0,
+        'actions.default_access': 0,
+        'actions': [{'name': name, 'status': 1} for name in sorted(REVIEW_ACTIONS)],
+        'services.read.mode': 0, 'services.write.mode': 0,
+    }
     role = api.ensure('role', 'name', 'HomePBP security review reconciler', {
         'type': 2,
-        'rules': {
-            'api.access': 1, 'api.mode': 1, 'api': REVIEW_READ + REVIEW_WRITE,
-            'ui.default_access': 0, 'modules.default_access': 0,
-            'actions.default_access': 0,
-            'actions': [{'name': name, 'status': 1} for name in (
-                'add_problem_comments', 'acknowledge_problems', 'edit_maintenance')],
-            'services.read.mode': 0, 'services.write.mode': 0,
-        },
+        'rules': role_rules,
     })
+    # Zabbix's default_access controls only *new* action types. It expands all
+    # current actions as enabled on Admin roles unless each is explicitly denied.
+    # Read the deployed version's action catalog and close every unneeded one.
+    live = api.call('role.get', {'roleids': [role], 'output': ['roleid'],
+                                 'selectRules': 'extend'})
+    if len(live) != 1 or not isinstance(live[0].get('rules', {}).get('actions'), list):
+        raise RuntimeError('Cannot inspect security review role actions')
+    action_names = {row['name'] for row in live[0]['rules']['actions']}
+    if not REVIEW_ACTIONS <= action_names:
+        raise RuntimeError('Required security review actions unavailable')
+    api.call('role.update', {'roleid': role, 'rules': {**role_rules,
+        'actions': [{'name': name, 'status': 1 if name in REVIEW_ACTIONS else 0}
+                    for name in sorted(action_names)],
+    }})
     usergroup = api.ensure('usergroup', 'name', 'HomePBP security review reconciler', {
         'gui_access': 3,
         'hostgroup_rights': [{'id': group, 'permission': 3}],
