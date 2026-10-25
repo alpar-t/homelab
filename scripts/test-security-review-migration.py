@@ -115,14 +115,15 @@ class MigrationTests(unittest.TestCase):
             migration.plan(snapshot, events, maintenances, '10', NOW, set())
 
     def test_cutover_audit_requires_exact_suppression_maintenance(self):
-        snapshot, events, maintenances, _ = fixture('REVIEWED_CONFIG_30D', NOW + 86400)
+        snapshot, events, maintenances, _ = fixture('REVIEWED_CONFIG_30D', NOW + 86407)
         result = migration.plan(snapshot, events, maintenances, '10', NOW, set())
         entry = result['entries'][0]
         check = entry['new_check_id']
         mid = '91'
         exact = {'maintenanceid': mid,
                  'name': f'HOME107v2 CONFIG {CVE} {check}',
-                 'description': entry['description'], 'active_till': entry['active_till'],
+                 'description': entry['description'],
+                 'active_till': entry['active_till'] // 60 * 60,
                  'tags': [{'tag': 'check_id', 'operator': '0', 'value': check}],
                  'hosts': [{'hostid': '10'}]}
         self.assertEqual(migration.exact_existing([exact], '10', entry), mid)

@@ -309,7 +309,7 @@ def exact_existing(maintenances, hostid, entry):
     tags = row.get('tags') or []
     hosts = row.get('hosts') or []
     if (row.get('name') != expected_name or row.get('description') != entry['description'] or
-            int(row.get('active_till') or 0) != int(entry['active_till']) or
+            int(row.get('active_till') or 0) != int(entry['active_till']) // 60 * 60 or
             len(tags) != 1 or tags[0].get('operator') not in ('0', 0) or
             len(hosts) != 1 or str(hosts[0].get('hostid')) != str(hostid)):
         raise ValueError('existing exact-service maintenance differs from approved plan: ' + check)
