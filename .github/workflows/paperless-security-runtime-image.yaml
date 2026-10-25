@@ -1,0 +1,43 @@
+name: Build patched Paperless runtime image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/paperless-security-runtime-image.yaml
+      - config/paperless-ngx/security-runtime/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: paperless-security-runtime-image
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish immutable candidate
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: config/paperless-ngx/security-runtime
+          push: true
+          platforms: linux/amd64
+          tags: ghcr.io/alpar-t/paperless-ngx-security:3.3.4-sha-${{ github.sha }}

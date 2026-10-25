@@ -1,0 +1,2 @@
+# PyPI's CPython 3.14, Linux x86_64 wheel, fixed in GHSA-9v8h-qqgm-4m35.
+Brotli==1.2.1 --hash=sha256:a998857af4fcd19920bdf5f30f0f1a23f38472a703d33e49168cd4fd32438377
