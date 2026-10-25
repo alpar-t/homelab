@@ -251,6 +251,30 @@ class Kubernetes:
     def items(self, path):
         return self._list(path)[0]
 
+    def _get(self, path):
+        request = urllib.request.Request(self.base + path, headers={
+            'Authorization': 'Bearer ' + (SA / 'token').read_text().strip()})
+        try:
+            with self.opener.open(request, timeout=10) as response:
+                body = response.read(MAX_WATCH_EVENT_BYTES + 1)
+        except urllib.error.HTTPError as error:
+            if error.code == 404:
+                return None
+            raise
+        if len(body) > MAX_WATCH_EVENT_BYTES:
+            raise ValueError('Kubernetes owner object exceeds limit')
+        return json.loads(body)
+
+    def job(self, namespace, name):
+        namespace = urllib.parse.quote(namespace, safe='')
+        name = urllib.parse.quote(name, safe='')
+        return self._get(f'/apis/batch/v1/namespaces/{namespace}/jobs/{name}')
+
+    def cronjob(self, namespace, name):
+        namespace = urllib.parse.quote(namespace, safe='')
+        name = urllib.parse.quote(name, safe='')
+        return self._get(f'/apis/batch/v1/namespaces/{namespace}/cronjobs/{name}')
+
     def inventory(self):
         pods, version = self._list('/api/v1/pods')
         replicasets = {(r['metadata']['namespace'], r['metadata']['name']): r
@@ -394,8 +418,22 @@ class Scanner:
             with self.lock:
                 self.pods = {pod['metadata']['uid']: pod for pod in pods}
                 self.replicasets = replicasets
-                self.jobs = jobs
-                self.cronjobs = cronjobs
+                referenced_jobs = {
+                    (pod['metadata']['namespace'], owner['name'])
+                    for pod in pods
+                    for owner in pod['metadata'].get('ownerReferences', [])
+                    if owner.get('controller') and owner.get('kind') == 'Job'}
+                self.jobs = {key: value for key, value in self.jobs.items()
+                             if key in referenced_jobs}
+                self.jobs.update(jobs)
+                referenced_crons = {
+                    (key[0], parent['name'])
+                    for key, job in self.jobs.items()
+                    for parent in job.get('metadata', {}).get('ownerReferences', [])
+                    if parent.get('controller') and parent.get('kind') == 'CronJob'}
+                self.cronjobs = {key: value for key, value in self.cronjobs.items()
+                                 if key in referenced_crons}
+                self.cronjobs.update(cronjobs)
                 self._reconcile_pods(self.now())
                 self.resource_version = version
                 self.state['watch_at'] = self.now()
@@ -424,6 +462,26 @@ class Scanner:
         uid = pod.get('metadata', {}).get('uid')
         if not uid:
             raise ValueError('Kubernetes Pod watch event lacks UID')
+        owner = next((item for item in pod['metadata'].get('ownerReferences', [])
+                      if item.get('controller') and item.get('kind') == 'Job'), None)
+        if owner:
+            namespace, name = pod['metadata']['namespace'], owner['name']
+            if (namespace, name) not in self.jobs:
+                try:
+                    job = self.kube.job(namespace, name)
+                    if job:
+                        self.jobs[(namespace, name)] = job
+                        parent = next((item for item in
+                                       job.get('metadata', {}).get('ownerReferences', [])
+                                       if item.get('controller') and item.get('kind') == 'CronJob'), None)
+                        if parent and (namespace, parent['name']) not in self.cronjobs:
+                            cronjob = self.kube.cronjob(namespace, parent['name'])
+                            if cronjob:
+                                self.cronjobs[(namespace, parent['name'])] = cronjob
+                except Exception:
+                    # Image discovery still succeeds if the owner was deleted
+                    # before the Pod event arrived; the Job identity is fallback.
+                    pass
         with self.lock:
             if kind == 'DELETED':
                 old = self.pods.pop(uid, None)

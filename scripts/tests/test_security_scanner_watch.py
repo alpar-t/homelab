@@ -142,6 +142,28 @@ class PodWatchTest(unittest.TestCase):
         changed = scanner_module.consumer_fingerprints((second,), {}, jobs, cronjobs)[JOB_IMAGE][identity]
         self.assertNotEqual(a, changed)
 
+    def test_new_short_job_owner_is_resolved_before_next_list(self):
+        calls = []
+
+        def get_job(namespace, name):
+            calls.append(('job', namespace, name))
+            return {'metadata': {'ownerReferences': [
+                {'kind': 'CronJob', 'name': 'hourly', 'uid': 'cron-uid', 'controller': True}]}}
+
+        def get_cronjob(namespace, name):
+            calls.append(('cronjob', namespace, name))
+            return {'metadata': {'generation': 2}}
+
+        self.kube.job = get_job
+        self.kube.cronjob = get_cronjob
+        job = pod('hourly-42', 'pod-f', 'Running', JOB_IMAGE,
+                  ('Job', 'hourly-42', 'job-uid'))
+        self.scanner.apply_watch_event({'type': 'ADDED', 'object': job})
+        self.assertEqual(calls, [('job', 'testing', 'hourly-42'),
+                                 ('cronjob', 'testing', 'hourly')])
+        self.assertEqual(self.scanner.snapshot()['images'][JOB_IMAGE],
+                         ['testing/CronJob/hourly/main'])
+
     def test_expired_watch_version_requires_relist(self):
         with self.assertRaises(scanner_module.WatchExpired):
             self.scanner.apply_watch_event({'type': 'ERROR', 'object': {'code': 410}})
