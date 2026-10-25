@@ -124,10 +124,12 @@ class MigrationTests(unittest.TestCase):
                  'name': f'HOME107v2 CONFIG {CVE} {check}',
                  'description': entry['description'],
                  'active_till': entry['active_till'] // 60 * 60,
-                 'maintenance_type': '0',
+                 'active_since': NOW - 48 * 3600, 'maintenance_type': '0',
+                 'timeperiods': [{'timeperiod_type': '2', 'every': '1',
+                                  'start_time': '0', 'period': '86400'}],
                  'tags': [{'tag': 'check_id', 'operator': '0', 'value': check}],
                  'hosts': [{'hostid': '10'}]}
-        self.assertEqual(migration.exact_existing([exact], '10', entry), mid)
+        self.assertEqual(migration.exact_existing([exact], '10', entry, NOW), mid)
         new_event = {'eventid': '99', 'suppressed': '1',
                      'tags': [{'tag': 'check_id', 'value': check}],
                      'suppression_data': [{'maintenanceid': mid,
@@ -151,15 +153,33 @@ class MigrationTests(unittest.TestCase):
         check = entry['new_check_id']
         row = {'maintenanceid': '91', 'name': f'HOME107v2 NOT_AFFECTED {CVE} {check}',
                'description': 'New review\nHOME107V2:' + json.dumps(meta),
-               'active_till': entry['active_till'] // 60 * 60, 'maintenance_type': '0',
+               'active_till': entry['active_till'] // 60 * 60,
+               'active_since': NOW - 48 * 3600, 'maintenance_type': '0',
+               'timeperiods': [{'timeperiod_type': '2', 'every': '1',
+                                'start_time': '0', 'period': '86400'}],
                'tags': [{'tag': 'check_id', 'operator': '0', 'value': check}],
                'hosts': [{'hostid': '10'}]}
         with self.assertRaisesRegex(ValueError, 'differs from approved plan'):
-            migration.exact_existing([row], '10', entry)
+            migration.exact_existing([row], '10', entry, NOW)
         self.assertEqual(migration.reviewed_existing([row], '10', entry, NOW), '91')
         meta['service'] = 'other/Deployment/name/container'
         row['description'] = 'Tampered\nHOME107V2:' + json.dumps(meta)
         self.assertIsNone(migration.reviewed_existing([row], '10', entry, NOW))
+
+    def test_daily_midnight_period_needs_backdated_active_since(self):
+        snapshot, events, maintenances, _ = fixture('REVIEWED_CONFIG_30D', NOW + 86400)
+        entry = migration.plan(snapshot, events, maintenances, '10', NOW, set())['entries'][0]
+        class FakeAPI:
+            def call(self, method, params):
+                self.method, self.params = method, params
+                return {'maintenanceids': ['91']}
+        api = FakeAPI()
+        self.assertEqual(migration.create_maintenance(api, '10', entry, NOW + 3600), '91')
+        self.assertEqual(api.params['active_since'], NOW + 3600 - 48 * 3600)
+        row = {**api.params, 'maintenanceid': '91'}
+        self.assertTrue(migration.safe_daily_period(row, NOW + 3600))
+        row['active_since'] = NOW + 3600
+        self.assertFalse(migration.safe_daily_period(row, NOW + 3600))
 
 
 if __name__ == '__main__':

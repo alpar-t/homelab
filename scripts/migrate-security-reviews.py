@@ -275,8 +275,9 @@ def api_state(api):
                                       'selectTags': 'extend', 'selectAcknowledges': 'extend',
                                       'selectSuppressionData': 'extend', 'limit': 2000})
     maintenances = api.call('maintenance.get', {'output': ['maintenanceid', 'name', 'description',
-                                                           'active_till', 'maintenance_type'],
+                                                           'active_since', 'active_till', 'maintenance_type'],
                                                  'selectTags': 'extend', 'selectHosts': ['hostid'],
+                                                 'selectTimeperiods': 'extend',
                                                  'limit': 5000})
     return hostid, events, maintenances
 
@@ -287,7 +288,9 @@ def create_maintenance(api, hostid, entry, now):
         raise ValueError('invalid check ID or expired migration entry')
     name = f'HOME107v2 {entry["status"].upper()} {entry["cve"]} {check}'
     params = {'name': name, 'description': entry['description'],
-              'maintenance_type': 0, 'active_since': now // 60 * 60,
+              # A daily 00:00 period that began before active_since is ignored
+              # until tomorrow. Backdate the schedule without extending expiry.
+              'maintenance_type': 0, 'active_since': now // 60 * 60 - 48 * 3600,
               'active_till': entry['active_till'], 'hosts': [{'hostid': hostid}],
               'tags_evaltype': 0, 'tags': [{'tag': 'check_id', 'operator': 0, 'value': check}],
               'timeperiods': [{'timeperiod_type': 2, 'every': 1, 'start_time': 0,
@@ -296,8 +299,22 @@ def create_maintenance(api, hostid, entry, now):
     return str(result['maintenanceids'][0])
 
 
-def exact_existing(maintenances, hostid, entry):
+def safe_daily_period(row, now):
+    periods = row.get('timeperiods') or []
+    if len(periods) != 1:
+        return False
+    period = periods[0]
+    return (str(row.get('maintenance_type')) == '0' and
+            int(row.get('active_since') or 0) <= now // 86400 * 86400 and
+            str(period.get('timeperiod_type')) == '2' and
+            str(period.get('every')) == '1' and
+            str(period.get('start_time')) == '0' and
+            str(period.get('period')) == '86400')
+
+
+def exact_existing(maintenances, hostid, entry, now=None):
     """Find only a review record identical to the approved plan entry."""
+    now = int(time.time()) if now is None else now
     check = entry['new_check_id']
     matches = [m for m in maintenances if one_check_tag(m) == check]
     if not matches:
@@ -311,7 +328,8 @@ def exact_existing(maintenances, hostid, entry):
     if (row.get('name') != expected_name or row.get('description') != entry['description'] or
             int(row.get('active_till') or 0) != int(entry['active_till']) // 60 * 60 or
             len(tags) != 1 or tags[0].get('operator') not in ('0', 0) or
-            len(hosts) != 1 or str(hosts[0].get('hostid')) != str(hostid)):
+            len(hosts) != 1 or str(hosts[0].get('hostid')) != str(hostid) or
+            not safe_daily_period(row, now)):
         raise ValueError('existing exact-service maintenance differs from approved plan: ' + check)
     return str(row['maintenanceid'])
 
@@ -346,6 +364,7 @@ def reviewed_existing(maintenances, hostid, entry, now):
             len(tags) != 1 or tags[0].get('operator') not in ('0', 0) or
             len(hosts) != 1 or str(hosts[0].get('hostid')) != str(hostid) or
             int(row.get('active_till') or 0) != int(meta.get('expires_at') or 0) // 60 * 60 or
+            not safe_daily_period(row, now) or
             int(row.get('active_till') or 0) <= now):
         return None
     return str(row['maintenanceid'])
