@@ -293,6 +293,29 @@ class ReviewControllerTests(unittest.TestCase):
             self.assertEqual(controller.queue()['total'], 1)
             self.assertEqual(next(iter(api.rows.values()))['active_till'], expiry)
 
+    def test_revoked_permanent_review_gets_finite_mute(self):
+        api = FakeZabbix()
+        with tempfile.TemporaryDirectory() as temp, patch.object(review, 'bounded_json', return_value=snapshot()):
+            controller = self.controller(temp, api)
+            controller.tick()
+            row = next(iter(controller.rows.values()))
+            from datetime import datetime, timezone
+            proposal = {key: row[key] for key in ('finding_id', 'image', 'cve', 'service', 'check_id')}
+            proposal.update(disposition='not_affected',
+                            reason='The exact package does not include the vulnerable source component in this image digest.',
+                            evidence_urls=['https://example.org/advisory', 'https://example.org/package'],
+                            reviewed_at=datetime.fromtimestamp(NOW, timezone.utc).isoformat().replace('+00:00', 'Z'),
+                            recheck_on=['image_digest_change', 'advisory_change'])
+            controller.submit_review(proposal)
+            self.assertEqual(api.rows[row['check_id']]['active_till'], review.PERMANENT_TILL)
+            proposal.update(disposition='needs_evidence',
+                            reason='The package tracker now contradicts the earlier conclusion; inspect the exact package and use path.',
+                            recheck_on=['advisory_change', '30_days'])
+            result = controller.submit_review(proposal)
+            self.assertEqual(result['expires_at'], NOW + review.TEMP_SECONDS)
+            self.assertEqual(api.rows[row['check_id']]['active_till'], NOW + review.TEMP_SECONDS)
+            self.assertEqual(review.parse_description(api.rows[row['check_id']]['description'])['status'], 'needs_evidence')
+
     def test_expiring_permanent_review_keeps_other_urgent_and_queue(self):
         api = FakeZabbix()
         with tempfile.TemporaryDirectory() as temp, patch.object(review, 'bounded_json', return_value=two_image_snapshot()):

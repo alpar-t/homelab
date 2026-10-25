@@ -703,7 +703,9 @@ class Controller:
                 expires = PERMANENT_TILL
                 review_by = now + 365 * 86400
             else:
-                expires = int(current['active_till'])
+                # Revoking a permanent exception must also revoke its long mute.
+                # Preserve the original deadline for an already finite review.
+                expires = min(int(current['active_till']), now + TEMP_SECONDS)
                 interval = 7 * 86400 if '7_days' in recheck or disposition == 'urgent' else 30 * 86400
                 review_by = min(now + interval, expires)
             fingerprint = (self.scanner().get('consumer_fingerprints', {})
@@ -720,7 +722,7 @@ class Controller:
             update = {'maintenanceid': current['maintenanceid'],
                       'name': f"HOME107v2 {disposition.upper()} {cve} {check_id}",
                       'description': description(meta)}
-            if disposition == 'not_affected':
+            if disposition == 'not_affected' or expires != int(current['active_till']):
                 update['active_till'] = expires
             self.api.call('maintenance.update', update)
             self.records[check_id] = meta
