@@ -68,7 +68,7 @@ spec:
         # The image installs extra OCR languages concurrently with Django's
         # startup checks, which can make those checks fail before apt finishes.
         - name: preload-ocr-languages
-          image: ghcr.io/paperless-ngx/paperless-ngx:3.3.4@sha256:9bc6e8248891bcfa6f52fffe8b81e4ea8cae75790c3ec1b9906961a7ba55c969
+          image: ghcr.io/alpar-t/paperless-ngx-security:3.3.4-sha-8ce97e81b306d86ba73b61ef5ba8abf96b3aec5f@sha256:e57809ecf44512d503124ed1f310502c95e22e8b6822c41f8ab3139ca7f5240c
           command:
             - sh
             - -ec
@@ -150,7 +150,7 @@ spec:
         
         # Main Paperless-ngx application
         - name: paperless-ngx
-          image: ghcr.io/paperless-ngx/paperless-ngx:3.3.4@sha256:9bc6e8248891bcfa6f52fffe8b81e4ea8cae75790c3ec1b9906961a7ba55c969
+          image: ghcr.io/alpar-t/paperless-ngx-security:3.3.4-sha-8ce97e81b306d86ba73b61ef5ba8abf96b3aec5f@sha256:e57809ecf44512d503124ed1f310502c95e22e8b6822c41f8ab3139ca7f5240c
           ports:
             - containerPort: 8000
               name: http
