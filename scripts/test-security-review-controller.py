@@ -318,6 +318,9 @@ class ReviewControllerTests(unittest.TestCase):
             controller.tick()
             row = next(iter(controller.rows.values()))
             check = row['check_id']
+            legacy = review.parse_description(api.rows[check]['description'])
+            legacy['legacy_backlog'] = True
+            api.rows[check]['description'] = review.description(legacy)
             api.events[check] = [{'eventid': '81', 'suppressed': '1', 'acknowledged': '1',
                                   'acknowledges': []}]
             controller.tick()
@@ -334,6 +337,7 @@ class ReviewControllerTests(unittest.TestCase):
                             recheck_on=['vendor_fix'])
             controller.submit_review(proposal)
             self.assertEqual(len(api.events[check][0]['acknowledges']), 2)
+            self.assertFalse(controller.records[check]['legacy_backlog'])
             proposal['reason'] += ' Confirmed again with a new vendor advisory.'
             controller.submit_review(proposal)
             self.assertEqual(len(api.events[check][0]['acknowledges']), 3)

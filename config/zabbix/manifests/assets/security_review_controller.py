@@ -457,7 +457,8 @@ class Controller:
                                 'Scanner advisory or package evidence changed; prior review must be repeated.',
                                 'packages': row['packages'], 'scanner_url': row['scanner_url'],
                                 'evidence_urls': ([row['scanner_url']] if row['scanner_url'].startswith('https://') else []),
-                                'recheck_on': ['advisory_change', '30_days']}
+                                'recheck_on': ['advisory_change', '30_days'],
+                                'legacy_backlog': False}
                         if not self.apply or key in self.degraded_ids:
                             record_faults += 1
                             continue
@@ -473,7 +474,8 @@ class Controller:
                     if meta['status'] in {'config', 'needs_evidence', 'requires_fix'} and fingerprint and fingerprint != meta.get('fingerprint', ''):
                         meta = {**meta, 'status': 'pending', 'review_by': now + REVIEW_SECONDS,
                                 'reason': 'Workload template fingerprint changed; prior configuration review must be repeated.',
-                                'fingerprint': fingerprint, 'recheck_on': ['service_config_change', '30_days']}
+                                'fingerprint': fingerprint, 'recheck_on': ['service_config_change', '30_days'],
+                                'legacy_backlog': False}
                         if self.apply:
                             try:
                                 self.api.call('maintenance.update', {'maintenanceid': current['maintenanceid'],
@@ -647,7 +649,7 @@ class Controller:
                     'action_summary': action_summary.strip(),
                     'attack_path': printable(attack_path, 500) if isinstance(attack_path, str) else '',
                     'impact': printable(impact, 300) if isinstance(impact, str) else '',
-                    'legacy_revalidation': False,
+                    'legacy_revalidation': False, 'legacy_backlog': False,
                     'packages': row['packages'], 'scanner_url': row['scanner_url']}
             update = {'maintenanceid': current['maintenanceid'],
                       'name': f"HOME107v2 {disposition.upper()} {cve} {check_id}",
