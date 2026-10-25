@@ -1,11 +1,11 @@
 # syntax=docker/dockerfile:1
 # Keep Open WebUI 0.12.3 and its application dependencies intact. Replace only
-# the two Python packages with published security fixes. Their wheel hashes are
+# the Python packages with published security fixes. Their wheel hashes are
 # pinned in requirements-overlay.txt so a rebuild cannot silently change them.
 FROM ghcr.io/open-webui/open-webui:0.12.3@sha256:a537bbe1e6b428820f52ed4a029d7fff97062e24d5cf32c365fba36fd0542def
 
 LABEL org.opencontainers.image.source="https://github.com/alpar-t/homelab" \
-      org.opencontainers.image.description="Open WebUI 0.12.3 with patched Pillow and certifi"
+      org.opencontainers.image.description="Open WebUI 0.12.3 with patched Pillow, certifi and Brotli decoders"
 
 USER root
 COPY requirements-overlay.txt /tmp/requirements-overlay.txt
@@ -17,12 +17,19 @@ RUN python -m pip install --disable-pip-version-check --no-cache-dir \
 import io
 from importlib.metadata import version
 
+import brotli
+import brotlicffi
 import certifi
 from PIL import Image, ImageOps, features
 
 assert version('Pillow') == '13.0.0'
 assert version('certifi') == '2026.10.23'
+assert version('Brotli') == '1.2.1'
+assert version('brotlicffi') == '1.2.1.0'
 assert 'emSign ECC Root CA - G3' not in open(certifi.where(), encoding='ascii').read()
+for codec in (brotli, brotlicffi):
+    source = b'open-webui-brotli-runtime-probe' * 32
+    assert codec.decompress(codec.compress(source)) == source
 assert features.version('libjpeg_turbo')
 source = Image.new('RGB', (8, 8), (17, 34, 51))
 data = io.BytesIO()
