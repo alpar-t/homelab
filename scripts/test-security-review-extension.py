@@ -70,7 +70,9 @@ class ExtensionTests(unittest.TestCase):
         self.assertEqual(meta['review_by'], NOW)
         self.assertEqual(meta['reason'], 'Fresh finite review evidence')
         self.assertEqual(meta['reviewed_at'], '2026-10-25T08:00:00Z')
-        self.assertIn('Legacy original mute expiry:', target['target_description'])
+        self.assertIn('HOME-107 user-approved finite 30-day cutover mute;',
+                      target['target_description'])
+        self.assertIn('fixed deadline ', target['target_description'])
 
     def test_never_updates_current_permanent_or_wrong_host(self):
         source, rows = fixture()

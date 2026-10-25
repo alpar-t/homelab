@@ -45,9 +45,11 @@ def display_time(value):
 
 def extended_description(row, meta, original_expiry):
     lead = row['description'].rsplit(MARKER, 1)[0]
-    if 'Legacy original mute expiry:' in lead:
+    if 'HOME-107 user-approved finite 30-day cutover mute;' in lead:
         raise ValueError('legacy expiry display already exists without matching extension')
-    lead += '\nLegacy original mute expiry: ' + display_time(original_expiry)
+    lead += ('\nHOME-107 user-approved finite 30-day cutover mute; original expiry '
+             + display_time(original_expiry) + '; fixed deadline '
+             + display_time(int(meta['legacy_extension_deadline'])))
     return lead + MARKER + json.dumps(meta, sort_keys=True, separators=(',', ':'))
 
 
