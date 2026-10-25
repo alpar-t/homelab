@@ -94,6 +94,33 @@ class ReviewControllerTests(unittest.TestCase):
                                  'seen_images': {IMAGE: NOW - 1000}})
         return review.Controller(api=api, state_path=path, now=now, apply=True)
 
+    def test_reuse_candidates_offer_only_same_digest_intrinsic_peer_evidence(self):
+        other_service = 'example/Deployment/app/worker'
+        value = snapshot()
+        value['images'][IMAGE].append(other_service)
+        value['consumer_fingerprints'][IMAGE][other_service] = 'template-worker'
+        with tempfile.TemporaryDirectory() as temp:
+            controller = self.controller(temp, FakeZabbix())
+            controller.rows = review.finding_rows(value, NOW)
+            web = next(row for row in controller.rows.values() if row['service'] == SERVICE)
+            worker = next(row for row in controller.rows.values() if row['service'] == other_service)
+            controller.records = {
+                web['check_id']: {'status': 'not_affected', 'reviewed_at': '2027-01-15T08:00:00Z',
+                                  'reason': 'The exact image lacks the affected binary irrespective of service configuration.',
+                                  'evidence_urls': ['https://example.org/advisory', 'https://example.org/source'],
+                                  'recheck_on': ['image_digest_change']},
+                worker['check_id']: {'status': 'needs_evidence', 'reason': 'Binary inventory has not been checked.',
+                                     'evidence_urls': ['https://example.org/advisory'],
+                                     'expires_at': NOW + 30 * 86400},
+            }
+            candidates = controller.reuse_candidates()
+            self.assertEqual(candidates['total'], 1)
+            self.assertEqual(candidates['findings'][0]['service'], other_service)
+            self.assertEqual(candidates['findings'][0]['peer_reviews'][0]['service'], SERVICE)
+            self.assertEqual(candidates['findings'][0]['expires_at'], NOW + 30 * 86400)
+            controller.records[web['check_id']]['status'] = 'config'
+            self.assertEqual(controller.reuse_candidates()['total'], 0)
+
     def test_new_finding_queued_immediately_and_gate_waits_for_readback(self):
         api = FakeZabbix()
         with tempfile.TemporaryDirectory() as temp, patch.object(review, 'bounded_json', return_value=snapshot()):

@@ -595,6 +595,37 @@ class Controller:
             return {'findings': rows[offset:offset + limit], 'next_offset':
                     offset + limit if offset + limit < len(rows) else None, 'total': len(rows)}
 
+    def reuse_candidates(self, limit=4, offset=0):
+        """Offer same-digest intrinsic reviews as evidence, never as an automatic decision."""
+        with self.lock:
+            peers = {}
+            for row in self.rows.values():
+                meta = self.records.get(row['check_id'])
+                if (meta and meta.get('status') == 'not_affected' and
+                        meta.get('reviewed_at') and len(meta.get('evidence_urls', [])) >= 2):
+                    peers.setdefault((row['image'], row['cve']), []).append({
+                        'service': row['service'], 'reason': meta['reason'],
+                        'evidence_urls': meta['evidence_urls'],
+                        'reviewed_at': meta['reviewed_at'],
+                        'recheck_on': meta.get('recheck_on', []),
+                    })
+            candidates = []
+            for row in self.rows.values():
+                meta = self.records.get(row['check_id'])
+                same = [peer for peer in peers.get((row['image'], row['cve']), [])
+                        if peer['service'] != row['service']]
+                if (not meta or meta.get('status') != 'needs_evidence' or not same or
+                        row['finding_id'] in self.degraded_ids):
+                    continue
+                candidates.append({**row, 'status': meta['status'], 'reason': meta['reason'],
+                                   'evidence_urls': meta.get('evidence_urls', []),
+                                   'expires_at': meta['expires_at'],
+                                   'peer_reviews': same[:3]})
+            candidates.sort(key=lambda item: (item['cve'], item['image'], item['service']))
+            return {'findings': candidates[offset:offset + limit], 'next_offset':
+                    offset + limit if offset + limit < len(candidates) else None,
+                    'total': len(candidates)}
+
     def submit_review(self, proposal):
         if not isinstance(proposal, dict) or not set(proposal).issubset({
                 'finding_id', 'image', 'cve', 'service', 'check_id', 'disposition',
@@ -726,7 +757,7 @@ class Controller:
                     okay = value['healthy'] and controller.now() - value['generated_at'] < 180
                     self._send(200 if okay else 503, {'ok': okay})
                     return
-                if parsed.path not in ('/snapshot', '/queue') or not self._authorized(parsed.path):
+                if parsed.path not in ('/snapshot', '/queue', '/reuse-candidates') or not self._authorized(parsed.path):
                     self._send(403, {'error': 'forbidden'})
                     return
                 if parsed.path == '/snapshot':
@@ -741,7 +772,8 @@ class Controller:
                     if not controller.snapshot_data['healthy']:
                         self._send(503, {'error': 'review controller unavailable'})
                     else:
-                        self._send(200, controller.queue(limit, offset))
+                        self._send(200, controller.queue(limit, offset) if parsed.path == '/queue'
+                                   else controller.reuse_candidates(limit, offset))
                 except ValueError:
                     self._send(400, {'error': 'invalid queue parameters'})
 
