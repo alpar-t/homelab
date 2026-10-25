@@ -12,12 +12,12 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: [pods]
-    verbs: [get, list]
+    verbs: [get, list, watch]
   - apiGroups: [apps]
     resources: [replicasets]
     verbs: [get, list]
   - apiGroups: [batch]
-    resources: [jobs]
+    resources: [jobs, cronjobs]
     verbs: [get, list]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -45,6 +45,20 @@ spec:
   resources:
     requests:
       storage: 10Gi
+---
+# Discovery history and compact findings survive a cache/node loss. This
+# replicated volume keeps the seven-day exposure queue and scan state only.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: security-scanner-state
+  namespace: zabbix
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 1Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -139,6 +153,8 @@ spec:
               readOnly: true
             - name: cache
               mountPath: /cache
+            - name: state
+              mountPath: /state
             - name: temporary
               mountPath: /tmp
             - name: kubernetes-api
@@ -153,6 +169,9 @@ spec:
         - name: cache
           persistentVolumeClaim:
             claimName: security-scanner-cache
+        - name: state
+          persistentVolumeClaim:
+            claimName: security-scanner-state
         - name: temporary
           emptyDir:
             sizeLimit: 1Gi
