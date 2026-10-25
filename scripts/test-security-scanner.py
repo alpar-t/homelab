@@ -71,7 +71,9 @@ class CycleTests(unittest.TestCase):
     def test_failed_rescan_retains_findings_and_records_error(self):
         class Kube:
             def inventory(self):
-                return {REF: ['apps/Deployment/web/web']}, []
+                return ([{'metadata': {'namespace': 'apps', 'name': 'web', 'uid': 'web-1'},
+                          'status': {'phase': 'Running', 'containerStatuses': [
+                              {'name': 'web', 'imageID': REF}]}}], {}, {}, {}, '10')
 
         calls = []
 
@@ -105,7 +107,8 @@ class CycleTests(unittest.TestCase):
 class AlertTests(unittest.TestCase):
     def snapshot(self):
         return {'started_at': NOW - 10000, 'inventory_at': NOW - 30,
-                'inventory_error': '', 'unresolved': [],
+                'inventory_error': '', 'watch_at': NOW - 30, 'watch_error': '',
+                'unresolved': [], 'recent_images': {},
                 'images': {REF: ['apps/Deployment/web/web']},
                 'reports': {REF: {'scanned_at': NOW - 60, 'findings': [FINDING]}},
                 'errors': {}}
@@ -115,7 +118,9 @@ class AlertTests(unittest.TestCase):
         rows, complete = checks.evaluate(snapshot, NOW, check)
         by_name = {row['name']: row for row in rows}
         self.assertTrue(complete)
-        self.assertEqual(by_name['Critical CVE-2026-12345 web@aaaaaaaaaaaa']['status'], 1)
+        raw = by_name['Critical CVE-2026-12345 web@aaaaaaaaaaaa apps/Deployment/web/web']
+        self.assertEqual(raw['status'], 1)
+        self.assertEqual(raw['notification'], 'dashboard')
         snapshot['errors'][REF] = 'RuntimeError'
         rows, complete = checks.evaluate(snapshot, NOW, check)
         self.assertFalse(complete)

@@ -317,10 +317,13 @@ class ReviewControllerTests(unittest.TestCase):
             controller.tick()
             row = next(iter(controller.rows.values()))
             check = row['check_id']
-            api.events[check] = [{'eventid': '81', 'suppressed': '1', 'acknowledged': '0',
+            api.events[check] = [{'eventid': '81', 'suppressed': '1', 'acknowledged': '1',
                                   'acknowledges': []}]
             controller.tick()
             self.assertEqual(len(api.events[check][0]['acknowledges']), 1)
+            self.assertEqual(api.events[check][0]['acknowledged'], '1')
+            self.assertEqual([params['action'] for method, params in api.calls
+                              if method == 'event.acknowledge'], [4])
             from datetime import datetime, timezone
             proposal = {key: row[key] for key in ('finding_id', 'image', 'cve', 'service', 'check_id')}
             proposal.update(disposition='requires_fix',

@@ -365,7 +365,9 @@ class Controller:
             for problem in problems:
                 if any(marker in a.get('message', '') for a in problem.get('acknowledges', [])):
                     continue
-                action = (20 if str(problem.get('acknowledged')) == '1' else 4) if meta['status'] == 'pending' else 6
+                # Pending is represented by the exact maintenance record, not
+                # by undoing a human's acknowledgement of the raw event.
+                action = 4 if meta['status'] == 'pending' else 6
                 try:
                     self.api.call('event.acknowledge', {'eventids': [problem['eventid']],
                                                         'action': action, 'message': review_note(meta)})
