@@ -49,7 +49,7 @@ spec:
                   name: zabbix-db-app
                   key: password
             - name: ZBX_CACHESIZE
-              value: 32M
+              value: 64M
             - name: ZBX_HISTORYCACHESIZE
               value: 8M
             - name: ZBX_HISTORYINDEXCACHESIZE
@@ -93,10 +93,10 @@ spec:
           resources:
             requests:
               cpu: 50m
-              memory: 128Mi
+              memory: 192Mi
             limits:
               cpu: 1000m
-              memory: 384Mi
+              memory: 512Mi
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
