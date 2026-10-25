@@ -71,9 +71,13 @@ class FakeZabbix:
             self.rows[check] = row
             return {'maintenanceids': [row['maintenanceid']]}
         if method == 'maintenance.update':
-            row = next(row for row in self.rows.values() if row['maintenanceid'] == params['maintenanceid'])
-            row.update(params)
-            return {'maintenanceids': [row['maintenanceid']]}
+            updates = params if isinstance(params, list) else [params]
+            ids = []
+            for update in updates:
+                row = next(row for row in self.rows.values() if row['maintenanceid'] == update['maintenanceid'])
+                row.update(update)
+                ids.append(row['maintenanceid'])
+            return {'maintenanceids': ids}
         if method == 'event.acknowledge':
             event = next(event for events in self.events.values() for event in events
                          if event['eventid'] == params['eventids'][0])
@@ -99,12 +103,32 @@ class ReviewControllerTests(unittest.TestCase):
             self.assertEqual(first['pending_count'], 1)
             self.assertEqual(first['overdue_count'], 0)
             self.assertEqual(first['ready_check_ids'], [])
+            self.assertLessEqual(next(iter(api.rows.values()))['active_since'], NOW - 48 * 3600)
             queued = controller.queue()
             self.assertEqual(queued['total'], 1)
             self.assertEqual(queued['findings'][0]['image'], IMAGE)
             second = controller.tick()
             self.assertEqual(second['ready_check_ids'], [review.raw_check_id(IMAGE, CVE, SERVICE)])
             self.assertEqual(len([call for call in api.calls if call[0] == 'maintenance.create']), 1)
+
+    def test_existing_daily_maintenance_repairs_start_then_waits_for_readback(self):
+        api = FakeZabbix()
+        with tempfile.TemporaryDirectory() as temp, patch.object(review, 'bounded_json', return_value=snapshot()):
+            controller = self.controller(temp, api)
+            controller.tick()
+            check = review.raw_check_id(IMAGE, CVE, SERVICE)
+            api.rows[check]['active_since'] = NOW - 60
+            first = controller.tick()
+            self.assertNotIn(check, first['ready_check_ids'])
+            repairs = [params for method, params in api.calls
+                       if method == 'maintenance.update' and isinstance(params, list)]
+            self.assertEqual(len(repairs), 1)
+            self.assertEqual(repairs[0], [{'maintenanceid': api.rows[check]['maintenanceid'],
+                                           'active_since': review.daily_safe_start(NOW)}])
+            second = controller.tick()
+            self.assertIn(check, second['ready_check_ids'])
+            self.assertEqual(len([params for method, params in api.calls
+                                  if method == 'maintenance.update' and isinstance(params, list)]), 1)
 
     def test_pending_becomes_overdue_without_extending_mute(self):
         clock = [NOW]

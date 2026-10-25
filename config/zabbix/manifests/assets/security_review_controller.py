@@ -31,6 +31,7 @@ MAX_HTTP = 4 * 1024 * 1024
 MAX_FINDINGS = 2000
 TEMP_SECONDS = 30 * 86400
 REVIEW_SECONDS = 3600
+DAILY_START_LEAD_SECONDS = 48 * 3600
 PERMANENT_TILL = int(dt.datetime(2037, 12, 31, tzinfo=dt.timezone.utc).timestamp())
 MARKER = '\nHOME107V2:'
 IMAGE = re.compile(r'^[a-z0-9][a-z0-9._:/-]*@sha256:[a-f0-9]{64}$')
@@ -143,6 +144,12 @@ def maintenance_payload(hostid, row, meta, start, end):
             'hosts': [{'hostid': hostid}], 'tags_evaltype': 0,
             'tags': [{'tag': 'check_id', 'operator': 0, 'value': row['check_id']}],
             'timeperiods': [{'timeperiod_type': 2, 'every': 1, 'start_time': 0, 'period': 86400}]}
+
+
+def daily_safe_start(now):
+    # Zabbix does not activate today's 00:00 daily period when active_since
+    # starts after that boundary. Two days of lead cover timezone differences.
+    return int((now - DAILY_START_LEAD_SECONDS) // 60 * 60)
 
 
 class Zabbix:
@@ -409,6 +416,8 @@ class Controller:
                 problems = self.api.problems(hostid)
                 records = {}
                 ready_check_ids = []
+                start_repairs = []
+                awaiting_start_readback = set()
                 missing = 0
                 renewal_required = 0
                 record_faults = getattr(self.api, 'invalid_maintenance_count', 0)
@@ -427,7 +436,8 @@ class Controller:
                         meta = initial_meta(row, now, fingerprint,
                                             'new_digest' if row['image'] in new_images else
                                             'new_advisory_or_service')
-                        payload = maintenance_payload(hostid, row, meta, now - 60, meta['expires_at'])
+                        payload = maintenance_payload(hostid, row, meta,
+                                                      daily_safe_start(now), meta['expires_at'])
                         try:
                             result = self.api.call('maintenance.create', payload)
                         except Exception:
@@ -446,6 +456,18 @@ class Controller:
                     except (ValueError, TypeError, KeyError):
                         record_faults += 1
                         continue
+                    try:
+                        current_start = int(current['active_since'])
+                    except (KeyError, TypeError, ValueError):
+                        record_faults += 1
+                        continue
+                    if current_start > daily_safe_start(now) and int(current['active_till']) > now:
+                        awaiting_start_readback.add(check_id)
+                        if self.apply:
+                            start_repairs.append({'maintenanceid': current['maintenanceid'],
+                                                  'active_since': daily_safe_start(now)})
+                        else:
+                            record_faults += 1
                     if (meta.get('packages') != row['packages'] or
                             meta.get('scanner_url') != row['scanner_url']):
                         # A Trivy database refresh can change package/fix/source data
@@ -502,9 +524,22 @@ class Controller:
                                 meta = renewed_meta
                                 records[check_id] = meta
                                 current = {**current, 'active_till': renewed_end}
-                    if (check_id in preexisting and
+                    if (check_id in preexisting and check_id not in awaiting_start_readback and
                             int(current['active_since']) <= now < int(current['active_till'])):
                         ready_check_ids.append(check_id)
+                if start_repairs:
+                    for offset in range(0, len(start_repairs), 50):
+                        batch = start_repairs[offset:offset + 50]
+                        try:
+                            self.api.call('maintenance.update', batch)
+                        except Exception:
+                            # A bad maintenance must not prevent other exact
+                            # findings from becoming active on the next read.
+                            for repair in batch:
+                                try:
+                                    self.api.call('maintenance.update', repair)
+                                except Exception:
+                                    record_faults += 1
                 if self.apply:
                     record_faults += self._note_problems(problems, records)
                 unmuted = sum(1 for check_id in records for problem in problems.get(check_id, [])
