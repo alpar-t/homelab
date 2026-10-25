@@ -43,7 +43,7 @@ spec:
           command: [python, -B, /config/security_review_controller.py]
           env:
             - name: REVIEW_APPLY
-              value: "false"
+              value: "true"
           ports:
             - name: http
               containerPort: 8081
