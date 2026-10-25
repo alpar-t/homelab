@@ -221,8 +221,7 @@ def plan(snapshot, events, maintenances, hostid, now, approved_permanent, skip_e
                 record = {'schema': 2, 'finding_id': finding_id(image, cve, service),
                           'image': image, 'cve': cve, 'service': service, 'check_id': new,
                           'status': status, 'created_at': now, 'expires_at': expiry,
-                          'review_by': (now + 30 * 86400 if status == 'not_affected' else
-                                        min(expiry, now + 3600) if status == 'pending' else expiry),
+                          'review_by': now + 30 * 86400 if status == 'not_affected' else now,
                           'reason': reason or 'Legacy review pending reassessment',
                           'evidence_urls': urls, 'recheck_on': recheck_triggers(status),
                           'fingerprint': fingerprint,
@@ -235,6 +234,8 @@ def plan(snapshot, events, maintenances, hostid, now, approved_permanent, skip_e
                           'scanner_url': finding.get('url', '')}
                 if status == 'not_affected':
                     record['legacy_revalidation'] = True
+                else:
+                    record['legacy_backlog'] = True
                 description = (f'{status.upper()} | {cve} | {service}\nImage: {image}\n'
                                f'Reason: {record["reason"]}\nEvidence: {", ".join(urls)}\n'
                                f'Recheck: {", ".join(record["recheck_on"])}\nHOME107V2:' +

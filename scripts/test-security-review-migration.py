@@ -58,7 +58,8 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(first['schema'], 2)
         self.assertEqual(first['finding_id'], migration.finding_id(IMAGE, CVE, CONSUMERS[0]))
         self.assertEqual(first['fingerprint'], 'fingerprint-one')
-        self.assertEqual(first['review_by'], expires)
+        self.assertEqual(first['review_by'], NOW)
+        self.assertTrue(first['legacy_backlog'])
         self.assertEqual(first['recheck_on'], ['image_digest_change', 'service_config_change', '30_days'])
 
     def test_permanent_requires_explicit_approval_and_exact_evidence(self):
@@ -77,6 +78,7 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(first['recheck_on'], ['image_digest_change', 'advisory_change'])
         self.assertEqual(first['review_by'], NOW + 30 * 86400)
         self.assertTrue(first['legacy_revalidation'])
+        self.assertNotIn('legacy_backlog', first)
         self.assertNotIn('reviewed_at', first)
         self.assertEqual(first['packages'], snapshot['reports'][IMAGE]['findings'][0]['packages'])
         self.assertEqual(first['scanner_url'], 'https://example.org/advisory')
@@ -102,6 +104,8 @@ class MigrationTests(unittest.TestCase):
         meta = json.loads(result['entries'][0]['description'].split('HOME107V2:', 1)[1])
         self.assertTrue(meta['legacy_reviewed'])
         self.assertEqual(meta['legacy_disposition'], 'not_affected')
+        self.assertEqual(meta['review_by'], NOW)
+        self.assertTrue(meta['legacy_backlog'])
         self.assertFalse(result['permanent_candidates'][0]['legacy_maintenance_ids'])
 
     def test_stale_scanner_report_blocks_migration(self):
