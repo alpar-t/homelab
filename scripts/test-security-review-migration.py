@@ -124,6 +124,7 @@ class MigrationTests(unittest.TestCase):
                  'name': f'HOME107v2 CONFIG {CVE} {check}',
                  'description': entry['description'],
                  'active_till': entry['active_till'] // 60 * 60,
+                 'maintenance_type': '0',
                  'tags': [{'tag': 'check_id', 'operator': '0', 'value': check}],
                  'hosts': [{'hostid': '10'}]}
         self.assertEqual(migration.exact_existing([exact], '10', entry), mid)
@@ -138,6 +139,27 @@ class MigrationTests(unittest.TestCase):
         bad = migration.audit_cutover(result, [new_event], [exact], NOW)
         self.assertEqual(bad['verified'], 0)
         self.assertIn(check, bad['wrong_or_missing_maintenance'])
+
+    def test_cutover_accepts_fresh_review_of_same_exact_finding(self):
+        snapshot, events, maintenances, _ = fixture('REVIEWED_CONFIG_30D', NOW + 86407)
+        result = migration.plan(snapshot, events, maintenances, '10', NOW, set())
+        entry = result['entries'][0]
+        meta = json.loads(entry['description'].split('HOME107V2:', 1)[1])
+        meta['status'] = 'not_affected'
+        meta['reason'] = 'Fresh direct evidence confirms the path is absent.'
+        meta['reviewed_at'] = '2027-01-15T08:00:00Z'
+        check = entry['new_check_id']
+        row = {'maintenanceid': '91', 'name': f'HOME107v2 NOT_AFFECTED {CVE} {check}',
+               'description': 'New review\nHOME107V2:' + json.dumps(meta),
+               'active_till': entry['active_till'] // 60 * 60, 'maintenance_type': '0',
+               'tags': [{'tag': 'check_id', 'operator': '0', 'value': check}],
+               'hosts': [{'hostid': '10'}]}
+        with self.assertRaisesRegex(ValueError, 'differs from approved plan'):
+            migration.exact_existing([row], '10', entry)
+        self.assertEqual(migration.reviewed_existing([row], '10', entry, NOW), '91')
+        meta['service'] = 'other/Deployment/name/container'
+        row['description'] = 'Tampered\nHOME107V2:' + json.dumps(meta)
+        self.assertIsNone(migration.reviewed_existing([row], '10', entry, NOW))
 
 
 if __name__ == '__main__':

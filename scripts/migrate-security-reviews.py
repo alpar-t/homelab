@@ -316,6 +316,41 @@ def exact_existing(maintenances, hostid, entry):
     return str(row['maintenanceid'])
 
 
+def reviewed_existing(maintenances, hostid, entry, now):
+    """Accept an updated review only for the same immutable finding identity."""
+    check = entry['new_check_id']
+    matches = [m for m in maintenances if one_check_tag(m) == check]
+    if not matches:
+        return None
+    if len(matches) != 1:
+        raise ValueError('duplicate exact-service maintenance for ' + check)
+    row = matches[0]
+    tags = row.get('tags') or []
+    hosts = row.get('hosts') or []
+    marker = '\nHOME107V2:'
+    description = row.get('description') or ''
+    if marker not in description:
+        return None
+    try:
+        meta = json.loads(description.rsplit(marker, 1)[1])
+    except ValueError:
+        return None
+    status = meta.get('status', '')
+    expected = {'schema': 2, 'finding_id': finding_id(entry['image'], entry['cve'], entry['service']),
+                'image': entry['image'], 'cve': entry['cve'], 'service': entry['service'],
+                'check_id': check}
+    if (any(meta.get(key) != value for key, value in expected.items()) or
+            status not in {'pending', 'not_affected', 'config', 'needs_evidence', 'requires_fix', 'urgent'} or
+            row.get('name') != f'HOME107v2 {status.upper()} {entry["cve"]} {check}' or
+            str(row.get('maintenance_type')) != '0' or
+            len(tags) != 1 or tags[0].get('operator') not in ('0', 0) or
+            len(hosts) != 1 or str(hosts[0].get('hostid')) != str(hostid) or
+            int(row.get('active_till') or 0) != int(meta.get('expires_at') or 0) // 60 * 60 or
+            int(row.get('active_till') or 0) <= now):
+        return None
+    return str(row['maintenanceid'])
+
+
 def write_progress(path, progress):
     temporary = path.with_suffix(path.suffix + '.tmp')
     temporary.write_text(json.dumps(progress, indent=2))
@@ -334,7 +369,7 @@ def audit_cutover(saved, events, maintenances, now=None):
     present, absent, unsuppressed, wrong_maintenance = [], [], [], []
     for entry in saved['entries']:
         check = entry['new_check_id']
-        mid = exact_existing(maintenances, hostid, entry)
+        mid = reviewed_existing(maintenances, hostid, entry, now)
         if not mid:
             wrong_maintenance.append(check)
             continue
