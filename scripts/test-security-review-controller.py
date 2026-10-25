@@ -121,6 +121,21 @@ class ReviewControllerTests(unittest.TestCase):
             controller.records[web['check_id']]['status'] = 'config'
             self.assertEqual(controller.reuse_candidates()['total'], 0)
 
+    def test_exact_finding_lookup_can_revisit_completed_review(self):
+        api = FakeZabbix()
+        with tempfile.TemporaryDirectory() as temp, patch.object(review, 'bounded_json', return_value=snapshot()):
+            controller = self.controller(temp, api)
+            controller.tick()
+            row = next(iter(controller.rows.values()))
+            meta = controller.finding(row['finding_id'])
+            self.assertEqual(meta['image'], IMAGE)
+            self.assertEqual(meta['status'], 'pending')
+            self.assertEqual(meta['finding_id'], row['finding_id'])
+            controller.degraded_ids.add(row['finding_id'])
+            self.assertIsNone(controller.finding(row['finding_id']))
+            with self.assertRaises(ValueError):
+                controller.finding('bad')
+
     def test_new_finding_queued_immediately_and_gate_waits_for_readback(self):
         api = FakeZabbix()
         with tempfile.TemporaryDirectory() as temp, patch.object(review, 'bounded_json', return_value=snapshot()):

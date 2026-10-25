@@ -626,6 +626,23 @@ class Controller:
                     offset + limit if offset + limit < len(candidates) else None,
                     'total': len(candidates)}
 
+    def finding(self, finding_id_value):
+        """Return one active exact finding so a completed review can be reconsidered."""
+        if not isinstance(finding_id_value, str) or not HEX64.fullmatch(finding_id_value):
+            raise ValueError('finding identity invalid')
+        with self.lock:
+            row = self.rows.get(finding_id_value)
+            if not row or finding_id_value in self.degraded_ids:
+                return None
+            meta = self.records.get(row['check_id'])
+            if not meta:
+                return None
+            return {**row, 'status': meta['status'], 'reason': meta['reason'],
+                    'evidence_urls': meta.get('evidence_urls', []),
+                    'reviewed_at': meta.get('reviewed_at', ''),
+                    'review_by': meta.get('review_by', 0),
+                    'expires_at': meta.get('expires_at', 0)}
+
     def submit_review(self, proposal):
         if not isinstance(proposal, dict) or not set(proposal).issubset({
                 'finding_id', 'image', 'cve', 'service', 'check_id', 'disposition',
@@ -759,7 +776,7 @@ class Controller:
                     okay = value['healthy'] and controller.now() - value['generated_at'] < 180
                     self._send(200 if okay else 503, {'ok': okay})
                     return
-                if parsed.path not in ('/snapshot', '/queue', '/reuse-candidates') or not self._authorized(parsed.path):
+                if parsed.path not in ('/snapshot', '/queue', '/reuse-candidates', '/finding') or not self._authorized(parsed.path):
                     self._send(403, {'error': 'forbidden'})
                     return
                 if parsed.path == '/snapshot':
@@ -767,6 +784,15 @@ class Controller:
                     return
                 try:
                     query = urllib.parse.parse_qs(parsed.query, strict_parsing=False)
+                    if parsed.path == '/finding':
+                        if set(query) != {'finding_id'} or len(query['finding_id']) != 1:
+                            raise ValueError('finding parameters invalid')
+                        if not controller.snapshot_data['healthy']:
+                            self._send(503, {'error': 'review controller unavailable'})
+                        else:
+                            finding = controller.finding(query['finding_id'][0])
+                            self._send(200 if finding else 404, finding or {'error': 'finding unavailable'})
+                        return
                     limit = int(query.get('limit', ['20'])[0])
                     offset = int(query.get('offset', ['0'])[0])
                     if not 1 <= limit <= 50 or not 0 <= offset <= MAX_FINDINGS:
