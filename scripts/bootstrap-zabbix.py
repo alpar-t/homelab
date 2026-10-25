@@ -15,6 +15,8 @@ import urllib.request
 
 READ = ['problem.get', 'event.get', 'host.get', 'trigger.get', 'item.get', 'history.get', 'maintenance.get']
 WRITE = ['event.acknowledge', 'maintenance.create', 'maintenance.delete']
+REVIEW_READ = ['problem.get', 'event.get', 'host.get', 'trigger.get', 'item.get', 'maintenance.get']
+REVIEW_WRITE = ['event.acknowledge', 'maintenance.create', 'maintenance.update', 'maintenance.delete']
 
 
 def kubectl(*args, value=None):
@@ -35,11 +37,28 @@ def read_secret(namespace, name):
 
 
 def write_secret(namespace, name, values):
-    # Payload travels through stdin; no credentials in command arguments or logs.
+    # Create/replace avoids kubectl apply's last-applied annotation, which would
+    # copy plaintext stringData into Secret metadata. Payload stays on stdin.
+    result = subprocess.run(['kubectl', '-n', namespace, 'get', 'secret', name, '-o', 'json'],
+                            capture_output=True, text=True)
+    if result.returncode and 'NotFound' not in result.stderr:
+        raise RuntimeError(result.stderr.strip())
+    existing = json.loads(result.stdout) if not result.returncode else None
+    metadata = {'name': name, 'namespace': namespace}
+    if existing:
+        prior = existing.get('metadata') or {}
+        metadata['resourceVersion'] = prior['resourceVersion']
+        if prior.get('labels'):
+            metadata['labels'] = prior['labels']
+        annotations = {key: value for key, value in (prior.get('annotations') or {}).items()
+                       if key != 'kubectl.kubernetes.io/last-applied-configuration'}
+        if annotations:
+            metadata['annotations'] = annotations
     resource = {'apiVersion': 'v1', 'kind': 'Secret', 'type': 'Opaque',
-                'metadata': {'name': name, 'namespace': namespace},
+                'metadata': metadata,
                 'stringData': values}
-    kubectl('apply', '-f', '-', value=json.dumps(resource))
+    kubectl('-n', namespace, 'replace' if existing else 'create', '-f', '-',
+            value=json.dumps(resource))
 
 
 class API:
@@ -127,7 +146,7 @@ def configure_checks(api):
     for severity in (1, 2, 3, 4):
         name = '{#NAME}: persistent failure (severity ' + str(severity) + ')'
         api.ensure('triggerprototype', 'description', name, {
-            'expression': (sample_gate('homelab.state', '{#FAILURE_SAMPLES}', [3, 5]) + ' and '
+            'expression': (sample_gate('homelab.state', '{#FAILURE_SAMPLES}', [1, 3, 5]) + ' and '
                            + sample_gate('homelab.parent_available', '{#GRACE_SAMPLES}', windows)
                            + ' and last(/HomePBP/homelab.severity[{#ID}])=' + str(severity)),
             'priority': severity, 'manual_close': 1,
@@ -184,6 +203,60 @@ def configure_identity(api, group, existing):
             tokenid = api.call('token.create', {'name': 'Baloo ' + mode, 'userid': userid})['tokenids'][0]
             tokens[mode + '-token'] = api.call('token.generate', [tokenid])[0]['token']
     return tokens, users['read']
+
+
+def configure_security_review_identity(api, group, existing):
+    """Give the deterministic review controller its own Zabbix API identity."""
+    role = api.ensure('role', 'name', 'HomePBP security review reconciler', {
+        'type': 2,
+        'rules': {
+            'api.access': 1, 'api.mode': 1, 'api': REVIEW_READ + REVIEW_WRITE,
+            'ui.default_access': 0, 'modules.default_access': 0,
+            'actions.default_access': 0,
+            'actions': [{'name': name, 'status': 1} for name in (
+                'add_problem_comments', 'acknowledge_problems',
+                'suppress_problems', 'edit_maintenance')],
+            'services.read.mode': 0, 'services.write.mode': 0,
+        },
+    })
+    usergroup = api.ensure('usergroup', 'name', 'HomePBP security review reconciler', {
+        'gui_access': 3,
+        'hostgroup_rights': [{'id': group, 'permission': 3}],
+    }, 'usrgrpid')
+    username = 'homepbp-security-review-reconciler'
+    found = api.call('user.get', {'filter': {'username': username}, 'output': ['userid']})
+    if len(found) > 1:
+        raise RuntimeError('Ambiguous security review reconciler user')
+    properties = {'roleid': role, 'usrgrps': [{'usrgrpid': usergroup}]}
+    if not found:
+        properties['passwd'] = secrets.token_urlsafe(48)
+    userid = api.ensure('user', 'username', username, properties)
+    token = (existing or {}).get('api-token')
+    if token:
+        return token
+    tokenid = api.call('token.create', {
+        'name': 'HomePBP security review reconciler', 'userid': userid,
+    })['tokenids'][0]
+    return api.call('token.generate', [tokenid])[0]['token']
+
+
+def configure_security_review_access(api, group):
+    """Provision API and transport tokens without exposing them to agent files."""
+    api_secret = read_secret('zabbix', 'security-review-reconciler') or {}
+    api_token = configure_security_review_identity(api, group, api_secret)
+    if not api_secret.get('api-token'):
+        write_secret('zabbix', 'security-review-reconciler', {'api-token': api_token})
+
+    controller = read_secret('zabbix', 'security-review-controller') or {}
+    baloo = read_secret('baloo', 'security-review-access') or {}
+    baloo_token = controller.get('baloo-token') or baloo.get('token') or secrets.token_urlsafe(48)
+    collector_token = controller.get('collector-token') or secrets.token_urlsafe(48)
+    if controller.get('baloo-token') != baloo_token or controller.get('collector-token') != collector_token:
+        write_secret('zabbix', 'security-review-controller', {
+            'baloo-token': baloo_token, 'collector-token': collector_token,
+        })
+    if baloo.get('token') != baloo_token:
+        write_secret('baloo', 'security-review-access', {'token': baloo_token})
 
 
 def configure_alerts(api, group, user, token):
@@ -274,9 +347,13 @@ def main():
                         help='Disable the three integration-owned per-event actions after the digest is verified')
     parser.add_argument('--retire-synthetic-mail-check', action='store_true',
                         help='Close only the superseded synthetic coverage warning after the replacement check is fresh and healthy')
+    parser.add_argument('--security-review-only', action='store_true',
+                        help='Provision only the restricted security-review API and transport credentials')
     args = parser.parse_args()
     if args.enable_alerts and args.disable_direct_alerts:
         parser.error('--enable-alerts and --disable-direct-alerts are mutually exclusive')
+    if args.security_review_only and (args.enable_alerts or args.disable_direct_alerts or args.retire_synthetic_mail_check):
+        parser.error('--security-review-only cannot be combined with alert or retirement actions')
     api = API(args.url)
     print('Zabbix API version:', api.call('apiinfo.version', {}))
     if not args.apply:
@@ -298,9 +375,17 @@ def main():
     if args.disable_direct_alerts:
         disable_direct_alerts(api)
         return
+    if args.security_review_only:
+        groups = api.call('hostgroup.get', {'filter': {'name': 'HomePBP'}, 'output': ['groupid']})
+        if len(groups) != 1:
+            raise RuntimeError('Managed HomePBP host group is missing or ambiguous')
+        configure_security_review_access(api, groups[0]['groupid'])
+        print('Reconciled restricted security-review identity and credentials. No credentials printed.')
+        return
     group = configure_checks(api)
     values, user = configure_identity(api, group, read_secret('baloo', 'zabbix-mcp'))
     write_secret('baloo', 'zabbix-mcp', values)
+    configure_security_review_access(api, group)
     gateway = read_secret('baloo', 'baloo-secrets') or {}
     token = gateway.get('MONITORING_HOOK_TOKEN')
     if not token:
