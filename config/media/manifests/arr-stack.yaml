@@ -92,6 +92,10 @@ spec:
               mountPath: /config
             - name: tv-data
               mountPath: /data
+            # qBittorrent can report existing TV torrents saved under its
+            # movie download path; Sonarr needs that path to import them.
+            - name: movies-data
+              mountPath: /data/movies
           resources:
             requests:
               cpu: 100m
