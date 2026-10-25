@@ -1,0 +1,165 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: security-review-state
+  namespace: zabbix
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: longhorn-ssd
+  resources:
+    requests:
+      storage: 512Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: security-review-controller
+  namespace: zabbix
+  annotations:
+    configmap.reloader.stakater.com/reload: security-review-controller
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: security-review-controller
+  template:
+    metadata:
+      labels:
+        app: security-review-controller
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: controller
+          image: docker.io/library/python:3.13.17-alpine@sha256:fa0bb0d0cd7c7d6cef30a69094d32ac2b71c7304c87c6107fec100e1ee4eda02
+          command: [python, -B, /config/security_review_controller.py]
+          env:
+            - name: REVIEW_APPLY
+              value: "false"
+          ports:
+            - name: http
+              containerPort: 8081
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: http
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: zabbix-credentials
+              mountPath: /zabbix-credentials
+              readOnly: true
+            - name: review-credentials
+              mountPath: /review-credentials
+              readOnly: true
+            - name: state
+              mountPath: /state
+      volumes:
+        - name: config
+          configMap:
+            name: security-review-controller
+        - name: zabbix-credentials
+          secret:
+            secretName: security-review-reconciler
+            items:
+              - key: api-token
+                path: api-token
+        - name: review-credentials
+          secret:
+            secretName: security-review-controller
+            items:
+              - key: baloo-token
+                path: baloo-token
+              - key: collector-token
+                path: collector-token
+        - name: state
+          persistentVolumeClaim:
+            claimName: security-review-state
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: security-review-controller
+  namespace: zabbix
+spec:
+  selector:
+    app: security-review-controller
+  ports:
+    - name: http
+      port: 8081
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: security-review-controller
+  namespace: zabbix
+spec:
+  podSelector:
+    matchLabels:
+      app: security-review-controller
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: collector
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: baloo
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: openclaw
+      ports:
+        - port: 8081
+          protocol: TCP
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              app: security-scanner
+        - podSelector:
+            matchLabels:
+              app: zabbix
+      ports:
+        - port: 8080
+          protocol: TCP

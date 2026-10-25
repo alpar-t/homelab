@@ -6,6 +6,7 @@ resources:
   - deployment.yaml
   - collector.yaml
   - security-scanner.yaml
+  - security-review-controller.yaml
   - network-policy.yaml
   - oidc-client.yaml
   - oauth2-proxy.yaml
@@ -30,6 +31,11 @@ resources:
   - wireguard-monitoring-rbac.yaml
   # end resources: wireguard
 configMapGenerator:
+  - name: security-review-controller
+    namespace: zabbix
+    files:
+      - assets/security_review_controller.py
+      - assets/security_checks.py
   - name: collector
     namespace: zabbix
     files:
