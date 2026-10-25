@@ -256,7 +256,8 @@ class ReviewControllerTests(unittest.TestCase):
             api.rows[first]['description'] = review.description(urgent_meta)
             permanent_meta = review.parse_description(api.rows[second]['description'])
             permanent_meta.update(status='not_affected', expires_at=NOW + 30 * 86400,
-                                  reviewed_at='2024-01-01T00:00:00Z', legacy_revalidation=True)
+                                  reviewed_at='2024-01-01T00:00:00Z', legacy_revalidation=True,
+                                  review_by=NOW - 1)
             api.rows[second]['description'] = review.description(permanent_meta)
             api.rows[second]['active_till'] = NOW + 30 * 86400
             value = controller.tick()
@@ -354,6 +355,21 @@ class ReviewControllerTests(unittest.TestCase):
             self.assertEqual(len(first['findings']), 20)
             self.assertEqual(len(second['findings']), 6)
             self.assertIsNone(second['next_offset'])
+
+    def test_legacy_permanent_respects_review_deadline(self):
+        api = FakeZabbix()
+        with tempfile.TemporaryDirectory() as temp, patch.object(review, 'bounded_json', return_value=snapshot()):
+            controller = self.controller(temp, api)
+            controller.tick()
+            current = next(iter(api.rows.values()))
+            meta = review.parse_description(current['description'])
+            meta.update(status='not_affected', legacy_revalidation=True,
+                        review_by=NOW + 30 * 86400, expires_at=review.PERMANENT_TILL)
+            current['description'] = review.description(meta)
+            current['active_till'] = review.PERMANENT_TILL
+            controller.tick()
+            self.assertEqual(controller.queue()['total'], 0)
+            self.assertEqual(controller.snapshot_data['overdue_count'], 0)
 
     def test_missing_state_does_not_bootstrap_or_mute(self):
         api = FakeZabbix()

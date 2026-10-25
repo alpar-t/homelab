@@ -20,8 +20,6 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from security_checks import raw_check_id
-
 SCANNER_URL = os.environ.get('SCANNER_URL', 'http://security-scanner.zabbix.svc.cluster.local:8080/snapshot')
 ZABBIX_URL = os.environ.get('ZABBIX_URL', 'http://zabbix-web.zabbix.svc.cluster.local/api_jsonrpc.php')
 STATE_PATH = Path(os.environ.get('REVIEW_STATE', '/state/review.json'))
@@ -69,6 +67,13 @@ def bounded_json(url, token=None, data=None, limit=MAX_HTTP):
 def finding_id(image, cve, service):
     value = json.dumps(['security-finding-v1', image, cve, service], separators=(',', ':'), ensure_ascii=False)
     return hashlib.sha256(value.encode()).hexdigest()
+
+
+def raw_check_id(image, cve, service):
+    # Keep the exact v2 collector identity stable across staged rollouts. The
+    # collector can be on the previous ConfigMap while this controller starts.
+    value = json.dumps(['security-raw-v2', image, cve, service], separators=(',', ':'))
+    return hashlib.sha256(value.encode()).hexdigest()[:20]
 
 
 def finding_rows(snapshot, now):
@@ -291,8 +296,7 @@ def printable(value, limit):
 
 
 def review_due(meta, now):
-    return (meta.get('status') == 'pending' or bool(meta.get('legacy_revalidation')) or
-            int(meta.get('review_by', 0)) <= now)
+    return meta.get('status') == 'pending' or int(meta.get('review_by', 0)) <= now
 
 
 def evidence_recent(meta, now):
@@ -545,9 +549,11 @@ class Controller:
                 rows.append({**row, 'status': meta['status'], 'review_by': meta['review_by'],
                              'reason': meta['reason'], 'evidence_urls': meta.get('evidence_urls', []),
                              'fingerprint': meta.get('fingerprint', ''),
+                             'legacy_backlog': bool(meta.get('legacy_backlog', False)),
                              'legacy_revalidation': bool(meta.get('legacy_revalidation', False))})
-            rows.sort(key=lambda item: (0 if item['status'] == 'pending' else
-                                        2 if item['legacy_revalidation'] else 1,
+            rows.sort(key=lambda item: (0 if item['status'] == 'pending' and not item['legacy_backlog'] else
+                                        2 if item['legacy_backlog'] else
+                                        3 if item['legacy_revalidation'] else 1,
                                         item['review_by'], item['finding_id']))
             return {'findings': rows[offset:offset + limit], 'next_offset':
                     offset + limit if offset + limit < len(rows) else None, 'total': len(rows)}
