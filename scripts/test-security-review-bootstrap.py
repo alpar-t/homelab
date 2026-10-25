@@ -62,12 +62,14 @@ class SecurityReviewIdentityTests(unittest.TestCase):
         self.assertEqual(role['type'], 2)
         rules = role['rules']
         self.assertEqual(rules['api.mode'], 1)
-        self.assertEqual(rules['api'], bootstrap.REVIEW_READ + bootstrap.REVIEW_WRITE)
+        self.assertEqual(rules['api'], ['problem.get', 'host.get', 'maintenance.get',
+                                        'event.acknowledge', 'maintenance.create',
+                                        'maintenance.update'])
         self.assertNotIn('user.update', rules['api'])
         self.assertNotIn('script.execute', rules['api'])
+        self.assertNotIn('maintenance.delete', rules['api'])
         self.assertEqual({a['name'] for a in rules['actions']}, {
-            'add_problem_comments', 'acknowledge_problems',
-            'suppress_problems', 'edit_maintenance',
+            'add_problem_comments', 'acknowledge_problems', 'edit_maintenance',
         })
         group = next(entry[2] for entry in api.calls if entry[0] == 'usergroup.ensure')
         self.assertEqual(group['hostgroup_rights'], [{'id': '17', 'permission': 3}])

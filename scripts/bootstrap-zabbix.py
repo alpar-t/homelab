@@ -15,8 +15,8 @@ import urllib.request
 
 READ = ['problem.get', 'event.get', 'host.get', 'trigger.get', 'item.get', 'history.get', 'maintenance.get']
 WRITE = ['event.acknowledge', 'maintenance.create', 'maintenance.delete']
-REVIEW_READ = ['problem.get', 'event.get', 'host.get', 'trigger.get', 'item.get', 'maintenance.get']
-REVIEW_WRITE = ['event.acknowledge', 'maintenance.create', 'maintenance.update', 'maintenance.delete']
+REVIEW_READ = ['problem.get', 'host.get', 'maintenance.get']
+REVIEW_WRITE = ['event.acknowledge', 'maintenance.create', 'maintenance.update']
 
 
 def kubectl(*args, value=None):
@@ -214,8 +214,7 @@ def configure_security_review_identity(api, group, existing):
             'ui.default_access': 0, 'modules.default_access': 0,
             'actions.default_access': 0,
             'actions': [{'name': name, 'status': 1} for name in (
-                'add_problem_comments', 'acknowledge_problems',
-                'suppress_problems', 'edit_maintenance')],
+                'add_problem_comments', 'acknowledge_problems', 'edit_maintenance')],
             'services.read.mode': 0, 'services.write.mode': 0,
         },
     })
