@@ -375,6 +375,25 @@ class ReviewControllerTests(unittest.TestCase):
             self.assertEqual(controller.queue()['total'], 0)
             self.assertEqual(controller.snapshot_data['overdue_count'], 0)
 
+    def test_legacy_finite_backlog_queues_without_immediate_fault(self):
+        api = FakeZabbix()
+        with tempfile.TemporaryDirectory() as temp, patch.object(review, 'bounded_json', return_value=snapshot()):
+            controller = self.controller(temp, api)
+            controller.tick()
+            current = next(iter(api.rows.values()))
+            meta = review.parse_description(current['description'])
+            meta.update(status='requires_fix', legacy_backlog=True, review_by=NOW - 60)
+            current['description'] = review.description(meta)
+            value = controller.tick()
+            self.assertEqual(controller.queue()['total'], 1)
+            self.assertEqual(value['overdue_count'], 0)
+            self.assertTrue(value['healthy'])
+            meta['expires_at'] = NOW - 60
+            current['description'] = review.description(meta)
+            current['active_till'] = NOW - 60
+            value = controller.tick()
+            self.assertEqual(value['overdue_count'], 1)
+
     def test_missing_state_does_not_bootstrap_or_mute(self):
         api = FakeZabbix()
         with tempfile.TemporaryDirectory() as temp, patch.object(review, 'bounded_json', return_value=snapshot()):

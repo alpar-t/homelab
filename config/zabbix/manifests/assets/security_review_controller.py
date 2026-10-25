@@ -518,10 +518,10 @@ class Controller:
                            'reviewed_at': meta.get('reviewed_at', '')}
                           for meta in records.values() if meta['status'] == 'urgent']
                 due = [meta for meta in records.values() if review_due(meta, now)]
-                overdue = sum(1 for meta in due if now > int(meta.get('review_by', now)))
-                expired = sum(1 for meta in records.values() if int(meta['expires_at']) <= now)
-                overdue += sum(1 for meta in records.values() if int(meta['expires_at']) <= now and
-                               int(meta.get('review_by', now)) >= now)
+                overdue = sum(1 for meta in records.values() if
+                              int(meta['expires_at']) <= now or
+                              (review_due(meta, now) and now > int(meta.get('review_by', now)) and
+                               not meta.get('legacy_backlog')))
                 expiring = sum(1 for meta in records.values() if meta['status'] == 'not_affected' and
                                int(meta['expires_at']) - now < 90 * 86400)
                 self.rows, self.records = rows, records
