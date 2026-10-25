@@ -51,7 +51,7 @@ Baloo's general PinchTab browser deployment and failure diagnostics:
 Zabbix monitoring architecture, restricted Baloo access, deployment gates,
 and recovery: `runbooks/zabbix-monitoring.md`.
 
-Running-image critical vulnerability scanning and Zabbix alerts:
+Current and recent image critical vulnerability scanning, Baloo review, and Zabbix alerts:
 `runbooks/vulnerability-scanning.md`.
 
 Tandoor 2.7.1 database migration and email-address sequence recovery:

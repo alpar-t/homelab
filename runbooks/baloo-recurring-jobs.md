@@ -13,10 +13,21 @@ this file and are never edited or deleted by the reconciler.
 ## Managed jobs
 
 - `cluster-health` — disabled legacy LLM outage probe, retained for rollback.
-- `managed: monitoring-watchdog` — deterministic command every five minutes;
-  verifies Zabbix API availability and collector freshness without an LLM.
-  Zabbix problem/recovery webhooks provide the event-driven alerts; see
-  [Zabbix monitoring](zabbix-monitoring.md).
+- `managed: monitoring-watchdog` — disabled legacy deterministic probe;
+  retained for rollback. The active digest below checks monitoring freshness.
+- `managed: zabbix-digest` — deterministic command every minute; reads Zabbix
+  problem/recovery state and delivers only eligible notifications to WhatsApp.
+  Raw image CVE findings are dashboard-only; a reviewed urgent CVE uses a
+  separate paging check. See [Zabbix monitoring](zabbix-monitoring.md).
+- `managed: security-image-review` — queue-driven isolated Baloo reviewer.
+  A deterministic stream checks the bounded review queue every minute and
+  wakes the reviewer on new pending work or at least every five minutes while
+  work remains. Each run takes at most 25 findings and rotates its offset
+  across a larger backlog. The reviewer writes structured evidence through a
+  constrained controller, with no direct WhatsApp delivery or Zabbix
+  operations token.
+  Keep this job disabled until the [vulnerability-review cutover](vulnerability-scanning.md#cutover-validation-and-rollback)
+  passes its notification and write-boundary checks.
 - `managed: dm-due-reminders` — checks explicit `@remind` tags in
   `life/TODO.md` hourly from 08:00 through 22:00 Europe/Bucharest.
 - `managed: trips-morning-briefing` — 08:00 Europe/Bucharest.
@@ -70,6 +81,20 @@ kubectl -n baloo logs deployment/openclaw -c openclaw --tail=200 | grep '\[reloa
 
 Only Deployment changes, secret-backed environment changes, and settings that
 OpenClaw explicitly marks restart-required need a rollout.
+
+### Gateway token exposure during HOME-107 cutover
+
+The `OPENCLAW_GATEWAY_TOKEN` value appeared in this session's tool transcript
+because cron reconciliation and session cleanup passed it in process arguments.
+There is no evidence it reached pod logs. Baloo commits `169c94f` and
+`150c95e` removed those argument paths. On 2026-10-25 the
+`baloo/baloo-secrets` key was replaced through stdin-only Secret creation,
+and a credential-bearing last-applied annotation was removed. All four
+dependent Deployments restarted and reached 1/1 Ready; OpenClaw `/readyz`
+returned 200. For future rotations, avoid printing the value, restart its
+consumers so they load the new environment value, and verify cron
+reconciliation and session cleanup. Do not include the token or process
+arguments containing it in diagnostic output.
 
 Inspect the reconciler and resulting jobs:
 

@@ -162,6 +162,14 @@ report if Baloo itself is down; independent external monitoring covers that
 case. Interactive monitoring requests still invoke an LLM. Other unrelated
 Baloo scheduled jobs retain their own behavior.
 
+Image vulnerability review is a separate Baloo LLM job described in
+[vulnerability-scanning.md](vulnerability-scanning.md). It reads a bounded
+scanner/review queue and submits structured evidence to a constrained Zabbix
+writer; it does not use the broad monitoring operations bridge. Raw CVE checks
+are dashboard-only and excluded by identity from the deterministic WhatsApp
+digest. Only the reviewed urgent check can page for a CVE. Collector, scanner,
+and review-system failures retain independent alertable checks.
+
 ## Deployment and cutover
 
 1. Validate local tests and Kubernetes dry runs. Deploy through the `zabbix`
