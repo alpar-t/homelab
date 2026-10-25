@@ -96,6 +96,20 @@ consumers so they load the new environment value, and verify cron
 reconciliation and session cleanup. Do not include the token or process
 arguments containing it in diagnostic output.
 
+Removing `--token` exposed an OpenClaw CLI quirk: an explicit `--url` also
+stops the CLI from using `OPENCLAW_GATEWAY_TOKEN` from its environment. Baloo
+commit `08ae29e` supplies both `OPENCLAW_GATEWAY_URL` and the token through
+the scoped child-process environment for cron reconciliation and session
+cleanup, keeping credentials out of process arguments. An isolated `cron-sync`
+sidecar restart loaded the fix; it reconciled jobs without authentication
+errors, and the reviewer stream had one active child after a one-shot
+disable/enable rearm. The Gateway remained Ready throughout.
+
+`newjoy-organizer` still had one active project and cached the older
+`baloo-agent-client` module, so its isolated restart was deferred until idle.
+When `activeProjects` reaches zero, restart only that sidecar and verify
+session cleanup uses the env-based Gateway URL and token path.
+
 Inspect the reconciler and resulting jobs:
 
 ```bash
