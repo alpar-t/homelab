@@ -19,6 +19,7 @@ run_target() {
     zabbix)
       PYTHONPYCACHEPREFIX=/tmp/home-3-python-cache python3 scripts/test-security-review-bootstrap.py
       PYTHONPYCACHEPREFIX=/tmp/home-3-python-cache python3 scripts/test-security-review-migration.py
+      PYTHONPYCACHEPREFIX=/tmp/home-3-python-cache python3 scripts/test-security-review-extension.py
       PYTHONPYCACHEPREFIX=/tmp/home-3-python-cache python3 scripts/test-security-review-controller.py
       PYTHONPYCACHEPREFIX=/tmp/home-3-python-cache python3 scripts/test-security-scanner.py
       PYTHONPYCACHEPREFIX=/tmp/home-3-python-cache python3 scripts/tests/test_security_scanner_watch.py
