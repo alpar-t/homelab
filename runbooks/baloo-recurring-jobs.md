@@ -22,12 +22,14 @@ this file and are never edited or deleted by the reconciler.
 - `managed: security-image-review` — queue-driven isolated Baloo reviewer.
   A deterministic stream checks the bounded review queue every minute and
   wakes the reviewer on new pending work or at least every five minutes while
-  work remains. Each run takes at most 25 findings and rotates its offset
+  work remains. Before each wake, it reads the reviewer's live weekly Codex
+  allowance and pauses new runs below 30% remaining. A failed usage read also
+  pauses new runs; it retries after five minutes. Runs already in progress
+  finish. Each run takes at most 25 findings and rotates its offset
   across a larger backlog. The reviewer writes structured evidence through a
   constrained controller, with no direct WhatsApp delivery or Zabbix
-  operations token.
-  Keep this job disabled until the [vulnerability-review cutover](vulnerability-scanning.md#cutover-validation-and-rollback)
-  passes its notification and write-boundary checks.
+  operations token. The [vulnerability-review cutover](vulnerability-scanning.md#cutover-validation-and-rollback)
+  passed, and this job is enabled.
 - `managed: dm-due-reminders` — checks explicit `@remind` tags in
   `life/TODO.md` hourly from 08:00 through 22:00 Europe/Bucharest.
 - `managed: trips-morning-briefing` — 08:00 Europe/Bucharest.
