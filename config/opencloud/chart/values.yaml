@@ -84,7 +84,7 @@ busybox:
     # Busybox image repository
     repository: library/busybox
     # Busybox image tag
-    tag: "1.36"
+    tag: "1.36@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"
     # Image pull policy
     pullPolicy: IfNotPresent
 
@@ -106,7 +106,7 @@ keycloak:
       # Keycloak image repository
       repository: keycloak/keycloak
       # Keycloak image tag
-      tag: "26.1.4"
+      tag: "26.1.4@sha256:044a457e04987e1fff756be3d2fa325a4ef420fa356b7034ecc9f1b693c32761"
       # Image pull policy
       pullPolicy: IfNotPresent
     # Number of Keycloak replicas
@@ -158,7 +158,7 @@ postgres:
     # PostgreSQL image repository
     repository: postgres
     # PostgreSQL image tag
-    tag: "alpine"
+    tag: "alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5"
     # Image pull policy
     pullPolicy: IfNotPresent
 
@@ -212,7 +212,7 @@ tika:
     # Tika image repository
     repository: apache/tika
     # Tika image tag
-    tag: "2.9.2.1-full"
+    tag: "2.9.2.1-full@sha256:ae0b86d3c4d06d8997407fcb08f31a7259fff91c43e0c1d7fffdad1e9ade3fe8"
     # Image pull policy
     pullPolicy: IfNotPresent
   # Resources allocation
@@ -273,7 +273,7 @@ collabora:
     registry: docker.io
     repository: collabora/code
     pullPolicy: IfNotPresent
-    tag: 24.04.13.2.1
+    tag: 24.04.13.2.1@sha256:01dc4ab83977edf0f2eb35c07973ac267ebccf4917d3311efa9b9e336709f608
   ssl:
     enabled: true
     verification: true
@@ -311,7 +311,7 @@ onlyoffice:
     # OnlyOffice image repository
     repository: onlyoffice/documentserver
     # OnlyOffice image tag
-    tag: 8.2.2
+    tag: 8.2.2@sha256:3489a54c581414055dd9bfa3890435e5e6fc8c4ce0ffdd65cf3c7869f680cf81
     # Image pull policy
     pullPolicy: IfNotPresent
   # WOPI settings
@@ -409,7 +409,7 @@ image:
   # OpenCloud image repository
   repository: opencloudeu/opencloud-rolling
   # OpenCloud image tag
-  tag: "2.1.0"
+  tag: "2.1.0@sha256:f9634bb049058061a137aebddcd6e6dc4ffb853bbf3c271f8ce815cea30e8114"
   # Image pull policy
   pullPolicy: IfNotPresent
   # Image pull secrets
@@ -590,7 +590,7 @@ opencloud:
           # MinIO image repository
           repository: minio/minio
           # MinIO image tag
-          tag: latest
+          tag: latest@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
           # Image pull policy
           pullPolicy: IfNotPresent
         # httpRoute configuration
