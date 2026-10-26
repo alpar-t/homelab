@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 # Keep Open WebUI 0.12.3 and its application dependencies intact. Replace only
 # the Python packages with published security fixes. Their wheel hashes are
 # pinned in requirements-overlay.txt so a rebuild cannot silently change them.

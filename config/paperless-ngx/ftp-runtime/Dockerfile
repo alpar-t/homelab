@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 # Build the signed 1.0.54 release with the PureDB and TLS capabilities used
 # by the existing FTP sidecar. The release tag was verified to point at this
 # commit; fail if the remote tag is changed.

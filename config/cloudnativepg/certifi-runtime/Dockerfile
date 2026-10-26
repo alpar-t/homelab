@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1@sha256:4edf897a3ffa55b89f906fc8cc78afdb3f1834cc9c7083565e611a8a7d5fe99e
 # Overlay the fixed trust bundle without changing PostgreSQL or Barman.
 # The workflow supplies one of the two exact CNPG system-image digests.
 ARG POSTGRES_BASE
