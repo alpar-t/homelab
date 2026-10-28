@@ -103,7 +103,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: reconcile
-              image: docker.io/bitnami/kubectl:latest@sha256:6d9e8ad566a6d2dcb4a7a6120d030bd65bddbcc952246f4b31022834d9be7e02
+              image: docker.io/bitnami/kubectl:latest@sha256:bedd34c910e2a5ce9836813d16444af449d7fe07a29136d59f34e861e8e660c5
               command:
                 - /bin/bash
                 - -c
